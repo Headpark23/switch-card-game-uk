@@ -16,6 +16,7 @@ import {
 import { GoogleAd } from './GoogleAd';
 import { TOP_10_GAMES, type CardGame } from '../data/cardGames';
 import { SocialShare } from './SocialShare';
+import { InstallPwaBanner } from './InstallPwaBanner';
 
 interface HomeViewProps {
   onNavigate: (page: 'Games' | 'Score' | 'Leagues' | 'Stats' | 'Switch') => void;
@@ -95,6 +96,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </button>
         </div>
       </section>
+
+      {/* Install App Offline Banner */}
+      <InstallPwaBanner />
 
       {/* Four Core Pillars Grid */}
       <section className="home-pillars-section">

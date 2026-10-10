@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import confetti from 'canvas-confetti';
 import {
   Trophy,
   Plus,
@@ -10,10 +11,13 @@ import {
   Sparkle,
   Crown,
   CaretRight,
-  UserPlus
+  UserPlus,
+  QrCode
 } from '@phosphor-icons/react';
 import { TOP_10_GAMES, type CardGame } from '../data/cardGames';
 import type { League, Player, MatchRecord } from '../data/initialLeagues';
+import { TableQRModal } from './TableQRModal';
+import { MatchImageCard } from './MatchImageCard';
 
 interface ScorekeeperProps {
   leagues: League[];
@@ -58,6 +62,7 @@ export function Scorekeeper({
   const [roundHistory, setRoundHistory] = useState<CompletedRound[]>([]);
   const [matchNotes, setMatchNotes] = useState<string>('');
   const [showAddPlayerModal, setShowAddPlayerModal] = useState<boolean>(false);
+  const [showQRModal, setShowQRModal] = useState<boolean>(false);
   const [newPlayerName, setNewPlayerName] = useState<string>('');
 
   const togglePlayerSelection = (id: string) => {
@@ -155,6 +160,31 @@ export function Scorekeeper({
 
     onSaveMatch(record);
     setMatchState('finished');
+
+    // Victory celebration confetti!
+    try {
+      confetti({
+        particleCount: 90,
+        spread: 60,
+        origin: { y: 0.6 }
+      });
+      setTimeout(() => {
+        confetti({
+          particleCount: 50,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 }
+        });
+        confetti({
+          particleCount: 50,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 }
+        });
+      }, 350);
+    } catch {
+      // ignore
+    }
   };
 
   const handleResetToSetup = () => {
@@ -179,8 +209,21 @@ export function Scorekeeper({
       {matchState === 'setup' && (
         <section className="sk-setup-view">
           <div className="sk-header">
-            <p className="eyebrow">DIGITAL SCORECARD</p>
-            <h2>Table Scorekeeper</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <p className="eyebrow">DIGITAL SCORECARD</p>
+                <h2>Table Scorekeeper</h2>
+              </div>
+              <button
+                type="button"
+                className="sk-table-qr-btn"
+                onClick={() => setShowQRModal(true)}
+                title="Open Table QR for players"
+              >
+                <QrCode size={18} weight="bold" />
+                <span>Table QR Code</span>
+              </button>
+            </div>
             <p className="intro">Ditch the pen and paper. Pick your game, select players, and tap to log points.</p>
           </div>
 
@@ -392,6 +435,16 @@ export function Scorekeeper({
             })}
           </div>
 
+          {/* Exportable Match Image Card for WhatsApp & Social Sharing */}
+          <MatchImageCard
+            game={currentGame}
+            leagueName={currentLeague.name}
+            winner={winnerPlayer}
+            standings={sortedStandings}
+            players={players}
+            notes={matchNotes}
+          />
+
           <div className="sk-notes-box">
             <label className="sk-label">Add Game Night Memory / Note (optional)</label>
             <input
@@ -409,6 +462,14 @@ export function Scorekeeper({
           </div>
         </section>
       )}
+
+      {/* Table QR Modal */}
+      <TableQRModal
+        isOpen={showQRModal}
+        onClose={() => setShowQRModal(false)}
+        gameName={currentGame.name}
+        leagueName={currentLeague.name}
+      />
 
       {/* Add Player Dialog */}
       {showAddPlayerModal && (

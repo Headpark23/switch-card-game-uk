@@ -2848,3 +2848,666 @@
 }
 
 
+
+/* ==========================================================================
+   FEATURE 1 & 2 & 3: TABLE QR, MATCH IMAGE EXPORT & PWA INSTALL
+   ========================================================================== */
+
+/* Table QR Button */
+.sk-table-qr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  color: #053527;
+  border: 1.5px solid #d4c8ad;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.sk-table-qr-btn:hover {
+  background: #053527;
+  color: #ffffff;
+  border-color: #053527;
+  transform: translateY(-1px);
+}
+
+.sk-table-qr-btn.small {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+/* Table QR Modal */
+.table-qr-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 53, 39, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.table-qr-dialog {
+  background: #ffffff;
+  border-radius: 24px;
+  max-width: 420px;
+  width: 100%;
+  padding: 28px 24px;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  text-align: center;
+  animation: scaleIn 0.2s ease-out;
+}
+
+.table-qr-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: #f4f1ea;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #555;
+  transition: background 0.15s ease;
+}
+
+.table-qr-close:hover {
+  background: #e2ddd3;
+}
+
+.table-qr-header {
+  margin-bottom: 20px;
+}
+
+.table-qr-icon-pill {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: rgba(5, 53, 39, 0.08);
+  color: #053527;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.table-qr-header h3 {
+  font-family: var(--font-display, 'DM Serif Display', Georgia, serif);
+  font-size: 22px;
+  color: #1a1a1a;
+  margin: 0 0 4px;
+}
+
+.table-qr-header p {
+  font-size: 13px;
+  color: #666;
+  margin: 0;
+}
+
+.table-qr-code-wrapper {
+  background: #fbfaf6;
+  border: 1px solid #ebdcc5;
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.table-qr-frame {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  margin-bottom: 12px;
+}
+
+.table-qr-instructions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #053527;
+  font-weight: 500;
+}
+
+.table-qr-url-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f4f1ea;
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-bottom: 20px;
+  gap: 8px;
+}
+
+.table-qr-url {
+  font-size: 11px;
+  color: #555;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-qr-copy-btn {
+  background: #ffffff;
+  border: 1px solid #d4c8ad;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #053527;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.table-qr-done-btn {
+  width: 100%;
+}
+
+/* ==========================================================================
+   FEATURE 2: MATCH SCORECARD IMAGE EXPORTER
+   ========================================================================== */
+
+.match-export-container {
+  margin: 24px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.match-export-card {
+  background: linear-gradient(135deg, #053527 0%, #0a4f3b 100%);
+  color: #ffffff;
+  border-radius: 24px;
+  padding: 28px 24px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 16px 36px rgba(5, 53, 39, 0.25);
+  border: 2px solid #b8934a;
+  position: relative;
+  overflow: hidden;
+}
+
+.match-export-card::after {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 160px;
+  height: 160px;
+  background: radial-gradient(circle, rgba(218, 165, 32, 0.2) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.mec-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+}
+
+.mec-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mec-suits {
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+
+.mec-brand h4 {
+  font-family: var(--font-display, 'DM Serif Display', Georgia, serif);
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  color: #ffd166;
+  margin: 0;
+}
+
+.mec-tag {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.mec-match-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 16px;
+}
+
+.mec-game-title {
+  font-family: var(--font-display, 'DM Serif Display', Georgia, serif);
+  font-size: 24px;
+  color: #ffffff;
+}
+
+.mec-league {
+  font-size: 13px;
+  color: #ebdcc5;
+  font-weight: 500;
+}
+
+.mec-winner-badge {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  border-radius: 16px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.mec-winner-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.mec-winner-sub {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: #ffd166;
+}
+
+.mec-winner-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.mec-winner-score {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffd166;
+}
+
+.mec-standings-table {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.mec-table-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 8px;
+}
+
+.mec-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.mec-row:last-child {
+  border-bottom: none;
+}
+
+.mec-row.highlight {
+  font-weight: 700;
+  color: #ffd166;
+}
+
+.mec-rank {
+  width: 60px;
+}
+
+.mec-player {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mec-avatar {
+  font-size: 16px;
+}
+
+.mec-score {
+  width: 60px;
+  text-align: right;
+  font-weight: 700;
+}
+
+.mec-notes {
+  font-size: 12px;
+  color: #ebdcc5;
+  font-style: italic;
+  text-align: center;
+  margin-bottom: 16px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.mec-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mec-url {
+  color: #ffd166;
+  font-weight: 600;
+}
+
+/* Action Buttons for Match Card */
+.mec-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 16px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.mec-btn-primary {
+  flex: 1;
+  min-width: 180px;
+  background: #053527;
+  color: #ffffff;
+  border: 1.5px solid #053527;
+  border-radius: 14px;
+  padding: 12px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(5, 53, 39, 0.2);
+}
+
+.mec-btn-primary:hover:not(:disabled) {
+  background: #084936;
+  transform: translateY(-1px);
+}
+
+.mec-btn-whatsapp {
+  flex: 1;
+  min-width: 180px;
+  background: #25D366;
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  padding: 12px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25);
+}
+
+.mec-btn-whatsapp:hover {
+  background: #20ba59;
+  transform: translateY(-1px);
+}
+
+.mec-btn-secondary {
+  background: #ffffff;
+  color: #053527;
+  border: 1.5px solid #d4c8ad;
+  border-radius: 14px;
+  padding: 12px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mec-btn-secondary:hover:not(:disabled) {
+  background: #f4f1ea;
+}
+
+/* ==========================================================================
+   FEATURE 3: PWA INSTALL PROMPT & BANNER
+   ========================================================================== */
+
+.install-pwa-banner {
+  background: linear-gradient(135deg, #ffffff 0%, #fbfaf6 100%);
+  border: 1.5px solid #ebdcc5;
+  border-radius: 18px;
+  padding: 14px 18px;
+  margin: 16px 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.ipb-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ipb-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #053527;
+  color: #ffd166;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ipb-text strong {
+  display: block;
+  font-size: 14px;
+  color: #1a1a1a;
+  margin-bottom: 2px;
+}
+
+.ipb-text p {
+  font-size: 12px;
+  color: #666;
+  margin: 0;
+}
+
+.ipb-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ipb-install-btn {
+  background: #053527;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ipb-install-btn:hover {
+  background: #094734;
+  transform: translateY(-1px);
+}
+
+.ipb-dismiss-btn {
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.ipb-dismiss-btn:hover {
+  background: #f0ece3;
+}
+
+/* iOS Guide Modal */
+.ios-guide-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 53, 39, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.ios-guide-modal {
+  background: #ffffff;
+  border-radius: 24px;
+  max-width: 400px;
+  width: 100%;
+  padding: 28px 24px;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  text-align: left;
+  animation: scaleIn 0.2s ease-out;
+}
+
+.ios-guide-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: #f4f1ea;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #555;
+}
+
+.ios-guide-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  color: #053527;
+}
+
+.ios-guide-header h3 {
+  font-family: var(--font-display, 'DM Serif Display', Georgia, serif);
+  font-size: 20px;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.ios-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ios-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  color: #333;
+  line-height: 1.4;
+}
+
+.ios-steps li > span {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #053527;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+  .install-pwa-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .ipb-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .ipb-install-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}

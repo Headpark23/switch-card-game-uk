@@ -54,68 +54,73 @@ export const TOP_10_GAMES: CardGame[] = [
   },
   {
     id: 'rummy',
-    name: 'Gin Rummy',
+    name: 'British Rummy',
     category: 'Melds',
-    tagline: 'The timeless two-player battle of sets, runs, and cunning knocks.',
-    players: '2 players',
-    deck: 'Standard 52-card deck',
-    scoringType: 'high-wins',
-    targetScoreDesc: 'First to reach 100 points across rounds wins the match.',
-    overview: 'Form your 10 cards into sets of matching ranks (like three 8s) or sequences in the same suit (runs like 4-5-6 of Hearts). Reduce your unmatched “deadwood” cards to 10 points or fewer to knock and end the hand.',
+    tagline: 'The classic British family & pub game: meld runs, lay off cards, and shout RUMMY!',
+    players: '2–6 players',
+    deck: 'Standard 52-card pack (2 packs for 5+ players)',
+    scoringType: 'low-wins',
+    targetScoreDesc: 'Lowest penalty score across hands wins (or first to 100 points in Gin format).',
+    overview: 'The quintessential British living room card game. Players collect cards into sets of matching ranks (three 8s) or consecutive runs in the same suit (4-5-6 of Hearts). You can lay down melds, add cards to your opponents’ melds (“laying off”), and call “RUMMY!” if you shed your entire hand in one single turn for double points.',
     setup: [
-      'Deal 10 cards each.',
+      'Deal 7 cards each (10 cards each in a 2-player game).',
       'Place remaining cards face down as the stock pile.',
-      'Turn the top card face up to start the discard pile.'
+      'Turn the top card face up to start the discard pile (the “waste”).'
     ],
     howToPlay: [
-      'Draw the top card from either the stock pile or the discard pile.',
-      'Group cards in your hand into sets (3–4 of a kind) or runs (3+ cards of consecutive rank in same suit).',
-      'Discard one unwanted card face up onto the discard pile.',
-      'Knock when unmatched card values total 10 or fewer points, or go “Gin” with zero deadwood.'
+      'Draw the top card from either the face-down stock or the top face-up discard.',
+      'Meld valid combinations face up on your turn: Sets (3 or 4 cards of the same rank) or Runs (3+ consecutive cards in the same suit).',
+      'Lay off: After melding, you can add matching cards to anyone’s existing meld on the table.',
+      'Discard one unwanted card face up onto the waste pile to end your turn.',
+      'Going Out: Shed all cards in hand to end the round. If you lay down your entire hand in a single turn without having melded before, announce “RUMMY!”'
     ],
     scoringDetails: [
-      'Knock: Scorer gets the difference in deadwood points between both players.',
-      'Gin Bonus: Score deadwood difference + 25 bonus points.',
-      'Undercut: If opponent has equal or fewer deadwood than knocker, opponent wins difference + 25 bonus points.'
+      'The player who goes out scores 0 penalty points (or collects points from opponents).',
+      'All other players score penalty points for cards left in hand:',
+      'Picture cards (Kings, Queens, Jacks): 10 points each.',
+      'Aces: 1 point (or 11 if played high in a run like Q-K-A).',
+      'Number cards (2 to 10): Face pip value.',
+      'Going “Rummy” Bonus: If the winner goes out in one complete turn, opponents’ penalty points are doubled!'
     ],
     keyRules: [
-      { title: 'Aces are Low', desc: 'Aces count as 1 point and can only lead runs (A-2-3, never Q-K-A).' },
-      { title: 'Face Cards Value', desc: 'Kings, Queens, and Jacks count as 10 points each in deadwood.' },
-      { title: 'Undercut Danger', desc: 'Knocking with 8–10 deadwood is risky if your opponent is holding even fewer points.' }
+      { title: 'The “Rummy” Shout', desc: 'Shedding all cards in a single move earns double points from opponents.' },
+      { title: 'Laying Off Cards', desc: 'In British Rummy, you can play off opponents’ sets and runs once your initial meld is down.' },
+      { title: 'Aces Can Be High or Low', desc: 'Aces can lead A-2-3 or anchor Q-K-A, but cannot wrap around (K-A-2 is invalid).' }
     ],
-    goldenTip: 'Pay close attention to what your opponent discards and picks up; never discard a card that completes their obvious run!'
+    goldenTip: 'Hold your combinations secretly in hand until you can lay them all down in one go to catch opponents with a full hand of penalty points!'
   },
   {
     id: 'hearts',
-    name: 'Hearts',
+    name: 'Black Maria (UK Hearts)',
     category: 'Tricks',
-    tagline: 'The classic trick-avoidance game: dodge hearts and beware the Queen of Spades.',
-    players: '4 players',
-    deck: 'Standard 52-card deck',
+    tagline: 'The classic British trick-avoidance game: dodge Hearts and the dreaded Black Maria.',
+    players: '3–4 players',
+    deck: 'Standard 52-card pack',
     scoringType: 'low-wins',
-    targetScoreDesc: 'Lowest score wins when someone hits 100 points.',
-    overview: 'A trick-taking game where points are bad! The goal is to avoid taking tricks containing any Heart cards or the dreaded Queen of Spades. Alternatively, be bold and take EVERY point card to “Shoot the Moon”!',
+    targetScoreDesc: 'Lowest penalty score wins when any player reaches 50 or 100 points.',
+    overview: 'The traditional British pub and parlour game that inspired American Hearts. Players aim to avoid winning penalty cards in tricks. Every Heart carries 1 penalty point, but the supreme danger is the Queen of Spades—the infamous “Black Maria”—carrying 13 points.',
     setup: [
-      'Deal all 52 cards equally (13 cards each).',
-      'Pass 3 cards to an opponent before play begins (rotation: left, right, across, none).'
+      'In a 4-player game, deal 13 cards to each player. In a 3-player game, remove the 2 of Clubs and deal 17 cards each.',
+      'Passing rule: Before the opening lead, each player passes 3 unwanted cards face down to the player on their left.'
     ],
     howToPlay: [
-      'Player holding the 2 of Clubs leads the first trick.',
-      'Must follow suit if you can. If void in the suit, you may discard any card (except on trick 1: no points allowed).',
-      'Highest card of the suit led wins the trick and leads the next.',
-      'Hearts cannot be led until hearts have been “broken” (discarded on an earlier trick).'
+      'The player holding the 2 of Clubs (or player left of dealer) leads the first trick.',
+      'Must follow suit if you hold a card of the led suit. If void in the suit, you may discard any card.',
+      'Highest card of the suit led wins the trick and leads the next trick.',
+      'Hearts cannot be led until Hearts have been “broken” (discarded on a trick where someone couldn’t follow suit).'
     ],
     scoringDetails: [
-      'Each Heart taken: 1 point.',
-      'Queen of Spades (Black Maria): 13 points.',
-      'Shooting the Moon: Take all 13 Hearts AND the Queen of Spades—you get 0 points while every opponent gets 26 points!'
+      'Each Heart taken in tricks: 1 penalty point.',
+      'The Black Maria (Queen of Spades): 13 penalty points.',
+      'Traditional UK Pub Option: Ace of Spades (3 pts) and King of Spades (2 pts) can also carry penalties if agreed.',
+      'Hitting the Moon / Slam: If one player wins ALL penalty cards in a single round, they score 0 while every opponent takes 26 penalty points!'
     ],
     keyRules: [
-      { title: 'No Points on Trick 1', desc: 'Neither Hearts nor the Queen of Spades can be played on the opening 2 of Clubs trick.' },
-      { title: 'Breaking Hearts', desc: 'You cannot lead a Heart until a Heart has already been discarded or you have nothing else.' },
-      { title: 'The Black Lady', desc: 'Queen of Spades is worth 13 points—watch who holds the Ace and King of Spades!' }
+      { title: 'Strict Follow Suit', desc: 'You must play the suit led if you have it in hand. Only discard when completely void.' },
+      { title: 'The Black Maria Danger', desc: 'The Queen of Spades is 13 points—watch the King and Ace of Spades closely!' },
+      { title: 'Breaking Hearts', desc: 'Hearts cannot be led on early tricks until a Heart has been discarded.' }
     ],
-    goldenTip: 'Try to bleed high Spades early so whoever holds the Queen is forced to play or discard it before you.'
+    goldenTip: 'Play your high Spades (Ace and King) early while you still hold low Spades, so you don’t get trapped taking the Queen later.'
   },
   {
     id: 'spades',
