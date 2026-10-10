@@ -1,12 +1,28 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { ArrowRight, BookOpen, Cards, UsersThree, ChatCircle, Club, MagnifyingGlass, X, Crown, DownloadSimple, CheckCircle, ArrowCounterClockwise, Lightbulb, HandPalm } from '@phosphor-icons/react';
+import { ArrowRight, BookOpen, Cards, UsersThree, ChatCircle, Club, MagnifyingGlass, X, Crown, DownloadSimple, CheckCircle, ArrowCounterClockwise, Lightbulb, HandPalm, Trophy, ChartBar, Sparkle } from '@phosphor-icons/react';
 import { BottomSheet, KeyboardInput, MobileScroll, useKeyboard, useKeyboardInsets } from './mobile';
 import '@fontsource/dm-serif-display/400.css';
 import '@fontsource/dm-sans/400.css';
 import '@fontsource/dm-sans/500.css';
 import '@fontsource/dm-sans/600.css';
+import './companion.css';
 
-type Page = 'Learn' | 'Cards' | 'Modes' | 'Questions' | 'Tutorial';
+import { TOP_10_GAMES } from './data/cardGames';
+import {
+  INITIAL_PLAYERS,
+  INITIAL_LEAGUES,
+  INITIAL_MATCH_HISTORY,
+  type Player,
+  type League,
+  type MatchRecord
+} from './data/initialLeagues';
+import { Scorekeeper } from './components/Scorekeeper';
+import { LeaguesView } from './components/LeaguesView';
+import { StatsView } from './components/StatsView';
+import { GamesLibraryView } from './components/GamesLibraryView';
+import { PremiumModal } from './components/PremiumModal';
+
+type Page = 'Learn' | 'Games' | 'Score' | 'Leagues' | 'Stats' | 'Cards' | 'Modes' | 'Questions' | 'Tutorial';
 const powers = [
   {name:'Black kings',cards:['KS','KC'],short:'Pick up five',text:'The next player picks up 5 cards, unless they pass the penalty on with another black king.',extra:'Black kings stack: two mean 10 cards. Each red king cancels one black king.'},
   {name:'Red kings',cards:['KH','KD'],short:'Cancel a black king',text:'Play a red king to cancel the effect of one black king.',extra:'You need one red king for each black king played.'},
@@ -169,6 +185,108 @@ function downloadRules(){
 export default function Prototype(){
   const [page,setPage]=useState<Page>('Learn');const [query,setQuery]=useState('');const [selected,setSelected]=useState<(typeof powers)[number]|null>(null);
   const [membership,setMembership]=useState(false);const [adFree,setAdFree]=useState(false);const [game,setGame]=useState<Game>(initialGame);const [aceChoice,setAceChoice]=useState<string[]|null>(null);const [staged,setStaged]=useState<string[]>([]);const [ruleStep,setRuleStep]=useState(0);
+
+  // Companion App State
+  const [leagues, setLeagues] = useState<League[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('card_companion_leagues');
+      if (saved) {
+        try { return JSON.parse(saved); } catch(e) {}
+      }
+    }
+    return INITIAL_LEAGUES;
+  });
+
+  const [players, setPlayers] = useState<Player[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('card_companion_players');
+      if (saved) {
+        try { return JSON.parse(saved); } catch(e) {}
+      }
+    }
+    return INITIAL_PLAYERS;
+  });
+
+  const [matchHistory, setMatchHistory] = useState<MatchRecord[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('card_companion_matches');
+      if (saved) {
+        try { return JSON.parse(saved); } catch(e) {}
+      }
+    }
+    return INITIAL_MATCH_HISTORY;
+  });
+
+  const [activeLeagueId, setActiveLeagueId] = useState<string>('league-family');
+  const [scoreGameId, setScoreGameId] = useState<string>('switch');
+  const [isPremium, setIsPremium] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('card_companion_premium') === 'true';
+    }
+    return false;
+  });
+  const [showPremiumModal, setShowPremiumModal] = useState<boolean>(false);
+
+  const handleSaveMatch = (record: MatchRecord) => {
+    const updated = [...matchHistory, record];
+    setMatchHistory(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('card_companion_matches', JSON.stringify(updated));
+    }
+  };
+
+  const handleAddPlayer = (name: string, avatar: string) => {
+    const newPlayer: Player = {
+      id: 'p-' + Date.now(),
+      name,
+      avatar,
+      color: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
+    };
+    const updatedPlayers = [...players, newPlayer];
+    setPlayers(updatedPlayers);
+    const updatedLeagues = leagues.map(l =>
+      l.id === activeLeagueId
+        ? { ...l, playerIds: [...l.playerIds, newPlayer.id] }
+        : l
+    );
+    setLeagues(updatedLeagues);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('card_companion_players', JSON.stringify(updatedPlayers));
+      localStorage.setItem('card_companion_leagues', JSON.stringify(updatedLeagues));
+    }
+  };
+
+  const handleCreateLeague = (name: string, description: string, playerIds: string[]) => {
+    const code = 'FAM-' + Math.floor(1000 + Math.random() * 9000);
+    const newLeague: League = {
+      id: 'league-' + Date.now(),
+      name,
+      description,
+      code,
+      createdDate: 'Oct 2026',
+      playerIds,
+    };
+    const updated = [...leagues, newLeague];
+    setLeagues(updated);
+    setActiveLeagueId(newLeague.id);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('card_companion_leagues', JSON.stringify(updated));
+    }
+  };
+
+  const handleTogglePremium = () => {
+    const next = !isPremium;
+    setIsPremium(next);
+    setAdFree(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('card_companion_premium', String(next));
+    }
+  };
+
+  const startScorekeeperForGame = (gid: string) => {
+    setScoreGameId(gid);
+    go('Score');
+  };
   const keyboard=useKeyboard();const {bottomInset}=useKeyboardInsets();
   const resetDeviceScroll=()=>{const screen=document.querySelector<HTMLElement>('[data-testid="device-screen"]');if(screen)screen.scrollTop=0;};
   useLayoutEffect(()=>{resetDeviceScroll();const frame=requestAnimationFrame(resetDeviceScroll);return()=>cancelAnimationFrame(frame);},[page,game.move,game.status,aceChoice,selected,membership]);
@@ -197,9 +315,87 @@ export default function Prototype(){
   const gameHint=game.pending==='two'?`Play another two to pass on ${game.pendingDraw+2}, or pick up ${game.pendingDraw}.`:game.pending==='black-king'?`Play another black king to add 5 and pass on ${game.pendingDraw+5}, play a red king to cancel 5, or pick up ${game.pendingDraw}.`:game.pending==='eight'?'Play another eight to pass the missed turn. If you have none, you must miss your turn.':legalCards.length?`You can play ${legalCards.join(', ')}. Aces are wild on ordinary cards. You may also pick up one card instead and save a useful card for later.`:'You have no legal card. Pick up one card and the computer will play.';
   const cardsInGame=[...game.playerHand,...game.computerHand,...game.drawPile,...game.discard];
   const deckDescription=`${cardsInGame.length}-card game with ${new Set(cardsInGame).size} unique cards`;
+  const isCompanionInterior = ['Games', 'Score', 'Leagues', 'Stats'].includes(page);
+
   return <div className="switch-app" onFocusCapture={resetDeviceScroll}><MobileScroll key={page+(page==='Tutorial'?game.status:'')} className="switch-scroll"><main className={'switch-content '+(page==='Learn'?'home':'interior')+(page==='Tutorial'?' tutorial-page':'')}>
+
+  {/* Companion Interior Header */}
+  {isCompanionInterior && (
+    <header className="small-brand">
+      <button onClick={()=>go('Games')} aria-label="Card companion home">
+        <Club weight="fill" size={20}/> CARD COMPANION
+      </button>
+      <button aria-label="Explore premium" onClick={()=>setShowPremiumModal(true)}>
+        <Crown size={22} color={isPremium ? "#ac7b26" : undefined} weight={isPremium ? "fill" : "regular"} />
+      </button>
+    </header>
+  )}
+
+  {/* PAGE: TOP 10 CARD GAMES */}
+  {page === 'Games' && (
+    <>
+      <GamesLibraryView
+        onStartScorekeeper={startScorekeeperForGame}
+        onPlaySwitchAI={start}
+        onOpenPremium={() => setShowPremiumModal(true)}
+        isPremiumUser={isPremium}
+      />
+      <AdSlot hidden={isPremium || adFree} />
+    </>
+  )}
+
+  {/* PAGE: TABLE SCOREKEEPER */}
+  {page === 'Score' && (
+    <>
+      <Scorekeeper
+        leagues={leagues}
+        players={players}
+        activeLeagueId={activeLeagueId}
+        onSaveMatch={handleSaveMatch}
+        onAddPlayer={handleAddPlayer}
+        selectedGameId={scoreGameId}
+      />
+      <AdSlot hidden={isPremium || adFree} />
+    </>
+  )}
+
+  {/* PAGE: LEAGUES */}
+  {page === 'Leagues' && (
+    <>
+      <LeaguesView
+        leagues={leagues}
+        players={players}
+        activeLeagueId={activeLeagueId}
+        matchHistory={matchHistory}
+        onSelectLeague={setActiveLeagueId}
+        onCreateLeague={handleCreateLeague}
+      />
+      <AdSlot hidden={isPremium || adFree} />
+    </>
+  )}
+
+  {/* PAGE: STATS & TROPHIES */}
+  {page === 'Stats' && (
+    <>
+      <StatsView
+        players={players}
+        matchHistory={matchHistory}
+      />
+      <AdSlot hidden={isPremium || adFree} />
+    </>
+  )}
+
   {page==='Learn'?<>
     <section className="rules-banner"><div className="wordmark"><Club weight="fill"/><div>SWITCH</div><p>RULES FOR A BETTER<br/>GAME NIGHT</p></div><p className="eyebrow">THE COMPLETE GUIDE</p><h1>Know the rules.<br/>Own the table.</h1><p>Five clear steps, then a guided game to put them into practice.</p><button className="primary" onClick={start}>Play against the computer <ArrowRight size={19}/></button></section>
+    <section className="companion-jump-banner" style={{ background: '#f5eedf', padding: '12px 16px', borderTop: '1px solid #ebd9b7', borderBottom: '1px solid #ebd9b7', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div>
+        <span style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '1px', color: '#8a652b', textTransform: 'uppercase' }}>CARD COMPANION</span>
+        <strong style={{ display: 'block', fontSize: '13px', color: '#053527' }}>Top 10 Games & Scorekeeper</strong>
+      </div>
+      <button className="primary" style={{ minHeight: '34px', padding: '6px 12px', fontSize: '11px', width: 'auto' }} onClick={()=>go('Games')}>
+        Explore Library <ArrowRight size={14}/>
+      </button>
+    </section>
     <section className="rule-narrative" aria-labelledby="rule-story-title"><p className="eyebrow">THE MAIN EVENT</p><h2 id="rule-story-title">Learn Switch<br/>in five moves.</h2><p className="rule-intro">A clear, visual guide from the first deal to the winning card.</p><div className="rule-steps" aria-label="Rule guide steps">{ruleChapters.map((chapter,index)=><button key={chapter.number} className={ruleStep===index?'active':''} aria-current={ruleStep===index?'step':undefined} onClick={()=>setRuleStep(index)}><span>{chapter.number}</span><small>{index===0?'Deal':index===1?'Play':index===2?'Power':index===3?'Call':'Win'}</small></button>)}</div><article className="rule-chapter"><div className="rule-chapter-head"><div><p>{ruleChapters[ruleStep].eyebrow}</p><h3>{ruleChapters[ruleStep].title}</h3></div><Fan codes={ruleChapters[ruleStep].cards}/></div><p className="rule-chapter-body">{ruleChapters[ruleStep].body}</p><ul>{ruleChapters[ruleStep].points.map(point=><li key={point}><CheckCircle size={17} weight="fill"/><span>{point}</span></li>)}</ul><aside><Lightbulb size={18} weight="fill"/><span>{ruleChapters[ruleStep].tip}</span></aside><div className="rule-controls"><button className="secondary" disabled={ruleStep===0} onClick={()=>setRuleStep(step=>step-1)}>Previous</button>{ruleStep<ruleChapters.length-1?<button className="primary" onClick={()=>setRuleStep(step=>step+1)}>Next rule <ArrowRight size={17}/></button>:<button className="primary" onClick={start}>Play the guided game <ArrowRight size={17}/></button>}</div></article><button className="rule-search-link" onClick={()=>go('Questions')}><MagnifyingGlass size={19}/><span><strong>Need one answer?</strong><small>Search every rule in seconds</small></span><ArrowRight size={18}/></button></section>
     <section className="power-preview"><div className="ornament"><Club weight="fill"/></div><h2>Know your power cards</h2><p className="section-caption">The cards that change the game.</p><div className="power-columns">{[powers[0],powers[2],powers[6]].map(p=><button key={p.name} onClick={()=>setSelected(p)}><Fan codes={p.cards}/><h3>{p.name}</h3><p>{p.short}.</p><span>View rule <ArrowRight size={12}/></span></button>)}</div></section>
     <AdSlot hidden={adFree}/><section className="night-note"><p className="eyebrow">MAKE IT A GAME NIGHT</p><h2>A little friendly rivalry.</h2><p>From a quick head-to-head to your very own Switch Cup.</p><button className="text-link" onClick={()=>go('Modes')}>Explore game modes <ArrowRight size={18}/></button></section><button className="member-strip" onClick={()=>setMembership(true)}><Crown size={24}/><span>More time at the table<small>Explore an ad-free experience</small></span><ArrowRight size={20}/></button><button className="download" onClick={downloadRules}><DownloadSimple size={20}/>Download all rules</button>
@@ -210,7 +406,17 @@ export default function Prototype(){
     {page==='Modes'&&<><p className="eyebrow">YOUR PEOPLE. YOUR GAME.</p><h1>Make a night<br/>of it.</h1><p className="intro">Six ways to play. One great card game.</p><div className="mode-list">{modes.map((m,i)=><details key={m.name}><summary><span className="mode-number">0{i+1}</span><span><strong>{m.name}</strong><small>{m.label}</small></span></summary><p>{m.text}</p></details>)}</div><AdSlot hidden={adFree}/><button className="download" onClick={downloadRules}><DownloadSimple size={20}/>Download game-night rules</button></>}
     {page==='Tutorial'&&<section className="tutorial game-tutorial" aria-label={deckDescription}>{game.status!=='playing'?<div className="completion"><CheckCircle size={60} weight="light"/><p className="eyebrow">{game.status==='won'?'GAME WON':'GOOD PRACTICE'}</p><h1>{game.status==='won'?<>You beat the<br/>computer.</>:<>The computer<br/>won this one.</>}</h1><p>{game.notice}</p><button className="primary" onClick={start}><ArrowCounterClockwise size={18}/>Play another guided game</button><button className="secondary" onClick={()=>go('Cards')}>Open card guide <ArrowRight size={18}/></button><AdSlot hidden={adFree}/></div>:<><div className="lesson-meta"><span>GUIDED GAME · {game.turn==='you'?'YOUR TURN':'COMPUTER TURN'}</span><button onClick={()=>go('Learn')}>Exit game</button></div><div className="opponent" aria-label={`Computer has ${game.computerHand.length} cards`}><span>COMPUTER</span><div>{game.computerHand.slice(0,5).map((_,i)=><CardImage code="back" key={i}/>)}</div><strong>{game.computerHand.length} card{game.computerHand.length===1?'':'s'}</strong></div><div className="game-table"><button className="draw-pile" onClick={drawOrResolve} disabled={game.turn!=='you'||game.awaitingLastCard||!!staged.length||game.pending==='eight'} aria-label={game.pending==='eight'?'Draw pile unavailable while resolving the eight':game.pendingDraw?`Pick up ${game.pendingDraw} cards`:legalCards.length?'Pick up one card instead of playing':'Draw a card'}><CardImage code="back"/><span>{game.pending==='eight'?'Eight played':game.pendingDraw?`Pick up ${game.pendingDraw}`:legalCards.length?'Pick up instead':'Draw'}</span></button><div className="discard-pile"><CardImage code={topCard}/><span>Current suit <b className={(game.currentSuit==='H'||game.currentSuit==='D')?'red':''}>{suitSymbols[game.currentSuit]} {suitNames[game.currentSuit]}</b></span></div></div><p className="game-notice" aria-live="polite">{game.turn==='computer'?'Computer is choosing a card…':game.notice}</p>{game.turn==='you'&&game.pending==='eight'&&!game.awaitingLastCard&&<div className="miss-turn-action"><strong>The computer played an eight</strong><p>{legalCards.some(card=>rank(card)==='8')?'Play an eight to pass the missed turn, or accept it.':'You have no eight to counter with, so you must miss this turn.'}</p><button className="primary" onClick={drawOrResolve}>Accept missed turn <ArrowRight size={18}/></button></div>}{game.awaitingLastCard?<div className="last-card-call"><HandPalm size={27}/><strong>One card remaining</strong><p>Say “Last Card” now. Forgetting costs two cards.</p><button className="primary" onClick={()=>answerLastCard(true)}>Say “Last Card”</button><button className="text-link" onClick={()=>answerLastCard(false)}>Continue without saying it</button></div>:<><div className="game-actions"><button className={'hint-button '+(game.hint?'active':'')} onClick={()=>setGame(current=>({...current,hint:!current.hint}))} disabled={game.turn!=='you'}><Lightbulb size={19} weight={game.hint?'fill':'regular'}/>{game.hint?'Hide hint':'Show hint'}</button><span>{game.playerHand.length} cards in your hand</span></div>{game.hint&&<p className="game-hint"><Lightbulb size={17}/>{gameHint}</p>}<div className="player-hand" aria-label="Your hand">{game.playerHand.map(card=><button key={card} onClick={()=>chooseCard(card)} className={(game.hint&&canPlay(card,game,game.playerHand.length)?'playable ':'')+(staged.includes(card)?'selected':'')} disabled={game.turn!=='you'} aria-label={`Play ${card}${canPlay(card,game,game.playerHand.length)?', legal move':', not currently playable'}`}><CardImage code={card}/></button>)}</div>{staged.length>0&&<div className="multi-action"><p>{staged.length} matching card{staged.length===1?'':'s'} selected</p><button className="primary" onClick={playStaged}>Play selected</button><button className="text-link" onClick={()=>setStaged([])}>Cancel selection</button></div>}</>}{aceChoice&&<div className="suit-choice" role="dialog" aria-label="Choose a suit"><p>Choose the suit for your ace</p><div>{(['S','H','D','C'] as Suit[]).map(chosen=><button key={chosen} className={(chosen==='H'||chosen==='D')?'red':''} onClick={()=>{setGame(current=>playSet(current,aceChoice,chosen));setAceChoice(null);setStaged([]);}}>{suitSymbols[chosen]}<span>{suitNames[chosen]}</span></button>)}</div><button className="text-link" onClick={()=>setAceChoice(null)}>Cancel</button></div>}<div className="game-rule"><strong>Rule in play</strong><p>{game.pending==='two'?`Twos stack. The penalty is ${game.pendingDraw}.`:game.pending==='black-king'?`Another black king adds 5 and passes the penalty on. A red king cancels 5. Otherwise pick up ${game.pendingDraw}.`:game.pending==='eight'?'Counter with another eight or miss your turn.':'Match the suit or number, or pick up one card instead. Aces are wild on ordinary cards and let you choose the next suit. Matching numbers may be played together.'}</p></div></>}</section>}
   </>}
-  </main></MobileScroll><nav className="bottom-tabs" aria-label="Main navigation" style={{bottom:bottomInset}}>{([{name:'Learn',label:'Rules',Icon:BookOpen},{name:'Cards',label:'Cards',Icon:Cards},{name:'Modes',label:'Modes',Icon:UsersThree},{name:'Questions',label:'Questions',Icon:ChatCircle}] as const).map(({name,label,Icon})=><button key={name} className={page===name||name==='Learn'&&page==='Tutorial'?'active':''} aria-current={page===name?'page':undefined} onClick={()=>go(name)}><Icon weight={page===name?'fill':'regular'} size={26}/><span>{label}</span></button>)}</nav>
+  </main></MobileScroll><nav className="bottom-tabs" aria-label="Main navigation" style={{bottom:bottomInset}}>{([
+    {name:'Games',label:'Top 10',Icon:Cards},
+    {name:'Score',label:'Score',Icon:Trophy},
+    {name:'Leagues',label:'Leagues',Icon:UsersThree},
+    {name:'Stats',label:'Stats',Icon:ChartBar},
+    {name:'Learn',label:'Switch',Icon:Club},
+  ] as const).map(({name,label,Icon})=>{
+    const isActive = page===name || (name==='Learn'&&['Tutorial','Cards','Modes','Questions'].includes(page));
+    return <button key={name} className={isActive?'active':''} aria-current={isActive?'page':undefined} onClick={()=>go(name)}><Icon weight={isActive?'fill':'regular'} size={24}/><span>{label}</span></button>;
+  })}</nav>
   <BottomSheet open={!!selected} onOpenChange={open=>{if(!open)setSelected(null);}} title={selected?.name||'Card rule'}>{selected&&<div className="rule-sheet"><Fan codes={selected.cards}/><p className="eyebrow">{selected.short}</p><p>{selected.text}</p><div className="exception"><strong>At the table</strong><p>{selected.extra}</p></div><button className="primary" onClick={()=>setSelected(null)}>Got it <CheckCircle size={19}/></button></div>}</BottomSheet>
-  <BottomSheet open={membership} onOpenChange={setMembership} title="A little more Switch" description="A preview of possible paid extras. No purchase or charge."><div className="membership"><Crown size={38} weight="light"/><h2>Keep the good<br/>times going.</h2><p>An ad-free experience, printable game-night packs and custom table themes are options for a future Switch Club.</p><div className="preview-label">INTERACTIVE PREVIEW</div><button className="primary" onClick={()=>{setAdFree(!adFree);setMembership(false);}}>{adFree?'Restore demo ads':'Preview without ads'} <ArrowRight size={18}/></button><p className="fine-print">This changes the preview only. Paid plans are not available yet.</p></div></BottomSheet></div>;
+  <BottomSheet open={membership} onOpenChange={setMembership} title="A little more Switch" description="A preview of possible paid extras. No purchase or charge."><div className="membership"><Crown size={38} weight="light"/><h2>Keep the good<br/>times going.</h2><p>An ad-free experience, printable game-night packs and custom table themes are options for a future Switch Club.</p><div className="preview-label">INTERACTIVE PREVIEW</div><button className="primary" onClick={()=>{handleTogglePremium();setMembership(false);}}>{isPremium?'Restore demo ads':'Preview without ads'} <ArrowRight size={18}/></button><p className="fine-print">This changes the preview only. Paid plans are not available yet.</p></div></BottomSheet>
+  <PremiumModal isOpen={showPremiumModal} onClose={()=>setShowPremiumModal(false)} isPremium={isPremium} onTogglePremium={handleTogglePremium} /></div>;
 }

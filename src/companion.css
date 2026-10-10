@@ -1,0 +1,1653 @@
+/* ============================================================
+   CARD GAME COMPANION APP STYLES
+   Tailored for comfortable readability, clean spacing, and tactile table controls
+   ============================================================ */
+
+/* Main Container Layouts */
+.scorekeeper-container,
+.leagues-container,
+.stats-container,
+.games-library-container {
+  padding: 16px 18px 24px;
+}
+
+/* Common Section Headers */
+.sk-header,
+.leagues-header,
+.stats-header,
+.gl-header {
+  margin-bottom: 20px;
+}
+
+.sk-header h2,
+.leagues-header h2,
+.stats-header h2,
+.gl-header h2 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 32px;
+  line-height: 1.1;
+  color: var(--ink, #092e23);
+  margin: 4px 0 8px;
+}
+
+.sk-header .intro,
+.leagues-header .intro,
+.stats-header .intro,
+.gl-header .intro {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted, #59605b);
+}
+
+/* Card Box Containers */
+.sk-card-box {
+  background: #fffdf7;
+  border: 1px solid #e0d7c5;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 12px rgba(9, 46, 35, 0.03);
+}
+
+.sk-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #8a652b;
+  margin-bottom: 8px;
+}
+
+.sk-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.sk-label-row .sk-label {
+  margin-bottom: 0;
+}
+
+.sk-btn-text {
+  background: none;
+  border: 0;
+  color: var(--green, #053527);
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+}
+
+/* League Badge in Setup */
+.sk-league-badge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  background: #f4edd9;
+  border-radius: 10px;
+  color: var(--green, #053527);
+}
+
+.sk-league-badge strong {
+  display: block;
+  font-size: 14px;
+}
+
+.sk-league-badge small {
+  font-size: 11px;
+  color: var(--muted, #59605b);
+}
+
+/* Game Selector Pills */
+.sk-game-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  max-height: 210px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.sk-game-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1.5px solid #ded7c7;
+  border-radius: 10px;
+  background: #faf6ed;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.sk-game-pill span {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink, #092e23);
+}
+
+.sk-game-pill small {
+  font-size: 10px;
+  color: var(--muted, #59605b);
+  margin-top: 2px;
+}
+
+.sk-game-pill.active {
+  border-color: var(--green, #053527);
+  background: #e8efe7;
+  box-shadow: 0 2px 6px rgba(5, 53, 39, 0.1);
+}
+
+.sk-game-pill.active span {
+  color: var(--green, #053527);
+}
+
+/* Player Selector Pills */
+.sk-player-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sk-player-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1.5px solid #ded7c7;
+  border-radius: 20px;
+  background: #faf6ed;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink, #092e23);
+  transition: all 0.15s ease;
+}
+
+.sk-player-pill.selected {
+  border-color: var(--green, #053527);
+  background: #e2ede2;
+  color: var(--green, #053527);
+}
+
+.sk-avatar {
+  font-size: 16px;
+}
+
+.sk-check {
+  color: var(--green, #053527);
+}
+
+/* Rule Callout */
+.sk-summary-box {
+  margin-bottom: 18px;
+}
+
+.sk-rule-callout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fbf5e6;
+  border: 1px solid #ebd9b7;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #5c451b;
+}
+
+.sk-rule-callout svg {
+  flex-shrink: 0;
+  color: #ac7b26;
+}
+
+.sk-start-btn {
+  margin-top: 6px;
+  font-size: 16px;
+}
+
+/* ============================================================
+   ACTIVE MATCH SCOREKEEPER
+   ============================================================ */
+
+.sk-live-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e2dbcd;
+}
+
+.sk-live-topbar h3 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 26px;
+  margin: 2px 0 0;
+  color: var(--ink, #092e23);
+}
+
+.sk-btn-subtle {
+  background: none;
+  border: 1px solid #d4ccb9;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--muted, #59605b);
+}
+
+/* Standings Banner */
+.sk-standings-banner {
+  background: #053527;
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+}
+
+.sk-standings-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #d7b776;
+  margin-bottom: 10px;
+}
+
+.sk-standings-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.sk-standing-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.sk-standing-chip.leader {
+  background: #fbf5e6;
+  color: #092e23;
+  border-color: #d7b776;
+}
+
+.sk-standing-chip .rank-badge {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.sk-standing-chip .pts {
+  color: #d7b776;
+}
+
+.sk-standing-chip.leader .pts {
+  color: #053527;
+}
+
+/* Round Score Cards */
+.sk-round-inputs h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink, #092e23);
+  margin: 0 0 10px;
+}
+
+.sk-player-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.sk-score-card {
+  background: #fffdf7;
+  border: 1.5px solid #ded7c7;
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 3px 8px rgba(9, 46, 35, 0.03);
+}
+
+.sk-card-player-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.sk-player-avatar-large {
+  font-size: 22px;
+}
+
+.sk-card-player-info strong {
+  display: block;
+  font-size: 15px;
+  color: var(--ink, #092e23);
+}
+
+.sk-card-player-info small {
+  font-size: 11px;
+  color: var(--muted, #59605b);
+}
+
+/* Quick Control Buttons */
+.sk-quick-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  background: #f6f1e5;
+  border-radius: 10px;
+  padding: 6px 8px;
+}
+
+.sk-quick-buttons button {
+  background: #ffffff;
+  border: 1px solid #ded7c7;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink, #092e23);
+  min-width: 38px;
+}
+
+.sk-quick-buttons button:active {
+  background: #e1eadc;
+}
+
+.sk-round-val {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 22px;
+  min-width: 36px;
+  text-align: center;
+  color: var(--green, #053527);
+}
+
+.sk-custom-row {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sk-won-round-btn {
+  background: #e2ede2;
+  border: 1px solid #bad6ba;
+  color: var(--green, #053527);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+}
+
+/* Match Action Buttons */
+.sk-action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.sk-round-btn {
+  font-size: 15px;
+}
+
+.sk-finish-btn {
+  font-size: 14px;
+}
+
+/* Round History Table */
+.sk-history-table {
+  background: #fffdf7;
+  border: 1px solid #ded7c7;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.sk-history-table h4 {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--ink, #092e23);
+}
+
+.sk-table-wrap {
+  overflow-x: auto;
+}
+
+.sk-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.sk-table-wrap th,
+.sk-table-wrap td {
+  padding: 6px 8px;
+  text-align: center;
+  border-bottom: 1px solid #ebd9b7;
+}
+
+.sk-table-wrap th {
+  font-size: 11px;
+  color: var(--muted, #59605b);
+  text-transform: uppercase;
+}
+
+/* ============================================================
+   PODIUM & CELEBRATION VIEW
+   ============================================================ */
+
+.podium-celebration {
+  text-align: center;
+  padding: 24px 12px 16px;
+}
+
+.podium-crown {
+  color: #ac7b26;
+  margin-bottom: 6px;
+}
+
+.podium-celebration h2 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 28px;
+  color: var(--green, #053527);
+  margin: 6px 0;
+}
+
+.podium-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.podium-card {
+  display: grid;
+  grid-template-columns: 60px 36px 1fr 60px;
+  align-items: center;
+  background: #fffdf7;
+  border: 1.5px solid #e0d7c5;
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+
+.podium-card.winner {
+  border-color: #ac7b26;
+  background: #fbf5e6;
+  box-shadow: 0 4px 14px rgba(172, 123, 38, 0.15);
+}
+
+.podium-rank {
+  font-size: 13px;
+  font-weight: 700;
+  color: #8a652b;
+}
+
+.podium-avatar {
+  font-size: 20px;
+}
+
+.podium-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink, #092e23);
+}
+
+.podium-score {
+  font-size: 13px;
+  text-align: right;
+  color: var(--green, #053527);
+}
+
+.sk-notes-box {
+  background: #fffdf7;
+  border: 1px solid #ded7c7;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+}
+
+.sk-notes-box input {
+  width: 100%;
+  border: 1px solid #ded7c7;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  background: #faf6ed;
+}
+
+/* ============================================================
+   LEAGUES VIEW STYLES
+   ============================================================ */
+
+.league-picker-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0 10px;
+}
+
+.league-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1.5px solid #ded7c7;
+  border-radius: 20px;
+  background: #faf6ed;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink, #092e23);
+  white-space: nowrap;
+}
+
+.league-tab-pill.active {
+  border-color: var(--green, #053527);
+  background: var(--green, #053527);
+  color: #ffffff;
+}
+
+.league-tab-pill.add-btn {
+  border-style: dashed;
+  color: #8a652b;
+  border-color: #d7b776;
+}
+
+.league-card-hero {
+  background: linear-gradient(135deg, #053527 0%, #0d4a39 100%);
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 22px;
+  box-shadow: 0 6px 18px rgba(5, 53, 39, 0.18);
+}
+
+.league-hero-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.league-badge {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+  color: #d7b776;
+}
+
+.league-hero-info h3 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 24px;
+  line-height: 1.1;
+  margin: 4px 0;
+}
+
+.league-hero-info p {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #c9dbd3;
+  margin: 0;
+  max-width: 210px;
+}
+
+.share-code-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  padding: 6px 12px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  position: relative;
+}
+
+.copied-tooltip {
+  position: absolute;
+  top: -26px;
+  right: 0;
+  background: #d7b776;
+  color: #053527;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.league-quick-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding-top: 12px;
+}
+
+.lq-stat strong {
+  display: block;
+  font-size: 16px;
+  color: #ffffff;
+}
+
+.lq-stat small {
+  font-size: 10px;
+  color: #b7cac2;
+}
+
+/* Standings Table */
+.league-standings-section,
+.league-history-section {
+  margin-bottom: 24px;
+}
+
+.section-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+
+.section-title-row h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink, #092e23);
+  margin: 0;
+}
+
+.caption-text {
+  font-size: 11px;
+  color: var(--muted, #59605b);
+}
+
+.standings-table-wrap {
+  background: #fffdf7;
+  border: 1px solid #ded7c7;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 3px 10px rgba(9, 46, 35, 0.03);
+}
+
+.standings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.standings-table th {
+  background: #f4ede0;
+  padding: 10px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted, #59605b);
+  border-bottom: 1px solid #e0d7c5;
+}
+
+.standings-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #ebd9b7;
+  vertical-align: middle;
+}
+
+.standings-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.standings-table tr.leader-row {
+  background: #fcf8ee;
+}
+
+.rank-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a652b;
+}
+
+.player-col {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.player-col .p-avatar {
+  font-size: 16px;
+}
+
+.form-badges {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.form-badge {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.form-badge.win {
+  background: #2e7d32;
+  color: #ffffff;
+}
+
+.form-badge.second {
+  background: #f9a825;
+  color: #ffffff;
+}
+
+.form-badge.loss {
+  background: #c62828;
+  color: #ffffff;
+}
+
+/* Match History Cards */
+.match-log-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.match-log-card {
+  background: #fffdf7;
+  border: 1px solid #ded7c7;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.ml-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.ml-header strong {
+  display: block;
+  font-size: 14px;
+  color: var(--ink, #092e23);
+}
+
+.ml-date {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted, #59605b);
+}
+
+.ml-winner-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #fbf5e6;
+  border: 1px solid #ebd9b7;
+  border-radius: 12px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8a652b;
+}
+
+.ml-winner-tag svg {
+  color: #ac7b26;
+}
+
+.ml-scores-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ml-score-pill {
+  display: inline-flex;
+  gap: 6px;
+  background: #f6f1e5;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.ml-score-pill.winner {
+  background: #e2ede2;
+  font-weight: 600;
+  color: var(--green, #053527);
+}
+
+.ml-notes {
+  margin: 8px 0 0;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--muted, #59605b);
+}
+
+/* ============================================================
+   STATS & AWARDS VIEW
+   ============================================================ */
+
+.trophies-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.trophy-card {
+  background: #fffdf7;
+  border: 1.5px solid #ded7c7;
+  border-radius: 14px;
+  padding: 14px 12px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(9, 46, 35, 0.03);
+}
+
+.trophy-card.gold {
+  border-color: #d7b776;
+  background: #fbf6ec;
+}
+
+.trophy-card.gold .trophy-icon-wrap {
+  color: #ac7b26;
+}
+
+.trophy-card.flame .trophy-icon-wrap {
+  color: #c62828;
+}
+
+.trophy-card.target .trophy-icon-wrap {
+  color: #1565c0;
+}
+
+.trophy-card.wood .trophy-icon-wrap {
+  font-size: 24px;
+}
+
+.trophy-icon-wrap {
+  margin-bottom: 6px;
+}
+
+.trophy-title {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted, #59605b);
+}
+
+.trophy-winner {
+  display: block;
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 20px;
+  color: var(--ink, #092e23);
+  margin: 2px 0 4px;
+}
+
+.trophy-card small {
+  font-size: 10px;
+  color: var(--muted, #59605b);
+}
+
+/* Win Share Bars */
+.chart-section,
+.h2h-section,
+.most-played-section {
+  background: #fffdf7;
+  border: 1px solid #ded7c7;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+
+.chart-header h4 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink, #092e23);
+  margin: 0;
+}
+
+.win-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.win-bar-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.win-bar-label .p-name {
+  font-weight: 600;
+  margin-left: 6px;
+  flex: 1;
+}
+
+.win-track {
+  width: 100%;
+  height: 20px;
+  background: #ebd9b733;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.win-fill {
+  height: 100%;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  transition: width 0.3s ease;
+}
+
+/* Head to Head Showdown */
+.h2h-selectors {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.h2h-selectors select {
+  background: #faf6ed;
+  border: 1px solid #ded7c7;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink, #092e23);
+}
+
+.vs-badge {
+  font-size: 11px;
+  font-weight: 800;
+  color: #8a652b;
+}
+
+.h2h-scoreboard {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr;
+  align-items: center;
+  text-align: center;
+  background: #f7f2e4;
+  border-radius: 12px;
+  padding: 14px 10px;
+}
+
+.h2h-player-side .h2h-avatar {
+  font-size: 24px;
+  display: block;
+}
+
+.h2h-player-side .h2h-name {
+  display: block;
+  font-size: 13px;
+  margin: 2px 0;
+}
+
+.h2h-player-side .h2h-wins {
+  display: block;
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 30px;
+  line-height: 1;
+  color: var(--green, #053527);
+}
+
+.h2h-player-side small {
+  font-size: 10px;
+  color: var(--muted, #59605b);
+}
+
+.h2h-divider {
+  padding: 0 8px;
+}
+
+.h2h-total-games {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted, #59605b);
+  margin-bottom: 6px;
+}
+
+.h2h-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #ded7c7;
+}
+
+.h2h-fill-a {
+  background: var(--green, #053527);
+}
+
+.h2h-fill-b {
+  background: #ac7b26;
+}
+
+/* Most Played Games */
+.games-freq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.game-freq-item {
+  display: grid;
+  grid-template-columns: 28px 1fr 80px 50px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.freq-rank {
+  font-weight: 700;
+  color: #8a652b;
+}
+
+.freq-name {
+  font-weight: 600;
+}
+
+.freq-bar-wrap {
+  width: 100%;
+  height: 8px;
+  background: #ebd9b744;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.freq-bar {
+  height: 100%;
+  background: var(--green, #053527);
+  border-radius: 4px;
+}
+
+.freq-count {
+  text-align: right;
+  color: var(--muted, #59605b);
+}
+
+/* ============================================================
+   TOP 10 GAMES LIBRARY VIEW
+   ============================================================ */
+
+.gl-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fffdf7;
+  border: 1.5px solid #ded7c7;
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+
+.gl-search-bar input {
+  border: 0;
+  background: none;
+  font-size: 14px;
+  color: var(--ink, #092e23);
+  width: 100%;
+  outline: none;
+}
+
+.clear-btn {
+  background: none;
+  border: 0;
+  color: var(--muted, #59605b);
+}
+
+.gl-category-pills {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 16px;
+}
+
+.gl-cat-pill {
+  padding: 6px 12px;
+  border-radius: 16px;
+  border: 1px solid #ded7c7;
+  background: #faf6ed;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted, #59605b);
+  white-space: nowrap;
+}
+
+.gl-cat-pill.active {
+  background: var(--green, #053527);
+  color: #ffffff;
+  border-color: var(--green, #053527);
+}
+
+.gl-games-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.gl-game-card {
+  background: #fffdf7;
+  border: 1px solid #ded7c7;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(9, 46, 35, 0.03);
+}
+
+.gl-card-main {
+  padding: 14px 16px;
+  cursor: pointer;
+}
+
+.gl-card-top {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.gl-category-tag {
+  background: #f4edd9;
+  color: #8a652b;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.gl-meta-tag {
+  background: #edf2ed;
+  color: var(--green, #053527);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.gl-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gl-title-row h3 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 21px;
+  margin: 0;
+  color: var(--ink, #092e23);
+}
+
+.gl-tagline {
+  font-size: 12px;
+  color: var(--muted, #59605b);
+  margin: 2px 0 0;
+}
+
+.gl-expand-toggle {
+  background: none;
+  border: 0;
+  color: var(--muted, #59605b);
+}
+
+/* Expanded Card Body */
+.gl-expanded-body {
+  border-top: 1px solid #ebd9b7;
+  padding: 14px 16px 18px;
+  background: #fdfaf3;
+}
+
+.gl-overview {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink, #092e23);
+  margin: 0 0 14px;
+}
+
+.gl-details-block {
+  margin-bottom: 14px;
+}
+
+.gl-details-block h4 {
+  font-size: 13px;
+  font-weight: 700;
+  color: #8a652b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 6px;
+}
+
+.gl-scoring-desc {
+  font-size: 12px;
+  margin: 0 0 6px;
+  color: var(--ink, #092e23);
+}
+
+.gl-bullet-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.gl-bullet-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #3b4540;
+  margin-bottom: 6px;
+}
+
+.gl-bullet-list li svg {
+  flex-shrink: 0;
+  color: var(--green, #053527);
+  margin-top: 1px;
+}
+
+.gl-key-rules-block {
+  margin-bottom: 14px;
+}
+
+.gl-key-rules-block h4 {
+  font-size: 13px;
+  font-weight: 700;
+  color: #8a652b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 8px;
+}
+
+.gl-rules-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gl-rule-tile {
+  background: #f5eedf;
+  border-left: 3px solid #ac7b26;
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+
+.gl-rule-tile strong {
+  display: block;
+  font-size: 12px;
+  color: var(--ink, #092e23);
+}
+
+.gl-rule-tile p {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--muted, #59605b);
+  margin: 2px 0 0;
+}
+
+.gl-tip-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fbf5e6;
+  border: 1px solid #ebd9b7;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+
+.gl-tip-box svg {
+  flex-shrink: 0;
+  color: #ac7b26;
+  margin-top: 2px;
+}
+
+.gl-tip-box strong {
+  display: block;
+  font-size: 12px;
+  color: #8a652b;
+}
+
+.gl-tip-box p {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #5c451b;
+  margin: 2px 0 0;
+}
+
+.gl-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.gl-score-btn {
+  flex: 1;
+  font-size: 13px;
+  padding: 10px 14px;
+  min-height: 40px;
+}
+
+.gl-play-btn {
+  font-size: 13px;
+  padding: 10px 14px;
+  min-height: 40px;
+}
+
+/* Premium 20 Games Teaser */
+.gl-premium-section {
+  margin-bottom: 24px;
+}
+
+.gl-premium-card {
+  background: linear-gradient(135deg, #053527 0%, #0d4a39 100%);
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 6px 18px rgba(5, 53, 39, 0.18);
+}
+
+.gl-premium-header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.crown-icon {
+  color: #d7b776;
+  flex-shrink: 0;
+}
+
+.premium-pill {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #d7b776;
+}
+
+.gl-premium-header h3 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 22px;
+  line-height: 1.1;
+  margin: 4px 0;
+}
+
+.gl-premium-header p {
+  font-size: 12px;
+  color: #c9dbd3;
+  margin: 0;
+}
+
+.gl-bonus-games-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+  max-height: 130px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.gl-bonus-game-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  padding: 5px 10px;
+  font-size: 11px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.gl-bonus-game-pill svg {
+  color: #d7b776;
+}
+
+.gl-bonus-game-pill .bg-cat {
+  font-size: 9px;
+  color: #b7cac2;
+}
+
+.gl-premium-footer {
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding-top: 14px;
+}
+
+.gl-upgrade-btn {
+  width: 100%;
+  font-size: 14px;
+  margin-bottom: 6px;
+  background: #d7b776 !important;
+  color: #053527 !important;
+}
+
+.gl-premium-footer small {
+  font-size: 11px;
+  color: #b7cac2;
+}
+
+/* ============================================================
+   PREMIUM MODAL STYLES
+   ============================================================ */
+
+.sk-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 46, 35, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.premium-modal-card {
+  background: #fffdf7;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 360px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px 20px 20px;
+  position: relative;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+  border: 1px solid #ebd9b7;
+}
+
+.premium-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: #f4ede0;
+  border: 0;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted, #59605b);
+}
+
+.premium-modal-hero {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.crown-hero {
+  color: #ac7b26;
+  margin-bottom: 4px;
+}
+
+.premium-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #8a652b;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.premium-modal-hero h2 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 26px;
+  color: var(--green, #053527);
+  margin: 0 0 6px;
+}
+
+.premium-modal-hero .intro {
+  font-size: 13px;
+  color: var(--muted, #59605b);
+  line-height: 1.45;
+}
+
+.premium-perks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.perk-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.perk-icon {
+  color: var(--green, #053527);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.perk-item strong {
+  display: block;
+  font-size: 13px;
+  color: var(--ink, #092e23);
+}
+
+.perk-item p {
+  font-size: 11px;
+  color: var(--muted, #59605b);
+  margin: 2px 0 0;
+  line-height: 1.4;
+}
+
+.premium-pricing-box {
+  background: #fbf5e6;
+  border: 1px solid #ebd9b7;
+  border-radius: 12px;
+  text-align: center;
+  padding: 12px;
+  margin-bottom: 18px;
+}
+
+.price-tag strong {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 30px;
+  color: var(--green, #053527);
+  margin-right: 6px;
+}
+
+.price-tag span {
+  font-size: 12px;
+  color: var(--muted, #59605b);
+}
+
+.premium-pricing-box small {
+  display: block;
+  font-size: 11px;
+  color: #8a652b;
+  margin-top: 2px;
+}
+
+.premium-modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.upgrade-action-btn {
+  width: 100%;
+  font-size: 15px;
+}
+
+/* Add Player Modal */
+.sk-modal-card {
+  background: #fffdf7;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 320px;
+  padding: 20px;
+  border: 1px solid #ebd9b7;
+}
+
+.sk-modal-card h3 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 22px;
+  margin: 0 0 6px;
+  color: var(--ink, #092e23);
+}
+
+.sk-modal-card p {
+  font-size: 12px;
+  color: var(--muted, #59605b);
+  margin: 0 0 14px;
+}
+
+.sk-modal-card input {
+  width: 100%;
+  border: 1px solid #ded7c7;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: #faf6ed;
+  margin-bottom: 14px;
+}
+
+.sk-modal-btns {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
