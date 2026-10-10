@@ -34,7 +34,7 @@ jobs:
         run: npm ci
 
       - name: Build static site
-        run: npm run build
+        run: npm run update:runtime-lock && npm run build
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
