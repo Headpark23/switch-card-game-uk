@@ -2502,3 +2502,349 @@
   color: #053527;
 }
 
+/* ========================================================
+   COMPANION RESPONSIVE SHEET & MODAL
+   ======================================================== */
+.companion-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 29, 22, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+@media (min-width: 640px) {
+  .companion-sheet-overlay {
+    align-items: center;
+    padding: 24px;
+  }
+}
+
+.companion-sheet-container {
+  background: #fbf8f1;
+  width: 100%;
+  max-width: 580px;
+  max-height: 85vh;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -8px 32px rgba(5, 53, 39, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUpSheet 0.22s ease-out;
+}
+
+@media (min-width: 640px) {
+  .companion-sheet-container {
+    border-radius: 20px;
+    box-shadow: 0 16px 48px rgba(5, 53, 39, 0.35);
+  }
+}
+
+@keyframes slideUpSheet {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.companion-sheet-drag-pill {
+  width: 44px;
+  height: 5px;
+  background: #ded7c7;
+  border-radius: 4px;
+  margin: 10px auto 4px auto;
+}
+
+@media (min-width: 640px) {
+  .companion-sheet-drag-pill {
+    display: none;
+  }
+}
+
+.companion-sheet-header {
+  padding: 16px 20px 12px 20px;
+  border-bottom: 1px solid #ebe5d8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.companion-sheet-header h3 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 22px;
+  color: #053527;
+  margin: 0;
+}
+
+.companion-sheet-desc {
+  font-size: 13px;
+  color: #59605b;
+  margin: 3px 0 0 0;
+}
+
+.companion-sheet-close {
+  background: #f0ece1;
+  border: none;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #053527;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.companion-sheet-close:hover {
+  background: #e2dbcd;
+}
+
+.companion-sheet-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* ========================================================
+   SOCIAL SHARE STYLES (WHATSAPP, X, FB, TELEGRAM, REDDIT, LINKEDIN)
+   ======================================================== */
+.social-share-container {
+  background: #ffffff;
+  border: 1px solid #e2dac9;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 4px 18px rgba(5, 53, 39, 0.06);
+  margin: 20px 0;
+}
+
+.social-share-container.modal {
+  margin: 0;
+  border: none;
+  box-shadow: none;
+}
+
+.social-share-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 29, 22, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.social-share-modal {
+  background: #ffffff;
+  width: 100%;
+  max-width: 520px;
+  border-radius: 22px;
+  box-shadow: 0 16px 48px rgba(5, 53, 39, 0.3);
+  overflow: hidden;
+  animation: popShareModal 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes popShareModal {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.social-share-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.social-share-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #8a652b;
+  margin-bottom: 4px;
+}
+
+.social-share-titles h4 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 21px;
+  color: #053527;
+  margin: 0 0 4px 0;
+}
+
+.social-share-sub {
+  font-size: 13px;
+  color: #59605b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.social-share-close-btn {
+  background: #f0ece1;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #053527;
+  cursor: pointer;
+}
+
+.social-share-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+@media (min-width: 480px) {
+  .social-share-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+.social-share-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 4px;
+  border-radius: 12px;
+  background: #faf7f2;
+  border: 1px solid #eee8dc;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.social-share-btn:hover {
+  transform: translateY(-2px);
+  background: #f3efe5;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+}
+
+.social-icon-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  transition: transform 0.15s ease;
+}
+
+.social-share-btn:hover .social-icon-circle {
+  transform: scale(1.08);
+}
+
+.social-share-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2b3b33;
+  text-align: center;
+}
+
+.social-share-linkbox {
+  background: #f7f4ec;
+  border: 1px solid #e5dfd2;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (min-width: 540px) {
+  .social-share-linkbox {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.social-url-display {
+  font-family: monospace;
+  font-size: 12px;
+  color: #053527;
+  background: #ffffff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #dcd5c4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.social-action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.social-copy-btn,
+.social-device-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.social-copy-btn {
+  background: #053527;
+  color: #ffffff;
+  border: none;
+}
+
+.social-copy-btn:hover {
+  background: #094735;
+}
+
+.social-copy-btn.is-copied {
+  background: #1b7340;
+}
+
+.social-device-share-btn {
+  background: #ffffff;
+  color: #053527;
+  border: 1.5px solid #053527;
+}
+
+.social-device-share-btn:hover {
+  background: #f0ece1;
+}
+
+.desktop-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #faf5ea;
+  border: 1.5px solid #d7c9ad;
+  color: #053527;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.desktop-share-btn:hover {
+  background: #053527;
+  border-color: #053527;
+  color: #ffffff;
+}
+
+

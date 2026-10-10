@@ -15,6 +15,7 @@ import {
 } from '@phosphor-icons/react';
 import { GoogleAd } from './GoogleAd';
 import { TOP_10_GAMES, type CardGame } from '../data/cardGames';
+import { SocialShare } from './SocialShare';
 
 interface HomeViewProps {
   onNavigate: (page: 'Games' | 'Score' | 'Leagues' | 'Stats' | 'Switch') => void;
@@ -264,6 +265,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
         onOpenPremium={onOpenPremium}
         hidden={isPremium}
       />
+
+      {/* Social Media Sharing Section */}
+      <SocialShare variant="inline" />
 
       {/* Premium Club Banner */}
       <section className="premium-perk-banner">

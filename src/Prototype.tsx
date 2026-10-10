@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { ArrowRight, BookOpen, Cards, UsersThree, ChatCircle, Club, MagnifyingGlass, X, Crown, DownloadSimple, CheckCircle, ArrowCounterClockwise, Lightbulb, HandPalm, Trophy, ChartBar, Sparkle, House } from '@phosphor-icons/react';
-import { BottomSheet, KeyboardInput, MobileScroll, useKeyboard, useKeyboardInsets } from './mobile';
+import { ArrowRight, BookOpen, Cards, UsersThree, ChatCircle, Club, MagnifyingGlass, X, Crown, DownloadSimple, CheckCircle, ArrowCounterClockwise, Lightbulb, HandPalm, Trophy, ChartBar, Sparkle, House, ShareNetwork } from '@phosphor-icons/react';
+import { BottomSheet, KeyboardInput, MobileScroll, useKeyboard, useKeyboardInsets } from './components/ResponsiveDialog';
 import '@fontsource/dm-serif-display/400.css';
 import '@fontsource/dm-sans/400.css';
 import '@fontsource/dm-sans/500.css';
@@ -23,6 +23,7 @@ import { GamesLibraryView } from './components/GamesLibraryView';
 import { PremiumModal } from './components/PremiumModal';
 import { HomeView } from './components/HomeView';
 import { GoogleAd } from './components/GoogleAd';
+import { SocialShare } from './components/SocialShare';
 
 type Page = 'Home' | 'Learn' | 'Games' | 'Score' | 'Leagues' | 'Stats' | 'Cards' | 'Modes' | 'Questions' | 'Tutorial';
 const powers = [
@@ -228,6 +229,7 @@ export default function Prototype(){
     return false;
   });
   const [showPremiumModal, setShowPremiumModal] = useState<boolean>(false);
+  const [showShareModal, setShowShareModal] = useState<boolean>(false);
 
   const handleSaveMatch = (record: MatchRecord) => {
     const updated = [...matchHistory, record];
@@ -350,13 +352,24 @@ export default function Prototype(){
         <Club size={16} /> Switch AI
       </button>
     </nav>
-    <button
-      className={`desktop-premium-btn ${isPremium ? 'is-active' : ''}`}
-      onClick={() => setShowPremiumModal(true)}
-    >
-      <Crown size={18} weight={isPremium ? 'fill' : 'regular'} />
-      <span>{isPremium ? 'Club Member' : 'Club Pass'}</span>
-    </button>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <button
+        type="button"
+        className="desktop-share-btn"
+        onClick={() => setShowShareModal(true)}
+        aria-label="Share The Card Companion"
+      >
+        <ShareNetwork size={16} weight="bold" />
+        <span>Share</span>
+      </button>
+      <button
+        className={`desktop-premium-btn ${isPremium ? 'is-active' : ''}`}
+        onClick={() => setShowPremiumModal(true)}
+      >
+        <Crown size={18} weight={isPremium ? 'fill' : 'regular'} />
+        <span>{isPremium ? 'Club Member' : 'Club Pass'}</span>
+      </button>
+    </div>
   </header>
 
   <MobileScroll key={page+(page==='Tutorial'?game.status:'')} className="switch-scroll"><main className={'switch-content '+(page==='Learn'?'home':'interior')+(page==='Tutorial'?' tutorial-page':'')}>
@@ -367,9 +380,19 @@ export default function Prototype(){
       <button onClick={()=>go('Home')} aria-label="The Card Companion home">
         <Club weight="fill" size={20}/> THE CARD COMPANION
       </button>
-      <button aria-label="Explore premium" onClick={()=>setShowPremiumModal(true)}>
-        <Crown size={22} color={isPremium ? "#ac7b26" : undefined} weight={isPremium ? "fill" : "regular"} />
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <button
+          type="button"
+          aria-label="Share The Card Companion"
+          onClick={() => setShowShareModal(true)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+        >
+          <ShareNetwork size={22} color="#053527" weight="bold" />
+        </button>
+        <button aria-label="Explore premium" onClick={()=>setShowPremiumModal(true)}>
+          <Crown size={22} color={isPremium ? "#ac7b26" : undefined} weight={isPremium ? "fill" : "regular"} />
+        </button>
+      </div>
     </header>
   )}
 
@@ -474,5 +497,12 @@ export default function Prototype(){
   })}</nav>
   <BottomSheet open={!!selected} onOpenChange={open=>{if(!open)setSelected(null);}} title={selected?.name||'Card rule'}>{selected&&<div className="rule-sheet"><Fan codes={selected.cards}/><p className="eyebrow">{selected.short}</p><p>{selected.text}</p><div className="exception"><strong>At the table</strong><p>{selected.extra}</p></div><button className="primary" onClick={()=>setSelected(null)}>Got it <CheckCircle size={19}/></button></div>}</BottomSheet>
   <BottomSheet open={membership} onOpenChange={setMembership} title="A little more Switch" description="A preview of possible paid extras. No purchase or charge."><div className="membership"><Crown size={38} weight="light"/><h2>Keep the good<br/>times going.</h2><p>An ad-free experience, printable game-night packs and custom table themes are options for a future Switch Club.</p><div className="preview-label">INTERACTIVE PREVIEW</div><button className="primary" onClick={()=>{handleTogglePremium();setMembership(false);}}>{isPremium?'Restore demo ads':'Preview without ads'} <ArrowRight size={18}/></button><p className="fine-print">This changes the preview only. Paid plans are not available yet.</p></div></BottomSheet>
-  <PremiumModal isOpen={showPremiumModal} onClose={()=>setShowPremiumModal(false)} isPremium={isPremium} onTogglePremium={handleTogglePremium} /></div>;
+  <PremiumModal isOpen={showPremiumModal} onClose={()=>setShowPremiumModal(false)} isPremium={isPremium} onTogglePremium={handleTogglePremium} />
+  {showShareModal && (
+    <SocialShare
+      variant="modal"
+      onClose={() => setShowShareModal(false)}
+    />
+  )}
+</div>;
 }
