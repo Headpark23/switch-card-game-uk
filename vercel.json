@@ -1,0 +1,5 @@
+{
+  "buildCommand": "npm run update:runtime-lock && npm run build",
+  "outputDirectory": "dist/client",
+  "framework": "vite"
+}

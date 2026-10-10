@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { ArrowRight, BookOpen, Cards, UsersThree, ChatCircle, Club, MagnifyingGlass, X, Crown, DownloadSimple, CheckCircle, ArrowCounterClockwise, Lightbulb, HandPalm, Trophy, ChartBar, Sparkle } from '@phosphor-icons/react';
+import { ArrowRight, BookOpen, Cards, UsersThree, ChatCircle, Club, MagnifyingGlass, X, Crown, DownloadSimple, CheckCircle, ArrowCounterClockwise, Lightbulb, HandPalm, Trophy, ChartBar, Sparkle, House } from '@phosphor-icons/react';
 import { BottomSheet, KeyboardInput, MobileScroll, useKeyboard, useKeyboardInsets } from './mobile';
 import '@fontsource/dm-serif-display/400.css';
 import '@fontsource/dm-sans/400.css';
@@ -21,8 +21,10 @@ import { LeaguesView } from './components/LeaguesView';
 import { StatsView } from './components/StatsView';
 import { GamesLibraryView } from './components/GamesLibraryView';
 import { PremiumModal } from './components/PremiumModal';
+import { HomeView } from './components/HomeView';
+import { GoogleAd } from './components/GoogleAd';
 
-type Page = 'Learn' | 'Games' | 'Score' | 'Leagues' | 'Stats' | 'Cards' | 'Modes' | 'Questions' | 'Tutorial';
+type Page = 'Home' | 'Learn' | 'Games' | 'Score' | 'Leagues' | 'Stats' | 'Cards' | 'Modes' | 'Questions' | 'Tutorial';
 const powers = [
   {name:'Black kings',cards:['KS','KC'],short:'Pick up five',text:'The next player picks up 5 cards, unless they pass the penalty on with another black king.',extra:'Black kings stack: two mean 10 cards. Each red king cancels one black king.'},
   {name:'Red kings',cards:['KH','KD'],short:'Cancel a black king',text:'Play a red king to cancel the effect of one black king.',extra:'You need one red king for each black king played.'},
@@ -183,7 +185,7 @@ function downloadRules(){
   const url=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='switch-rules.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 export default function Prototype(){
-  const [page,setPage]=useState<Page>('Learn');const [query,setQuery]=useState('');const [selected,setSelected]=useState<(typeof powers)[number]|null>(null);
+  const [page,setPage]=useState<Page>('Home');const [query,setQuery]=useState('');const [selected,setSelected]=useState<(typeof powers)[number]|null>(null);
   const [membership,setMembership]=useState(false);const [adFree,setAdFree]=useState(false);const [game,setGame]=useState<Game>(initialGame);const [aceChoice,setAceChoice]=useState<string[]|null>(null);const [staged,setStaged]=useState<string[]>([]);const [ruleStep,setRuleStep]=useState(0);
 
   // Companion App State
@@ -315,20 +317,73 @@ export default function Prototype(){
   const gameHint=game.pending==='two'?`Play another two to pass on ${game.pendingDraw+2}, or pick up ${game.pendingDraw}.`:game.pending==='black-king'?`Play another black king to add 5 and pass on ${game.pendingDraw+5}, play a red king to cancel 5, or pick up ${game.pendingDraw}.`:game.pending==='eight'?'Play another eight to pass the missed turn. If you have none, you must miss your turn.':legalCards.length?`You can play ${legalCards.join(', ')}. Aces are wild on ordinary cards. You may also pick up one card instead and save a useful card for later.`:'You have no legal card. Pick up one card and the computer will play.';
   const cardsInGame=[...game.playerHand,...game.computerHand,...game.drawPile,...game.discard];
   const deckDescription=`${cardsInGame.length}-card game with ${new Set(cardsInGame).size} unique cards`;
-  const isCompanionInterior = ['Games', 'Score', 'Leagues', 'Stats'].includes(page);
+  const isCompanionInterior = ['Home', 'Games', 'Score', 'Leagues', 'Stats'].includes(page);
 
-  return <div className="switch-app" onFocusCapture={resetDeviceScroll}><MobileScroll key={page+(page==='Tutorial'?game.status:'')} className="switch-scroll"><main className={'switch-content '+(page==='Learn'?'home':'interior')+(page==='Tutorial'?' tutorial-page':'')}>
+  return <div className="switch-app card-companion-shell" onFocusCapture={resetDeviceScroll}>
+  
+  {/* DESKTOP HEADER BAR: PC, Laptop, Tablet */}
+  <header className="desktop-header-bar">
+    <button className="desktop-brand" onClick={() => go('Home')}>
+      <span className="desktop-brand-suits">♠️♥️♦️♣️</span>
+      <div>
+        <strong>The Card Companion</strong>
+        <small>The Ultimate Game Night Suite</small>
+      </div>
+    </button>
+    <nav className="desktop-nav-links">
+      <button className={`desktop-nav-btn ${page === 'Home' ? 'active' : ''}`} onClick={() => go('Home')}>
+        <House size={16} /> Home
+      </button>
+      <button className={`desktop-nav-btn ${page === 'Games' ? 'active' : ''}`} onClick={() => go('Games')}>
+        <Cards size={16} /> Top 10 Games
+      </button>
+      <button className={`desktop-nav-btn ${page === 'Score' ? 'active' : ''}`} onClick={() => go('Score')}>
+        <Trophy size={16} /> Scorekeeper
+      </button>
+      <button className={`desktop-nav-btn ${page === 'Leagues' ? 'active' : ''}`} onClick={() => go('Leagues')}>
+        <UsersThree size={16} /> Leagues
+      </button>
+      <button className={`desktop-nav-btn ${page === 'Stats' ? 'active' : ''}`} onClick={() => go('Stats')}>
+        <ChartBar size={16} /> Stats
+      </button>
+      <button className={`desktop-nav-btn ${page === 'Learn' || page === 'Tutorial' ? 'active' : ''}`} onClick={() => go('Learn')}>
+        <Club size={16} /> Switch AI
+      </button>
+    </nav>
+    <button
+      className={`desktop-premium-btn ${isPremium ? 'is-active' : ''}`}
+      onClick={() => setShowPremiumModal(true)}
+    >
+      <Crown size={18} weight={isPremium ? 'fill' : 'regular'} />
+      <span>{isPremium ? 'Club Member' : 'Club Pass'}</span>
+    </button>
+  </header>
 
-  {/* Companion Interior Header */}
+  <MobileScroll key={page+(page==='Tutorial'?game.status:'')} className="switch-scroll"><main className={'switch-content '+(page==='Learn'?'home':'interior')+(page==='Tutorial'?' tutorial-page':'')}>
+
+  {/* Mobile Companion Header */}
   {isCompanionInterior && (
     <header className="small-brand">
-      <button onClick={()=>go('Games')} aria-label="Card companion home">
-        <Club weight="fill" size={20}/> CARD COMPANION
+      <button onClick={()=>go('Home')} aria-label="The Card Companion home">
+        <Club weight="fill" size={20}/> THE CARD COMPANION
       </button>
       <button aria-label="Explore premium" onClick={()=>setShowPremiumModal(true)}>
         <Crown size={22} color={isPremium ? "#ac7b26" : undefined} weight={isPremium ? "fill" : "regular"} />
       </button>
     </header>
+  )}
+
+  {/* PAGE: HOME */}
+  {page === 'Home' && (
+    <HomeView
+      onNavigate={(dest) => {
+        if (dest === 'Switch') go('Learn');
+        else go(dest);
+      }}
+      onStartScoreForGame={startScorekeeperForGame}
+      onOpenPremium={() => setShowPremiumModal(true)}
+      isPremium={isPremium}
+    />
   )}
 
   {/* PAGE: TOP 10 CARD GAMES */}
@@ -407,6 +462,7 @@ export default function Prototype(){
     {page==='Tutorial'&&<section className="tutorial game-tutorial" aria-label={deckDescription}>{game.status!=='playing'?<div className="completion"><CheckCircle size={60} weight="light"/><p className="eyebrow">{game.status==='won'?'GAME WON':'GOOD PRACTICE'}</p><h1>{game.status==='won'?<>You beat the<br/>computer.</>:<>The computer<br/>won this one.</>}</h1><p>{game.notice}</p><button className="primary" onClick={start}><ArrowCounterClockwise size={18}/>Play another guided game</button><button className="secondary" onClick={()=>go('Cards')}>Open card guide <ArrowRight size={18}/></button><AdSlot hidden={adFree}/></div>:<><div className="lesson-meta"><span>GUIDED GAME · {game.turn==='you'?'YOUR TURN':'COMPUTER TURN'}</span><button onClick={()=>go('Learn')}>Exit game</button></div><div className="opponent" aria-label={`Computer has ${game.computerHand.length} cards`}><span>COMPUTER</span><div>{game.computerHand.slice(0,5).map((_,i)=><CardImage code="back" key={i}/>)}</div><strong>{game.computerHand.length} card{game.computerHand.length===1?'':'s'}</strong></div><div className="game-table"><button className="draw-pile" onClick={drawOrResolve} disabled={game.turn!=='you'||game.awaitingLastCard||!!staged.length||game.pending==='eight'} aria-label={game.pending==='eight'?'Draw pile unavailable while resolving the eight':game.pendingDraw?`Pick up ${game.pendingDraw} cards`:legalCards.length?'Pick up one card instead of playing':'Draw a card'}><CardImage code="back"/><span>{game.pending==='eight'?'Eight played':game.pendingDraw?`Pick up ${game.pendingDraw}`:legalCards.length?'Pick up instead':'Draw'}</span></button><div className="discard-pile"><CardImage code={topCard}/><span>Current suit <b className={(game.currentSuit==='H'||game.currentSuit==='D')?'red':''}>{suitSymbols[game.currentSuit]} {suitNames[game.currentSuit]}</b></span></div></div><p className="game-notice" aria-live="polite">{game.turn==='computer'?'Computer is choosing a card…':game.notice}</p>{game.turn==='you'&&game.pending==='eight'&&!game.awaitingLastCard&&<div className="miss-turn-action"><strong>The computer played an eight</strong><p>{legalCards.some(card=>rank(card)==='8')?'Play an eight to pass the missed turn, or accept it.':'You have no eight to counter with, so you must miss this turn.'}</p><button className="primary" onClick={drawOrResolve}>Accept missed turn <ArrowRight size={18}/></button></div>}{game.awaitingLastCard?<div className="last-card-call"><HandPalm size={27}/><strong>One card remaining</strong><p>Say “Last Card” now. Forgetting costs two cards.</p><button className="primary" onClick={()=>answerLastCard(true)}>Say “Last Card”</button><button className="text-link" onClick={()=>answerLastCard(false)}>Continue without saying it</button></div>:<><div className="game-actions"><button className={'hint-button '+(game.hint?'active':'')} onClick={()=>setGame(current=>({...current,hint:!current.hint}))} disabled={game.turn!=='you'}><Lightbulb size={19} weight={game.hint?'fill':'regular'}/>{game.hint?'Hide hint':'Show hint'}</button><span>{game.playerHand.length} cards in your hand</span></div>{game.hint&&<p className="game-hint"><Lightbulb size={17}/>{gameHint}</p>}<div className="player-hand" aria-label="Your hand">{game.playerHand.map(card=><button key={card} onClick={()=>chooseCard(card)} className={(game.hint&&canPlay(card,game,game.playerHand.length)?'playable ':'')+(staged.includes(card)?'selected':'')} disabled={game.turn!=='you'} aria-label={`Play ${card}${canPlay(card,game,game.playerHand.length)?', legal move':', not currently playable'}`}><CardImage code={card}/></button>)}</div>{staged.length>0&&<div className="multi-action"><p>{staged.length} matching card{staged.length===1?'':'s'} selected</p><button className="primary" onClick={playStaged}>Play selected</button><button className="text-link" onClick={()=>setStaged([])}>Cancel selection</button></div>}</>}{aceChoice&&<div className="suit-choice" role="dialog" aria-label="Choose a suit"><p>Choose the suit for your ace</p><div>{(['S','H','D','C'] as Suit[]).map(chosen=><button key={chosen} className={(chosen==='H'||chosen==='D')?'red':''} onClick={()=>{setGame(current=>playSet(current,aceChoice,chosen));setAceChoice(null);setStaged([]);}}>{suitSymbols[chosen]}<span>{suitNames[chosen]}</span></button>)}</div><button className="text-link" onClick={()=>setAceChoice(null)}>Cancel</button></div>}<div className="game-rule"><strong>Rule in play</strong><p>{game.pending==='two'?`Twos stack. The penalty is ${game.pendingDraw}.`:game.pending==='black-king'?`Another black king adds 5 and passes the penalty on. A red king cancels 5. Otherwise pick up ${game.pendingDraw}.`:game.pending==='eight'?'Counter with another eight or miss your turn.':'Match the suit or number, or pick up one card instead. Aces are wild on ordinary cards and let you choose the next suit. Matching numbers may be played together.'}</p></div></>}</section>}
   </>}
   </main></MobileScroll><nav className="bottom-tabs" aria-label="Main navigation" style={{bottom:bottomInset}}>{([
+    {name:'Home',label:'Home',Icon:House},
     {name:'Games',label:'Top 10',Icon:Cards},
     {name:'Score',label:'Score',Icon:Trophy},
     {name:'Leagues',label:'Leagues',Icon:UsersThree},
