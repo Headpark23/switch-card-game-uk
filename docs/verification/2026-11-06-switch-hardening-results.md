@@ -9,8 +9,8 @@ The hardening branch is suitable for review. Production has not been changed or 
 - Mobile runtime integrity: passed for all 28 protected runtime files.
 - TypeScript and production build: passed.
 - Static hosting package: passed all 4 worker tests.
-- Browser suite: 43 tests passed with no failures.
-- Covered areas include the guided game, power-card rules, deterministic computer play, deck recycling, saved-score migration, flexible scoring, leagues, knockout, Switch Cup, and the visible scorekeeper.
+- Browser suite: 47 tests passed with no failures.
+- Covered areas include the guided game, power-card rules, deterministic computer play, deck recycling, saved-score migration, flexible scoring, leagues, knockout, Switch Cup, the visible scorekeeper, completed-night history, export and confirmed deletion.
 
 ## Hands-on checks
 
@@ -18,6 +18,8 @@ The hardening branch is suitable for review. Production has not been changed or 
 - Confirmed the rules home screen and the exact “When the deck runs out” wording.
 - Opened Modes and the Switch scorekeeper.
 - Confirmed the scorekeeper renders without horizontal overflow in both iPhone and Pixel 10 frames.
+- Saved and reopened an expanded Domino night on both iPhone and Pixel 10; the result, players and final scores remained readable.
+- Confirmed saving a named night dismisses the simulated keyboard so the new history record is immediately visible.
 - Confirmed the Google panel truthfully reports that credentials are still required when it is not configured.
 - Confirmed fixed navigation and device chrome remain intact.
 
@@ -26,6 +28,7 @@ The hardening branch is suitable for review. Production has not been changed or 
 - The existing `switchScoreKeeper` browser-storage key is preserved.
 - Valid older data is migrated additively and unknown fields are retained.
 - Malformed stored data is left untouched and the app displays a recovery warning.
+- Completed-night records are immutable snapshots stored additively under `extensions.switchNightHistory`; unrelated extension fields remain intact.
 - Google ID tokens are not stored in browser storage. They must be exchanged with a server that verifies them and creates a secure session.
 
 ## Known configuration item

@@ -4,10 +4,12 @@ Switch remains a focused solo app. The next improvements should deepen the Switc
 
 ## Phase 1 — local history
 
-- Save completed nights as dated, named events.
-- Show winners, final tables, knockout paths, and cup brackets.
-- Add export and delete controls, with clear confirmation before removal.
-- Keep the existing scorekeeper key compatible and migrate additively.
+Status: completed on the hardening branch on 6 November 2026; not deployed.
+
+- [x] Save completed nights as dated, named events.
+- [x] Show winners, final tables, knockout paths, and cup brackets.
+- [x] Add export and delete controls, with clear confirmation before removal.
+- [x] Keep the existing scorekeeper key compatible and migrate additively.
 
 ## Phase 2 — family groups
 

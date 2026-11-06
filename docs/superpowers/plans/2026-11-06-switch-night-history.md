@@ -37,11 +37,11 @@
 **Interfaces:**
 - Produces: `SwitchNightRecord`, `HistorySource`, `getHistory(extensions)`, `completionFromSession`, `completionFromKnockout`, `completionFromCup`, `completionFromLeagues`, `createNightRecord`, `addNight`, `deleteNight`, and `exportHistory`.
 
-- [ ] Write failing tests for all six formats, target ties, immutable snapshots, invalid entries, add/delete and export.
-- [ ] Run the focused test and verify it fails because the module is missing.
-- [ ] Implement the smallest pure versioned history model that passes.
-- [ ] Run the focused test and verify it passes.
-- [ ] Commit the pure history module and tests.
+- [x] Write failing tests for all six formats, target ties, immutable snapshots, invalid entries, add/delete and export.
+- [x] Run the focused test and verify it fails because the module is missing.
+- [x] Implement the smallest pure versioned history model that passes.
+- [x] Run the focused test and verify it passes.
+- [x] Commit the pure history module and tests.
 
 ### Task 2: Scorekeeper completion and history UI
 
@@ -54,18 +54,18 @@
 - Consumes the Task 1 pure history APIs.
 - Produces an explicit completed-night save panel, local history list, JSON export and confirmed per-record deletion.
 
-- [ ] Add failing browser journeys for empty history, save-once, reload, expanded details, export and confirmed deletion.
-- [ ] Run the scorekeeper test and verify the new journeys fail.
-- [ ] Implement the completion panel and history UI using keyboard-aware fields and existing storage merging.
-- [ ] Run the scorekeeper and gameplay suites and verify they pass.
-- [ ] Commit the UI and journeys.
+- [x] Add failing browser journeys for empty history, save-once, reload, expanded details, export and confirmed deletion.
+- [x] Run the scorekeeper test and verify the new journeys fail.
+- [x] Implement the completion panel and history UI using keyboard-aware fields and existing storage merging.
+- [x] Run the scorekeeper and gameplay suites and verify they pass.
+- [x] Commit the UI and journeys.
 
 ### Task 3: Release verification
 
 **Files:**
 - Modify: `docs/verification/2026-11-06-switch-hardening-results.md`
 
-- [ ] Run runtime integrity, build, hosting tests and the full browser suite.
-- [ ] Verify the saved result on iPhone and Pixel 10 in the correct Switch preview.
-- [ ] Record the final evidence and remaining Phase 2 work.
-- [ ] Commit the verification update.
+- [x] Run runtime integrity, build, hosting tests and the full browser suite.
+- [x] Verify the saved result on iPhone and Pixel 10 in the correct Switch preview.
+- [x] Record the final evidence and remaining Phase 2 work.
+- [x] Commit the verification update.
