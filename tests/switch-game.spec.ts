@@ -8,7 +8,7 @@ test("the shuffled pack contains all 52 unique card faces", async ({ page, reque
   const cards = ["S", "H", "D", "C"].flatMap((suit) =>
     ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"].map((rank) => `${rank}${suit}`),
   );
-  const responses = await Promise.all(cards.map((card) => request.get(`/images/cards/${card}.png`)));
+  const responses = await Promise.all(cards.map((card) => request.get(`/images/cards/${card}.webp`)));
   expect(responses.every((response) => response.ok())).toBe(true);
 });
 

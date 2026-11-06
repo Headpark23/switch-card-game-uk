@@ -9,13 +9,16 @@ function handFor(state: GameState, turn: Turn): readonly CardId[] {
   return turn === "player" ? state.playerHand : state.computerHand;
 }
 
-function isNormallyPlayable(card: CardId, state: GameState): boolean {
+/** The parts of a game that decide whether a single card may be played. */
+export type PlayContext = Pick<GameState, "discardPile" | "currentSuit" | "pendingPenalty">;
+
+export function isNormallyPlayable(card: CardId, state: PlayContext): boolean {
   const top = state.discardPile.at(-1);
   if (!top) return true;
   return rankOf(card) === "A" || suitOf(card) === state.currentSuit || rankOf(card) === rankOf(top);
 }
 
-function isPlayableDuringPenalty(card: CardId, state: GameState): boolean {
+export function isPlayableDuringPenalty(card: CardId, state: PlayContext): boolean {
   switch (state.pendingPenalty?.kind) {
     case "draw-two":
       return rankOf(card) === "2";
@@ -33,10 +36,18 @@ function playActionsFor(card: CardId): GameAction[] {
   return SUITS.map((chosenSuit) => ({ type: "play", cards: [card], chosenSuit }));
 }
 
-function cannotBeFinalPlay(cards: readonly CardId[], hand: readonly CardId[]): boolean {
+/** Table variations that depend on how many people are playing. */
+export interface TableOptions {
+  /** With three or more players a jack reverses direction, so it may be the winning card. */
+  readonly jackMayFinish: boolean;
+}
+
+const TWO_PLAYER_OPTIONS: TableOptions = Object.freeze({ jackMayFinish: false });
+
+function cannotBeFinalPlay(cards: readonly CardId[], hand: readonly CardId[], options: TableOptions): boolean {
   if (cards.length !== hand.length) return false;
   const playedRank = rankOf(cards[0]);
-  return playedRank === "7" || playedRank === "J";
+  return playedRank === "7" || (playedRank === "J" && !options.jackMayFinish);
 }
 
 function matchingSubsets(cards: readonly CardId[]): CardId[][] {
@@ -48,13 +59,15 @@ function matchingSubsets(cards: readonly CardId[]): CardId[][] {
   return subsets;
 }
 
-export function legalMoves(state: GameState): GameAction[] {
-  if (state.status !== "playing") return [];
-
-  const hand = handFor(state, state.turn);
-  const playable = hand.filter((card) => isPlayableDuringPenalty(card, state));
+/** Every legal action for one hand. A set of matching cards is listed once, in a canonical order. */
+export function legalActionsFor(
+  hand: readonly CardId[],
+  context: PlayContext,
+  options: TableOptions = TWO_PLAYER_OPTIONS,
+): GameAction[] {
+  const playable = hand.filter((card) => isPlayableDuringPenalty(card, context));
   const actions = playable
-    .filter((card) => !cannotBeFinalPlay([card], hand))
+    .filter((card) => !cannotBeFinalPlay([card], hand, options))
     .flatMap(playActionsFor);
 
   for (const rank of new Set(hand.map(rankOf))) {
@@ -66,7 +79,7 @@ export function legalMoves(state: GameState): GameAction[] {
       if (!firstLegal) continue;
 
       const cards = [firstLegal, ...subset.filter((card) => card !== firstLegal)];
-      if (cannotBeFinalPlay(cards, hand)) continue;
+      if (cannotBeFinalPlay(cards, hand, options)) continue;
       if (rank === "A") {
         for (const chosenSuit of SUITS) actions.push({ type: "play", cards, chosenSuit });
       } else {
@@ -75,13 +88,18 @@ export function legalMoves(state: GameState): GameAction[] {
     }
   }
 
-  if (state.pendingPenalty?.kind === "miss-turn") {
+  if (context.pendingPenalty?.kind === "miss-turn") {
     actions.push({ type: "accept-missed-turn" });
   } else {
     actions.push({ type: "draw" });
   }
 
   return actions;
+}
+
+export function legalMoves(state: GameState): GameAction[] {
+  if (state.status !== "playing") return [];
+  return legalActionsFor(handFor(state, state.turn), state);
 }
 
 function sameAction(left: GameAction, right: GameAction): boolean {
@@ -119,8 +137,38 @@ export function drawCards(state: GameState, count: number, recipient: Turn): Gam
   };
 }
 
+/**
+ * A play is legal when every card is in the hand, all share one rank, the first
+ * card may legally be played, and the play does not finish on a seven or jack.
+ * The order matters: the last card played decides the new suit, so any order
+ * that starts with a playable card is accepted.
+ */
+export function isLegalPlayFor(
+  hand: readonly CardId[],
+  context: PlayContext,
+  action: Extract<GameAction, { type: "play" }>,
+  options: TableOptions = TWO_PLAYER_OPTIONS,
+): boolean {
+  const cards = action.cards;
+  if (cards.length === 0 || new Set(cards).size !== cards.length) return false;
+  if (!cards.every((card) => hand.includes(card))) return false;
+  const rank = rankOf(cards[0]);
+  if (!cards.every((card) => rankOf(card) === rank)) return false;
+  if (!isPlayableDuringPenalty(cards[0], context)) return false;
+  if (cannotBeFinalPlay(cards, hand, options)) return false;
+  if (rank === "A") return action.chosenSuit !== undefined && SUITS.includes(action.chosenSuit);
+  return action.chosenSuit === undefined;
+}
+
+export function isLegalPlay(state: GameState, action: Extract<GameAction, { type: "play" }>): boolean {
+  return state.status === "playing" && isLegalPlayFor(handFor(state, state.turn), state, action);
+}
+
 export function applyAction(state: GameState, action: GameAction): GameState {
-  if (!legalMoves(state).some((legal) => sameAction(legal, action))) {
+  const legal = action.type === "play"
+    ? isLegalPlay(state, action)
+    : legalMoves(state).some((candidate) => sameAction(candidate, action));
+  if (!legal) {
     throw new Error("That action is not legal in the current Switch state.");
   }
 
@@ -193,7 +241,21 @@ export function applyAction(state: GameState, action: GameAction): GameState {
   };
 }
 
-export function createInitialGame(random: RandomSource): GameState {
+const POWER_RANKS = new Set(["A", "2", "7", "8", "J", "K"]);
+
+/**
+ * The first discard is always an ordinary card, so no game opens with a hidden
+ * penalty or a suit change. Power cards turned up at the start are tucked back
+ * into the deck instead.
+ */
+function ordinaryStarterIndex(deck: readonly CardId[]): number {
+  for (let index = deck.length - 1; index >= 0; index -= 1) {
+    if (!POWER_RANKS.has(rankOf(deck[index]))) return index;
+  }
+  return deck.length - 1;
+}
+
+export function createInitialGame(random: RandomSource, firstTurn: Turn = "player"): GameState {
   const deck = createDeck().map((card) => card.id);
 
   for (let index = deck.length - 1; index > 0; index -= 1) {
@@ -208,6 +270,8 @@ export function createInitialGame(random: RandomSource): GameState {
     computerHand.push(deck.pop() as CardId);
   }
 
+  const starterIndex = ordinaryStarterIndex(deck);
+  [deck[starterIndex], deck[deck.length - 1]] = [deck[deck.length - 1], deck[starterIndex]];
   const starter = deck.pop() as CardId;
   return {
     playerHand,
@@ -215,7 +279,7 @@ export function createInitialGame(random: RandomSource): GameState {
     drawPile: deck,
     discardPile: [starter],
     currentSuit: suitOf(starter),
-    turn: "player",
+    turn: firstTurn,
     pendingPenalty: null,
     status: "playing",
     winner: null,
