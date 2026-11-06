@@ -110,3 +110,34 @@
 .coach-options li[data-kind=counter] .kind-dot{background:#b8281b}.coach-options li[data-kind=pickup] .kind-dot,.coach-options li[data-kind=miss] .kind-dot{background:#9a8f73}
 .lesson .coach-cards{min-width:84px;justify-content:flex-start}.lesson .coach-cards .playing-card{width:38px!important;margin-left:-14px}.lesson .coach-cards .playing-card:first-child{margin-left:0}
 .coach-key{font-size:10.5px;color:var(--muted);margin:2px 0 0!important}
+
+/* Scorekeeper setup: everything fits one screen, no scrolling to find the options. */
+.scorekeeper-head:not(.compact){padding-bottom:8px}.scorekeeper-head:not(.compact) h1{font-size:26px;line-height:1.1}.scorekeeper-head:not(.compact) .text-link{margin-bottom:6px}
+.scorekeeper .club-tabs{margin:0 0 10px}.scorekeeper .club-tabs button{min-height:40px;padding:8px 4px 7px}
+.format-grid{grid-template-columns:repeat(3,1fr);gap:6px}.format-grid button{min-height:46px;justify-content:center;padding:6px 8px;text-align:center;border-radius:10px}.format-grid button.active{padding:5px 7px}.format-grid strong{font-size:12px;line-height:1.2}
+.format-note{font-size:11px;color:var(--muted);margin:8px 2px 0;min-height:15px}
+.player-fields{grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.player-fields input,.target-field input{height:42px}
+.target-field{margin:10px 0}.score-start{margin-top:10px}.count-control{margin:10px 0 4px;padding:4px 0}.saved-players{margin:10px 0 0}
+@media(max-width:340px){.format-grid{grid-template-columns:1fr 1fr}.player-fields{grid-template-columns:1fr}}
+
+.install-phone{display:flex;align-items:center;gap:12px;width:100%;margin:12px 0;padding:13px 14px;border:1.5px solid var(--gold);border-radius:14px;background:linear-gradient(135deg,#fffaf0,#f4ead0);color:var(--green);text-align:left;min-height:56px}
+.install-phone span{display:grid;font-weight:600;font-size:14px}.install-phone small{font-weight:400;font-size:11px;color:var(--muted)}
+.install-steps{display:grid;gap:12px;padding-left:20px;margin:6px 0 18px;font-size:14px;line-height:1.5}.install-steps svg{vertical-align:-3px}
+
+/* Tutorial table: felt, stacked draw pile, spotlit discard, and a tray for your hand. Same height as before. */
+.game-tutorial .game-table{position:relative;background:radial-gradient(ellipse at 50% 40%,#17714f 0%,#0b5239 55%,#053527 100%);border:2px solid var(--gold);box-shadow:inset 0 0 0 3px #053527,inset 0 0 0 4px #ac7b2655,inset 0 8px 22px #02150f88,0 6px 14px #05352730;border-radius:18px;gap:44px;padding:9px 10px}
+.game-tutorial .game-table::before{content:"";position:absolute;left:50%;top:50%;width:132px;height:132px;transform:translate(-50%,-50%);background:radial-gradient(circle,#ffe9a866 0%,#ffe9a800 68%);pointer-events:none}
+.game-tutorial .game-table .draw-pile span,.game-tutorial .game-table .discard-pile>span{color:#d7e3d6;letter-spacing:.6px}
+.game-tutorial .game-table .discard-pile b{color:#f1d899}.game-tutorial .game-table .discard-pile b.red{color:#ffb4a0}
+.game-tutorial .draw-pile .playing-card{box-shadow:2px 2px 0 -1px #0a3a29,4px 4px 0 -2px #d7b776,6px 6px 0 -3px #0a3a29}
+.game-tutorial .discard-pile .pile-card{transform:rotate(-3deg)}
+.game-tutorial .discard-pile .playing-card{width:58px;filter:drop-shadow(0 0 10px #ffe19a88) drop-shadow(0 6px 8px #02150f99)}
+.game-tutorial .draw-pile:not(:disabled) .playing-card{animation:pile-breathe 2.4s ease-in-out infinite}
+.game-tutorial .opponent{background:linear-gradient(180deg,#0b5239,#053527);border:0;border-radius:12px;padding:5px 10px;margin:0}
+.game-tutorial .opponent>span,.game-tutorial .opponent>strong{color:#f1d899}
+.game-tutorial .player-hand{background:linear-gradient(180deg,#efe6cf,#e6dbbd);border:1px solid #d4c7a3;border-radius:14px;padding:6px 6px 8px;box-shadow:inset 0 2px 6px #6a552a22}
+.game-tutorial .player-hand button .playing-card{box-shadow:0 0 0 1px #14231d22}
+.game-tutorial .player-hand button.playable .playing-card{transform:translateY(-3px)}
+@keyframes pile-breathe{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+@media(prefers-reduced-motion:reduce){.game-tutorial .draw-pile:not(:disabled) .playing-card{animation:none}}
+.game-tutorial .player-hand{padding:3px 4px 4px;border-radius:12px}.game-tutorial .game-table{padding:6px 10px}.game-tutorial .game-table .playing-card{width:50px}.game-tutorial .discard-pile .playing-card{width:52px}.game-tutorial .player-hand .playing-card{width:50px}

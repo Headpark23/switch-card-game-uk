@@ -14,7 +14,7 @@ async function fillVisibleNames(page: Page) {
 
 test("named domino scores persist, validate and undo", async ({ page }) => {
   await openScorekeeper(page);
-  await expect(page.getByText(/Google sign-in is ready for a client ID/)).toBeVisible();
+  await expect(page.getByText(/Google sign-in is ready for a client ID/)).toHaveCount(0);
   await fillVisibleNames(page);
   await page.getByLabel("Target score").fill("250");
   await page.getByRole("button", { name: "Start Domino" }).click();
@@ -152,3 +152,22 @@ test("history exports and deletes only after confirmation", async ({ page }) => 
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("switchScoreKeeper") ?? "{}"));
   expect(saved.extensions.keepMe).toBe(true);
 });
+
+for (const device of ["iPhone", "Pixel 10"]) {
+  test(`scorekeeper setup shows every option without scrolling on ${device}`, async ({ page }) => {
+    await page.goto("/");
+    if (device !== "iPhone") {
+      await page.getByRole("button", { name: /Preview device/ }).click();
+      await page.getByText("Pixel 10").click();
+    }
+    await page.getByRole("button", { name: "Modes", exact: true }).click();
+    await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+    await expect(page.locator(".score-start")).toBeVisible();
+    const fit = await page.evaluate(() => {
+      const start = document.querySelector(".score-start")!.getBoundingClientRect();
+      const tabs = document.querySelector(".bottom-tabs")!.getBoundingClientRect();
+      return { startBottom: start.bottom, tabsTop: tabs.top };
+    });
+    expect(fit.startBottom).toBeLessThanOrEqual(fit.tabsTop);
+  });
+}

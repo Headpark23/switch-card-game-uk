@@ -4,6 +4,7 @@ import { BottomSheet, KeyboardInput, MobileScroll, useKeyboard, useKeyboardInset
 import { modes, powers, ruleChapters, rules } from './content';
 import { AdSlot, Fan } from './ui';
 import { enableOffline } from './offline';
+import InstallButton from './InstallButton';
 import '@fontsource/dm-serif-display/400.css';
 import '@fontsource/dm-sans/400.css';
 import '@fontsource/dm-sans/500.css';
@@ -125,6 +126,7 @@ export default function Prototype() {
           {ads}
           <section className="night-note"><p className="eyebrow">MAKE IT A GAME NIGHT</p><h2>A little friendly rivalry.</h2><p>From a quick head-to-head to your very own Switch Cup.</p><button className="text-link" onClick={() => go('Modes')}>Explore game modes <ArrowRight size={18} /></button></section>
           {SHOW_MONETISATION_PREVIEW && <button className="member-strip" onClick={() => setMembership(true)}><Crown size={24} /><span>More time at the table<small>Explore an ad-free experience</small></span><ArrowRight size={20} /></button>}
+          <InstallButton />
           <button className="download" onClick={downloadRules}><DownloadSimple size={20} />Download all rules</button>
         </> : <>
           <header className="small-brand">
@@ -144,6 +146,7 @@ export default function Prototype() {
             {!result.length && <div className="empty"><Cards size={40} /><h2>No matching rule yet.</h2><p>Try a card name such as “king”, or browse all the rules.</p><button className="secondary" onClick={() => { keyboard.hide(); setQuery(''); }}>Show all rules</button></div>}
             <p className="house-note">Every table has its traditions. These answers follow the rules in your original Switch guide.</p>
             <button className="download" onClick={downloadRules}><DownloadSimple size={20} />Keep a copy of the rules</button>
+            <InstallButton />
             <a className="community" href="https://783j5slzrfvf.trickle.host/#comments" target="_blank" rel="noreferrer">Visit the original community discussion <ArrowRight size={16} /></a>
             {ads}
           </>}
