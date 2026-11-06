@@ -1,14 +1,35 @@
-# Optional Google One Tap setup
+# Google one-tap sign-in and cloud backup
 
-Switch remains fully usable without an account. Google sign-in is an optional foundation for future family sharing and history sync; it does not replace local score storage.
+Switch works fully without an account. When a Google client ID is configured, the History tab gains a "Cloud backup" card with Google One Tap. Signing in backs up the club to the cloud and lets it open on another phone.
 
-## Required configuration
+## What is built
 
-1. Create a Web OAuth client in Google Cloud and register every authorised production and preview origin.
-2. Set `VITE_GOOGLE_CLIENT_ID` to that public web client ID.
-3. Implement the HTTPS endpoints named by `VITE_GOOGLE_AUTH_ENDPOINT` and `VITE_GOOGLE_LOGOUT_ENDPOINT`.
-4. At that endpoint, verify the received `credential` ID token with a Google-supported server library, including signature, issuer, expiry and audience checks.
-5. Create the app session using the token's stable `sub` value. Do not use the email address as the account key.
-6. Return `{ "user": { "id", "name", "email", "picture" } }` and set a secure, HTTP-only session cookie. The logout endpoint must clear that cookie.
+- `src/auth.ts`: Google Identity Services (One Tap), the saved account, and `syncNow`.
+- `src/switch/sync.ts`: merges two copies of a club by id. Nothing is dropped; a night deleted on one phone can return from another.
+- `src/AccountPanel.tsx`: the card in the History tab. Hidden while `VITE_GOOGLE_CLIENT_ID` is empty.
+- `worker/sync.js`: the `/api/sync` endpoint. It checks the Google token (audience, issuer, verified email, expiry) and gives each account one row.
+- Tests: `tests/switch-sync.spec.ts`, `tests/sync-worker.test.mjs`.
 
-The browser integration never stores the Google ID token. The sign-in prompt is not mounted unless both environment values are present. Production must not enable the client ID until the verification endpoint and logout/session-expiry path have been tested.
+## What you need to do
+
+1. In Google Cloud Console, open APIs & Services > Credentials > Create credentials > OAuth client ID > Web application.
+2. Add Authorized JavaScript origins: `https://switchcardgame.co.uk` and `http://localhost:4173` for local testing. No redirect URI is needed for One Tap.
+3. On the consent screen, keep scopes to the basics (name, email, picture).
+4. Put the client ID in `.env` as `VITE_GOOGLE_CLIENT_ID=...` and rebuild.
+
+## Server wiring (needs approval: protected runtime file)
+
+`worker/index.js` must call `handleSync` before serving assets, and the host needs:
+
+- `GOOGLE_CLIENT_ID` set to the same client ID.
+- A D1 database bound as `DB`, with:
+
+```sql
+CREATE TABLE IF NOT EXISTS club_sync (user_id TEXT PRIMARY KEY, document TEXT NOT NULL, updated_at TEXT NOT NULL);
+```
+
+Until this is wired, signing in works but syncing shows "The cloud copy could not be reached", and data on the phone is untouched.
+
+## Privacy
+
+The privacy line "everything stays on this device" changes once someone signs in. Update the in-app wording and the privacy policy before enabling the client ID in production.

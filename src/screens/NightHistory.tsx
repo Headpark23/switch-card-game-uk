@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DownloadSimple } from '@phosphor-icons/react';
+import { AccountPanel } from '../AccountPanel';
 import { ShareButton } from '../ShareButton';
 import { getClubName, nightShareCard } from '../switch/club';
 import { deleteNight, exportHistory, getHistory } from '../switch/history';
@@ -69,6 +70,7 @@ export default function NightHistory({ extensions, onChange }: Props) {
           <button className="text-link history-delete" aria-label={`Delete ${night.title}`} onClick={() => removeNight(night.id, night.title)}>Delete this night</button>
         </div>
       </details>)}</div>}
+    <AccountPanel />
     <div className="backup-panel">
       <h3>Back up your club</h3>
       <p>Everything stays on this device. A backup file keeps your players, nights and leagues safe if you change phone or clear your browser.</p>
