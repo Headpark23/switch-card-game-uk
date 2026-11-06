@@ -1,6 +1,10 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { ArrowRight, BookOpen, Cards, UsersThree, ChatCircle, Club, MagnifyingGlass, X, Crown, DownloadSimple, CheckCircle, ArrowCounterClockwise, Lightbulb, HandPalm } from '@phosphor-icons/react';
 import { BottomSheet, KeyboardInput, MobileScroll, useKeyboard, useKeyboardInsets } from './mobile';
+import { chooseComputerAction } from './switch/ai';
+import { createDeck, rankOf, suitOf } from './switch/cards';
+import { applyAction as applyGameAction, createInitialGame as createEngineGame, drawCards as drawEngineCards, legalMoves as getLegalMoves } from './switch/rules';
+import type { CardId, GameAction, GameState as EngineGameState, PendingPenalty, Suit as EngineSuit } from './switch/types';
 import '@fontsource/dm-serif-display/400.css';
 import '@fontsource/dm-sans/400.css';
 import '@fontsource/dm-sans/500.css';
@@ -28,7 +32,7 @@ const rules = [
   {q:'Can I finish on a jack?',a:'In a two-player game, this ruleset says you cannot finish on a jack because play reverses back to you. Agree any house-rule exceptions before starting.'},
   {q:'How do stacked twos work?',a:'Counter a two with another two. Each adds 2 cards to the penalty, up to 8 cards when all four have been played.'},
   {q:'How do eights work?',a:'An eight makes the next player miss a turn. They can defend with another eight and pass the effect on.'},
-  {q:'What happens when the draw pile runs out?',a:'Keep the top card of the discard pile in place. Turn the remaining played cards face down to become the new draw pile and continue in the same order. Do not shuffle them.'},
+  {q:'What happens when the deck runs out?',a:'When the deck runs out, keep the top card of the discard pile in place. Turn the remaining played cards face down to become the new draw pile and continue in the same order. Do not shuffle them.'},
   {q:'How do I win?',a:'Be the first player to legally play your last card. Remember to announce “Last Card” beforehand, and follow the finishing restrictions.'},
 ];
 const modes = [
@@ -40,13 +44,13 @@ const modes = [
   {name:'Switch Cup',label:'Groups · Tournament night',text:'Put names in a bowl and draw pairs for head-to-head matches. Choose single games or best of 3. Return winners to the bowl for the next round. With an odd number, draw one random player for a bye. Continue to a final.'},
 ];
 const ruleChapters = [
-  {number:'01',eyebrow:'SET THE TABLE',title:'Deal everyone in.',body:'Switch works with 2–6 players and one complete 52-card pack. Choose a dealer, shuffle once and get the table ready.',cards:['back'],points:['Deal 7 cards to every player.','Place the remaining deck face down.','When it runs out, keep the top played card and turn the rest over without shuffling.'],tip:'The player beside the dealer takes the first turn. Every physical card appears once in the pack.'},
+  {number:'01',eyebrow:'SET THE TABLE',title:'Deal everyone in.',body:'Switch works with 2–6 players and one complete 52-card pack. Choose a dealer, shuffle once and get the table ready.',cards:['back'],points:['Deal 7 cards to every player.','Place the remaining deck face down.','When the deck runs out, keep the top played card and turn the rest over without shuffling.'],tip:'The player beside the dealer takes the first turn. Every physical card appears once in the pack.'},
   {number:'02',eyebrow:'TAKE A TURN',title:'Play it or keep it.',body:'Match the suit or number showing on the discard pile — or pick up one card and end your turn.',cards:['3H','9H','3C','AS'],points:['Matching numbers may be played together; the first card must match the previous suit.','An ace is wild on any ordinary card, regardless of suit, and lets you choose the next suit.','You may pick up instead even when you can play, saving a useful card for later.'],tip:'An ace cannot interrupt an active black king, two or eight. Holding one can be a smart move near the end.'},
   {number:'03',eyebrow:'POWER CARDS',title:'Expect a chain reaction.',body:'Power cards change what happens next. The other player may be able to defend and pass the effect on.',cards:['2H','8H','KS','KH'],points:['Twos add 2 cards to the penalty, up to 8.','Eights pass a missed turn when countered by another eight.','Black kings stack 5 at a time; each red king cancels one black king.'],tip:'Two black kings mean 10 cards unless the next player can answer. Sevens play again; jacks reverse.'},
   {number:'04',eyebrow:'ONE CARD LEFT',title:'Call it out.',body:'As soon as you have one card remaining, announce “Last Card” clearly to the table.',cards:['9H'],points:['Say “Last Card” before play continues.','Forget to announce it and you pick up 2 penalty cards.','Keep watching your opponents — the rule applies to everyone.'],tip:'The guided game pauses so you can practise making the call.'},
   {number:'05',eyebrow:'WIN THE GAME',title:'Finish legally.',body:'The first player to play every card wins, provided their final move follows the finishing rules.',cards:['7H','JH','AC'],points:['You cannot finish on a seven because it means play again.','In a two-player game, you cannot finish on a jack because play reverses back to you.','Play your last legal card to win.'],tip:'You now know enough to take on the computer.'},
 ];
-type Suit = 'S'|'H'|'D'|'C';
+type Suit = EngineSuit;
 type Turn = 'you'|'computer';
 type Pending = 'two'|'black-king'|'eight'|null;
 type Game = {
@@ -56,105 +60,96 @@ type Game = {
 };
 const suitNames:Record<Suit,string>={S:'spades',H:'hearts',D:'diamonds',C:'clubs'};
 const suitSymbols:Record<Suit,string>={S:'♠',H:'♥',D:'♦',C:'♣'};
-const rank=(card:string)=>card.slice(0,-1);
-const suit=(card:string)=>card.slice(-1) as Suit;
-const isBlackKing=(card:string)=>rank(card)==='K'&&(suit(card)==='S'||suit(card)==='C');
+const rank=(card:string)=>rankOf(card as CardId);
+const suit=(card:string)=>suitOf(card as CardId);
 const isRedKing=(card:string)=>rank(card)==='K'&&(suit(card)==='H'||suit(card)==='D');
-const fullDeck=(['S','H','D','C'] as Suit[]).flatMap(cardSuit=>['A','2','3','4','5','6','7','8','9','10','J','Q','K'].map(cardRank=>cardRank+cardSuit));
+const fullDeck=createDeck().map(card=>card.id);
 function shuffledDeck(){
   const cards=[...fullDeck];
   for(let index=cards.length-1;index>0;index--){const swap=Math.floor(Math.random()*(index+1));[cards[index],cards[swap]]=[cards[swap],cards[index]];}
   return cards;
 }
 function demonstrationDeck(){
-  const opening=['9H','3C','7H','2C','KH','AS','JH','8H','2D','KC','AD','JS','7S','KD','3H','AH','AC','KS','8S','2S','2H'];
+  const opening=['9H','3C','7H','2C','KH','AS','JH','8H','2D','KC','4H','JS','7S','KD','3H','AH','AC','KS','8S','2S','2H'];
   return [...opening,...fullDeck.filter(card=>!opening.includes(card))];
 }
 function blackKingChainDeck(){
   const opening=['AS','KS','KH','9H','3C','7H','JH','KC','4D','5D','6D','9S','QH','10D','3H'];
   return [...opening,...fullDeck.filter(card=>!opening.includes(card))];
 }
+function partialKingDeck(){
+  const opening=['KS','KH','3C','4D','5D','6D','7D','KC','2H','3H','4H','5H','6H','7H','9S'];
+  return [...opening,...fullDeck.filter(card=>!opening.includes(card))];
+}
+function pendingToEngine(game:Game):PendingPenalty|null{
+  if(game.pending==='two')return {kind:'draw-two',cards:game.pendingDraw as 2|4|6|8};
+  if(game.pending==='black-king')return {kind:'black-king',units:(game.pendingDraw/5) as 1|2,cards:game.pendingDraw as 5|10};
+  if(game.pending==='eight')return {kind:'miss-turn'};
+  return null;
+}
+function toEngine(game:Game):EngineGameState{
+  return {playerHand:game.playerHand as CardId[],computerHand:game.computerHand as CardId[],drawPile:game.drawPile as CardId[],discardPile:game.discard as CardId[],currentSuit:game.currentSuit,turn:game.turn==='you'?'player':'computer',pendingPenalty:pendingToEngine(game),status:game.status==='playing'?'playing':'won',winner:game.status==='won'?'player':game.status==='lost'?'computer':null,move:game.move};
+}
+function pendingFromEngine(pending:PendingPenalty|null):{pending:Pending;pendingDraw:number}{
+  if(!pending)return {pending:null,pendingDraw:0};
+  if(pending.kind==='draw-two')return {pending:'two',pendingDraw:pending.cards};
+  if(pending.kind==='black-king')return {pending:'black-king',pendingDraw:pending.cards};
+  return {pending:'eight',pendingDraw:0};
+}
+function mergeEngine(game:Game,next:EngineGameState,notice:string):Game{
+  const penalty=pendingFromEngine(next.pendingPenalty);
+  return {...game,playerHand:[...next.playerHand],computerHand:[...next.computerHand],drawPile:[...next.drawPile],discard:[...next.discardPile],currentSuit:next.currentSuit,turn:next.turn==='player'?'you':'computer',...penalty,status:next.status==='playing'?'playing':next.winner==='player'?'won':'lost',notice,hint:false,move:next.move};
+}
+function freshPresentation(engine:EngineGameState):Game{
+  return {playerHand:[...engine.playerHand],computerHand:[...engine.computerHand],drawPile:[...engine.drawPile],discard:[...engine.discardPile],currentSuit:engine.currentSuit,turn:engine.turn==='player'?'you':'computer',pending:null,pendingDraw:0,status:'playing',notice:'Your turn. Play a legal card, or pick up one to save your cards for later.',hint:false,awaitingLastCard:false,nextTurn:'computer',lastCardCalled:false,move:engine.move};
+}
 const initialGame=():Game=>{
   const testDeck=typeof window!=='undefined'?new URLSearchParams(window.location.search).get('testDeck'):null;
-  const deck=testDeck==='blackKingChain'?blackKingChainDeck():testDeck==='1'?demonstrationDeck():shuffledDeck();
+  if(!testDeck)return freshPresentation(createEngineGame(Math.random));
+  const deck=testDeck==='blackKingChain'?blackKingChainDeck():testDeck==='partialKing'?partialKingDeck():testDeck==='1'?demonstrationDeck():shuffledDeck();
   const playerHand=deck.splice(0,7);const computerHand=deck.splice(0,7);
   const starterIndex=deck.findIndex(card=>!['A','2','7','8','J','K'].includes(rank(card)));
   const [starter]=deck.splice(starterIndex<0?0:starterIndex,1);
-  return {playerHand,computerHand,drawPile:deck,discard:[starter],currentSuit:suit(starter),turn:'you',pending:null,pendingDraw:0,
+  return {playerHand,computerHand,drawPile:deck.reverse(),discard:[starter],currentSuit:suit(starter),turn:'you',pending:null,pendingDraw:0,
     status:'playing',notice:'Your turn. Play a legal card, or pick up one to save your cards for later.',hint:false,awaitingLastCard:false,
     nextTurn:'computer',lastCardCalled:false,move:0};
 };
 function canPlay(card:string,game:Game,handSize:number){
-  if(handSize===1&&(rank(card)==='7'||rank(card)==='J'))return false;
-  if(game.pending==='two')return rank(card)==='2';
-  if(game.pending==='black-king')return isBlackKing(card)||isRedKing(card);
-  if(game.pending==='eight')return rank(card)==='8';
-  const top=game.discard[game.discard.length-1];
-  if(rank(card)==='A'&&(rank(top)==='2'||rank(top)==='8'||isBlackKing(top)))return false;
-  return rank(card)==='A'||suit(card)===game.currentSuit||rank(card)===rank(top);
+  void handSize;
+  return getLegalMoves(toEngine(game)).some(action=>action.type==='play'&&action.cards.length===1&&action.cards[0]===card);
 }
 function takeCards(game:Game,count:number,to:Turn){
-  let draw=[...game.drawPile],discard=[...game.discard],taken:string[]=[];
-  while(taken.length<count){
-    if(!draw.length&&discard.length>1){const top=discard.pop()!;draw=discard;discard=[top];}
-    const card=draw.shift();if(!card)break;taken.push(card);
-  }
-  return {...game,drawPile:draw,discard,
-    playerHand:to==='you'?[...game.playerHand,...taken]:game.playerHand,
-    computerHand:to==='computer'?[...game.computerHand,...taken]:game.computerHand};
+  return mergeEngine(game,drawEngineCards(toEngine(game),count,to==='you'?'player':'computer'),game.notice);
 }
 function playCard(game:Game,card:string,actor:Turn,aceSuit?:Suit):Game{
-  const playerHand=actor==='you'?game.playerHand.filter(c=>c!==card):game.playerHand;
-  const computerHand=actor==='computer'?game.computerHand.filter(c=>c!==card):game.computerHand;
-  const remaining=actor==='you'?playerHand.length:computerHand.length;
-  const other:Turn=actor==='you'?'computer':'you';
-  const cardRank=rank(card);let next:Turn=other;let pending:Pending=null;let pendingDraw=0;
-  let notice=actor==='you'?`You played ${card}.`:`Computer played ${card}.`;
-  if(cardRank==='2'){pending='two';pendingDraw=game.pendingDraw+2;notice+=` ${pendingDraw} cards are now at stake.`;}
-  else if(isBlackKing(card)){pending='black-king';pendingDraw=game.pendingDraw+5;notice+=` ${pendingDraw} cards are now at stake.`;}
-  else if(game.pending==='black-king'&&isRedKing(card)){notice+=' The red king cancels the penalty.';}
-  else if(cardRank==='8'){pending='eight';notice+=' An eight can pass the skipped turn.';}
-  else if(cardRank==='7'){next=actor;notice+=' A seven means play again.';}
-  else if(cardRank==='J'){next=actor;notice+=' In a two-player game, the reverse sends play back to you.';}
-  else if(cardRank==='A'){notice+=` The suit is now ${suitNames[aceSuit||suit(card)]}.`;}
-  const base:Game={...game,playerHand,computerHand,discard:[...game.discard,card],currentSuit:cardRank==='A'?(aceSuit||suit(card)):suit(card),turn:next,pending,pendingDraw,notice,hint:false,move:game.move+1};
-  if(remaining===0)return {...base,status:actor==='you'?'won':'lost',notice:actor==='you'?'You played your last card legally — you win!':'The computer played its last card. Try another game and use the hints when you need them.'};
-  if(actor==='you'&&remaining===1)return {...base,awaitingLastCard:true,nextTurn:next,turn:'you',notice:'One card left. Say “Last Card” before play continues.'};
-  if(actor==='computer'&&remaining===1)return {...base,notice:notice+' Computer says “Last Card”.'};
-  return base;
+  return playSet(game,[card],aceSuit,actor);
 }
-function playSet(game:Game,cards:string[],aceSuit?:Suit):Game{
-  if(cards.length===1)return playCard(game,cards[0],'you',aceSuit);
-  const setRank=rank(cards[0]);const playerHand=game.playerHand.filter(card=>!cards.includes(card));
-  if(playerHand.length===0&&(setRank==='7'||setRank==='J'))return {...game,notice:'You cannot finish on a seven or a jack in this two-player game.',hint:true};
-  let pending:Pending=null,pendingDraw=0,next:Turn='computer';
-  let notice=`You played ${cards.length} ${setRank}s together.`;
-  if(setRank==='2'){pending='two';pendingDraw=game.pendingDraw+(cards.length*2);notice+=` ${pendingDraw} cards are now at stake.`;}
-  else if(setRank==='K'){
-    const blackCards=cards.filter(isBlackKing).length;const redCards=cards.filter(isRedKing).length;
-    const outstanding=Math.max(0,(game.pending==='black-king'?game.pendingDraw/5:0)+blackCards-redCards);
-    if(outstanding){pending='black-king';pendingDraw=outstanding*5;notice+=` ${pendingDraw} cards are now at stake.`;}else notice+=' The red and black king effects cancel.';
-  }
-  else if(setRank==='8'){pending='eight';notice+=' The computer must counter with an eight or miss its turn.';}
-  else if(setRank==='7'){next='you';notice+=' Sevens mean play again.';}
-  else if(setRank==='J'){next=cards.length%2?'you':'computer';notice+=cards.length%2?' The odd number of reverses sends play back to you.':' The even number of reverses keeps the original direction.';}
-  else if(setRank==='A'){notice+=` The suit is now ${suitNames[aceSuit||suit(cards[cards.length-1])]}.`;}
-  const base:Game={...game,playerHand,discard:[...game.discard,...cards],currentSuit:setRank==='A'?(aceSuit||suit(cards[cards.length-1])):suit(cards[cards.length-1]),turn:next,pending,pendingDraw,notice,hint:false,move:game.move+1};
-  if(!playerHand.length)return {...base,status:'won',notice:'You played your matching set legally — you win!'};
-  if(playerHand.length===1)return {...base,awaitingLastCard:true,nextTurn:next,turn:'you',notice:'One card left. Say “Last Card” before play continues.'};
+function playSet(game:Game,cards:string[],aceSuit?:Suit,actor:Turn='you'):Game{
+  const action:GameAction={type:'play',cards:cards as CardId[],...(aceSuit?{chosenSuit:aceSuit}:{})};
+  const next=applyGameAction(toEngine(game),action);
+  const cardRank=rank(cards[0]);
+  let notice=cards.length===1?(actor==='you'?`You played ${cards[0]}.`:`Computer played ${cards[0]}.`):`${actor==='you'?'You':'Computer'} played ${cards.length} ${cardRank}s together.`;
+  if(next.pendingPenalty?.kind==='draw-two')notice+=` ${next.pendingPenalty.cards} cards are now at stake.`;
+  else if(next.pendingPenalty?.kind==='black-king')notice+=game.pending==='black-king'&&cards.some(isRedKing)?` A red king cancels 5; ${next.pendingPenalty.cards} cards are still at stake.`:` ${next.pendingPenalty.cards} cards are now at stake.`;
+  else if(game.pending==='black-king'&&cards.some(isRedKing))notice+=' The red king cancels the penalty.';
+  else if(cardRank==='8')notice+=' An eight can pass the skipped turn.';
+  else if(cardRank==='7')notice+=' A seven means play again.';
+  else if(cardRank==='J')notice+=cards.length%2?' The reverse sends play back to the same player.':' The even number of reverses keeps play moving.';
+  else if(cardRank==='A')notice+=` The suit is now ${suitNames[aceSuit||suit(cards[cards.length-1])]}.`;
+  const base=mergeEngine(game,next,notice);
+  const remaining=actor==='you'?base.playerHand.length:base.computerHand.length;
+  if(next.status==='won')return {...base,notice:actor==='you'?(cards.length>1?'You played your matching set legally — you win!':'You played your last card legally — you win!'):'The computer played its last card. Try another game and use the hints when you need them.'};
+  if(actor==='you'&&remaining===1)return {...base,awaitingLastCard:true,nextTurn:base.turn,turn:'you',notice:'One card left. Say “Last Card” before play continues.'};
+  if(actor==='computer'&&remaining===1)return {...base,notice:notice+' Computer says “Last Card”.'};
   return base;
 }
 function computerTurn(game:Game):Game{
   if(game.status!=='playing'||game.turn!=='computer')return game;
-  const legal=game.computerHand.filter(card=>canPlay(card,game,game.computerHand.length));
-  if(!legal.length){
-    if(game.pending==='eight')return {...game,pending:null,turn:'computer',notice:'The computer cannot counter the eight and misses its turn.',move:game.move+1};
-    const count=game.pendingDraw||1;const drawn=takeCards(game,count,'computer');
-    return {...drawn,pending:null,pendingDraw:0,turn:'you',notice:`The computer picks up ${count} card${count===1?'':'s'}. Your turn.`,move:game.move+1};
-  }
-  const card=legal.find(c=>rank(c)==='2'||isBlackKing(c)||rank(c)==='8'||rank(c)==='7'||rank(c)==='J')||legal[0];
-  const chosenSuit:Suit=card[0]==='A'?(['H','S','D','C'] as Suit[]).sort((a,b)=>game.computerHand.filter(c=>suit(c)===b).length-game.computerHand.filter(c=>suit(c)===a).length)[0]:suit(card);
-  return playCard(game,card,'computer',chosenSuit);
+  const engine=toEngine(game);const action=chooseComputerAction(engine,Math.random);
+  if(action.type==='play')return playSet(game,[...action.cards],action.chosenSuit,'computer');
+  const next=applyGameAction(engine,action);
+  if(action.type==='accept-missed-turn')return mergeEngine(game,next,'The computer cannot counter the eight and misses its turn.');
+  const count=game.pendingDraw||1;return mergeEngine(game,next,`The computer picks up ${count} card${count===1?'':'s'}. Your turn.`);
 }
 function CardImage({code}:{code:string}) {
   const suits:Record<string,string>={S:'spades',H:'hearts',D:'diamonds',C:'clubs'};const names:Record<string,string>={A:'Ace',K:'King',Q:'Queen',J:'Jack'};
@@ -187,8 +182,7 @@ export default function Prototype(){
   function playStaged(){if(!staged.length)return;const lead=staged.find(card=>canPlay(card,game,game.playerHand.length));if(!lead){setGame(current=>({...current,notice:'Select a matching card that can legally lead this set.'}));return;}const ordered=[lead,...staged.filter(card=>card!==lead)];if(rank(lead)==='A'){setAceChoice(ordered);return;}setGame(current=>playSet(current,ordered));setStaged([]);}
   function drawOrResolve(){
     if(game.turn!=='you'||game.status!=='playing')return;
-    if(game.pending==='eight'){setGame(current=>({...current,pending:null,turn:'computer',notice:'You cannot counter with an eight, so you miss this turn.',hint:false,move:current.move+1}));return;}
-    const count=game.pendingDraw||1;setGame(current=>{const drawn=takeCards(current,count,'you');return {...drawn,pending:null,pendingDraw:0,turn:'computer',lastCardCalled:false,notice:`You pick up ${count} card${count===1?'':'s'}. Computer’s turn.`,hint:false,move:current.move+1};});
+    setGame(current=>{const count=current.pendingDraw||1;const action:GameAction=current.pending==='eight'?{type:'accept-missed-turn'}:{type:'draw'};const next=applyGameAction(toEngine(current),action);return {...mergeEngine(current,next,current.pending==='eight'?'You cannot counter with an eight, so you miss this turn.':`You pick up ${count} card${count===1?'':'s'}. Computer’s turn.`),lastCardCalled:false};});
   }
   function answerLastCard(said:boolean){setGame(current=>{if(said)return {...current,awaitingLastCard:false,lastCardCalled:true,turn:current.nextTurn,notice:'“Last Card!” — called in time.',move:current.move+1};const penalised=takeCards(current,2,'you');return {...penalised,awaitingLastCard:false,lastCardCalled:false,turn:current.nextTurn,notice:'You forgot “Last Card” and pick up two penalty cards.',move:current.move+1};});}
   const result=rules.filter(r=>(r.q+' '+r.a).toLowerCase().includes(query.toLowerCase()));

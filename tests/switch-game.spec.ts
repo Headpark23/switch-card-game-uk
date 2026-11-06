@@ -67,6 +67,32 @@ test("black kings stack and the computer picks up the full penalty", async ({ pa
   await expect(page.getByText("16 cards", { exact: true })).toBeVisible();
 });
 
+test("one red king leaves five cards from a ten-card black-king stack", async ({ page }) => {
+  await page.goto("/?testDeck=partialKing");
+  await page.getByRole("button", { name: "Play against the computer" }).click();
+
+  await play(page, "KS");
+  await page.getByRole("button", { name: "Play selected" }).click();
+  await waitForPlayer(page);
+  await play(page, "KH");
+
+  await expect(page.getByText(/Otherwise pick up 5/)).toBeVisible();
+  await expect(page.getByText("The computer picks up 5 cards. Your turn.")).toBeVisible({ timeout: 4_000 });
+  await expect(page.getByText("11 cards", { exact: true })).toBeVisible();
+});
+
+test("leaving during a computer turn cannot move a replacement game", async ({ page }) => {
+  await startGame(page);
+  await play(page, "9H");
+  await expect(page.getByText("GUIDED GAME · COMPUTER TURN")).toBeVisible();
+  await page.getByRole("button", { name: "Exit game" }).click();
+  await page.getByRole("button", { name: "Play against the computer" }).click();
+
+  await page.waitForTimeout(900);
+  await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible();
+  await expect(page.getByText("7 cards in your hand")).toBeVisible();
+});
+
 test("a player may pick up by choice even when legal cards are available", async ({ page }) => {
   await startGame(page);
   const tacticalPickup = page.getByRole("button", { name: "Pick up one card instead of playing" });
@@ -98,6 +124,7 @@ test("the main rules story teaches the complete game in five interactive steps",
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Know the rules. Own the table." })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Deal everyone in." })).toBeVisible();
+  await expect(page.getByText(/When the deck runs out/)).toBeVisible();
 
   await page.getByRole("button", { name: "02 PLAY" }).click();
   await expect(page.getByRole("heading", { name: "Play it or keep it." })).toBeVisible();
@@ -130,13 +157,13 @@ test("a guided match follows power-card and last-card rules through a win", asyn
   await expect(page.getByRole("button", { name: "Draw a card" })).toBeEnabled({ timeout: 4_000 });
   await page.getByRole("button", { name: "Draw a card" }).click();
   await waitForPlayer(page);
-  await play(page, "2C");
+  await play(page, "AC");
+  await page.getByRole("dialog", { name: "Choose a suit" }).getByRole("button", { name: /clubs/i }).click();
   await waitForPlayer(page);
   await play(page, "3C");
   await page.getByRole("button", { name: "Say “Last Card”" }).click();
   await waitForPlayer(page);
-  await play(page, "AC");
-  await page.getByRole("dialog", { name: "Choose a suit" }).getByRole("button", { name: /clubs/i }).click();
+  await play(page, "2C");
 
   await expect(page.getByRole("heading", { name: "You beat the computer." })).toBeVisible();
   await expect(page.getByText("You played your last card legally — you win!")).toBeVisible();

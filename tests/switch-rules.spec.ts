@@ -177,6 +177,10 @@ test("power cards stack, pass turns and cannot finish illegally", async ({ page 
     const jackState = { ...twoState, playerHand: ["JH", "3C"], computerHand: ["4D"] };
     const sevenAgain = rules.applyAction(sevenState, { type: "play", cards: ["7H"] });
     const jackAgain = rules.applyAction(jackState, { type: "play", cards: ["JH"] });
+    const twoJacks = rules.applyAction(
+      { ...twoState, playerHand: ["JH", "JS", "3C"], computerHand: ["4D"] },
+      { type: "play", cards: ["JH", "JS"] },
+    );
 
     const finalSeven = rules.legalMoves({ ...sevenState, playerHand: ["7H"] });
     const finalJack = rules.legalMoves({ ...jackState, playerHand: ["JH"] });
@@ -193,6 +197,7 @@ test("power cards stack, pass turns and cannot finish illegally", async ({ page 
       acceptedEight: { pending: acceptedEight.pendingPenalty, turn: acceptedEight.turn },
       sevenTurn: sevenAgain.turn,
       jackTurn: jackAgain.turn,
+      twoJacksTurn: twoJacks.turn,
       finalSeven,
       finalJack,
       penaltyMoves,
@@ -205,6 +210,7 @@ test("power cards stack, pass turns and cannot finish illegally", async ({ page 
   expect(result.acceptedEight).toEqual({ pending: null, turn: "computer" });
   expect(result.sevenTurn).toBe("player");
   expect(result.jackTurn).toBe("player");
+  expect(result.twoJacksTurn).toBe("computer");
   expect(result.finalSeven).not.toContainEqual({ type: "play", cards: ["7H"] });
   expect(result.finalJack).not.toContainEqual({ type: "play", cards: ["JH"] });
   expect(result.penaltyMoves).toContainEqual({ type: "play", cards: ["2H"] });

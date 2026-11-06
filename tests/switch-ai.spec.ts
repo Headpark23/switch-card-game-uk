@@ -48,11 +48,16 @@ test("computer prefers fewer cards, then a useful power card", async ({ page }) 
       { ...base, computerHand: ["2H", "9H", "3C"] },
       () => 0,
     );
-    return { pair, power };
+    const missedTurn = ai.chooseComputerAction(
+      { ...base, computerHand: ["8H", "AD", "JS", "7S", "3C"] },
+      () => 0.99,
+    );
+    return { pair, power, missedTurn };
   });
 
   expect(result.pair).toEqual({ type: "play", cards: ["9H", "9S"] });
   expect(result.power).toEqual({ type: "play", cards: ["2H"] });
+  expect(result.missedTurn).toEqual({ type: "play", cards: ["8H"] });
 });
 
 test("computer chooses an ace suit from its remaining hand", async ({ page }) => {

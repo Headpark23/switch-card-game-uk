@@ -177,7 +177,7 @@ export function applyAction(state: GameState, action: GameAction): GameState {
     }
   }
 
-  const keepsTurn = playedRank === "7" || playedRank === "J";
+  const keepsTurn = playedRank === "7" || (playedRank === "J" && played.length % 2 === 1);
 
   return {
     ...state,

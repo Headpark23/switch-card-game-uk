@@ -5,7 +5,7 @@ import type { GameAction, GameState, RandomSource } from "./types";
 const POWER_CARD_SCORE: Readonly<Record<string, number>> = Object.freeze({
   "2": 60,
   K: 50,
-  "8": 40,
+  "8": 45,
   "7": 30,
   J: 30,
   A: 20,
