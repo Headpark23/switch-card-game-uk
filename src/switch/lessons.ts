@@ -173,3 +173,16 @@ export function explainPickupLesson(before: GameState, side: Side, count: number
     tip: "Look at your hand before you pick up. If you hold several cards of one suit, an ace can bring the pile onto that suit.",
   };
 }
+
+/** The first card of the game: what is on the pile, and how a turn works. */
+export function explainStart(state: GameState, side: Side): Lesson {
+  const top = state.discardPile[state.discardPile.length - 1];
+  return {
+    title: "Game on",
+    cards: [top],
+    happened: `The starting card is the ${cardName(top)}. ${side === "you" ? "You play first." : "The computer plays first."}`,
+    rule: "On your turn, play a card that matches the suit or the number of the card on top of the pile. If you cannot, or would rather not, pick up one card.",
+    why: `Right now the pile needs ${SUITS[state.currentSuit]} or a ${RANKS[rankOf(top)]}. Power cards (twos, eights, sevens, jacks, kings and aces) change how the game flows.`,
+    tip: "The first player to empty their hand wins. Real card nights work exactly like this, so try it with a pack of cards on the table next.",
+  };
+}

@@ -1,12 +1,12 @@
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowCounterClockwise, ArrowRight, CheckCircle, HandPalm, Lightbulb } from '@phosphor-icons/react';
 import { chooseComputerAction } from '../switch/ai';
 import { applyAction, createInitialGame, drawCards, legalMoves } from '../switch/rules';
 import type { CardId, GameState, Suit } from '../switch/types';
 import { explainEffect, explainOptions, explainPickup, explainUnplayable } from '../switch/coach';
-import { explainLesson, explainPickupLesson, type Lesson } from '../switch/lessons';
+import { explainLesson, explainPickupLesson, explainStart, type Lesson } from '../switch/lessons';
 import { CardImage, CoachPanel, isRedKing, rank, suit, suitNames, suitSymbols } from '../ui';
-import { testGameFromUrl } from './devDecks';
+import { testDeckRequested, testGameFromUrl } from './devDecks';
 
 const YOUR_TURN_NOTICE = 'Your turn. Play a legal card, or pick up one to save your cards for later.';
 
@@ -22,6 +22,14 @@ type View = {
   awaitingLastCard: boolean;
 };
 
+const GUIDE_KEY = 'switchGuidance';
+
+/** Guidance cards pop up every turn unless you switch them off. Automated tests start with them off. */
+function guidanceDefault(): boolean {
+  if (import.meta.env.DEV && testDeckRequested() && new URLSearchParams(window.location.search).get('guide') === null) return false;
+  try { return window.localStorage.getItem(GUIDE_KEY) !== 'off'; } catch { return true; }
+}
+
 function openingView(): View {
   const fixed = import.meta.env.DEV ? testGameFromUrl() : null;
   const engine = fixed ?? createInitialGame(Math.random, Math.random() < 0.5 ? 'player' : 'computer');
@@ -29,7 +37,7 @@ function openingView(): View {
     engine,
     notice: engine.turn === 'player' ? YOUR_TURN_NOTICE : 'The computer goes first.',
     meaning: null,
-    lesson: null,
+    lesson: explainStart(engine, engine.turn === 'player' ? 'you' : 'computer'),
     hint: false,
     awaitingLastCard: false,
   };
@@ -96,6 +104,9 @@ export default function GuidedGame({ onExit, onOpenCards, onStatusChange }: Prop
   const [view, setView] = useState<View>(openingView);
   const [aceChoice, setAceChoice] = useState<CardId[] | null>(null);
   const [staged, setStaged] = useState<CardId[]>([]);
+  const [guide, setGuide] = useState(guidanceDefault);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const shown = useRef<Lesson | null>(null);
   const { engine, awaitingLastCard } = view;
 
   const outcome: 'playing' | 'won' | 'lost' = engine.status === 'playing' ? 'playing' : engine.winner === 'player' ? 'won' : 'lost';
@@ -115,11 +126,25 @@ export default function GuidedGame({ onExit, onOpenCards, onStatusChange }: Prop
     return () => cancelAnimationFrame(frame);
   }, [engine.move, outcome, aceChoice]);
 
+  // Every turn gets a guidance card. It opens by itself and the computer waits until you close it.
   useEffect(() => {
-    if (outcome !== 'playing' || awaitingLastCard || engine.turn !== 'computer') return;
+    if (!guide || outcome !== 'playing' || awaitingLastCard || !view.lesson || shown.current === view.lesson) return;
+    shown.current = view.lesson;
+    setSheetOpen(true);
+  }, [guide, outcome, awaitingLastCard, view.lesson]);
+
+  useEffect(() => {
+    if (outcome !== 'playing' || awaitingLastCard || engine.turn !== 'computer' || sheetOpen) return;
     const timer = setTimeout(() => setView((current) => computerStep(current)), 650);
     return () => clearTimeout(timer);
-  }, [outcome, awaitingLastCard, engine.turn, engine.move]);
+  }, [outcome, awaitingLastCard, engine.turn, engine.move, sheetOpen]);
+
+  function toggleGuide() {
+    const next = !guide;
+    setGuide(next);
+    if (!next) setSheetOpen(false);
+    try { window.localStorage.setItem(GUIDE_KEY, next ? 'on' : 'off'); } catch { /* the choice lasts for this game only */ }
+  }
 
   const legal = legalMoves(engine);
   const canPlay = (card: CardId) => legal.some((action) => action.type === 'play' && action.cards.length === 1 && action.cards[0] === card);
@@ -200,7 +225,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStatusChange }: Prop
     });
   }
 
-  const restart = () => { setView(openingView()); setAceChoice(null); setStaged([]); };
+  const restart = () => { shown.current = null; setSheetOpen(false); setView(openingView()); setAceChoice(null); setStaged([]); };
 
   const gameHint = pending?.kind === 'draw-two'
     ? `Play another two to pass on ${pendingDraw + 2}, or pick up ${pendingDraw}.`
@@ -224,7 +249,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStatusChange }: Prop
       <div className="opponent" aria-label={`Computer has ${engine.computerHand.length} cards`}><span>COMPUTER</span><div>{engine.computerHand.slice(0, 5).map((_, i) => <CardImage code="back" key={i} />)}</div><strong>{engine.computerHand.length} card{engine.computerHand.length === 1 ? '' : 's'}</strong></div>
       <div className="game-table"><button className="draw-pile" onClick={drawOrResolve} disabled={!yourTurn || awaitingLastCard || !!staged.length || missTurn} aria-label={missTurn ? 'Draw pile unavailable while resolving the eight' : pendingDraw ? `Pick up ${pendingDraw} cards` : legalCards.length ? 'Pick up one card instead of playing' : 'Draw a card'}><CardImage code="back" /><span>{missTurn ? 'Eight played' : pendingDraw ? `Pick up ${pendingDraw}` : legalCards.length ? 'Pick up instead' : 'Draw'}</span></button><div className="discard-pile"><CardImage code={topCard} /><span>Current suit <b className={(engine.currentSuit === 'H' || engine.currentSuit === 'D') ? 'red' : ''}>{suitSymbols[engine.currentSuit]} {suitNames[engine.currentSuit]}</b></span></div></div>
       <p className="game-notice" aria-live="polite">{!yourTurn ? 'Computer is choosing a card…' : view.notice}</p>
-      {!awaitingLastCard && <CoachPanel sheetOptions={yourTurn ? explainOptions(engine) : []} lesson={view.lesson} meaning={view.meaning} options={yourTurn && !missTurn ? explainOptions(engine) : []} />}
+      {!awaitingLastCard && <CoachPanel footer={<button className="text-link" onClick={toggleGuide}>{guide ? 'Turn off automatic guidance cards' : 'Show a guidance card every turn'}</button>} open={sheetOpen} onOpenChange={setSheetOpen} sheetOptions={yourTurn ? explainOptions(engine) : []} lesson={view.lesson} meaning={view.meaning} options={yourTurn && !missTurn ? explainOptions(engine) : []} />}
       {yourTurn && missTurn && !awaitingLastCard && <div className="miss-turn-action"><strong>The computer played an eight</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you must miss this turn.'}</p><button className="primary" onClick={drawOrResolve}>Accept missed turn <ArrowRight size={18} /></button></div>}
       {awaitingLastCard
         ? <div className="last-card-call"><HandPalm size={27} /><strong>One card remaining</strong><p>Say “Last Card” now. Forgetting costs two cards.</p><button className="primary" onClick={() => answerLastCard(true)}>Say “Last Card”</button><button className="text-link" onClick={() => answerLastCard(false)}>Continue without saying it</button></div>

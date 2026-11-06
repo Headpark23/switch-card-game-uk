@@ -105,3 +105,30 @@ test("every move has a lesson card with what was played and what you could play"
   await expect(sheet).toContainText("Miss your turn");
   await expect(sheet).toContainText("Tip");
 });
+
+test("a guidance card comes up every turn, and the computer waits for you to close it", async ({ page }) => {
+  await page.goto("/?testDeck=1&guide=1");
+  await page.getByRole("button", { name: "Play against the computer" }).click();
+
+  // The opening card.
+  const sheet = page.getByRole("dialog");
+  await expect(sheet).toContainText("Game on");
+  await sheet.getByRole("button", { name: "Got it" }).click();
+  await expect(sheet).toHaveCount(0);
+
+  // Your move gets a card, and the computer does not move until it is closed.
+  await page.getByRole("button", { name: "Play 9H, legal move" }).click();
+  await expect(sheet).toContainText("You played the nine of hearts.");
+  await page.waitForTimeout(1_200);
+  await expect(page.getByText("GUIDED GAME · COMPUTER TURN")).toBeVisible();
+  await sheet.getByRole("button", { name: "Got it" }).click();
+
+  // The computer's move gets a card with your options.
+  await expect(sheet).toContainText("An eight: miss a turn", { timeout: 4_000 });
+  await expect(sheet).toContainText("What you could play now");
+
+  // Guidance can be switched off for good.
+  await sheet.getByRole("button", { name: "Turn off automatic guidance cards" }).click();
+  await expect(sheet).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("switchGuidance"))).toBe("off");
+});

@@ -1,6 +1,6 @@
 import { createDeck, rankOf, suitOf } from './switch/cards';
 import type { CardId, Suit } from './switch/types';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { BottomSheet } from './mobile';
 import type { CoachOption } from './switch/coach';
 import type { Lesson } from './switch/lessons';
@@ -19,8 +19,10 @@ export function Fan({codes}:{codes:string[]}) {return <div className="card-fan">
 export function AdSlot({hidden}:{hidden:boolean}) {return hidden?null:<aside className="advertisement" aria-label="Demonstration advertising placement"><span>ADVERTISEMENT</span><small>Demo placement · no live ad</small></aside>;}
 
 /** Game-agnostic coaching panel: what the last move did, what you can do now, and a full lesson on tap. */
-export function CoachPanel({ meaning, options, sheetOptions = options, lesson, title = 'Your options' }: { meaning: string | null; options: readonly CoachOption[]; sheetOptions?: readonly CoachOption[]; lesson?: Lesson | null; title?: string }) {
-  const [open, setOpen] = useState(false);
+export function CoachPanel({ meaning, options, sheetOptions = options, lesson, title = 'Your options', open: controlledOpen, onOpenChange, footer }: { meaning: string | null; options: readonly CoachOption[]; sheetOptions?: readonly CoachOption[]; lesson?: Lesson | null; title?: string; open?: boolean; onOpenChange?: (open: boolean) => void; footer?: ReactNode }) {
+  const [innerOpen, setInnerOpen] = useState(false);
+  const open = controlledOpen ?? innerOpen;
+  const setOpen = (value: boolean) => { setInnerOpen(value); onOpenChange?.(value); };
   if (!meaning && !options.length) return null;
   return <section className="coach" aria-label="Coach">
     {meaning && <p className="coach-meaning"><strong>What that means</strong> {meaning}</p>}
@@ -34,6 +36,8 @@ export function CoachPanel({ meaning, options, sheetOptions = options, lesson, t
         <h4>Why it matters now</h4><p>{lesson.why}</p>
         {sheetOptions.length > 0 && <><h4>What you could play now</h4><ul className="coach-options">{sheetOptions.map((option) => <li key={option.label} data-kind={option.kind}><span className="coach-cards">{option.cards.slice(0, 4).map((card) => <CardImage key={card} code={card} />)}</span><span><b>{option.label}</b> <small>{option.detail}</small></span></li>)}</ul></>}
         <p className="lesson-tip"><strong>Tip</strong> {lesson.tip}</p>
+        <button className="primary lesson-done" onClick={() => setOpen(false)}>Got it</button>
+        {footer}
       </div>
     </BottomSheet>}
   </section>;

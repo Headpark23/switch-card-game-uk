@@ -82,3 +82,5 @@
 .lesson-cards{display:flex;justify-content:center;gap:6px;margin-bottom:4px}.lesson-cards .playing-card{width:54px}
 .lesson .coach-options li{align-items:flex-start}.lesson .coach-options small{display:block;font-size:12.5px}
 .lesson-tip{background:#f9f3dd;border-left:3px solid var(--gold);border-radius:6px;padding:9px 10px;margin-top:8px!important}.lesson-tip strong{display:block;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:#8a652b}
+
+.lesson-done{margin-top:10px}.lesson .text-link{margin:8px auto 0;font-size:12px}
