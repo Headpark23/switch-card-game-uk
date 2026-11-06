@@ -75,7 +75,7 @@ test("routes /api/sync to the sync handler and never to the static app", async (
   const unconfigured = await worker.fetch(new Request("https://example.test/api/sync", { headers: { accept: "text/html" } }), env);
   assert.equal(unconfigured.status, 503);
 
-  const unsigned = await worker.fetch(new Request("https://example.test/api/sync"), { ...env, GOOGLE_CLIENT_ID: "c", DB: {} });
+  const unsigned = await worker.fetch(new Request("https://example.test/api/sync"), { ...env, GOOGLE_CLIENT_ID: "c", SESSION_SECRET: "s", DB: {} });
   assert.equal(unsigned.status, 401);
   assert.equal(assetCalls, 0);
 });

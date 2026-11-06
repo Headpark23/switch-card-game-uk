@@ -3,8 +3,8 @@ import { loadScorekeeper, saveScorekeeper, SCOREKEEPER_STORAGE_KEY } from './swi
 
 /**
  * Google sign-in and cloud sync. Switch stays fully usable without it: with no client ID
- * configured, none of this appears. The Google ID token only proves who you are to
- * our own /api/sync endpoint, which checks it with Google before saving anything.
+ * configured, none of this appears. The Google credential is handed to our own server once,
+ * which checks it with Google and then keeps you signed in with a secure HTTP-only cookie.
  */
 export const GOOGLE_CLIENT_ID: string = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim() ?? '';
 export const SIGN_IN_AVAILABLE = GOOGLE_CLIENT_ID.length > 0;
@@ -13,37 +13,16 @@ const ACCOUNT_KEY = 'switchAccount';
 const SYNC_URL = '/api/sync';
 
 export interface Account {
-  readonly token: string;
   readonly name: string;
   readonly email: string;
   readonly picture: string;
-  /** Seconds since 1970 when the token expires. */
-  readonly exp: number;
   readonly lastSyncedAt?: string;
 }
 
-function decodeBase64Url(part: string) {
-  const padded = part.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(part.length / 4) * 4, '=');
-  return decodeURIComponent(escape(atob(padded)));
-}
+const AUTH_URL = (import.meta.env.VITE_GOOGLE_AUTH_ENDPOINT as string | undefined) || '/api/auth/google';
+const LOGOUT_URL = (import.meta.env.VITE_GOOGLE_LOGOUT_ENDPOINT as string | undefined) || '/api/auth/logout';
 
-/** Reads the display details from a Google ID token. The server does the real verification. */
-export function accountFromToken(token: string): Account | null {
-  try {
-    const claims = JSON.parse(decodeBase64Url(token.split('.')[1])) as Record<string, unknown>;
-    if (typeof claims.exp !== 'number' || typeof claims.email !== 'string') return null;
-    return {
-      token,
-      exp: claims.exp,
-      email: claims.email,
-      name: typeof claims.name === 'string' ? claims.name : claims.email,
-      picture: typeof claims.picture === 'string' && claims.picture.startsWith('https://') ? claims.picture : '',
-    };
-  } catch {
-    return null;
-  }
-}
-
+/** Display details only. The sign-in itself lives in an HTTP-only cookie that scripts cannot read. */
 export function loadAccount(): Account | null {
   try {
     const raw = window.localStorage.getItem(ACCOUNT_KEY);
@@ -58,11 +37,17 @@ export function saveAccount(account: Account | null) {
     if (account) window.localStorage.setItem(ACCOUNT_KEY, JSON.stringify(account));
     else window.localStorage.removeItem(ACCOUNT_KEY);
   } catch {
-    // Storage can be blocked; sign-in then lasts for this visit only.
+    // Storage can be blocked; the cookie still keeps you signed in.
   }
 }
 
-export const tokenExpired = (account: Account) => account.exp * 1000 < Date.now() + 30_000;
+/** Trades a Google credential for our own session cookie. */
+export async function createSession(credential: string, fetcher: typeof fetch = fetch): Promise<Account> {
+  const response = await fetcher(AUTH_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential }) });
+  if (response.status === 503) throw new Error('Cloud backup is not switched on yet.');
+  if (!response.ok) throw new Error('Google sign-in was not accepted. Try again.');
+  return ((await response.json()) as { account: Account }).account;
+}
 
 type Gsi = {
   accounts: { id: {
@@ -88,8 +73,8 @@ export function loadGoogle(): Promise<Gsi> {
   return loading;
 }
 
-/** Starts Google One Tap. `onCredential` receives the signed-in account. */
-export async function startOneTap(onCredential: (account: Account) => void, options: { prompt: boolean; button?: HTMLElement | null }) {
+/** Starts Google One Tap. `onCredential` receives the Google credential to trade for a session. */
+export async function startOneTap(onCredential: (credential: string) => void, options: { prompt: boolean; button?: HTMLElement | null }) {
   const google = await loadGoogle();
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
@@ -97,8 +82,7 @@ export async function startOneTap(onCredential: (account: Account) => void, opti
     cancel_on_tap_outside: true,
     use_fedcm_for_prompt: true,
     callback: (response: { credential?: string }) => {
-      const account = response.credential ? accountFromToken(response.credential) : null;
-      if (account) onCredential(account);
+      if (response.credential) onCredential(response.credential);
     },
   });
   if (options.button) google.accounts.id.renderButton(options.button, { theme: 'outline', size: 'large', shape: 'pill', text: 'continue_with', width: 280 });
@@ -107,6 +91,7 @@ export async function startOneTap(onCredential: (account: Account) => void, opti
 
 export async function signOut() {
   saveAccount(null);
+  try { await fetch(LOGOUT_URL, { method: 'POST' }); } catch { /* offline: the cookie expires on its own */ }
   try { (await loadGoogle()).accounts.id.disableAutoSelect(); } catch { /* offline: nothing to forget */ }
 }
 
@@ -116,9 +101,9 @@ export type SyncOutcome = 'uploaded' | 'downloaded' | 'merged' | 'up-to-date';
  * Brings this phone and the cloud copy together. Returns what happened. When the local
  * data changed, the caller should reload so the screens read the new data.
  */
-export async function syncNow(account: Account, fetcher: typeof fetch = fetch): Promise<SyncOutcome> {
-  if (tokenExpired(account)) throw new Error('Your Google sign-in has expired. Sign in again.');
-  const headers = { Authorization: `Bearer ${account.token}`, 'Content-Type': 'application/json' };
+export async function syncNow(account: Account | null, fetcher: typeof fetch = fetch): Promise<SyncOutcome> {
+  void account;
+  const headers = { 'Content-Type': 'application/json' };
 
   const rawLocal = window.localStorage.getItem(SCOREKEEPER_STORAGE_KEY);
   const local = loadScorekeeper(rawLocal);
@@ -126,7 +111,7 @@ export async function syncNow(account: Account, fetcher: typeof fetch = fetch): 
   const localDoc = JSON.parse(saveScorekeeper(rawLocal, local.state)) as SyncDocument;
 
   const get = await fetcher(SYNC_URL, { headers });
-  if (get.status === 401) throw new Error('Google did not accept this sign-in. Sign in again.');
+  if (get.status === 401) throw new Error('Your sign-in has ended. Sign in with Google again.');
   if (!get.ok) throw new Error('The cloud copy could not be reached. Your data on this phone is safe.');
   const { document: remote } = (await get.json()) as { document: unknown };
 

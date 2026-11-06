@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { CloudCheck } from '@phosphor-icons/react';
-import { loadAccount, saveAccount, SIGN_IN_AVAILABLE, signOut, startOneTap, syncNow, tokenExpired, type Account, type SyncOutcome } from './auth';
+import { createSession, loadAccount, saveAccount, SIGN_IN_AVAILABLE, signOut, startOneTap, syncNow, type Account, type SyncOutcome } from './auth';
 
 const MESSAGES: Record<SyncOutcome, string> = {
   uploaded: 'Your club is backed up to the cloud.',
@@ -11,10 +11,7 @@ const MESSAGES: Record<SyncOutcome, string> = {
 
 /** Google one-tap sign-in plus cloud backup. Renders nothing until a Google client ID is configured. */
 export function AccountPanel() {
-  const [account, setAccount] = useState<Account | null>(() => {
-    const saved = loadAccount();
-    return saved && !tokenExpired(saved) ? saved : null;
-  });
+  const [account, setAccount] = useState<Account | null>(loadAccount);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const buttonRef = useRef<HTMLDivElement>(null);
@@ -29,7 +26,9 @@ export function AccountPanel() {
       // The screens read from storage when they open, so refresh after the data changed.
       if (outcome === 'downloaded' || outcome === 'merged') setTimeout(() => window.location.reload(), 900);
     } catch (reason) {
-      setMessage(reason instanceof Error ? reason.message : 'Syncing did not work. Your data on this phone is safe.');
+      const text = reason instanceof Error ? reason.message : 'Syncing did not work. Your data on this phone is safe.';
+      if (/sign-in has ended/.test(text)) { saveAccount(null); setAccount(null); }
+      setMessage(text);
     } finally {
       setBusy(false);
     }
@@ -37,7 +36,11 @@ export function AccountPanel() {
 
   useEffect(() => {
     if (!SIGN_IN_AVAILABLE || account) return;
-    startOneTap((signedIn) => { saveAccount(signedIn); setAccount(signedIn); void sync(signedIn); }, { prompt: true, button: buttonRef.current })
+    startOneTap((credential) => {
+      createSession(credential)
+        .then((signedIn) => { saveAccount(signedIn); setAccount(signedIn); void sync(signedIn); })
+        .catch((reason: unknown) => setMessage(reason instanceof Error ? reason.message : 'Sign-in did not work.'));
+    }, { prompt: true, button: buttonRef.current })
       .catch((reason: unknown) => setMessage(reason instanceof Error ? reason.message : 'Google sign-in is not available right now.'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account]);
