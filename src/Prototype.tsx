@@ -184,6 +184,7 @@ function GoogleOneTap(){
   return <div className="google-signin"><div><strong>Optional Google sign-in</strong><span>Use Switch without an account, or sign in for future sharing and sync.</span></div>{configured?<div ref={buttonRef} className="google-button"/>:<p>Google sign-in is ready for a client ID and secure verification endpoint.</p>}{message&&<p role="alert">{message}</p>}</div>;
 }
 function SwitchScorekeeper({onBack}:{onBack:()=>void}){
+  const keyboard=useKeyboard();
   const [loaded]=useState(()=>loadScorekeeper(typeof window==='undefined'?null:window.localStorage.getItem(SCOREKEEPER_STORAGE_KEY)));
   const initialFormat=scoreFormats.some(item=>item.id===loaded.state.selectedFormat)?loaded.state.selectedFormat as ScoreFormat:'domino';
   const [format,setFormat]=useState<ScoreFormat>(initialFormat);
@@ -233,7 +234,7 @@ function SwitchScorekeeper({onBack}:{onBack:()=>void}){
   const completion=session?completionFromSession(session):knockout?completionFromKnockout(knockout):cup?completionFromCup(cup):leagueStarted?completionFromLeagues(leagues,playoffs):null;
   const nights=getHistory(storedExtensions);
   function persistHistory(nextExtensions:Record<string,unknown>){const currentPlayers=session?.players??knockout?.players??cup?.players??visiblePlayers;const currentScores=session?{...session.scores}:leagueStarted?leagueScores:{};persist(currentPlayers,currentScores,nextExtensions);}
-  function saveCompletedNight(){if(!completion||savedCurrent)return;try{const night=createNightRecord(nightName,completion);persistHistory(addNight(storedExtensions,night));setSavedCurrent(true);setError('');}catch(reason){setError(reason instanceof Error?reason.message:'This night could not be saved.');}}
+  function saveCompletedNight(){if(!completion||savedCurrent)return;keyboard.hide();try{const night=createNightRecord(nightName,completion);persistHistory(addNight(storedExtensions,night));setSavedCurrent(true);setError('');}catch(reason){setError(reason instanceof Error?reason.message:'This night could not be saved.');}}
   function removeNight(id:string,title:string){if(!window.confirm(`Delete “${title}” from this device? This cannot be undone.`))return;persistHistory(deleteNight(storedExtensions,id));}
   function downloadHistory(){const url=URL.createObjectURL(new Blob([exportHistory(nights)],{type:'application/json;charset=utf-8'}));const anchor=document.createElement('a');anchor.href=url;anchor.download='switch-night-history.json';anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   function reset(){if(!window.confirm('Reset this score session? Player names will be kept.'))return;setSession(null);setKnockout(null);setCup(null);setLeagueStarted(false);setLeagueScores({});setSavedCurrent(false);setError('');persist(visiblePlayers,{});}

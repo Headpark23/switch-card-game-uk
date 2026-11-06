@@ -93,6 +93,7 @@ test("a completed night is named, saved once and restored with its result", asyn
   await page.getByLabel("Night name").fill("Friday Final");
   await page.getByRole("button", { name: "Save completed night" }).dblclick();
 
+  await expect(page.getByTestId("keyboard-dock")).toHaveAttribute("data-visible", "false");
   await expect(page.getByText("Friday Final", { exact: true })).toHaveCount(1);
   await expect(page.getByText("Player 1 won", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save completed night" })).toHaveCount(0);
