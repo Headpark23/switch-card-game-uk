@@ -18,6 +18,6 @@ Switch is a **companion for a physical card night** (scores, leagues, stats). Pl
 
 ## Not covered
 
-- No service worker yet, so the app is not usable offline after a cold start with no network.
+- Offline: after one online visit the app, card art and saved data work with no network (`npm run test:offline`, which builds and serves the production bundle). Not tested on a real phone, and the very first visit still needs a connection.
 - A score session in progress is saved, but there is no explicit "resume" prompt after a reload.
 - Computer levels have no UI by design.

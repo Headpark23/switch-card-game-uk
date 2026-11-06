@@ -16,6 +16,7 @@ The multi-game Card Companion experiment remains outside this branch. Do not cop
 - League seasons (3 points for a win, 1 for taking part) built from the nights you choose to count
 - Night history, export, and a full backup file you can restore on a new phone
 - Everything stays on the device; there are no accounts
+- Works offline after one visit (service worker in `public/sw.js`, production builds only)
 
 **Learn the game**
 - Interactive five-step rules guide, power-card reference and searchable questions
@@ -41,6 +42,7 @@ npm run check:runtime
 npm run build
 npm run test:sites
 npm run test:runtime
+npm run test:offline
 ```
 
 ![Switch rules-first design](rules-first-home.png)

@@ -3,10 +3,13 @@ import { ArrowRight, BookOpen, Cards, UsersThree, ChatCircle, Club, MagnifyingGl
 import { BottomSheet, KeyboardInput, MobileScroll, useKeyboard, useKeyboardInsets } from './mobile';
 import { modes, powers, ruleChapters, rules } from './content';
 import { AdSlot, Fan } from './ui';
+import { enableOffline } from './offline';
 import '@fontsource/dm-serif-display/400.css';
 import '@fontsource/dm-sans/400.css';
 import '@fontsource/dm-sans/500.css';
 import '@fontsource/dm-sans/600.css';
+
+enableOffline();
 
 // The game screens are loaded on demand so the rules pages open quickly.
 const GuidedGame = lazy(() => import('./screens/GuidedGame'));
