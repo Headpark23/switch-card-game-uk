@@ -2,6 +2,12 @@
 
 A polished, mobile-first guide to the UK card game Switch, with an interactive rules story and a complete guided game against the computer.
 
+## Source and release status
+
+The `codex/switch-solo-hardening` branch is the focused development line for making the standalone Switch app dependable before any wider game-night product is considered. The public site is [switchcardgame.co.uk](https://switchcardgame.co.uk), but work on this branch does not deploy automatically and must not be treated as production until a separate release and rollback checklist is approved.
+
+The multi-game Card Companion experiment remains outside this branch. Do not copy its seeded people, scores, matches, leagues, premium previews, or broader game catalogue into Switch.
+
 ## Current features
 
 - Interactive five-step rules guide and searchable questions
@@ -24,9 +30,10 @@ npm run dev
 ## Validate
 
 ```bash
+npm run check:runtime
 npm run build
-npm run test:runtime
 npm run test:sites
+npm run test:runtime
 ```
 
 ![Switch rules-first design](rules-first-home.png)

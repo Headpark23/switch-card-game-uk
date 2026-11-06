@@ -1,7 +1,7 @@
 # Switch Solo App Hardening Design
 
 **Date:** 6 November 2026  
-**Status:** Awaiting approval  
+**Status:** Approved 6 November 2026  
 **Product decision:** Switch remains a focused standalone app. A broader game-night product may reuse its blueprint later, but is a separate future project.
 
 ## Intent
