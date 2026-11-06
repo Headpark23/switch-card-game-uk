@@ -16,6 +16,7 @@ The multi-game Card Companion experiment remains outside this branch. Do not cop
 - League seasons (3 points for a win, 1 for taking part) built from the nights you choose to count
 - Club leaderboard with a crown, a nameable club, and one-tap shareable pictures (PNG) of a night, a league table or the leaderboard
 - Night history, export, and a full backup file you can restore on a new phone
+- Quick night: names, tap each round's winner, finish; saved to the same history and stats
 - Everything stays on the device; there are no accounts
 - Works offline after one visit (service worker in `public/sw.js`, production builds only)
 
@@ -24,6 +25,11 @@ The multi-game Card Companion experiment remains outside this branch. Do not cop
 - Guided tutorial game against the computer with optional legal-move hints
 - A coach that explains what each move meant and lists your options on every turn (`src/switch/coach.ts`, `CoachPanel` in `src/ui.tsx`); it only reads game state, so it can be reused for other games
 - Games open on an ordinary card; matching sets can be played in any order; twos, eights, black kings, red-king counters, wild aces and the Last Card call are all enforced
+- Tutorial finish leads to a real-cards setup checklist and straight into logging the night
+- Twelve rules puzzles whose answers come from the real rules engine, with a streak and badge ladder (Rookie to Rules master)
+- Rules help: quick-pick topic chips on the Questions tab; first-run welcome card; sounds and vibration (mutable)
+- Add to phone button, web manifest and icons; privacy page at `/privacy.html`
+- Reuse for other games: `src/kit` and `docs/REUSE-GUIDE.md`; store steps in `docs/store/PUBLISHING.md`
 
 **Shell**
 - Responsive iPhone and Pixel preview frames

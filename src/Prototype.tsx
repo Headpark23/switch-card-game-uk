@@ -15,8 +15,10 @@ enableOffline();
 // The game screens are loaded on demand so the rules pages open quickly.
 const GuidedGame = lazy(() => import('./screens/GuidedGame'));
 const SwitchScorekeeper = lazy(() => import('./screens/Scorekeeper'));
+const QuickNight = lazy(() => import('./screens/QuickNight'));
+const Puzzles = lazy(() => import('./screens/Puzzles'));
 
-type Page = 'Learn' | 'Cards' | 'Modes' | 'Questions' | 'Tutorial' | 'Score';
+type Page = 'Learn' | 'Cards' | 'Modes' | 'Questions' | 'Tutorial' | 'Score' | 'Quick' | 'Puzzles';
 
 /**
  * The demonstration ad slots and ad-free preview are not a real product yet,
@@ -51,6 +53,7 @@ export default function Prototype() {
   const [ruleStep, setRuleStep] = useState(0);
   const [scrollKey, setScrollKey] = useState('');
   const [scoreView, setScoreView] = useState<'score' | 'stats' | 'leagues' | 'history'>('score');
+  const [welcome, setWelcome] = useState(() => { try { return window.localStorage.getItem('switchWelcome') !== 'done'; } catch { return false; } });
   const keyboard = useKeyboard();
   const { bottomInset } = useKeyboardInsets();
 
@@ -78,6 +81,7 @@ export default function Prototype() {
     setScrollKey('');
   }
   const startGuidedGame = () => go('Tutorial');
+  const closeWelcome = () => { setWelcome(false); try { window.localStorage.setItem('switchWelcome', 'done'); } catch { /* storage unavailable */ } };
   const openNight = (view: 'score' | 'stats' | 'leagues' | 'history') => { setScoreView(view); go('Score'); };
 
   const result = rules.filter((r) => (r.q + ' ' + r.a).toLowerCase().includes(query.toLowerCase()));
@@ -95,7 +99,9 @@ export default function Prototype() {
             <button className="primary" onClick={() => openNight('score')}>Start a game night <ArrowRight size={19} /></button>
             <div className="night-shortcuts"><button className="text-link" onClick={() => openNight('stats')}>Stats</button><button className="text-link" onClick={() => openNight('leagues')}>Leagues</button><button className="text-link" onClick={() => openNight('history')}>History</button></div>
             <button className="secondary practise" onClick={startGuidedGame}>Play against the computer</button>
+            <div className="night-shortcuts"><button className="text-link" onClick={() => go('Quick')}>Quick night</button><button className="text-link" onClick={() => go('Puzzles')}>Puzzles</button><button className="text-link" onClick={() => go('Questions')}>Rules help</button></div>
           </section>
+          {welcome && <section className="welcome-card" aria-label="Welcome"><p className="eyebrow">FIRST TIME HERE?</p><h2>Are you new to Switch?</h2><div><button className="primary" onClick={() => { closeWelcome(); setRuleStep(0); document.getElementById('rule-story-title')?.scrollIntoView(); }}>Teach me the rules</button><button className="secondary" onClick={closeWelcome}>I know the rules</button></div></section>}
           <section className="rule-narrative" aria-labelledby="rule-story-title">
             <p className="eyebrow">THE MAIN EVENT</p>
             <h2 id="rule-story-title">Learn Switch<br />in five moves.</h2>
@@ -140,6 +146,7 @@ export default function Prototype() {
           </>}
           {page === 'Questions' && <>
             <p className="eyebrow">SETTLE THE DEBATE</p><h1>There’s a rule<br />for that.</h1><p className="intro">Quick answers, before the next card lands.</p>
+            <div className="dispute-chips" role="group" aria-label="Common disputes">{['ace', 'last card', 'jack', 'seven', 'king', 'two', 'eight', 'deck runs out'].map((chip) => <button key={chip} className={query === chip ? 'active' : ''} onClick={() => { keyboard.hide(); setQuery(query === chip ? '' : chip); }}>{chip}</button>)}</div>
             <div className="search"><MagnifyingGlass size={21} /><KeyboardInput aria-label="Search rules" placeholder="Try “ace” or “last card”" value={query} onChange={(e) => setQuery(e.target.value)} />{query && <button aria-label="Clear search" onClick={() => setQuery('')}><X size={16} /></button>}</div>
             <p className="results" aria-live="polite">{query ? `${result.length} matching ${result.length === 1 ? 'answer' : 'answers'}` : 'THE ESSENTIALS'}</p>
             <div className="answers">{result.map((r) => <details key={r.q}><summary>{r.q}</summary><p>{r.a}</p></details>)}</div>
@@ -147,6 +154,7 @@ export default function Prototype() {
             <p className="house-note">Every table has its traditions. These answers follow the rules in your original Switch guide.</p>
             <button className="download" onClick={downloadRules}><DownloadSimple size={20} />Keep a copy of the rules</button>
             <InstallButton />
+            <a className="community" href="/privacy.html" target="_blank" rel="noreferrer">Privacy: what stays on your phone <ArrowRight size={16} /></a>
             <a className="community" href="https://783j5slzrfvf.trickle.host/#comments" target="_blank" rel="noreferrer">Visit the original community discussion <ArrowRight size={16} /></a>
             {ads}
           </>}
@@ -159,14 +167,16 @@ export default function Prototype() {
           </>}
           <Suspense fallback={<Loading />}>
             {page === 'Score' && <SwitchScorekeeper onBack={() => go('Modes')} initialView={scoreView} />}
-            {page === 'Tutorial' && <GuidedGame onExit={() => go('Learn')} onOpenCards={() => go('Cards')} onStatusChange={onGameStatus} />}
+            {page === 'Tutorial' && <GuidedGame onExit={() => go('Learn')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onOpenPuzzles={() => go('Puzzles')} onStatusChange={onGameStatus} />}
+            {page === 'Quick' && <QuickNight onBack={() => go('Learn')} onHistory={() => openNight('history')} />}
+            {page === 'Puzzles' && <Puzzles onBack={() => go('Learn')} onTutorial={startGuidedGame} />}
           </Suspense>
         </>}
       </main>
     </MobileScroll>
     <nav className="bottom-tabs" aria-label="Main navigation" style={{ bottom: bottomInset }}>
       {([{ name: 'Learn', label: 'Rules', Icon: BookOpen }, { name: 'Cards', label: 'Cards', Icon: Cards }, { name: 'Modes', label: 'Modes', Icon: UsersThree }, { name: 'Questions', label: 'Questions', Icon: ChatCircle }] as const).map(({ name, label, Icon }) => {
-        const active = page === name || (name === 'Learn' && page === 'Tutorial') || (name === 'Modes' && (page === 'Score'));
+        const active = page === name || (name === 'Learn' && page === 'Tutorial') || (name === 'Modes' && (page === 'Score' || page === 'Quick')) || (name === 'Learn' && page === 'Puzzles');
         return <button key={name} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} onClick={() => go(name)}><Icon weight={active ? 'fill' : 'regular'} size={26} /><span>{label}</span></button>;
       })}
     </nav>

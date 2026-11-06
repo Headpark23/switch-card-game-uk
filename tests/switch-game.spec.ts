@@ -167,6 +167,11 @@ test("a guided match follows power-card and last-card rules through a win", asyn
 
   await expect(page.getByRole("heading", { name: "You beat the computer." })).toBeVisible();
   await expect(page.getByText("You played your last card legally — you win!")).toBeVisible();
+
+  // The win leads straight from practice to a real table.
+  await expect(page.getByText("Play it with real cards")).toBeVisible();
+  await page.getByRole("button", { name: /Start tonight/ }).click();
+  await expect(page.getByRole("heading", { name: "Who is playing?" })).toBeVisible();
 });
 
 async function expectFitsOneScreen(page: Page) {

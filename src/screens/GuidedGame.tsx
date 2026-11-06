@@ -5,6 +5,8 @@ import { applyAction, createInitialGame, drawCards, legalMoves } from '../switch
 import type { CardId, GameState, Suit } from '../switch/types';
 import { explainEffect, explainOptions, explainPickup, explainUnplayable } from '../switch/coach';
 import { explainLesson, explainPickupLesson, explainStart, type Lesson } from '../switch/lessons';
+import { cue, feedbackEnabled, setFeedbackEnabled } from '../feedback';
+import RealCards from './RealCards';
 import { CardImage, CoachPanel, isRedKing, rank, suit, suitNames, suitSymbols } from '../ui';
 import { testDeckRequested, testGameFromUrl } from './devDecks';
 
@@ -96,11 +98,14 @@ function computerStep(view: View): View {
 type Props = {
   onExit: () => void;
   onOpenCards: () => void;
+  onStartNight: () => void;
+  onOpenPuzzles: () => void;
   /** Lets the page reset its scroll position when the game ends. */
   onStatusChange: (status: 'playing' | 'won' | 'lost') => void;
 };
 
-export default function GuidedGame({ onExit, onOpenCards, onStatusChange }: Props) {
+export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPuzzles, onStatusChange }: Props) {
+  const [soundOn, setSoundOn] = useState(feedbackEnabled);
   const [view, setView] = useState<View>(openingView);
   const [aceChoice, setAceChoice] = useState<CardId[] | null>(null);
   const [staged, setStaged] = useState<CardId[]>([]);
@@ -123,6 +128,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStatusChange }: Prop
   const pendingDraw = penaltyCards(engine);
 
   useEffect(() => onStatusChange(outcome), [outcome, onStatusChange]);
+  useEffect(() => { if (outcome === 'won') cue('win'); else if (outcome === 'lost') cue('bad'); }, [outcome]);
 
   useLayoutEffect(() => {
     const reset = () => {
@@ -179,6 +185,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStatusChange }: Prop
   }
 
   function playSet(cards: CardId[], aceSuit?: Suit) {
+    cue('play');
     const before = engine;
     const after = applyAction(before, { type: 'play', cards, ...(aceSuit ? { chosenSuit: aceSuit } : {}) });
     afterYourPlay(before, after, cards, aceSuit);
@@ -215,6 +222,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStatusChange }: Prop
 
   function drawOrResolve() {
     if (!yourTurn || outcome !== 'playing') return;
+    cue('draw');
     const count = pendingDraw || 1;
     const next = applyAction(engine, pending?.kind === 'miss-turn' ? { type: 'accept-missed-turn' } : { type: 'draw' });
     setView((current) => ({
@@ -251,13 +259,13 @@ export default function GuidedGame({ onExit, onOpenCards, onStatusChange }: Prop
   const missTurn = pending?.kind === 'miss-turn';
 
   return <section className="tutorial game-tutorial" aria-label={deckDescription}>{outcome !== 'playing'
-    ? <div className="completion"><CheckCircle size={60} weight="light" /><p className="eyebrow">{outcome === 'won' ? 'GAME WON' : 'GOOD PRACTICE'}</p><h1>{outcome === 'won' ? <>You beat the<br />computer.</> : <>The computer<br />won this one.</>}</h1><p>{view.notice}</p><button className="primary" onClick={restart}><ArrowCounterClockwise size={18} />Play another guided game</button><button className="secondary" onClick={onOpenCards}>Open card guide <ArrowRight size={18} /></button></div>
+    ? <div className="completion"><CheckCircle size={60} weight="light" /><p className="eyebrow">{outcome === 'won' ? 'GAME WON' : 'GOOD PRACTICE'}</p><h1>{outcome === 'won' ? <>You beat the<br />computer.</> : <>The computer<br />won this one.</>}</h1><p>{view.notice}</p><button className="primary" onClick={restart}><ArrowCounterClockwise size={18} />Play another guided game</button><RealCards onStartNight={onStartNight} /><button className="secondary" onClick={onOpenPuzzles}>Try the rules puzzles <ArrowRight size={18} /></button><button className="secondary" onClick={onOpenCards}>Open card guide <ArrowRight size={18} /></button></div>
     : <>
       <div className={'turn-banner ' + (yourTurn ? 'you' : 'computer')} aria-live="polite"><span className="turn-dot" aria-hidden="true" /><span>GUIDED GAME · {yourTurn ? 'YOUR TURN' : 'COMPUTER TURN'}</span><button onClick={onExit}>Exit game</button></div>
       <div className="opponent" aria-label={`Computer has ${engine.computerHand.length} cards`}><span>COMPUTER</span><div key={engine.computerHand.length} className="opp-fan">{engine.computerHand.slice(0, 5).map((_, i) => <CardImage code="back" key={i} />)}</div><strong>{engine.computerHand.length} card{engine.computerHand.length === 1 ? '' : 's'}</strong></div>
       <div className="game-table"><button className="draw-pile" onClick={drawOrResolve} disabled={!yourTurn || awaitingLastCard || !!staged.length || missTurn} aria-label={missTurn ? 'Draw pile unavailable while resolving the eight' : pendingDraw ? `Pick up ${pendingDraw} cards` : legalCards.length ? 'Pick up one card instead of playing' : 'Draw a card'}><CardImage code="back" /><span>{missTurn ? 'Eight played' : pendingDraw ? `Pick up ${pendingDraw}` : legalCards.length ? 'Pick up instead' : 'Draw'}</span></button><div className="discard-pile"><span key={`${engine.move}-${topCard}`} className={'pile-card from-' + mover}><CardImage code={topCard} /></span><span>Current suit <b className={(engine.currentSuit === 'H' || engine.currentSuit === 'D') ? 'red' : ''}>{suitSymbols[engine.currentSuit]} {suitNames[engine.currentSuit]}</b></span></div></div>
       <p className="game-notice" aria-live="polite">{!yourTurn ? 'Computer is choosing a card…' : view.notice}</p>
-      {!awaitingLastCard && <CoachPanel footer={<button className="text-link" onClick={toggleGuide}>{guide ? 'Turn off automatic guidance cards' : 'Show a guidance card every turn'}</button>} open={sheetOpen} onOpenChange={setSheetOpen} sheetOptions={yourTurn ? explainOptions(engine) : []} lesson={view.lesson} meaning={view.meaning} options={yourTurn && !missTurn ? explainOptions(engine) : []} />}
+      {!awaitingLastCard && <CoachPanel footer={<><button className="text-link" onClick={toggleGuide}>{guide ? 'Turn off automatic guidance cards' : 'Show a guidance card every turn'}</button><button className="text-link" onClick={() => { const next = !soundOn; setFeedbackEnabled(next); setSoundOn(next); if (next) cue('good'); }}>{soundOn ? 'Mute sounds and vibration' : 'Turn on sounds and vibration'}</button></>} open={sheetOpen} onOpenChange={setSheetOpen} sheetOptions={yourTurn ? explainOptions(engine) : []} lesson={view.lesson} meaning={view.meaning} options={yourTurn && !missTurn ? explainOptions(engine) : []} />}
       {yourTurn && missTurn && !awaitingLastCard && <div className="miss-turn-action"><strong>The computer played an eight</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you must miss this turn.'}</p><button className="primary" onClick={drawOrResolve}>Accept missed turn <ArrowRight size={18} /></button></div>}
       {awaitingLastCard
         ? <div className="last-card-call"><HandPalm size={27} /><strong>One card remaining</strong><p>Say “Last Card” now. Forgetting costs two cards.</p><button className="primary" onClick={() => answerLastCard(true)}>Say “Last Card”</button><button className="text-link" onClick={() => answerLastCard(false)}>Continue without saying it</button></div>
