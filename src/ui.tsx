@@ -26,7 +26,7 @@ export function CoachPanel({ meaning, options, sheetOptions = options, lesson, t
   if (!meaning && !options.length) return null;
   return <section className="coach" aria-label="Coach">
     {meaning && <p className="coach-meaning"><strong>What that means</strong> {meaning}</p>}
-    {options.length > 0 && <><p className="coach-title">{title}</p><ul className="coach-options">{options.map((option) => <li key={option.label} data-kind={option.kind}><span className="coach-cards">{option.cards.slice(0, 4).map((card) => <CardImage key={card} code={card} />)}</span><span><b>{option.label}</b> <small>{option.detail}</small></span></li>)}</ul></>}
+    {options.length > 0 && <><p className="coach-title">{title}</p><ul className="coach-options inline">{options.map((option) => <li key={option.label} data-kind={option.kind}><i className="kind-dot" aria-hidden="true" /><span><b>{option.label}</b> <small>{option.detail}</small></span></li>)}</ul></>}
     {lesson && <button className="coach-more" onClick={() => setOpen(true)}>Tell me more</button>}
     {lesson && <BottomSheet open={open} onOpenChange={setOpen} title={lesson.title}>
       <div className="lesson">
