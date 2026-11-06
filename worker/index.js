@@ -1,5 +1,11 @@
+import { handleSync } from "./sync.js";
+
 export default {
   async fetch(request, env) {
+    // Signed-in club backup lives at /api/sync; everything else is the static app.
+    const sync = await handleSync(request, env);
+    if (sync) return sync;
+
     const response = await env.ASSETS.fetch(request);
     const acceptsHtml = request.headers.get("accept")?.includes("text/html");
 

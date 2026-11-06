@@ -64,5 +64,18 @@ test("does not turn missing API or write requests into the app shell", async () 
 test("emits the files required by Sites packaging", async () => {
   await access(new URL("../dist/client/index.html", import.meta.url));
   await access(new URL("../dist/server/index.js", import.meta.url));
+  await access(new URL("../dist/server/sync.js", import.meta.url));
   await access(new URL("../dist/.openai/hosting.json", import.meta.url));
+});
+
+test("routes /api/sync to the sync handler and never to the static app", async () => {
+  let assetCalls = 0;
+  const env = { ASSETS: { fetch: async () => { assetCalls += 1; return new Response("asset"); } } };
+
+  const unconfigured = await worker.fetch(new Request("https://example.test/api/sync", { headers: { accept: "text/html" } }), env);
+  assert.equal(unconfigured.status, 503);
+
+  const unsigned = await worker.fetch(new Request("https://example.test/api/sync"), { ...env, GOOGLE_CLIENT_ID: "c", DB: {} });
+  assert.equal(unsigned.status, 401);
+  assert.equal(assetCalls, 0);
 });

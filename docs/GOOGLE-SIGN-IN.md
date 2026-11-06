@@ -17,9 +17,9 @@ Switch works fully without an account. When a Google client ID is configured, th
 3. On the consent screen, keep scopes to the basics (name, email, picture).
 4. Put the client ID in `.env` as `VITE_GOOGLE_CLIENT_ID=...` and rebuild.
 
-## Server wiring (needs approval: protected runtime file)
+## Server wiring (done; it needed approval for the protected runtime files)
 
-`worker/index.js` must call `handleSync` before serving assets, and the host needs:
+`worker/index.js` now calls `handleSync` before serving assets, and `scripts/prepare-sites-build.mjs` copies `worker/sync.js` into `dist/server`. The host still needs:
 
 - `GOOGLE_CLIENT_ID` set to the same client ID.
 - A D1 database bound as `DB`, with:
@@ -28,7 +28,7 @@ Switch works fully without an account. When a Google client ID is configured, th
 CREATE TABLE IF NOT EXISTS club_sync (user_id TEXT PRIMARY KEY, document TEXT NOT NULL, updated_at TEXT NOT NULL);
 ```
 
-Until this is wired, signing in works but syncing shows "The cloud copy could not be reached", and data on the phone is untouched.
+Until `GOOGLE_CLIENT_ID` and `DB` are set on the host, `/api/sync` answers 503 and signing in works but syncing shows "The cloud copy could not be reached", and data on the phone is untouched.
 
 ## Privacy
 
