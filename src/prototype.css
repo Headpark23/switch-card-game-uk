@@ -76,3 +76,9 @@
 .account-panel h3{display:flex;align-items:center;gap:7px;margin:0;font-size:15px}.account-panel p{font-size:12.5px;color:var(--muted);margin:0}.account-panel h3 svg{color:var(--gold)}
 .account-who{display:flex;align-items:center;gap:10px}.account-who img{width:38px;height:38px;border-radius:50%}.account-who span{display:grid}.account-who strong{font-size:14px;color:var(--ink)}.account-who small{font-size:11px}
 .google-button{min-height:44px;display:flex;justify-content:center}
+.coach{position:relative}.coach-meaning{padding-right:78px}
+.coach-more{position:absolute;right:6px;top:4px;border:1px solid #c9a74f;background:#fffdf7;color:#7a5518;border-radius:14px;padding:2px 9px;font-size:10.5px;font-weight:600;min-height:24px}
+.lesson{display:grid;gap:6px;padding:4px 2px 18px}.lesson h4{margin:8px 0 0;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:#8a652b}.lesson p{margin:0;font-size:14px;line-height:1.5}
+.lesson-cards{display:flex;justify-content:center;gap:6px;margin-bottom:4px}.lesson-cards .playing-card{width:54px}
+.lesson .coach-options li{align-items:flex-start}.lesson .coach-options small{display:block;font-size:12.5px}
+.lesson-tip{background:#f9f3dd;border-left:3px solid var(--gold);border-radius:6px;padding:9px 10px;margin-top:8px!important}.lesson-tip strong{display:block;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:#8a652b}

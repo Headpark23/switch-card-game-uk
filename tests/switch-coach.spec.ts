@@ -87,3 +87,21 @@ test("the guided game shows what happened and the options on your turn", async (
   await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible({ timeout: 4_000 });
   await expect(page.getByRole("region", { name: "Coach" })).toContainText("What that means");
 });
+
+test("every move has a lesson card with what was played and what you could play", async ({ page }) => {
+  await page.goto("/?testDeck=1");
+  await page.getByRole("button", { name: "Play against the computer" }).click();
+  await page.getByRole("button", { name: "Play 9H, legal move" }).click();
+  await expect(page.getByText("GUIDED GAME · COMPUTER TURN")).toBeVisible();
+  await expect(page.getByText("The computer played an eight")).toBeVisible({ timeout: 4_000 });
+
+  await page.getByRole("button", { name: "Tell me more" }).click();
+  const sheet = page.getByRole("dialog");
+  await expect(sheet).toContainText("An eight: miss a turn");
+  await expect(sheet).toContainText("What was played");
+  await expect(sheet).toContainText("The computer played the eight of hearts.");
+  await expect(sheet).toContainText("The rule");
+  await expect(sheet).toContainText("What you could play now");
+  await expect(sheet).toContainText("Miss your turn");
+  await expect(sheet).toContainText("Tip");
+});
