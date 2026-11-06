@@ -140,3 +140,137 @@ test("draw pile turnover preserves the top discard and safely exhausts", async (
   expect(result.discardPile).toEqual(["4H"]);
   expect(result.uniqueCount).toBe(result.zoneCount);
 });
+
+test("power cards stack, pass turns and cannot finish illegally", async ({ page }) => {
+  await page.goto("/");
+
+  const result = await page.evaluate(async () => {
+    const rules = await import("/src/switch/rules.ts");
+    const twoState = {
+      playerHand: ["2H", "2S", "3C"],
+      computerHand: ["2C", "2D", "4D"],
+      drawPile: ["5C", "6C", "7C", "8C", "9C", "10C", "QC", "AC"],
+      discardPile: ["9H"],
+      currentSuit: "H",
+      turn: "player",
+      pendingPenalty: null,
+      status: "playing",
+      winner: null,
+      move: 0,
+    };
+    const afterTwo = rules.applyAction(twoState, { type: "play", cards: ["2H"] });
+    const afterFour = rules.applyAction(afterTwo, { type: "play", cards: ["2C"] });
+    const afterSix = rules.applyAction(afterFour, { type: "play", cards: ["2S"] });
+    const afterEight = rules.applyAction(afterSix, { type: "play", cards: ["2D"] });
+
+    const eightState = {
+      ...twoState,
+      playerHand: ["8H", "3C"],
+      computerHand: ["8S", "4D"],
+      discardPile: ["9H"],
+    };
+    const firstEight = rules.applyAction(eightState, { type: "play", cards: ["8H"] });
+    const secondEight = rules.applyAction(firstEight, { type: "play", cards: ["8S"] });
+    const acceptedEight = rules.applyAction(secondEight, { type: "accept-missed-turn" });
+
+    const sevenState = { ...twoState, playerHand: ["7H", "3C"], computerHand: ["4D"] };
+    const jackState = { ...twoState, playerHand: ["JH", "3C"], computerHand: ["4D"] };
+    const sevenAgain = rules.applyAction(sevenState, { type: "play", cards: ["7H"] });
+    const jackAgain = rules.applyAction(jackState, { type: "play", cards: ["JH"] });
+
+    const finalSeven = rules.legalMoves({ ...sevenState, playerHand: ["7H"] });
+    const finalJack = rules.legalMoves({ ...jackState, playerHand: ["JH"] });
+    const penaltyMoves = rules.legalMoves({
+      ...twoState,
+      playerHand: ["AS", "2H", "3C"],
+      pendingPenalty: { kind: "draw-two", cards: 2 },
+    });
+
+    return {
+      stackedPenalty: afterEight.pendingPenalty,
+      firstEight: { pending: firstEight.pendingPenalty, turn: firstEight.turn },
+      secondEight: { pending: secondEight.pendingPenalty, turn: secondEight.turn },
+      acceptedEight: { pending: acceptedEight.pendingPenalty, turn: acceptedEight.turn },
+      sevenTurn: sevenAgain.turn,
+      jackTurn: jackAgain.turn,
+      finalSeven,
+      finalJack,
+      penaltyMoves,
+    };
+  });
+
+  expect(result.stackedPenalty).toEqual({ kind: "draw-two", cards: 8 });
+  expect(result.firstEight).toEqual({ pending: { kind: "miss-turn" }, turn: "computer" });
+  expect(result.secondEight).toEqual({ pending: { kind: "miss-turn" }, turn: "player" });
+  expect(result.acceptedEight).toEqual({ pending: null, turn: "computer" });
+  expect(result.sevenTurn).toBe("player");
+  expect(result.jackTurn).toBe("player");
+  expect(result.finalSeven).not.toContainEqual({ type: "play", cards: ["7H"] });
+  expect(result.finalJack).not.toContainEqual({ type: "play", cards: ["JH"] });
+  expect(result.penaltyMoves).toContainEqual({ type: "play", cards: ["2H"] });
+  expect(result.penaltyMoves).not.toContainEqual({ type: "play", cards: ["AS"], chosenSuit: "S" });
+});
+
+test("king penalties cancel one five-card unit per red king", async ({ page }) => {
+  await page.goto("/");
+
+  const result = await page.evaluate(async () => {
+    const rules = await import("/src/switch/rules.ts");
+    const base = {
+      playerHand: ["KH", "3C"],
+      computerHand: ["4D"],
+      drawPile: ["2H", "3H", "4H", "5H", "6H", "7H", "8H"],
+      discardPile: ["KS"],
+      currentSuit: "S",
+      turn: "player",
+      pendingPenalty: { kind: "black-king", units: 1, cards: 5 },
+      status: "playing",
+      winner: null,
+      move: 0,
+    };
+
+    const oneAgainstOne = rules.applyAction(base, { type: "play", cards: ["KH"] });
+    const oneAgainstTwo = rules.applyAction(
+      { ...base, pendingPenalty: { kind: "black-king", units: 2, cards: 10 } },
+      { type: "play", cards: ["KH"] },
+    );
+    const twoAgainstTwoState = {
+      ...base,
+      playerHand: ["KH", "KD", "3C"],
+      pendingPenalty: { kind: "black-king", units: 2, cards: 10 },
+    };
+    const pairIsLegal = rules.legalMoves(twoAgainstTwoState);
+    const twoAgainstTwo = rules.applyAction(twoAgainstTwoState, { type: "play", cards: ["KH", "KD"] });
+    const drewFive = rules.applyAction(base, { type: "draw" });
+
+    const stackStart = {
+      ...base,
+      playerHand: ["KS", "3C"],
+      computerHand: ["KC", "4D"],
+      discardPile: ["9S"],
+      pendingPenalty: null,
+    };
+    const oneBlack = rules.applyAction(stackStart, { type: "play", cards: ["KS"] });
+    const twoBlack = rules.applyAction(oneBlack, { type: "play", cards: ["KC"] });
+
+    return {
+      oneAgainstOne: oneAgainstOne.pendingPenalty,
+      oneAgainstTwo: oneAgainstTwo.pendingPenalty,
+      pairIsLegal,
+      twoAgainstTwo: twoAgainstTwo.pendingPenalty,
+      drewFiveCount: drewFive.playerHand.length,
+      drewFiveTurn: drewFive.turn,
+      oneBlack: oneBlack.pendingPenalty,
+      twoBlack: twoBlack.pendingPenalty,
+    };
+  });
+
+  expect(result.oneAgainstOne).toBeNull();
+  expect(result.oneAgainstTwo).toEqual({ kind: "black-king", units: 1, cards: 5 });
+  expect(result.pairIsLegal).toContainEqual({ type: "play", cards: ["KH", "KD"] });
+  expect(result.twoAgainstTwo).toBeNull();
+  expect(result.drewFiveCount).toBe(7);
+  expect(result.drewFiveTurn).toBe("computer");
+  expect(result.oneBlack).toEqual({ kind: "black-king", units: 1, cards: 5 });
+  expect(result.twoBlack).toEqual({ kind: "black-king", units: 2, cards: 10 });
+});

@@ -33,25 +33,45 @@ function playActionsFor(card: CardId): GameAction[] {
   return SUITS.map((chosenSuit) => ({ type: "play", cards: [card], chosenSuit }));
 }
 
+function cannotBeFinalPlay(cards: readonly CardId[], hand: readonly CardId[]): boolean {
+  if (cards.length !== hand.length) return false;
+  const playedRank = rankOf(cards[0]);
+  return playedRank === "7" || playedRank === "J";
+}
+
+function matchingSubsets(cards: readonly CardId[]): CardId[][] {
+  const subsets: CardId[][] = [];
+  for (let mask = 1; mask < 2 ** cards.length; mask += 1) {
+    const subset = cards.filter((_, index) => (mask & (1 << index)) !== 0);
+    if (subset.length >= 2) subsets.push(subset);
+  }
+  return subsets;
+}
+
 export function legalMoves(state: GameState): GameAction[] {
   if (state.status !== "playing") return [];
 
   const hand = handFor(state, state.turn);
   const playable = hand.filter((card) => isPlayableDuringPenalty(card, state));
-  const actions = playable.flatMap(playActionsFor);
+  const actions = playable
+    .filter((card) => !cannotBeFinalPlay([card], hand))
+    .flatMap(playActionsFor);
 
-  for (const rank of new Set(playable.map(rankOf))) {
+  for (const rank of new Set(hand.map(rankOf))) {
     const matchingCards = hand.filter((card) => rankOf(card) === rank);
     if (matchingCards.length < 2) continue;
 
-    const firstLegal = matchingCards.find((card) => playable.includes(card));
-    if (!firstLegal) continue;
+    for (const subset of matchingSubsets(matchingCards)) {
+      const firstLegal = subset.find((card) => playable.includes(card));
+      if (!firstLegal) continue;
 
-    const cards = [firstLegal, ...matchingCards.filter((card) => card !== firstLegal)];
-    if (rank === "A") {
-      for (const chosenSuit of SUITS) actions.push({ type: "play", cards, chosenSuit });
-    } else {
-      actions.push({ type: "play", cards });
+      const cards = [firstLegal, ...subset.filter((card) => card !== firstLegal)];
+      if (cannotBeFinalPlay(cards, hand)) continue;
+      if (rank === "A") {
+        for (const chosenSuit of SUITS) actions.push({ type: "play", cards, chosenSuit });
+      } else {
+        actions.push({ type: "play", cards });
+      }
     }
   }
 
@@ -131,16 +151,42 @@ export function applyAction(state: GameState, action: GameAction): GameState {
   const playedSet = new Set(played);
   const remaining = handFor(state, actor).filter((card) => !playedSet.has(card));
   const lastCard = played.at(-1) as CardId;
+  const playedRank = rankOf(lastCard);
   const winner = remaining.length === 0 ? actor : null;
+  let pendingPenalty: GameState["pendingPenalty"] = null;
+
+  if (playedRank === "2") {
+    const previousCards = state.pendingPenalty?.kind === "draw-two" ? state.pendingPenalty.cards : 0;
+    pendingPenalty = {
+      kind: "draw-two",
+      cards: (previousCards + played.length * 2) as 2 | 4 | 6 | 8,
+    };
+  } else if (playedRank === "8") {
+    pendingPenalty = { kind: "miss-turn" };
+  } else if (playedRank === "K") {
+    const previousUnits = state.pendingPenalty?.kind === "black-king" ? state.pendingPenalty.units : 0;
+    const blackKings = played.filter((card) => card === "KS" || card === "KC").length;
+    const redKings = played.filter((card) => card === "KH" || card === "KD").length;
+    const units = Math.max(0, Math.min(2, previousUnits + blackKings - redKings));
+    if (units > 0) {
+      pendingPenalty = {
+        kind: "black-king",
+        units: units as 1 | 2,
+        cards: (units * 5) as 5 | 10,
+      };
+    }
+  }
+
+  const keepsTurn = playedRank === "7" || playedRank === "J";
 
   return {
     ...state,
     playerHand: actor === "player" ? remaining : [...state.playerHand],
     computerHand: actor === "computer" ? remaining : [...state.computerHand],
     discardPile: [...state.discardPile, ...played],
-    currentSuit: rankOf(lastCard) === "A" ? (action.chosenSuit as Suit) : suitOf(lastCard),
-    turn: otherTurn(actor),
-    pendingPenalty: null,
+    currentSuit: playedRank === "A" ? (action.chosenSuit as Suit) : suitOf(lastCard),
+    turn: keepsTurn ? actor : otherTurn(actor),
+    pendingPenalty,
     status: winner ? "won" : "playing",
     winner,
     move: state.move + 1,
