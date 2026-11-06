@@ -81,3 +81,69 @@ test("ten-player Cup draws fixtures and a champion", async ({ page }) => {
   }
   await expect(page.getByText(/is champion/)).toBeVisible();
 });
+
+test("a completed night is named, saved once and restored with its result", async ({ page }) => {
+  await openScorekeeper(page);
+  await expect(page.getByText("No completed nights saved yet.")).toBeVisible();
+  await fillVisibleNames(page);
+  await page.getByLabel("Target score").fill("10");
+  await page.getByRole("button", { name: "Start Domino" }).click();
+  await page.getByLabel("Score for Player 1").fill("10");
+  await page.getByRole("button", { name: "Add" }).first().click();
+  await page.getByLabel("Night name").fill("Friday Final");
+  await page.getByRole("button", { name: "Save completed night" }).dblclick();
+
+  await expect(page.getByText("Friday Final", { exact: true })).toHaveCount(1);
+  await expect(page.getByText("Player 1 won", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save completed night" })).toHaveCount(0);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("switchScoreKeeper") ?? "{}").extensions.switchNightHistory)).toHaveLength(1);
+
+  await page.reload();
+  await page.getByRole("button", { name: "Modes", exact: true }).click();
+  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByText("Friday Final", { exact: true }).click();
+  await expect(page.getByText("Player 1 — 10 points", { exact: true })).toBeVisible();
+});
+
+test("history exports and deletes only after confirmation", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.setItem("switchScoreKeeper", JSON.stringify({
+    schemaVersion: 1,
+    selectedFormat: "domino",
+    players: [],
+    scores: {},
+    target: 100,
+    extensions: {
+      keepMe: true,
+      switchNightHistory: [{
+        version: 1,
+        id: "night-1",
+        completedAt: "2026-11-06T20:30:00.000Z",
+        title: "Family Friday",
+        format: "domino",
+        formatLabel: "Domino",
+        players: [{ id: "a", name: "Alex" }, { id: "b", name: "Blair" }],
+        winnerIds: ["a"],
+        outcome: "Alex won",
+        details: [{ heading: "Final scores", lines: ["Alex — 120 points", "Blair — 80 points"] }],
+      }],
+    },
+  })));
+  await page.reload();
+  await page.getByRole("button", { name: "Modes", exact: true }).click();
+  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export history" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("switch-night-history.json");
+
+  await page.getByText("Family Friday", { exact: true }).click();
+  let prompt = "";
+  page.once("dialog", async (dialog) => { prompt = dialog.message(); await dialog.accept(); });
+  await page.getByRole("button", { name: "Delete Family Friday" }).click();
+  expect(prompt).toContain("Family Friday");
+  await expect(page.getByText("No completed nights saved yet.")).toBeVisible();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("switchScoreKeeper") ?? "{}"));
+  expect(saved.extensions.keepMe).toBe(true);
+});
