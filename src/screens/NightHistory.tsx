@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { DownloadSimple } from '@phosphor-icons/react';
+import { ShareButton } from '../ShareButton';
+import { getClubName, nightShareCard } from '../switch/club';
 import { deleteNight, exportHistory, getHistory } from '../switch/history';
 import { loadScorekeeper, saveScorekeeper, SCOREKEEPER_STORAGE_KEY } from '../switch/storage';
 
@@ -63,6 +65,7 @@ export default function NightHistory({ extensions, onChange }: Props) {
         <div className="history-detail">
           <p>{night.players.map((player) => player.name).join(' · ')}</p>
           {night.details.map((section) => <section key={section.heading}><h3>{section.heading}</h3>{section.lines.map((line, index) => <p key={`${section.heading}-${index}`}>{line}</p>)}</section>)}
+          <ShareButton label="Share this night" build={() => nightShareCard(night, getClubName(extensions))} />
           <button className="text-link history-delete" aria-label={`Delete ${night.title}`} onClick={() => removeNight(night.id, night.title)}>Delete this night</button>
         </div>
       </details>)}</div>}

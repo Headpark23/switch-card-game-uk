@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { ShareButton } from '../ShareButton';
+import { getClubName, seasonShareCard } from '../switch/club';
 import { KeyboardInput, useKeyboard } from '../mobile';
 import { getHistory, type SwitchNightRecord } from '../switch/history';
 import { getProfiles } from '../switch/profiles';
@@ -67,6 +69,7 @@ export default function ClubhouseLeagues({ extensions, onChange }: Props) {
           <thead><tr><th scope="col">Pos</th><th scope="col">Player</th><th scope="col">P</th><th scope="col">W</th><th scope="col">Pts</th></tr></thead>
           <tbody>{standings.map((row) => <tr key={row.profileId}><td>{row.rank}</td><td>{nameOf(row.profileId)}</td><td>{row.played}</td><td>{row.wins}</td><td>{row.points}</td></tr>)}</tbody>
         </table>
+        {standings.some((row) => row.played > 0) && <ShareButton label={season.status === 'complete' ? 'Share the final table' : 'Share the table'} build={() => seasonShareCard(season, standings, nameOf, getClubName(extensions))} />}
         {counted.length > 0 && <><h4>Counted nights</h4><ul className="counted-nights">{counted.map((night) => <li key={night.id}>{night.title} <small>{night.outcome}</small></li>)}</ul></>}
         {season.status === 'active' && <>
           {open.length > 0 && <><h4>Nights you can count</h4>{open.map((night) => <button className="secondary count-night" key={night.id} aria-label={`Count ${night.title} in ${season.name}`} onClick={() => count(season, night)}>Count {night.title} <small>{night.outcome}</small></button>)}</>}

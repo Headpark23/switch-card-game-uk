@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { Crown } from '@phosphor-icons/react';
+import { ShareButton } from '../ShareButton';
+import { buildLeaderboard, getClubName, leaderboardShareCard, putClubName } from '../switch/club';
 import { KeyboardInput, useKeyboard } from '../mobile';
 import { deriveClubhouseSummary, derivePlayerStats, deriveRivalries, type MilestoneId } from '../switch/analytics';
 import { getHistory } from '../switch/history';
@@ -37,6 +40,7 @@ export default function ClubhouseStats({ extensions, onChange }: Props) {
   const [chosen, setChosen] = useState<string | null>(null);
   const [rename, setRename] = useState('');
   const [error, setError] = useState('');
+  const [clubDraft, setClubDraft] = useState('');
 
   if (!profiles.length || !nights.length) {
     return <section className="club-panel" aria-labelledby="stats-title">
@@ -55,6 +59,8 @@ export default function ClubhouseStats({ extensions, onChange }: Props) {
   const percent = Math.round(stats.winRate * 100);
   const maxMonth = Math.max(1, ...stats.monthlyWins.map((month) => month.wins));
   const rivalries = deriveRivalries(nights, allProfiles).filter((entry) => entry.profileAId === profile.id || entry.profileBId === profile.id).slice(0, 3);
+  const leaderboard = buildLeaderboard(allProfiles, nights);
+  const club = getClubName(extensions);
   const bestRate = summary.bestWinRateProfileId ? withStats.find((entry) => entry.profile.id === summary.bestWinRateProfileId)?.stats : null;
 
   function run(action: () => Extensions) {
@@ -64,6 +70,18 @@ export default function ClubhouseStats({ extensions, onChange }: Props) {
 
   return <section className="club-panel" aria-labelledby="stats-title">
     <p className="eyebrow">THE RECORD BOOK</p>
+    <h2 className="leaderboard-title">{club ? `${club} leaderboard` : 'Club leaderboard'}</h2>
+    <ol className="leaderboard" aria-label="Club leaderboard">{leaderboard.map((row) => <li key={row.profileId} className={row.rank === 1 ? 'leader' : ''}>
+      <span className="lb-rank">{row.rank === 1 ? <Crown size={20} weight="fill" aria-label="Leader" /> : row.rank}</span>
+      <span className="lb-name">{row.name}</span>
+      <span className="lb-bar" aria-hidden="true"><i style={{ width: `${Math.round(row.winRate * 100)}%` }} /></span>
+      <span className="lb-value">{row.wins} win{row.wins === 1 ? '' : 's'} · {Math.round(row.winRate * 100)}%</span>
+    </li>)}</ol>
+    <ShareButton label="Share the leaderboard" build={() => leaderboardShareCard(leaderboard, nights.length, club)} />
+    <details className="manage-player club-name"><summary>{club ? 'Rename your club' : 'Name your club'}</summary>
+      <label><span>Club name</span><KeyboardInput aria-label="Club name" value={clubDraft} maxLength={32} placeholder={club || 'The Friday Club'} onChange={(event) => setClubDraft(event.target.value)} /></label>
+      <div className="manage-actions"><button className="secondary" onClick={() => { keyboard.hide(); onChange(putClubName(extensions, clubDraft)); setClubDraft(''); }}>Save club name</button></div>
+    </details>
     <div className="player-tokens" aria-label="Choose a player">
       {withStats.map((entry) => <button key={entry.profile.id} data-colour={entry.profile.colour} aria-pressed={entry.profile.id === profile.id} onClick={() => { setChosen(entry.profile.id); setError(''); }}>{entry.profile.name}</button>)}
     </div>

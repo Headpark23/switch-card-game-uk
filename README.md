@@ -14,6 +14,7 @@ The multi-game Card Companion experiment remains outside this branch. Do not cop
 - Score a night in several formats (head to head, domino, darts, league, knockout, cup)
 - Reusable local player profiles, with honest stats derived only from saved nights: win rate, streaks, monthly wins, form, milestones, rivalries
 - League seasons (3 points for a win, 1 for taking part) built from the nights you choose to count
+- Club leaderboard with a crown, a nameable club, and one-tap shareable pictures (PNG) of a night, a league table or the leaderboard
 - Night history, export, and a full backup file you can restore on a new phone
 - Everything stays on the device; there are no accounts
 - Works offline after one visit (service worker in `public/sw.js`, production builds only)
