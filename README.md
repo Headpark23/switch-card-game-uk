@@ -1,6 +1,6 @@
 # Switch Card Game
 
-A polished, mobile-first guide to the UK card game Switch, with an interactive rules story and a complete guided game against the computer.
+A companion app for a physical Switch card night: score tracker, league tracker and stats tracker, plus an interactive rules guide and a guided tutorial game against the computer. The game itself is played with real cards.
 
 ## Source and release status
 
@@ -10,16 +10,20 @@ The multi-game Card Companion experiment remains outside this branch. Do not cop
 
 ## Current features
 
-- Interactive five-step rules guide and searchable questions
-- Full 52-card shuffled deck with no duplicate physical cards
-- Draw-pile turnover without reshuffling when the pack is exhausted
-- Guided computer opponent with optional legal-move hints and three levels (Relaxed, Standard, Sharp)
-- Pass-and-play for two to six people on one phone, with a cover screen between turns
-- Last Card challenge: spot the computer forgetting to call it
-- Games always open on an ordinary card; sets of matching cards can be played in any order
-- Power-card chains for twos, eights, black kings and red-king counters
-- Tactical choice to pick up instead of playing a legal card
-- Wild aces with suit selection
+**Game-night companion**
+- Score a night in several formats (head to head, domino, darts, league, knockout, cup)
+- Reusable local player profiles, with honest stats derived only from saved nights: win rate, streaks, monthly wins, form, milestones, rivalries
+- League seasons (3 points for a win, 1 for taking part) built from the nights you choose to count
+- Night history, export, and a full backup file you can restore on a new phone
+- Everything stays on the device; there are no accounts
+
+**Learn the game**
+- Interactive five-step rules guide, power-card reference and searchable questions
+- Guided tutorial game against the computer with optional legal-move hints
+- A coach that explains what each move meant and lists your options on every turn (`src/switch/coach.ts`, `CoachPanel` in `src/ui.tsx`); it only reads game state, so it can be reused for other games
+- Games open on an ordinary card; matching sets can be played in any order; twos, eights, black kings, red-king counters, wild aces and the Last Card call are all enforced
+
+**Shell**
 - Responsive iPhone and Pixel preview frames
 - Demonstration advertising placements and an ad-free upgrade preview (development builds only)
 

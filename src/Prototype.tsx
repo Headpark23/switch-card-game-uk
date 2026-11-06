@@ -1,7 +1,6 @@
 import { lazy, Suspense, useCallback, useLayoutEffect, useState } from 'react';
 import { ArrowRight, BookOpen, Cards, UsersThree, ChatCircle, Club, MagnifyingGlass, X, Crown, DownloadSimple, CheckCircle, Lightbulb } from '@phosphor-icons/react';
 import { BottomSheet, KeyboardInput, MobileScroll, useKeyboard, useKeyboardInsets } from './mobile';
-import { COMPUTER_LEVELS, type ComputerLevel } from './switch/ai';
 import { modes, powers, ruleChapters, rules } from './content';
 import { AdSlot, Fan } from './ui';
 import '@fontsource/dm-serif-display/400.css';
@@ -11,10 +10,9 @@ import '@fontsource/dm-sans/600.css';
 
 // The game screens are loaded on demand so the rules pages open quickly.
 const GuidedGame = lazy(() => import('./screens/GuidedGame'));
-const PassAndPlay = lazy(() => import('./screens/PassAndPlay'));
 const SwitchScorekeeper = lazy(() => import('./screens/Scorekeeper'));
 
-type Page = 'Learn' | 'Cards' | 'Modes' | 'Questions' | 'Tutorial' | 'Score' | 'Table';
+type Page = 'Learn' | 'Cards' | 'Modes' | 'Questions' | 'Tutorial' | 'Score';
 
 /**
  * The demonstration ad slots and ad-free preview are not a real product yet,
@@ -22,18 +20,6 @@ type Page = 'Learn' | 'Cards' | 'Modes' | 'Questions' | 'Tutorial' | 'Score' | '
  * business model is ready.
  */
 const SHOW_MONETISATION_PREVIEW = import.meta.env.DEV;
-
-const LEVEL_KEY = 'switchComputerLevel';
-const LEVELS = Object.keys(COMPUTER_LEVELS) as ComputerLevel[];
-
-function savedLevel(): ComputerLevel {
-  try {
-    const stored = window.localStorage.getItem(LEVEL_KEY);
-    return LEVELS.includes(stored as ComputerLevel) ? (stored as ComputerLevel) : 'standard';
-  } catch {
-    return 'standard';
-  }
-}
 
 function downloadRules() {
   const text = 'SWITCH — Rules for a better game night\n\n'
@@ -59,8 +45,8 @@ export default function Prototype() {
   const [membership, setMembership] = useState(false);
   const [adFree, setAdFree] = useState(false);
   const [ruleStep, setRuleStep] = useState(0);
-  const [level, setLevelState] = useState<ComputerLevel>(savedLevel);
   const [scrollKey, setScrollKey] = useState('');
+  const [scoreView, setScoreView] = useState<'score' | 'stats' | 'leagues' | 'history'>('score');
   const keyboard = useKeyboard();
   const { bottomInset } = useKeyboardInsets();
 
@@ -79,10 +65,6 @@ export default function Prototype() {
     if (scroller) scroller.scrollTop = 0;
   }, [scrollKey]);
 
-  const setLevel = (next: ComputerLevel) => {
-    setLevelState(next);
-    try { window.localStorage.setItem(LEVEL_KEY, next); } catch { /* the choice just will not be remembered */ }
-  };
   const onGameStatus = useCallback((key: string) => setScrollKey(key), []);
 
   function go(next: Page) {
@@ -92,15 +74,10 @@ export default function Prototype() {
     setScrollKey('');
   }
   const startGuidedGame = () => go('Tutorial');
+  const openNight = (view: 'score' | 'stats' | 'leagues' | 'history') => { setScoreView(view); go('Score'); };
 
   const result = rules.filter((r) => (r.q + ' ' + r.a).toLowerCase().includes(query.toLowerCase()));
   const ads = SHOW_MONETISATION_PREVIEW ? <AdSlot hidden={adFree} /> : null;
-
-  const levelPicker = <div className="level-picker" role="group" aria-label="Computer opponent">
-    <span>Opponent</span>
-    {LEVELS.map((id) => <button key={id} className={level === id ? 'active' : ''} aria-pressed={level === id} onClick={() => setLevel(id)}>{COMPUTER_LEVELS[id].label}</button>)}
-    <small>{COMPUTER_LEVELS[level].summary}</small>
-  </div>;
 
   return <div className="switch-app" onFocusCapture={resetDeviceScroll}>
     <MobileScroll key={page} className="switch-scroll">
@@ -111,8 +88,9 @@ export default function Prototype() {
             <p className="eyebrow">THE COMPLETE GUIDE</p>
             <h1>Know the rules.<br />Own the table.</h1>
             <p>Five clear steps, then a guided game to put them into practice.</p>
-            <button className="primary" onClick={startGuidedGame}>Play against the computer <ArrowRight size={19} /></button>
-            {levelPicker}
+            <button className="primary" onClick={() => openNight('score')}>Start a game night <ArrowRight size={19} /></button>
+            <div className="night-shortcuts"><button className="text-link" onClick={() => openNight('stats')}>Stats</button><button className="text-link" onClick={() => openNight('leagues')}>Leagues</button><button className="text-link" onClick={() => openNight('history')}>History</button></div>
+            <button className="secondary practise" onClick={startGuidedGame}>Play against the computer</button>
           </section>
           <section className="rule-narrative" aria-labelledby="rule-story-title">
             <p className="eyebrow">THE MAIN EVENT</p>
@@ -168,23 +146,21 @@ export default function Prototype() {
           </>}
           {page === 'Modes' && <>
             <p className="eyebrow">YOUR PEOPLE. YOUR GAME.</p><h1>Make a night<br />of it.</h1><p className="intro">Six ways to play. One great card game.</p>
-            <button className="primary mode-score-cta" onClick={() => go('Table')}>Play with friends on this phone <ArrowRight size={18} /></button>
-            <button className="secondary mode-score-cta" onClick={() => go('Score')}>Open the Switch scorekeeper <ArrowRight size={18} /></button>
+            <button className="primary mode-score-cta" onClick={() => openNight('score')}>Open the Switch scorekeeper <ArrowRight size={18} /></button>
             <div className="mode-list">{modes.map((m, i) => <details key={m.name}><summary><span className="mode-number">0{i + 1}</span><span><strong>{m.name}</strong><small>{m.label}</small></span></summary><p>{m.text}</p></details>)}</div>
             {ads}
             <button className="download" onClick={downloadRules}><DownloadSimple size={20} />Download game-night rules</button>
           </>}
           <Suspense fallback={<Loading />}>
-            {page === 'Score' && <SwitchScorekeeper onBack={() => go('Modes')} />}
-            {page === 'Table' && <PassAndPlay onExit={() => go('Modes')} onScore={() => go('Score')} onStatusChange={onGameStatus} />}
-            {page === 'Tutorial' && <GuidedGame level={level} onExit={() => go('Learn')} onOpenCards={() => go('Cards')} onStatusChange={onGameStatus} />}
+            {page === 'Score' && <SwitchScorekeeper onBack={() => go('Modes')} initialView={scoreView} />}
+            {page === 'Tutorial' && <GuidedGame onExit={() => go('Learn')} onOpenCards={() => go('Cards')} onStatusChange={onGameStatus} />}
           </Suspense>
         </>}
       </main>
     </MobileScroll>
     <nav className="bottom-tabs" aria-label="Main navigation" style={{ bottom: bottomInset }}>
       {([{ name: 'Learn', label: 'Rules', Icon: BookOpen }, { name: 'Cards', label: 'Cards', Icon: Cards }, { name: 'Modes', label: 'Modes', Icon: UsersThree }, { name: 'Questions', label: 'Questions', Icon: ChatCircle }] as const).map(({ name, label, Icon }) => {
-        const active = page === name || (name === 'Learn' && page === 'Tutorial') || (name === 'Modes' && (page === 'Score' || page === 'Table'));
+        const active = page === name || (name === 'Learn' && page === 'Tutorial') || (name === 'Modes' && (page === 'Score'));
         return <button key={name} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} onClick={() => go(name)}><Icon weight={active ? 'fill' : 'regular'} size={26} /><span>{label}</span></button>;
       })}
     </nav>

@@ -3,19 +3,12 @@ import { applyAction, isPlayableDuringPenalty, legalMoves } from "./rules";
 import type { CardId, GameAction, GameState, RandomSource } from "./types";
 
 /**
- * relaxed  – makes friendly mistakes and may forget to say "Last Card".
+ * relaxed  – makes friendly mistakes.
  * standard – the original greedy opponent: empties its hand as fast as it can.
  * sharp    – saves wild aces, attacks when you are close to winning and
  *            avoids leaving itself stuck on a seven or jack.
  */
 export type ComputerLevel = "relaxed" | "standard" | "sharp";
-
-export const COMPUTER_LEVELS: Readonly<Record<ComputerLevel, { readonly label: string; readonly summary: string; readonly forgetsLastCard: number }>> =
-  Object.freeze({
-    relaxed: Object.freeze({ label: "Relaxed", summary: "Friendly play. Sometimes forgets “Last Card”.", forgetsLastCard: 0.35 }),
-    standard: Object.freeze({ label: "Standard", summary: "Plays quickly and never wastes a turn.", forgetsLastCard: 0.1 }),
-    sharp: Object.freeze({ label: "Sharp", summary: "Saves aces, attacks near the finish.", forgetsLastCard: 0 }),
-  });
 
 const POWER_CARD_SCORE: Readonly<Record<string, number>> = Object.freeze({
   "2": 60,

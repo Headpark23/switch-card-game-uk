@@ -1,20 +1,23 @@
 # Review follow-up — 6 November 2026
 
-Not deployed. Changes are uncommitted on `codex/switch-solo-hardening`.
+Not deployed. Work lives on `codex/switch-solo-hardening`.
+
+## Direction
+
+Switch is a **companion for a physical card night** (scores, leagues, stats). Playing on the phone is kept only as a tutorial. Pass-and-play for 2 to 6 players, three computer levels and the Last Card call-out challenge were built and then removed on this basis. The computer levels remain in `src/switch/ai.ts` with tests but have no UI.
 
 ## What changed
 
-1. **Browser suite runs.** Playwright's Chromium was installed. Result: 59 passed, 3 skipped, 0 failed.
-2. **Rules.** The first card is always an ordinary card. Either side can start (`createInitialGame(random, firstTurn)`). Sets of matching cards may be played in any order, and the last card sets the suit (`isLegalPlay`). Rule text updated to match.
-3. **Computer levels.** Relaxed, Standard (the original greedy opponent, unchanged) and Sharp. Over 3,000 simulated games per pairing: Standard beat Relaxed 73%, Sharp beat Standard 57.5%, Standard against itself 50.8%.
-4. **Two to six players.** `src/switch/table.ts` and a pass-and-play screen. A two-seat table matches the original engine move for move over 177,000 simulated steps. Tables of 2 to 6 keep 52 unique cards and always finish (1,500 games each).
-5. **Structure.** `Prototype.tsx` went from one 55 KB file to a 250-line shell plus `content.ts`, `ui.tsx` and `screens/`. The guided game now holds engine state directly; the `toEngine`/`mergeEngine` adapters are gone.
-6. **Polish.** Scorekeeper, guided game and pass-and-play load on demand. Card art and the hero image are WebP (3.0 MB to 0.5 MB in `public/images`). Demo ads and the ad-free preview show in development builds only. The `?testDeck=` hook is development-only and is absent from the production bundle.
-7. **Clubhouse parked.** The three Clubhouse UI tests are `test.fixme` until the screens exist.
+1. **Browser suite runs.** Playwright's Chromium was installed; the suite runs clean apart from one timing flake in the protected runtime keyboard test, which passes in isolation.
+2. **Rules.** The first card is always an ordinary card, and either side can start. Sets of matching cards may be played in any order, and the last card sets the suit. Rule text updated to match.
+3. **Structure.** `Prototype.tsx` went from one 55 KB file to a small shell plus `content.ts`, `ui.tsx` and `screens/`. The guided game holds engine state directly.
+4. **Polish.** Scorekeeper and guided game load on demand. Card art and the hero image are WebP. Demo ads and the ad-free preview show in development builds only; the `?testDeck=` hook is development-only.
+5. **Clubhouse.** Profiles, stats, league seasons and night history are real screens with tests. "Start a game night" is the main action on the home screen. Backup and restore of everything on the device is tested.
+6. **Tutorial clarity.** A turn banner shows whose turn it is, the whole game fits one iPhone or Pixel 10 screen (tested), and the coach explains each move and lists your options.
+7. **The "two eights" report.** Not an engine bug. The computer can answer an eight with its own eight; the message now says so ("The computer had an eight (X)...").
 
 ## Not covered
 
-- The "Call it out" Last Card challenge has no automated UI test (the computer rarely reaches one card in a scripted game).
-- Pass and play has one smoke test, not a full played game.
-- Guided-game layout was checked on iPhone only; pass-and-play on iPhone and Pixel 10.
-- Pass and play is one shared phone. There is no online play.
+- No service worker yet, so the app is not usable offline after a cold start with no network.
+- A score session in progress is saved, but there is no explicit "resume" prompt after a reload.
+- Computer levels have no UI by design.

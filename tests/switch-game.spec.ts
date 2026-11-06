@@ -76,7 +76,7 @@ test("one red king leaves five cards from a ten-card black-king stack", async ({
   await waitForPlayer(page);
   await play(page, "KH");
 
-  await expect(page.getByText(/Otherwise pick up 5/)).toBeVisible();
+  await expect(page.getByText(/The red king cancels five cards. 5 are still at stake for the computer/)).toBeVisible();
   await expect(page.getByText("The computer picks up 5 cards. Your turn.")).toBeVisible({ timeout: 4_000 });
   await expect(page.getByText("11 cards", { exact: true })).toBeVisible();
 });
@@ -167,4 +167,57 @@ test("a guided match follows power-card and last-card rules through a win", asyn
 
   await expect(page.getByRole("heading", { name: "You beat the computer." })).toBeVisible();
   await expect(page.getByText("You played your last card legally — you win!")).toBeVisible();
+});
+
+async function expectFitsOneScreen(page: Page) {
+  const fit = await page.evaluate(() => {
+    const hand = document.querySelector(".player-hand")!.getBoundingClientRect();
+    const tabs = document.querySelector(".bottom-tabs")!.getBoundingClientRect();
+    const scroller = document.querySelector('[data-testid="mobile-scroll"]') as HTMLElement;
+    return { handBottom: hand.bottom, tabsTop: tabs.top, scrolled: scroller.scrollTop };
+  });
+  expect(fit.handBottom).toBeLessThanOrEqual(fit.tabsTop);
+  expect(fit.scrolled).toBe(0);
+}
+
+for (const device of ["iPhone", "Pixel 10"]) {
+  test(`the whole game stays on one ${device} screen and shows whose turn it is`, async ({ page }) => {
+    await page.goto("/?testDeck=1");
+    if (device !== "iPhone") {
+      await page.getByRole("button", { name: /Preview device/ }).click();
+      await page.getByText("Pixel 10").click();
+    }
+    await page.getByRole("button", { name: "Play against the computer" }).click();
+    await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible();
+    await expect(page.locator(".turn-banner.you")).toBeVisible();
+    await expect(page.getByRole("region", { name: "Coach" })).toContainText("Your options");
+    await expectFitsOneScreen(page);
+
+    await play(page, "9H");
+    await expect(page.locator(".turn-banner.computer")).toBeVisible();
+    await expect(page.getByText("The computer played an eight")).toBeVisible({ timeout: 4_000 });
+
+    // The busiest moment (miss-a-turn panel showing) still fits above the tab bar without scrolling.
+    await expectFitsOneScreen(page);
+  });
+}
+
+test("a computer that holds an eight says so and passes the missed turn back", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const rules = await import("/src/switch/rules.ts");
+    const ai = await import("/src/switch/ai.ts");
+    const base = {
+      playerHand: ["8H", "8S", "3C"], computerHand: ["9D", "4C", "QS"], drawPile: ["2C", "3C", "4C"], discardPile: ["9H"],
+      currentSuit: "H", turn: "player", pendingPenalty: null, status: "playing", winner: null, move: 0,
+    };
+    const without = rules.applyAction(base, { type: "play", cards: ["8H", "8S"] });
+    const withEight = rules.applyAction({ ...base, computerHand: ["8D", "4C", "QS"] }, { type: "play", cards: ["8H", "8S"] });
+    return {
+      withoutMoves: rules.legalMoves(without),
+      withAction: ai.chooseComputerAction(withEight, () => 0),
+    };
+  });
+  expect(result.withoutMoves).toEqual([{ type: "accept-missed-turn" }]);
+  expect(result.withAction).toEqual({ type: "play", cards: ["8D"] });
 });

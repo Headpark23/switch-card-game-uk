@@ -1,21 +1,22 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { ArrowCounterClockwise, ArrowRight, CheckCircle, HandPalm, Lightbulb } from '@phosphor-icons/react';
-import { chooseComputerAction, COMPUTER_LEVELS, type ComputerLevel } from '../switch/ai';
+import { chooseComputerAction } from '../switch/ai';
 import { applyAction, createInitialGame, drawCards, legalMoves } from '../switch/rules';
 import type { CardId, GameState, Suit } from '../switch/types';
-import { CardImage, isRedKing, rank, suit, suitNames, suitSymbols } from '../ui';
-import { testDeckRequested, testGameFromUrl } from './devDecks';
+import { explainEffect, explainOptions, explainPickup, explainUnplayable } from '../switch/coach';
+import { CardImage, CoachPanel, isRedKing, rank, suit, suitNames, suitSymbols } from '../ui';
+import { testGameFromUrl } from './devDecks';
 
 const YOUR_TURN_NOTICE = 'Your turn. Play a legal card, or pick up one to save your cards for later.';
 
 type View = {
   engine: GameState;
   notice: string;
+  /** Plain-English explanation of the last move. */
+  meaning: string | null;
   hint: boolean;
   /** You are down to one card and have not yet said (or skipped) "Last Card". */
   awaitingLastCard: boolean;
-  /** The computer is on one card and did not announce it. */
-  computerForgot: boolean;
 };
 
 function openingView(): View {
@@ -24,9 +25,9 @@ function openingView(): View {
   return {
     engine,
     notice: engine.turn === 'player' ? YOUR_TURN_NOTICE : 'The computer goes first.',
+    meaning: null,
     hint: false,
     awaitingLastCard: false,
-    computerForgot: false,
   };
 }
 
@@ -52,40 +53,42 @@ function penaltyCards(state: GameState) {
   return state.pendingPenalty && state.pendingPenalty.kind !== 'miss-turn' ? state.pendingPenalty.cards : 0;
 }
 
-function computerStep(view: View, level: ComputerLevel): View {
+function computerStep(view: View): View {
   const { engine } = view;
   if (engine.status !== 'playing' || engine.turn !== 'computer') return view;
 
-  const action = chooseComputerAction(engine, Math.random, level);
+  const action = chooseComputerAction(engine, Math.random);
   const next = applyAction(engine, action);
 
   if (action.type === 'play') {
     if (next.status === 'won') {
-      return { ...view, engine: next, hint: false, notice: 'The computer played its last card. Try another game and use the hints when you need them.' };
+      return { ...view, engine: next, hint: false, meaning: null, notice: 'The computer played its last card. Try another game and use the hints when you need them.' };
     }
     let notice = describePlay(engine, next, action.cards, 'computer', action.chosenSuit);
-    const forgetChance = import.meta.env.DEV && testDeckRequested() ? 0 : COMPUTER_LEVELS[level].forgetsLastCard;
-    const forgot = next.computerHand.length === 1 && Math.random() < forgetChance;
-    if (next.computerHand.length === 1 && !forgot) notice += ' Computer says “Last Card”.';
-    return { ...view, engine: next, notice, hint: false, computerForgot: forgot };
+    let meaning = explainEffect(engine, next, action.cards, 'computer', action.chosenSuit);
+    if (engine.pendingPenalty?.kind === 'miss-turn' && next.pendingPenalty?.kind === 'miss-turn') {
+      notice = `The computer had an eight (${action.cards[0]}), so it passes the missed turn back to you. Counter with an eight of your own, or miss your turn.`;
+      meaning = 'It answered your eight with one of its own. That is allowed, and the missed turn is now yours.';
+    }
+    if (next.computerHand.length === 1) notice += ' Computer says “Last Card”.';
+    return { ...view, engine: next, notice, meaning, hint: false };
   }
 
   if (action.type === 'accept-missed-turn') {
-    return { ...view, engine: next, hint: false, notice: 'The computer cannot counter the eight and misses its turn.' };
+    return { ...view, engine: next, hint: false, meaning: 'It had no eight to pass the missed turn on, so you play again.', notice: 'The computer cannot counter the eight and misses its turn.' };
   }
   const count = penaltyCards(engine) || 1;
-  return { ...view, engine: next, hint: false, notice: `The computer picks up ${count} card${count === 1 ? '' : 's'}. Your turn.` };
+  return { ...view, engine: next, hint: false, meaning: explainPickup(engine, 'computer', count), notice: `The computer picks up ${count} card${count === 1 ? '' : 's'}. Your turn.` };
 }
 
 type Props = {
-  level: ComputerLevel;
   onExit: () => void;
   onOpenCards: () => void;
   /** Lets the page reset its scroll position when the game ends. */
   onStatusChange: (status: 'playing' | 'won' | 'lost') => void;
 };
 
-export default function GuidedGame({ level, onExit, onOpenCards, onStatusChange }: Props) {
+export default function GuidedGame({ onExit, onOpenCards, onStatusChange }: Props) {
   const [view, setView] = useState<View>(openingView);
   const [aceChoice, setAceChoice] = useState<CardId[] | null>(null);
   const [staged, setStaged] = useState<CardId[]>([]);
@@ -110,9 +113,9 @@ export default function GuidedGame({ level, onExit, onOpenCards, onStatusChange 
 
   useEffect(() => {
     if (outcome !== 'playing' || awaitingLastCard || engine.turn !== 'computer') return;
-    const timer = setTimeout(() => setView((current) => computerStep(current, level)), 650);
+    const timer = setTimeout(() => setView((current) => computerStep(current)), 650);
     return () => clearTimeout(timer);
-  }, [outcome, awaitingLastCard, engine.turn, engine.move, level]);
+  }, [outcome, awaitingLastCard, engine.turn, engine.move]);
 
   const legal = legalMoves(engine);
   const canPlay = (card: CardId) => legal.some((action) => action.type === 'play' && action.cards.length === 1 && action.cards[0] === card);
@@ -122,18 +125,19 @@ export default function GuidedGame({ level, onExit, onOpenCards, onStatusChange 
 
   function afterYourPlay(before: GameState, after: GameState, cards: readonly CardId[], aceSuit?: Suit) {
     const notice = describePlay(before, after, cards, 'you', aceSuit);
+    const meaning = explainEffect(before, after, cards, 'you', aceSuit);
     if (after.status === 'won') {
       setView((current) => ({
-        ...current, engine: after, hint: false, computerForgot: false,
+        ...current, engine: after, hint: false, meaning: null,
         notice: cards.length > 1 ? 'You played your matching set legally — you win!' : 'You played your last card legally — you win!',
       }));
       return;
     }
     if (after.playerHand.length === 1) {
-      setView((current) => ({ ...current, engine: after, hint: false, computerForgot: false, awaitingLastCard: true, notice: 'One card left. Say “Last Card” before play continues.' }));
+      setView((current) => ({ ...current, engine: after, hint: false, meaning, awaitingLastCard: true, notice: 'One card left. Say “Last Card” before play continues.' }));
       return;
     }
-    setView((current) => ({ ...current, engine: after, hint: false, computerForgot: false, notice }));
+    setView((current) => ({ ...current, engine: after, hint: false, meaning, notice }));
   }
 
   function playSet(cards: CardId[], aceSuit?: Suit) {
@@ -150,14 +154,7 @@ export default function GuidedGame({ level, onExit, onOpenCards, onStatusChange 
       return;
     }
     if (!canPlay(card)) {
-      setView((current) => ({
-        ...current, hint: true,
-        notice: engine.playerHand.length === 1 && (rank(card) === '7' || rank(card) === 'J')
-          ? 'You cannot finish on a seven or a jack in this two-player game.'
-          : rank(card) === 'A'
-            ? 'An ace is wild on ordinary cards, but cannot interrupt a black king, two or eight.'
-            : 'That card cannot follow the current card. Use a hint to see your legal moves.',
-      }));
+      setView((current) => ({ ...current, hint: true, notice: explainUnplayable(card, engine) }));
       return;
     }
     if (rank(card) === 'A') { setStaged([]); setAceChoice([card]); return; }
@@ -183,7 +180,8 @@ export default function GuidedGame({ level, onExit, onOpenCards, onStatusChange 
     const count = pendingDraw || 1;
     const next = applyAction(engine, pending?.kind === 'miss-turn' ? { type: 'accept-missed-turn' } : { type: 'draw' });
     setView((current) => ({
-      ...current, engine: next, hint: false, computerForgot: false,
+      ...current, engine: next, hint: false,
+      meaning: pending?.kind === 'miss-turn' ? 'You had no eight to pass it on, so you miss this turn and the computer plays next.' : explainPickup(engine, 'you', count),
       notice: pending?.kind === 'miss-turn' ? 'You cannot counter with an eight, so you miss this turn.' : `You pick up ${count} card${count === 1 ? '' : 's'}. Computer’s turn.`,
     }));
   }
@@ -193,14 +191,6 @@ export default function GuidedGame({ level, onExit, onOpenCards, onStatusChange 
       if (said) return { ...current, awaitingLastCard: false, notice: '“Last Card!” — called in time.', engine: { ...current.engine, move: current.engine.move + 1 } };
       const penalised = drawCards(current.engine, 2, 'player');
       return { ...current, awaitingLastCard: false, notice: 'You forgot “Last Card” and pick up two penalty cards.', engine: { ...penalised, move: penalised.move + 1 } };
-    });
-  }
-
-  function callOut() {
-    setView((current) => {
-      if (!current.computerForgot) return { ...current, computerForgot: false, notice: 'The computer did say “Last Card”, so there is no penalty. Listen for the call before you challenge.' };
-      const caught = drawCards(current.engine, 2, 'computer');
-      return { ...current, computerForgot: false, engine: { ...caught, move: caught.move + 1 }, notice: 'Caught! The computer forgot “Last Card” and picks up two cards.' };
     });
   }
 
@@ -224,17 +214,15 @@ export default function GuidedGame({ level, onExit, onOpenCards, onStatusChange 
   return <section className="tutorial game-tutorial" aria-label={deckDescription}>{outcome !== 'playing'
     ? <div className="completion"><CheckCircle size={60} weight="light" /><p className="eyebrow">{outcome === 'won' ? 'GAME WON' : 'GOOD PRACTICE'}</p><h1>{outcome === 'won' ? <>You beat the<br />computer.</> : <>The computer<br />won this one.</>}</h1><p>{view.notice}</p><button className="primary" onClick={restart}><ArrowCounterClockwise size={18} />Play another guided game</button><button className="secondary" onClick={onOpenCards}>Open card guide <ArrowRight size={18} /></button></div>
     : <>
-      <div className="lesson-meta"><span>GUIDED GAME · {yourTurn ? 'YOUR TURN' : 'COMPUTER TURN'}</span><button onClick={onExit}>Exit game</button></div>
+      <div className={'turn-banner ' + (yourTurn ? 'you' : 'computer')} aria-live="polite"><span className="turn-dot" aria-hidden="true" /><span>GUIDED GAME · {yourTurn ? 'YOUR TURN' : 'COMPUTER TURN'}</span><button onClick={onExit}>Exit game</button></div>
       <div className="opponent" aria-label={`Computer has ${engine.computerHand.length} cards`}><span>COMPUTER</span><div>{engine.computerHand.slice(0, 5).map((_, i) => <CardImage code="back" key={i} />)}</div><strong>{engine.computerHand.length} card{engine.computerHand.length === 1 ? '' : 's'}</strong></div>
-      <p className="level-note">{COMPUTER_LEVELS[level].label} opponent</p>
       <div className="game-table"><button className="draw-pile" onClick={drawOrResolve} disabled={!yourTurn || awaitingLastCard || !!staged.length || missTurn} aria-label={missTurn ? 'Draw pile unavailable while resolving the eight' : pendingDraw ? `Pick up ${pendingDraw} cards` : legalCards.length ? 'Pick up one card instead of playing' : 'Draw a card'}><CardImage code="back" /><span>{missTurn ? 'Eight played' : pendingDraw ? `Pick up ${pendingDraw}` : legalCards.length ? 'Pick up instead' : 'Draw'}</span></button><div className="discard-pile"><CardImage code={topCard} /><span>Current suit <b className={(engine.currentSuit === 'H' || engine.currentSuit === 'D') ? 'red' : ''}>{suitSymbols[engine.currentSuit]} {suitNames[engine.currentSuit]}</b></span></div></div>
       <p className="game-notice" aria-live="polite">{!yourTurn ? 'Computer is choosing a card…' : view.notice}</p>
-      {yourTurn && engine.computerHand.length === 1 && !awaitingLastCard && <button className="call-out" onClick={callOut}><HandPalm size={17} />Call it out: no “Last Card”?</button>}
+      {!awaitingLastCard && <CoachPanel meaning={view.meaning} options={yourTurn && !missTurn ? explainOptions(engine) : []} />}
       {yourTurn && missTurn && !awaitingLastCard && <div className="miss-turn-action"><strong>The computer played an eight</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you must miss this turn.'}</p><button className="primary" onClick={drawOrResolve}>Accept missed turn <ArrowRight size={18} /></button></div>}
       {awaitingLastCard
         ? <div className="last-card-call"><HandPalm size={27} /><strong>One card remaining</strong><p>Say “Last Card” now. Forgetting costs two cards.</p><button className="primary" onClick={() => answerLastCard(true)}>Say “Last Card”</button><button className="text-link" onClick={() => answerLastCard(false)}>Continue without saying it</button></div>
-        : <><div className="game-actions"><button className={'hint-button ' + (view.hint ? 'active' : '')} onClick={() => setView((current) => ({ ...current, hint: !current.hint }))} disabled={!yourTurn}><Lightbulb size={19} weight={view.hint ? 'fill' : 'regular'} />{view.hint ? 'Hide hint' : 'Show hint'}</button><span>{engine.playerHand.length} cards in your hand</span></div>{view.hint && <p className="game-hint"><Lightbulb size={17} />{gameHint}</p>}<div className="player-hand" aria-label="Your hand">{engine.playerHand.map((card) => <button key={card} onClick={() => chooseCard(card)} className={(view.hint && canPlay(card) ? 'playable ' : '') + (staged.includes(card) ? 'selected' : '')} disabled={!yourTurn} aria-label={`Play ${card}${canPlay(card) ? ', legal move' : ', not currently playable'}`}><CardImage code={card} /></button>)}</div>{staged.length > 0 && <div className="multi-action"><p>{staged.length} matching card{staged.length === 1 ? '' : 's'} selected</p><button className="primary" onClick={playStaged}>Play selected</button><button className="text-link" onClick={() => setStaged([])}>Cancel selection</button></div>}</>}
+        : <><div className="game-actions"><button className={'hint-button ' + (view.hint ? 'active' : '')} onClick={() => setView((current) => ({ ...current, hint: !current.hint }))} disabled={!yourTurn}><Lightbulb size={19} weight={view.hint ? 'fill' : 'regular'} />{view.hint ? 'Hide hint' : 'Show hint'}</button><span>{engine.playerHand.length} cards in your hand</span></div>{view.hint && <p className="game-hint"><Lightbulb size={17} />{gameHint}</p>}<div className={'player-hand' + (engine.playerHand.length > 10 ? ' dense' : '')} aria-label="Your hand">{engine.playerHand.map((card) => <button key={card} onClick={() => chooseCard(card)} className={(view.hint && canPlay(card) ? 'playable ' : '') + (staged.includes(card) ? 'selected' : '')} disabled={!yourTurn} aria-label={`Play ${card}${canPlay(card) ? ', legal move' : ', not currently playable'}`}><CardImage code={card} /></button>)}</div>{staged.length > 0 && <div className="multi-action"><p>{staged.length} matching card{staged.length === 1 ? '' : 's'} selected</p><button className="primary" onClick={playStaged}>Play selected</button><button className="text-link" onClick={() => setStaged([])}>Cancel selection</button></div>}</>}
       {aceChoice && <div className="suit-choice" role="dialog" aria-label="Choose a suit"><p>Choose the suit for your ace</p><div>{(['S', 'H', 'D', 'C'] as Suit[]).map((chosen) => <button key={chosen} className={(chosen === 'H' || chosen === 'D') ? 'red' : ''} onClick={() => { const cards = aceChoice; setAceChoice(null); setStaged([]); playSet(cards, chosen); }}>{suitSymbols[chosen]}<span>{suitNames[chosen]}</span></button>)}</div><button className="text-link" onClick={() => setAceChoice(null)}>Cancel</button></div>}
-      <div className="game-rule"><strong>Rule in play</strong><p>{pending?.kind === 'draw-two' ? `Twos stack. The penalty is ${pendingDraw}.` : pending?.kind === 'black-king' ? `Another black king adds 5 and passes the penalty on. A red king cancels 5. Otherwise pick up ${pendingDraw}.` : missTurn ? 'Counter with another eight or miss your turn.' : 'Match the suit or number, or pick up one card instead. Aces are wild on ordinary cards and let you choose the next suit. Matching numbers may be played together.'}</p></div>
     </>}</section>;
 }

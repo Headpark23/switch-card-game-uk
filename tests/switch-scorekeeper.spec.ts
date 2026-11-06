@@ -84,7 +84,9 @@ test("ten-player Cup draws fixtures and a champion", async ({ page }) => {
 
 test("a completed night is named, saved once and restored with its result", async ({ page }) => {
   await openScorekeeper(page);
+  await page.getByRole("button", { name: "History", exact: true }).click();
   await expect(page.getByText("No completed nights saved yet.")).toBeVisible();
+  await page.getByRole("button", { name: "Score", exact: true }).click();
   await fillVisibleNames(page);
   await page.getByLabel("Target score").fill("10");
   await page.getByRole("button", { name: "Start Domino" }).click();
@@ -102,6 +104,7 @@ test("a completed night is named, saved once and restored with its result", asyn
   await page.reload();
   await page.getByRole("button", { name: "Modes", exact: true }).click();
   await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("button", { name: "History", exact: true }).click();
   await page.getByText("Friday Final", { exact: true }).click();
   await expect(page.getByText("Player 1 — 10 points", { exact: true })).toBeVisible();
 });
@@ -134,6 +137,7 @@ test("history exports and deletes only after confirmation", async ({ page }) => 
   await page.getByRole("button", { name: "Modes", exact: true }).click();
   await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
 
+  await page.getByRole("button", { name: "History", exact: true }).click();
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export history" }).click();
   const download = await downloadPromise;

@@ -15,7 +15,7 @@ export const rules = [
   {q:'Can I finish on a seven?',a:'No. A seven means play again, so it cannot be your last card.'},
   {q:'What happens after a black king?',a:'A black king adds 5 cards to the penalty. The next player may play another black king to pass on 10, or use a red king to cancel one black king. The chain continues until someone cannot respond and picks up the full outstanding penalty.'},
   {q:'When can I play an ace?',a:'You can play an ace at any time on an ordinary card, even when it does not match the current suit or number. After playing it, choose the suit the next player must follow. An ace cannot interrupt an active black king, two or eight.'},
-  {q:'What if I forget to say “Last Card”?',a:'Announce “Last Card” as soon as you have one card remaining. Forgetting means picking up 2 cards as a penalty, if another player spots it before you play your next card. In the guided game, watch the computer: if it forgets, tap Call it out.'},
+  {q:'What if I forget to say “Last Card”?',a:'Announce “Last Card” as soon as you have one card remaining. Forgetting means picking up 2 cards as a penalty, if another player spots it before you play your next card.'},
   {q:'Can I finish on a jack?',a:'In a two-player game you cannot finish on a jack, because the reversal brings play straight back to you. With three or more players a jack can be your last card. Agree any house-rule exceptions before starting.'},
   {q:'How do stacked twos work?',a:'Counter a two with another two. Each adds 2 cards to the penalty, up to 8 cards when all four have been played.'},
   {q:'How do eights work?',a:'An eight makes the next player miss a turn. They can defend with another eight and pass the effect on.'},
