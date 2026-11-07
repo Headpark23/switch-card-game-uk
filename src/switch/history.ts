@@ -116,10 +116,10 @@ export function completionFromSession(session: ScoreSession): NightCompletion | 
     winnerIds: [leaders[0].id],
     outcome: `${leaders[0].name} won`,
     details: [{
-      heading: "Final scores",
+      heading: session.bestOf ? `Final legs · best of ${session.bestOf}` : "Final scores",
       lines: [...session.players]
         .sort((left, right) => (session.scores[right.id] ?? 0) - (session.scores[left.id] ?? 0))
-        .map((player) => `${player.name} — ${session.scores[player.id] ?? 0} points`),
+        .map((player) => `${player.name} — ${session.scores[player.id] ?? 0} ${session.bestOf ? "legs" : "points"}`),
     }],
   };
 }

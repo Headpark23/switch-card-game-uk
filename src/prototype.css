@@ -321,3 +321,4 @@
 .switch-content.interior .app-footer{margin-left:-24px;margin-right:-24px}
 .draw-pile{position:relative}.draw-flier{position:absolute;inset:0;z-index:6;display:flex;align-items:flex-start;justify-content:center;pointer-events:none}.draw-flier img{max-height:100%;width:auto}
 .format-note{margin:12px 2px 14px!important;line-height:1.45}
+.count-control.wide-toggle{grid-template-columns:1fr auto auto;gap:6px}.count-control.wide-toggle button{width:auto;min-width:72px;padding:0 16px;border-radius:999px}

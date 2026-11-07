@@ -18,6 +18,8 @@ export interface ScoreSession {
   readonly players: readonly Player[];
   readonly scores: Readonly<Record<string, number>>;
   readonly target: number;
+  /** One v One played as legs: an odd number of legs, first to a majority wins. Scores then count legs won. */
+  readonly bestOf?: number;
   readonly darts: DartsState | null;
   readonly history: readonly ScoreSnapshot[];
 }
@@ -50,7 +52,7 @@ function playerBounds(format: ScoreFormat): readonly [number, number] {
   return [2, 2];
 }
 
-export function createSession(format: ScoreFormat, names: readonly (string | Player)[], options: { target?: number; setsToWin?: number } = {}): ScoreSession {
+export function createSession(format: ScoreFormat, names: readonly (string | Player)[], options: { target?: number; setsToWin?: number; bestOf?: number } = {}): ScoreSession {
   const [minimum, maximum] = playerBounds(format);
   if (names.length < minimum || names.length > maximum) throw new Error(`${format} supports ${minimum}–${maximum} players.`);
   const players = names.map((entry, index) => {
@@ -59,6 +61,12 @@ export function createSession(format: ScoreFormat, names: readonly (string | Pla
     return { id: typeof entry === "string" ? `player-${index + 1}` : entry.id, name };
   });
   const scores = Object.fromEntries(players.map((player) => [player.id, 0]));
+  const bestOf = options.bestOf;
+  if (bestOf !== undefined) {
+    if (format !== "head-to-head") throw new Error("Only One v One can be played as legs.");
+    if (!Number.isInteger(bestOf) || bestOf < 1 || bestOf > 99 || bestOf % 2 === 0) throw new ScoreValidationError("whole-number", "The number of legs must be odd, such as 3, 5 or 9.");
+    return { format, players, scores, target: (bestOf + 1) / 2, bestOf, darts: null, history: [] };
+  }
   const target = parseScore(options.target ?? 100);
   if (target === 0) throw new ScoreValidationError("non-negative", "The target must be greater than zero.");
   const setsToWin = parseScore(options.setsToWin ?? 3);
@@ -92,9 +100,12 @@ export function applyScoreCommand(session: ScoreSession, command: ScoreCommand):
   if (scoreWinnerId(session)) throw new ScoreValidationError("finished", "The match is over. Undo the last score to carry on.");
   const history = remember(session);
   if (command.type === "add-score") {
-    if (session.format !== "domino" && session.format !== "head-to-head") throw new ScoreValidationError("wrong-format", "This format does not use round scores.");
+    if ((session.format !== "domino" && session.format !== "head-to-head") || session.bestOf !== undefined) throw new ScoreValidationError("wrong-format", "This format does not use round scores.");
     const value = parseScore(command.value);
     return { ...session, scores: { ...session.scores, [command.playerId]: session.scores[command.playerId] + value }, history };
+  }
+  if (session.bestOf !== undefined) {
+    return { ...session, scores: { ...session.scores, [command.playerId]: session.scores[command.playerId] + 1 }, history };
   }
   if (session.format !== "darts" || !session.darts) throw new ScoreValidationError("wrong-format", "Only darts uses legs.");
   const legs = { ...session.darts.legs, [command.playerId]: session.darts.legs[command.playerId] + 1 };

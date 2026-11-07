@@ -212,3 +212,35 @@ test("Knock Out drops the round's last player each round until one champion rema
   await expect(page.getByText("CHAMPION", { exact: true })).toBeVisible();
   await expect(page.getByText("LOST", { exact: true })).toHaveCount(5);
 });
+
+test("One v One as legs: odd best-of, match ends when a player reaches the majority", async ({ page }) => {
+  await openScorekeeper(page);
+  await page.getByRole("button", { name: "One v One" }).click();
+  await fillVisibleNames(page);
+  await page.getByRole("button", { name: "Legs", exact: true }).click();
+  await expect(page.getByText("Best of (odd) · first to 5")).toBeVisible();
+  await page.getByRole("button", { name: "Fewer legs" }).click();
+  await expect(page.getByText("Best of (odd) · first to 4")).toBeVisible();
+  await page.getByRole("button", { name: "More legs" }).click();
+  await page.getByRole("button", { name: "Start One v One" }).click();
+  await expect(page.getByText("Best of 9 · first to 5 legs")).toBeVisible();
+  for (let leg = 0; leg < 4; leg += 1) await page.getByRole("button", { name: "Win leg" }).first().click();
+  for (let leg = 0; leg < 4; leg += 1) await page.getByRole("button", { name: "Win leg" }).last().click();
+  await expect(page.getByText(/wins the match/)).toHaveCount(0);
+  await page.getByRole("button", { name: "Win leg" }).first().click();
+  await expect(page.getByText("Player 1 wins the match!")).toBeVisible();
+  await expect(page.getByText("5 legs", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Win leg" }).first()).toBeDisabled();
+});
+
+test("legs scoring rejects even numbers and other formats", async ({ page }) => {
+  await page.goto("/");
+  const out = await page.evaluate(async () => {
+    const s = await import("/src/switch/scoring.ts");
+    const tryIt = (fn: () => unknown) => { try { fn(); return "ok"; } catch (e) { return (e as Error).message; } };
+    return [tryIt(() => s.createSession("head-to-head", ["A", "B"], { bestOf: 8 })), tryIt(() => s.createSession("domino", ["A", "B"], { bestOf: 9 })), s.createSession("head-to-head", ["A", "B"], { bestOf: 9 }).target];
+  });
+  expect(out[0]).toMatch(/odd/);
+  expect(out[1]).toMatch(/Only One v One/);
+  expect(out[2]).toBe(5);
+});
