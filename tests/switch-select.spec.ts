@@ -46,6 +46,5 @@ test("picking up sends card backs flying from the draw pile to your hand", async
   await page.getByRole("button", { name: "Play against the computer" }).click();
   await page.locator(".draw-pile").click();
   await expect(page.locator(".draw-flier").first()).toBeAttached();
-  await page.screenshot({ path: "draw-shot.png" });
   await expect(page.locator(".draw-flier")).toHaveCount(0, { timeout: 4000 });
 });
