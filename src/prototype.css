@@ -322,3 +322,7 @@
 .draw-pile{position:relative}.draw-flier{position:absolute;inset:0;z-index:6;display:flex;align-items:flex-start;justify-content:center;pointer-events:none}.draw-flier img{max-height:100%;width:auto}
 .format-note{margin:12px 2px 14px!important;line-height:1.45}
 .count-control.wide-toggle{grid-template-columns:1fr auto auto;gap:6px}.count-control.wide-toggle button{width:auto;min-width:72px;padding:0 16px;border-radius:999px}
+
+/* The homepage hero repeats as a soft banner behind the header of every page. It sits behind the content and never takes up space. */
+.switch-content.interior{position:relative;isolation:isolate}
+.switch-content.interior::before{content:'';position:absolute;z-index:-1;top:0;left:0;right:0;height:170px;pointer-events:none;background:linear-gradient(180deg,rgba(251,248,240,.15) 0,rgba(251,248,240,.55) 55%,var(--cream) 100%),url('/images/hero.webp') center 22%/cover no-repeat}
