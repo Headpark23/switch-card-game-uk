@@ -1,8 +1,8 @@
 import { lazy, Suspense, useCallback, useLayoutEffect, useState } from 'react';
-import { ArrowRight, BookOpen, Cards, UsersThree, ChatCircle, Club, MagnifyingGlass, X, Crown, DownloadSimple, CheckCircle, Lightbulb } from '@phosphor-icons/react';
+import { ArrowRight, BookOpen, Cards, UsersThree, ChatCircle, Club, MagnifyingGlass, X, DownloadSimple, CheckCircle, Lightbulb } from '@phosphor-icons/react';
 import { BottomSheet, KeyboardInput, MobileScroll, useKeyboard, useKeyboardInsets } from './mobile';
 import { modes, powers, ruleChapters, rules } from './content';
-import { AdSlot, Fan } from './ui';
+import { Fan } from './ui';
 import { enableOffline } from './offline';
 import InstallButton, { InstallBanner } from './InstallButton';
 import { AccountPanel } from './AccountPanel';
@@ -20,13 +20,6 @@ const QuickNight = lazy(() => import('./screens/QuickNight'));
 const Puzzles = lazy(() => import('./screens/Puzzles'));
 
 type Page = 'Learn' | 'Cards' | 'Modes' | 'Questions' | 'Tutorial' | 'Score' | 'Quick' | 'Puzzles';
-
-/**
- * The demonstration ad slots and ad-free preview are not a real product yet,
- * so they appear only in development builds. Switch them on here when the
- * business model is ready.
- */
-const SHOW_MONETISATION_PREVIEW = import.meta.env.DEV;
 
 function downloadRules() {
   const text = 'SWITCH — Rules for a better game night\n\n'
@@ -49,8 +42,6 @@ export default function Prototype() {
   const [page, setPage] = useState<Page>('Learn');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<(typeof powers)[number] | null>(null);
-  const [membership, setMembership] = useState(false);
-  const [adFree, setAdFree] = useState(false);
   const [ruleStep, setRuleStep] = useState(0);
   const [scrollKey, setScrollKey] = useState('');
   const [scoreView, setScoreView] = useState<'score' | 'stats' | 'leagues' | 'history'>('score');
@@ -67,7 +58,7 @@ export default function Prototype() {
     resetDeviceScroll();
     const frame = requestAnimationFrame(resetDeviceScroll);
     return () => cancelAnimationFrame(frame);
-  }, [page, selected, membership]);
+  }, [page, selected]);
   // A new game screen starts at the top. The scroll area is not remounted, so game state survives.
   useLayoutEffect(() => {
     const scroller = document.querySelector<HTMLElement>('[data-testid="mobile-scroll"]');
@@ -88,8 +79,6 @@ export default function Prototype() {
   const openNight = (view: 'score' | 'stats' | 'leagues' | 'history') => { setScoreView(view); go('Score'); };
 
   const result = rules.filter((r) => (r.q + ' ' + r.a).toLowerCase().includes(query.toLowerCase()));
-  const ads = SHOW_MONETISATION_PREVIEW ? <AdSlot hidden={adFree} /> : null;
-
   return <div className="switch-app" onFocusCapture={resetDeviceScroll}>
     <MobileScroll key={page} className="switch-scroll">
       <main className={'switch-content ' + (page === 'Learn' ? 'home' : 'interior') + (page === 'Tutorial' ? ' tutorial-page' : '')}>
@@ -138,21 +127,17 @@ export default function Prototype() {
             <p className="section-caption">The cards that change the game.</p>
             <div className="power-columns">{[powers[0], powers[2], powers[6]].map((p) => <button key={p.name} onClick={() => setSelected(p)}><Fan codes={p.cards} /><h3>{p.name}</h3><p>{p.short}.</p><span>View rule <ArrowRight size={12} /></span></button>)}</div>
           </section>
-          {ads}
           <section className="night-note"><p className="eyebrow">MAKE IT A GAME NIGHT</p><h2>A little friendly rivalry.</h2><p>From a quick head-to-head to your very own Switch Cup.</p><button className="text-link" onClick={() => go('Modes')}>Explore game modes <ArrowRight size={18} /></button></section>
-          {SHOW_MONETISATION_PREVIEW && <button className="member-strip" onClick={() => setMembership(true)}><Crown size={24} /><span>More time at the table<small>Explore an ad-free experience</small></span><ArrowRight size={20} /></button>}
           <InstallButton />
           <button className="download" onClick={downloadRules}><DownloadSimple size={20} />Download all rules</button>
           </>}
         </> : <>
           <header className="small-brand">
             <button onClick={() => go('Learn')} aria-label="Switch home"><Club weight="fill" size={20} /> SWITCH</button>
-            {SHOW_MONETISATION_PREVIEW && <button aria-label="Explore ad-free preview" onClick={() => setMembership(true)}><Crown size={22} /></button>}
           </header>
           {page === 'Cards' && <>
             <p className="eyebrow">YOUR TABLE-SIDE REFERENCE</p><h1>Every card.<br />Every possibility.</h1><p className="intro">Tap a card to see its effect, defence and exceptions.</p>
             <div className="power-list">{powers.map((p) => <button key={p.name} onClick={() => setSelected(p)}><Fan codes={p.cards.slice(0, 2)} /><span><strong>{p.name}</strong><small>{p.short}</small></span><ArrowRight size={19} /></button>)}</div>
-            {ads}
           </>}
           {page === 'Questions' && <>
             <p className="eyebrow">SETTLE THE DEBATE</p><h1>There’s a rule<br />for that.</h1><p className="intro">Quick answers, before the next card lands.</p>
@@ -166,13 +151,11 @@ export default function Prototype() {
             <InstallButton />
             <a className="community" href="/privacy.html" target="_blank" rel="noreferrer">Privacy: what stays on your phone <ArrowRight size={16} /></a>
             <a className="community" href="https://783j5slzrfvf.trickle.host/#comments" target="_blank" rel="noreferrer">Visit the original community discussion <ArrowRight size={16} /></a>
-            {ads}
           </>}
           {page === 'Modes' && <>
             <p className="eyebrow">YOUR PEOPLE. YOUR GAME.</p><h1>Make a night<br />of it.</h1><p className="intro">Six ways to play. Tap any one to see what it means and how a night runs.</p>
             <button className="primary mode-score-cta" onClick={() => openNight('score')}>Open the Switch scorekeeper <ArrowRight size={18} /></button>
             <div className="mode-list">{modes.map((m, i) => <details key={m.name}><summary><span className="mode-number">0{i + 1}</span><span><strong>{m.name}</strong><small>{m.label}</small></span></summary><p>{m.text}</p>{m.how && <p className="mode-how"><strong>In plain English: </strong>{m.how}</p>}</details>)}</div>
-            {ads}
             <button className="download" onClick={downloadRules}><DownloadSimple size={20} />Download game-night rules</button>
           </>}
           <Suspense fallback={<Loading />}>
@@ -194,8 +177,5 @@ export default function Prototype() {
     <BottomSheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }} title={selected?.name || 'Card rule'}>
       {selected && <div className="rule-sheet"><Fan codes={selected.cards} /><p className="eyebrow">{selected.short}</p><p>{selected.text}</p><div className="exception"><strong>At the table</strong><p>{selected.extra}</p></div><button className="primary" onClick={() => setSelected(null)}>Got it <CheckCircle size={19} /></button></div>}
     </BottomSheet>
-    {SHOW_MONETISATION_PREVIEW && <BottomSheet open={membership} onOpenChange={setMembership} title="A little more Switch" description="A preview of possible paid extras. No purchase or charge.">
-      <div className="membership"><Crown size={38} weight="light" /><h2>Keep the good<br />times going.</h2><p>An ad-free experience, printable game-night packs and custom table themes are options for a future Switch Club.</p><div className="preview-label">INTERACTIVE PREVIEW</div><button className="primary" onClick={() => { setAdFree(!adFree); setMembership(false); }}>{adFree ? 'Restore demo ads' : 'Preview without ads'} <ArrowRight size={18} /></button><p className="fine-print">This changes the preview only. Paid plans are not available yet.</p></div>
-    </BottomSheet>}
   </div>;
 }

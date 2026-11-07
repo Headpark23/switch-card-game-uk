@@ -84,13 +84,18 @@ test("Knockout and Cup progress resume after refresh", async ({ page }) => {
 
 test("partly entered group-league finishing order resumes after refresh", async ({ page }) => {
   await openScorekeeper(page);
-  await page.getByRole("button", { name: "Group leagues" }).click();
+  await page.getByRole("button", { name: "Tournament Groups" }).click();
   await fillNames(page);
-  await page.getByRole("button", { name: "Start Group leagues" }).click();
+  await page.getByRole("button", { name: "Start Tournament Groups" }).click();
   await page.getByRole("button", { name: "Player 1 finished 1st" }).click();
 
   await reopenScorekeeper(page);
   await expect(page.getByRole("button", { name: "Player 1 finished 1st" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Player 2 finished 2nd" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Clear this round" }).first().click();
+  await reopenScorekeeper(page);
+  await expect(page.getByRole("button", { name: "Player 1 finished 1st" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Player 2 finished 1st" })).toBeEnabled();
 });
 

@@ -55,3 +55,8 @@ export function suitOf(id: CardId): Suit {
 export function cardLabel(card: Card): string {
   return `${RANK_NAMES[card.rank]} of ${SUIT_META[card.suit].name}`;
 }
+
+/** A screen-reader friendly name for a compact card id such as "9H". */
+export function cardIdLabel(id: CardId): string {
+  return `${RANK_NAMES[rankOf(id)]} of ${SUIT_META[suitOf(id)].name}`;
+}

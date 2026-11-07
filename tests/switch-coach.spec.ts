@@ -80,9 +80,10 @@ test("an unplayable tap says why, and keeps the rule wording", async ({ page }) 
 test("the guided game shows what happened and the options on your turn", async ({ page }) => {
   await page.goto("/?testDeck=1");
   await page.getByRole("button", { name: "Play against the computer" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Got it" }).click();
   await expect(page.getByRole("button", { name: /Why & tactics: Play/ })).toBeVisible();
 
-  await page.getByRole("button", { name: "Play 9H, legal move" }).click();
+  await page.getByRole("button", { name: "Play Nine of hearts, legal move" }).click();
   await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible({ timeout: 4_000 });
   await page.getByRole("button", { name: /Why & tactics/ }).click();
   await expect(page.getByRole("dialog")).toContainText("What that means");
@@ -93,7 +94,8 @@ test("the guided game shows what happened and the options on your turn", async (
 test("every move has a lesson card with what was played and what you could play", async ({ page }) => {
   await page.goto("/?testDeck=1");
   await page.getByRole("button", { name: "Play against the computer" }).click();
-  await page.getByRole("button", { name: "Play 9H, legal move" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Got it" }).click();
+  await page.getByRole("button", { name: "Play Nine of hearts, legal move" }).click();
   await expect(page.getByText("GUIDED GAME · COMPUTER TURN")).toBeVisible();
   await expect(page.getByText("The computer played an eight")).toBeVisible({ timeout: 4_000 });
 
@@ -121,7 +123,7 @@ test("a guidance card comes up every turn, and the computer waits for you to clo
   await expect(sheet).toHaveCount(0);
 
   // Your move gets a card, and the computer does not move until it is closed.
-  await page.getByRole("button", { name: "Play 9H, legal move" }).click();
+  await page.getByRole("button", { name: "Play Nine of hearts, legal move" }).click();
   await expect(sheet).toContainText("You played the nine of hearts.");
   await page.waitForTimeout(1_200);
   await expect(page.getByText("GUIDED GAME · COMPUTER TURN")).toBeVisible();
@@ -136,6 +138,40 @@ test("a guidance card comes up every turn, and the computer waits for you to clo
   await sheet.getByRole("button", { name: "Turn off automatic guidance cards" }).click();
   await expect(sheet).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem("switchGuidance"))).toBe("off");
+});
+
+test("default guidance teaches the opening then lets the game flow", async ({ page }) => {
+  await page.goto("/?testDeck=1");
+  await page.getByRole("button", { name: "Play against the computer" }).click();
+  const sheet = page.getByRole("dialog");
+  await expect(sheet).toContainText("Game on");
+  const done = sheet.getByRole("button", { name: "Got it" });
+  await expect(done).toBeVisible();
+  expect(await done.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
+  await done.click();
+  await page.getByRole("button", { name: "Play Nine of hearts, legal move" }).click();
+  await expect(sheet).toHaveCount(0);
+  await expect(page.getByText("The computer played an eight")).toBeVisible({ timeout: 4_000 });
+});
+
+test("matching-card selection exposes full names and truthful states", async ({ page }) => {
+  await page.goto("/?testDeck=partialKing");
+  await page.getByRole("button", { name: "Play against the computer" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Got it" }).click();
+  await page.getByRole("button", { name: "Play King of spades, legal move" }).click();
+  await expect(page.getByRole("button", { name: "Deselect King of spades from matching set" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Select King of hearts as another matching card" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Three of clubs, choose only matching kings" })).toBeVisible();
+});
+
+test("coach uses the correct article before ace", async ({ page }) => {
+  await page.goto("/");
+  const message = await page.evaluate(async (state) => {
+    const coach = await import("/src/switch/coach.ts");
+    return coach.explainUnplayable("3S" as never, state as never);
+  }, { ...base, discardPile: ["AS"], currentSuit: "H" });
+  expect(message).toContain("hearts or an ace");
+  expect(message).not.toContain("a ace");
 });
 
 test("the tactics coach recommends a legal move with reasons for any hand", async ({ page }) => {

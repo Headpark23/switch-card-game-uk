@@ -55,8 +55,8 @@ export default function ClubhouseLeagues({ extensions, onChange }: Props) {
 
   return <section className="club-panel" aria-labelledby="leagues-title">
     <p className="eyebrow">THE NOTICEBOARD</p>
-    <h2 id="leagues-title">Season leagues</h2>
-    <p className="intro">Three points for a win, one for taking part. You choose which saved nights count.</p>
+    <h2 id="leagues-title">Season Leagues</h2>
+    <p className="intro">Your long-running table across many game nights — separate from the one-night Tournament Groups format. Three points for a win, one for taking part. You choose which saved nights count.</p>
 
     {seasons.map((season) => {
       const standings = seasonStandings(season, nights, allProfiles);

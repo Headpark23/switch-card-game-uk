@@ -77,7 +77,11 @@ test("sync uploads a first club, restores an empty phone, and protects unreadabl
 
 test("without a Google client ID the sign-in panel stays hidden", async ({ page }) => {
   await page.goto("/");
+  await expect(page.getByText("Advertisement", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("More time at the table")).toHaveCount(0);
   await page.getByRole("button", { name: "History", exact: true }).first().click();
   await expect(page.getByText("Back up your club")).toBeVisible();
   await expect(page.getByText("Cloud backup")).toHaveCount(0);
+  await expect(page.getByText(/saved only on this device/i)).toBeVisible();
+  await expect(page.getByText(/Signing in with Google also backs it up/i)).toHaveCount(0);
 });

@@ -15,12 +15,16 @@ test("the shuffled pack contains all 52 unique card faces", async ({ page, reque
 async function startGame(page: Page) {
   await page.goto("/?testDeck=1");
   await page.getByRole("button", { name: "Play against the computer" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Got it" }).click();
   await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible();
   await expect(page.getByRole("region", { name: "52-card game with 52 unique cards" })).toBeVisible();
 }
 
 async function play(page: Page, card: string) {
-  const move = page.getByRole("button", { name: `Play ${card}, legal move` });
+  const ranks: Record<string, string> = { A: "Ace", J: "Jack", Q: "Queen", K: "King", "10": "Ten", "9": "Nine", "8": "Eight", "7": "Seven", "6": "Six", "5": "Five", "4": "Four", "3": "Three", "2": "Two" };
+  const suits: Record<string, string> = { S: "spades", H: "hearts", D: "diamonds", C: "clubs" };
+  const rank = card.slice(0, -1);
+  const move = page.getByRole("button", { name: `Play ${ranks[rank]} of ${suits[card.slice(-1)]}, legal move` });
   await expect(move).toBeEnabled();
   await move.click();
 }
@@ -34,17 +38,17 @@ test("hints identify legal cards and an illegal move explains the rule", async (
   await page.getByRole("button", { name: "Show hint" }).click();
 
   await expect(page.getByText(/You can play 9H, 3C, 7H, KH, AS, JH/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Play 9H, legal move" })).toHaveClass(/playable/);
-  await page.getByRole("button", { name: "Play 2C, not currently playable" }).click();
+  await expect(page.getByRole("button", { name: "Play Nine of hearts, legal move" })).toHaveClass(/playable/);
+  await page.getByRole("button", { name: "Play Two of clubs, not currently playable" }).click();
   await expect(page.getByText(/cannot follow the current card/)).toBeVisible();
 });
 
 test("an off-suit ace is playable on an ordinary card and changes suit", async ({ page }) => {
   await startGame(page); // hearts are showing; the hand contains KH and the off-suit AS
 
-  await expect(page.getByRole("button", { name: "Play KH, legal move" })).toBeEnabled();
-  await expect(page.getByRole("button", { name: "Play AS, legal move" })).toBeEnabled();
-  await page.getByRole("button", { name: "Play AS, legal move" }).click();
+  await expect(page.getByRole("button", { name: "Play King of hearts, legal move" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Play Ace of spades, legal move" })).toBeEnabled();
+  await page.getByRole("button", { name: "Play Ace of spades, legal move" }).click();
 
   const chooser = page.getByRole("dialog", { name: "Choose a suit" });
   await expect(chooser).toBeVisible();
@@ -55,12 +59,13 @@ test("an off-suit ace is playable on an ordinary card and changes suit", async (
 test("black kings stack and the computer picks up the full penalty", async ({ page }) => {
   await page.goto("/?testDeck=blackKingChain");
   await page.getByRole("button", { name: "Play against the computer" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Got it" }).click();
 
   await play(page, "AS");
   await page.getByRole("dialog", { name: "Choose a suit" }).getByRole("button", { name: /clubs/i }).click();
   await expect(page.getByText("GUIDED GAME · COMPUTER TURN")).toBeVisible();
   await waitForPlayer(page);
-  await expect(page.getByRole("button", { name: "Play KS, legal move" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Play King of spades, legal move" })).toBeEnabled();
   await play(page, "KS");
 
   await expect(page.getByText("The computer picks up 10 cards. Your turn.")).toBeVisible({ timeout: 4_000 });
@@ -70,6 +75,7 @@ test("black kings stack and the computer picks up the full penalty", async ({ pa
 test("one red king leaves five cards from a ten-card black-king stack", async ({ page }) => {
   await page.goto("/?testDeck=partialKing");
   await page.getByRole("button", { name: "Play against the computer" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Got it" }).click();
 
   await play(page, "KS");
   await page.getByRole("button", { name: "Play selected" }).click();
@@ -180,9 +186,10 @@ async function expectFitsOneScreen(page: Page) {
     const hand = document.querySelector(".player-hand")!.getBoundingClientRect();
     const tabs = document.querySelector(".bottom-tabs")!.getBoundingClientRect();
     const scroller = document.querySelector('[data-testid="mobile-scroll"]') as HTMLElement;
-    return { handBottom: hand.bottom, tabsTop: tabs.top, scrolled: scroller.scrollTop };
+    return { handBottom: hand.bottom, tabsTop: tabs.top, unusedSpace: tabs.top - hand.bottom, scrolled: scroller.scrollTop };
   });
   expect(fit.handBottom).toBeLessThanOrEqual(fit.tabsTop);
+  expect(fit.unusedSpace).toBeLessThan(130);
   expect(fit.scrolled).toBe(0);
 }
 
@@ -194,6 +201,7 @@ for (const device of ["iPhone", "Pixel 10"]) {
       await page.getByText("Pixel 10").click();
     }
     await page.getByRole("button", { name: "Play against the computer" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Got it" }).click();
     await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible();
     await expect(page.locator(".turn-banner.you")).toBeVisible();
     await expect(page.getByRole("button", { name: /Why & tactics: / })).toBeVisible();

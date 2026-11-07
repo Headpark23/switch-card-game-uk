@@ -39,7 +39,7 @@ const FORMAT_LABELS: Record<ScoreFormat, string> = {
   "head-to-head": "One v One",
   domino: "Domino",
   darts: "Darts",
-  league: "Group leagues",
+  league: "Tournament Groups",
   knockout: "Knockout",
   cup: "Switch Cup",
 };

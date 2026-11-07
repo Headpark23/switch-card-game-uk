@@ -134,5 +134,7 @@ export function explainUnplayable(card: CardId, state: GameState): string {
   if (rank === "7" || rank === "J") {
     if (state.playerHand.length === 1) return "You cannot finish on a seven or a jack in this two-player game.";
   }
-  return `That card cannot follow the current card. ${card} is a ${RANK_WORDS[rank]} of ${SUIT_NAMES[suitOf(card)]}, and the pile needs ${SUIT_NAMES[state.currentSuit]} or a ${RANK_WORDS[rankOf(top)]}.`;
+  const topRank = RANK_WORDS[rankOf(top)];
+  const article = /^[aeiou]/i.test(topRank) ? "an" : "a";
+  return `That card cannot follow the current card. ${card} is a ${RANK_WORDS[rank]} of ${SUIT_NAMES[suitOf(card)]}, and the pile needs ${SUIT_NAMES[state.currentSuit]} or ${article} ${topRank}.`;
 }

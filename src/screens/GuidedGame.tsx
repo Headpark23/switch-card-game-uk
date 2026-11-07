@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowCounterClockwise, ArrowRight, CheckCircle, HandPalm, Lightbulb } from '@phosphor-icons/react';
 import { chooseComputerAction } from '../switch/ai';
+import { cardIdLabel } from '../switch/cards';
 import { applyAction, createInitialGame, drawCards, legalMoves } from '../switch/rules';
 import type { CardId, GameState, Suit } from '../switch/types';
 import { explainEffect, explainOptions, explainPickup, explainUnplayable } from '../switch/coach';
@@ -29,10 +30,11 @@ type View = {
 
 const GUIDE_KEY = 'switchGuidance';
 
-/** Guidance cards pop up every turn unless you switch them off. Automated tests start with them off. */
+/** The opening lesson is always shown; full turn-by-turn coaching is opt-in. */
 function guidanceDefault(): boolean {
-  if (import.meta.env.DEV && testDeckRequested() && new URLSearchParams(window.location.search).get('guide') === null) return false;
-  try { return window.localStorage.getItem(GUIDE_KEY) !== 'off'; } catch { return true; }
+  const requested = new URLSearchParams(window.location.search).get('guide');
+  if (requested !== null) return requested === '1';
+  try { return window.localStorage.getItem(GUIDE_KEY) === 'on'; } catch { return false; }
 }
 
 function openingView(): View {
@@ -144,12 +146,13 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
     return () => cancelAnimationFrame(frame);
   }, [engine.move, outcome, aceChoice]);
 
-  // Every turn gets a guidance card. It opens by itself and the computer waits until you close it.
+  // Teach the opening once. Further cards open only when the player asks for full guidance.
   useEffect(() => {
-    if (!guide || outcome !== 'playing' || awaitingLastCard || !view.lesson || shown.current === view.lesson) return;
+    const openingLesson = engine.move === 0;
+    if ((!openingLesson && !guide) || outcome !== 'playing' || awaitingLastCard || !view.lesson || shown.current === view.lesson) return;
     shown.current = view.lesson;
     setSheetOpen(true);
-  }, [guide, outcome, awaitingLastCard, view.lesson]);
+  }, [guide, outcome, awaitingLastCard, view.lesson, engine.move]);
 
   useEffect(() => {
     if (outcome !== 'playing' || awaitingLastCard || engine.turn !== 'computer' || sheetOpen) return;
@@ -168,6 +171,16 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
   const canPlay = (card: CardId) => legal.some((action) => action.type === 'play' && action.cards.length === 1 && action.cards[0] === card);
   const legalCards = engine.playerHand.filter(canPlay);
 
+  function matchingCardLabel(card: CardId): string {
+    const label = cardIdLabel(card);
+    if (staged.includes(card)) return `Deselect ${label} from matching set`;
+    if (!staged.length) return `Play ${label}${canPlay(card) ? ', legal move' : ', not currently playable'}`;
+    if (rank(card) === rank(staged[0])) return `Select ${label} as another matching card`;
+    const rankName = cardIdLabel(staged[0]).split(' of ')[0].toLowerCase();
+    const plural = rankName === 'six' ? 'sixes' : rankName === 'two' ? 'twos' : `${rankName}s`;
+    return `${label}, choose only matching ${plural}`;
+  }
+
   const say = (notice: string) => setView((current) => ({ ...current, notice }));
 
   function afterYourPlay(before: GameState, after: GameState, cards: readonly CardId[], aceSuit?: Suit) {
@@ -182,6 +195,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
       return;
     }
     if (after.playerHand.length === 1) {
+      cue('last-card');
       setView((current) => ({ ...current, engine: after, hint: false, meaning, lesson, awaitingLastCard: true, notice: 'One card left. Say “Last Card” before play continues.' }));
       return;
     }
@@ -226,7 +240,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
 
   function drawOrResolve() {
     if (!yourTurn || outcome !== 'playing') return;
-    cue('draw');
+    cue(pendingDraw ? 'penalty' : 'draw');
     const count = pendingDraw || 1;
     const next = applyAction(engine, pending?.kind === 'miss-turn' ? { type: 'accept-missed-turn' } : { type: 'draw' });
     setView((current) => ({
@@ -238,6 +252,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
   }
 
   function answerLastCard(said: boolean) {
+    cue(said ? 'good' : 'penalty');
     setView((current) => {
       if (said) return { ...current, awaitingLastCard: false, notice: '“Last Card!” — called in time.', engine: { ...current.engine, move: current.engine.move + 1 } };
       const penalised = drawCards(current.engine, 2, 'player');
@@ -273,7 +288,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
       {yourTurn && missTurn && !awaitingLastCard && <div className="miss-turn-action"><strong>The computer played an eight</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you must miss this turn.'}</p><button className="primary" onClick={drawOrResolve}>Accept missed turn <ArrowRight size={18} /></button></div>}
       {awaitingLastCard
         ? <div className="last-card-call"><HandPalm size={27} /><strong>One card remaining</strong><p>Say “Last Card” now. Forgetting costs two cards.</p><button className="primary" onClick={() => answerLastCard(true)}>Say “Last Card”</button><button className="text-link" onClick={() => answerLastCard(false)}>Continue without saying it</button></div>
-        : <><div className="game-actions"><button className={'hint-button ' + (view.hint ? 'active' : '')} onClick={() => setView((current) => ({ ...current, hint: !current.hint }))} disabled={!yourTurn}><Lightbulb size={19} weight={view.hint ? 'fill' : 'regular'} />{view.hint ? 'Hide hint' : 'Show hint'}</button>{view.lesson && (!yourTurn || !advice || advice.kind === 'accept') && <button className="why-button" onClick={() => setSheetOpen(true)}>Why &amp; tactics</button>}<span>{engine.playerHand.length} cards in your hand</span></div>{view.hint && <p className="game-hint"><Lightbulb size={17} />{gameHint}</p>}<div className={'player-hand' + (engine.playerHand.length > 10 ? ' dense' : '')} style={{ '--n': engine.playerHand.length } as React.CSSProperties} aria-label="Your hand">{engine.playerHand.map((card, index) => <button key={card} style={{ '--i': mover === 'deal' ? index : 0, zIndex: index + 1 } as React.CSSProperties} onClick={() => chooseCard(card)} className={((view.hint || guide) && yourTurn && canPlay(card) ? 'playable ' : '') + (advice?.cards.includes(card) ? 'coach-pick ' : '') + (staged.includes(card) ? 'selected' : '')} disabled={!yourTurn} aria-label={`Play ${card}${canPlay(card) ? ', legal move' : ', not currently playable'}`}><CardImage code={card} /></button>)}</div>{staged.length > 0 && <div className="multi-action"><p>{staged.length} matching card{staged.length === 1 ? '' : 's'} selected</p><button className="primary" onClick={playStaged}>Play selected</button><button className="text-link" onClick={() => setStaged([])}>Cancel selection</button></div>}</>}
+        : <><div className="game-actions"><button className={'hint-button ' + (view.hint ? 'active' : '')} onClick={() => setView((current) => ({ ...current, hint: !current.hint }))} disabled={!yourTurn}><Lightbulb size={19} weight={view.hint ? 'fill' : 'regular'} />{view.hint ? 'Hide hint' : 'Show hint'}</button>{view.lesson && (!yourTurn || !advice || advice.kind === 'accept') && <button className="why-button" onClick={() => setSheetOpen(true)}>Why &amp; tactics</button>}<span>{engine.playerHand.length} cards in your hand</span></div>{view.hint && <p className="game-hint"><Lightbulb size={17} />{gameHint}</p>}<div className={'player-hand' + (engine.playerHand.length > 10 ? ' dense' : '')} style={{ '--n': engine.playerHand.length } as React.CSSProperties} aria-label="Your hand">{engine.playerHand.map((card, index) => <button key={card} style={{ '--i': mover === 'deal' ? index : 0, zIndex: index + 1 } as React.CSSProperties} onClick={() => chooseCard(card)} className={((view.hint || guide) && yourTurn && canPlay(card) ? 'playable ' : '') + (advice?.cards.includes(card) ? 'coach-pick ' : '') + (staged.includes(card) ? 'selected' : '')} disabled={!yourTurn} aria-label={matchingCardLabel(card)}><CardImage code={card} /></button>)}</div>{staged.length > 0 && <div className="multi-action"><p>{staged.length} matching card{staged.length === 1 ? '' : 's'} selected</p><button className="primary" onClick={playStaged}>Play selected</button><button className="text-link" onClick={() => setStaged([])}>Cancel selection</button></div>}</>}
       {aceChoice && <div className="suit-choice" role="dialog" aria-label="Choose a suit"><p>Choose the suit for your ace</p><div>{(['S', 'H', 'D', 'C'] as Suit[]).map((chosen) => <button key={chosen} className={(chosen === 'H' || chosen === 'D') ? 'red' : ''} onClick={() => { const cards = aceChoice; setAceChoice(null); setStaged([]); playSet(cards, chosen); }}>{suitSymbols[chosen]}<span>{suitNames[chosen]}</span></button>)}</div><button className="text-link" onClick={() => setAceChoice(null)}>Cancel</button></div>}
     </>}</section>;
 }

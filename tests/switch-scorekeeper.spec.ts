@@ -56,9 +56,9 @@ test("six-player LOST mode reaches one champion", async ({ page }) => {
 
 test("two complete leagues create championship and plate playoffs", async ({ page }) => {
   await openScorekeeper(page);
-  await page.getByRole("button", { name: "Group leagues" }).click();
+  await page.getByRole("button", { name: "Tournament Groups" }).click();
   await fillVisibleNames(page);
-  await page.getByRole("button", { name: "Start Group leagues" }).click();
+  await page.getByRole("button", { name: "Start Tournament Groups" }).click();
   await expect(page.getByRole("heading", { name: "Cross-league playoffs" })).toHaveCount(0);
   // Four rounds per league. Players finish in the same order each time, so nothing is level.
   const places = ["1st", "2nd", "3rd"];
@@ -182,9 +182,9 @@ for (const device of ["iPhone", "Pixel 10"]) {
 
 test("a league finished level on points and wins asks for a deciding game", async ({ page }) => {
   await openScorekeeper(page);
-  await page.getByRole("button", { name: "Group leagues" }).click();
+  await page.getByRole("button", { name: "Tournament Groups" }).click();
   await fillVisibleNames(page);
-  await page.getByRole("button", { name: "Start Group leagues" }).click();
+  await page.getByRole("button", { name: "Start Tournament Groups" }).click();
   const places = ["1st", "2nd", "3rd"];
   // Rounds 1-2 swap the first two places, then rounds 3-4 swap them back, so players 1 and 2 finish level.
   const orders = [[1, 2, 3], [2, 1, 3], [1, 2, 3], [2, 1, 3]];

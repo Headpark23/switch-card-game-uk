@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { DownloadSimple } from '@phosphor-icons/react';
 import { AccountPanel } from '../AccountPanel';
+import { SIGN_IN_AVAILABLE } from '../auth';
 import { ShareButton } from '../ShareButton';
 import { getClubName, nightShareCard } from '../switch/club';
 import { deleteNight, exportHistory, getHistory } from '../switch/history';
@@ -73,7 +74,9 @@ export default function NightHistory({ extensions, onChange }: Props) {
     <AccountPanel />
     <div className="backup-panel">
       <h3>Back up your club</h3>
-      <p>Your club is saved on this device. Signing in with Google also backs it up to the cloud, and a backup file keeps your players, nights and leagues safe if you change phone or clear your browser.</p>
+      <p>{SIGN_IN_AVAILABLE
+        ? 'Your club is saved on this device. Signing in with Google also backs it up to the cloud. A backup file gives you another copy of your players, nights and leagues.'
+        : 'Your club is saved only on this device. Download a backup file to keep your players, nights and leagues safe if you change phone or clear your browser.'}</p>
       <button className="secondary" onClick={downloadBackup}><DownloadSimple size={16} />Back up everything</button>
       <label className="restore"><span>Restore from a backup file</span><input type="file" accept="application/json,.json" aria-label="Restore backup file" onChange={(event) => { void restoreBackup(event.target.files?.[0]); event.target.value = ''; }} /></label>
       {backupMessage && <p role="status">{backupMessage}</p>}
