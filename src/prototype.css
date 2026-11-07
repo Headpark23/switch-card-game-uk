@@ -265,3 +265,13 @@
 
 .referee{border:1px solid #d5c7a8;background:#fffaf0;border-radius:14px;padding:8px 12px;margin:10px 0}.referee summary{font-weight:700;min-height:40px;display:flex;align-items:center}.ref-label{margin:8px 0 4px;font-size:12px;font-weight:600;color:var(--muted)}.ref-chips{display:flex;flex-wrap:wrap;gap:5px}.ref-chips button{min-width:36px;min-height:36px;padding:4px 9px;border:1px solid var(--line);background:#fff;border-radius:8px;font-weight:600;font-size:14px}.ref-chips button.active{background:var(--green);color:#fff;border-color:var(--green)}
 .ref-ruling{margin:12px 0 4px;padding:10px 12px;border-radius:12px;display:grid;gap:2px;font-size:14px}.ref-ruling.yes{background:#e3f0e4;border:1px solid #9cc79f}.ref-ruling.no{background:#f8e4df;border:1px solid #d9a79b}
+
+.pile-wrap{position:relative;display:block}.flight-layer{position:absolute;inset:0;pointer-events:none}.flying-card{position:absolute;inset:0;display:block;transform:rotate(-3deg)}.flying-card .playing-card{width:100%}
+.pile-card.from-you,.pile-card.from-computer{animation:none}
+.player-hand button{position:relative}.order-badge{position:absolute;top:-7px;right:-5px;min-width:20px;height:20px;border-radius:999px;background:var(--green);color:#fff;font-style:normal;font-size:12px;font-weight:700;display:grid;place-items:center;border:2px solid #fffaf0;z-index:5;box-shadow:0 1px 4px #0006}
+.player-hand button.selected{box-shadow:0 0 0 3px #f1d899,0 6px 12px #0005;border-radius:8px}
+@keyframes illegal-flash{0%,100%{transform:translateX(0)}15%{transform:translateX(-6px)}35%{transform:translateX(6px)}55%{transform:translateX(-4px)}75%{transform:translateX(3px)}}
+.player-hand button.illegal{animation:illegal-flash .55s ease-in-out;box-shadow:0 0 0 3px #d83a2e,0 0 16px #d83a2e;border-radius:8px}.player-hand button.illegal .playing-card{filter:sepia(.4) saturate(2.5) hue-rotate(-30deg) brightness(.95)}
+.game-notice.warn{color:#9c1d12;background:#fbe3df;border-radius:8px;padding:6px 8px;font-weight:600}
+@media(prefers-reduced-motion:reduce){.player-hand button.illegal{animation:none}}
+.game-tutorial .game-notice.warn{display:block;-webkit-line-clamp:unset;overflow:visible;padding:6px 10px;text-align:left;font-size:12.5px}

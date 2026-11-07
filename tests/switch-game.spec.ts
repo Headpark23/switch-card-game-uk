@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+test.describe.configure({ timeout: 60_000 });
+
 test("the shuffled pack contains all 52 unique card faces", async ({ page, request }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Play against the computer" }).click();
@@ -23,13 +25,14 @@ async function play(page: Page, card: string) {
   const ranks: Record<string, string> = { A: "Ace", J: "Jack", Q: "Queen", K: "King", "10": "Ten", "9": "Nine", "8": "Eight", "7": "Seven", "6": "Six", "5": "Five", "4": "Four", "3": "Three", "2": "Two" };
   const suits: Record<string, string> = { S: "spades", H: "hearts", D: "diamonds", C: "clubs" };
   const rank = card.slice(0, -1);
-  const move = page.getByRole("button", { name: `Play ${ranks[rank]} of ${suits[card.slice(-1)]}, legal move` });
+  const move = page.getByRole("button", { name: `Select ${ranks[rank]} of ${suits[card.slice(-1)]}, legal move` });
   await expect(move).toBeEnabled();
   await move.click();
+  await page.getByRole("button", { name: "Play selected" }).click();
 }
 
 async function waitForPlayer(page: Page) {
-  await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible({ timeout: 4_000 });
+  await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible({ timeout: 9_000 });
 }
 
 test("hints identify legal cards and an illegal move explains the rule", async ({ page }) => {
@@ -37,17 +40,18 @@ test("hints identify legal cards and an illegal move explains the rule", async (
   await page.getByRole("button", { name: "Show hint" }).click();
 
   await expect(page.getByText(/You can play 9H, 3C, 7H, KH, AS, JH/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Play Nine of hearts, legal move" })).toHaveClass(/playable/);
-  await page.getByRole("button", { name: "Play Two of clubs, not currently playable" }).click();
+  await expect(page.getByRole("button", { name: "Select Nine of hearts, legal move" })).toHaveClass(/playable/);
+  await page.getByRole("button", { name: "Select Two of clubs, not currently playable" }).click();
   await expect(page.getByText(/cannot follow the current card/)).toBeVisible();
 });
 
 test("an off-suit ace is playable on an ordinary card and changes suit", async ({ page }) => {
   await startGame(page); // hearts are showing; the hand contains KH and the off-suit AS
 
-  await expect(page.getByRole("button", { name: "Play King of hearts, legal move" })).toBeEnabled();
-  await expect(page.getByRole("button", { name: "Play Ace of spades, legal move" })).toBeEnabled();
-  await page.getByRole("button", { name: "Play Ace of spades, legal move" }).click();
+  await expect(page.getByRole("button", { name: "Select King of hearts, legal move" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Select Ace of spades, legal move" })).toBeEnabled();
+  await page.getByRole("button", { name: "Select Ace of spades, legal move" }).click();
+  await page.getByRole("button", { name: "Play selected" }).click();
 
   const chooser = page.getByRole("dialog", { name: "Choose a suit" });
   await expect(chooser).toBeVisible();
@@ -63,10 +67,10 @@ test("black kings stack and the computer picks up the full penalty", async ({ pa
   await page.getByRole("dialog", { name: "Choose a suit" }).getByRole("button", { name: /clubs/i }).click();
   await expect(page.getByText("GUIDED GAME · COMPUTER TURN")).toBeVisible();
   await waitForPlayer(page);
-  await expect(page.getByRole("button", { name: "Play King of spades, legal move" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Select King of spades, legal move" })).toBeEnabled();
   await play(page, "KS");
 
-  await expect(page.getByText("The computer picks up 10 cards. Your turn.")).toBeVisible({ timeout: 4_000 });
+  await expect(page.getByText("The computer picks up 10 cards. Your turn.")).toBeVisible({ timeout: 9_000 });
   await expect(page.getByText("16 cards", { exact: true })).toBeVisible();
 });
 
@@ -75,12 +79,11 @@ test("one red king leaves five cards from a ten-card black-king stack", async ({
   await page.getByRole("button", { name: "Play against the computer" }).click();
 
   await play(page, "KS");
-  await page.getByRole("button", { name: "Play selected" }).click();
   await waitForPlayer(page);
   await play(page, "KH");
 
   await expect(page.getByText(/The red king cancels five cards. 5 are still at stake for the computer/)).toBeVisible();
-  await expect(page.getByText("The computer picks up 5 cards. Your turn.")).toBeVisible({ timeout: 4_000 });
+  await expect(page.getByText("The computer picks up 5 cards. Your turn.")).toBeVisible({ timeout: 9_000 });
   await expect(page.getByText("11 cards", { exact: true })).toBeVisible();
 });
 
@@ -106,7 +109,7 @@ test("a player may pick up by choice even when legal cards are available", async
   await tacticalPickup.click();
 
   await expect(page.getByText("8 cards in your hand")).toBeVisible();
-  await expect(page.getByText("The computer played an eight")).toBeVisible({ timeout: 4_000 });
+  await expect(page.getByText("The computer played an eight")).toBeVisible({ timeout: 9_000 });
 });
 
 test("a player without an eight can clearly accept the missed turn", async ({ page }) => {
@@ -114,7 +117,7 @@ test("a player without an eight can clearly accept the missed turn", async ({ pa
   await play(page, "9H");
 
   const accept = page.getByRole("button", { name: "Accept missed turn" });
-  await expect(page.getByText("The computer played an eight")).toBeVisible({ timeout: 4_000 });
+  await expect(page.getByText("The computer played an eight")).toBeVisible({ timeout: 9_000 });
   await expect(page.getByText(/You have no eight to counter with/)).toBeVisible();
   await expect(accept).toBeEnabled();
   await accept.click();
@@ -153,12 +156,12 @@ test("a guided match follows power-card and last-card rules through a win", asyn
   await play(page, "AS");
   await page.getByRole("dialog", { name: "Choose a suit" }).getByRole("button", { name: /clubs/i }).click();
   await play(page, "KH"); // red king cancels the computer's black king
-  await expect(page.getByRole("button", { name: "Accept missed turn" })).toBeEnabled({ timeout: 4_000 });
+  await expect(page.getByRole("button", { name: "Accept missed turn" })).toBeEnabled({ timeout: 9_000 });
   await page.getByRole("button", { name: "Accept missed turn" }).click();
   await waitForPlayer(page);
   await play(page, "7H"); // seven: play again
   await play(page, "9H");
-  await expect(page.getByRole("button", { name: "Draw a card" })).toBeEnabled({ timeout: 4_000 });
+  await expect(page.getByRole("button", { name: "Draw a card" })).toBeEnabled({ timeout: 9_000 });
   await page.getByRole("button", { name: "Draw a card" }).click();
   await waitForPlayer(page);
   await play(page, "AC");
@@ -205,7 +208,7 @@ for (const device of ["iPhone", "Pixel 10"]) {
 
     await play(page, "9H");
     await expect(page.locator(".turn-banner.computer")).toBeVisible();
-    await expect(page.getByText("The computer played an eight")).toBeVisible({ timeout: 4_000 });
+    await expect(page.getByText("The computer played an eight")).toBeVisible({ timeout: 9_000 });
 
     // The busiest moment (miss-a-turn panel showing) still fits above the tab bar without scrolling.
     await expectFitsOneScreen(page);

@@ -2,11 +2,17 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowCounterClockwise, ArrowRight, CheckCircle, HandPalm, Lightbulb } from '@phosphor-icons/react';
 import { chooseComputerAction, type ComputerLevel } from '../switch/ai';
 
+/** How long one card takes to travel, and the gap between cards of a set. Slow enough to follow by eye. */
+const FLIGHT_MS = 1300;
+const FLIGHT_GAP_MS = 550;
+type Flight = { cards: CardId[]; from: 'you' | 'computer'; origins: { x: number; y: number }[]; at: number; consumed: boolean };
+let lastComputerPlay: CardId[] = [];
+
 const LEVELS: ComputerLevel[] = ['relaxed', 'standard', 'sharp'];
 const LEVEL_NOTE: Record<ComputerLevel, string> = { relaxed: 'makes friendly mistakes', standard: 'plays sensibly', sharp: 'plays to beat you' };
 let computerLevel: ComputerLevel = (() => { try { const v = localStorage.getItem('switchComputerLevel'); return LEVELS.includes(v as ComputerLevel) ? v as ComputerLevel : 'standard'; } catch { return 'standard'; } })();
 import { cardIdLabel } from '../switch/cards';
-import { applyAction, createInitialGame, drawCards, legalMoves } from '../switch/rules';
+import { applyAction, createInitialGame, drawCards, legalMoves, isLegalPlay } from '../switch/rules';
 import type { CardId, GameState, Suit } from '../switch/types';
 import { explainEffect, explainOptions, explainPickup, explainUnplayable } from '../switch/coach';
 import { adviseMove } from '../switch/tactics';
@@ -84,6 +90,7 @@ function computerStep(view: View): View {
   const next = applyAction(engine, action);
 
   if (action.type === 'play') {
+    lastComputerPlay = [...action.cards];
     if (next.status === 'won') {
       return { ...view, engine: next, hint: false, meaning: null, lesson: null, notice: 'The computer played its last card. Try another game and use the hints when you need them.' };
     }
@@ -119,6 +126,14 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
   const [view, setView] = useState<View>(openingView);
   const [aceChoice, setAceChoice] = useState<CardId[] | null>(null);
   const [staged, setStaged] = useState<CardId[]>([]);
+  const [flash, setFlash] = useState<CardId[]>([]);
+  const [warn, setWarn] = useState('');
+  const flight = useRef<Flight | null>(null);
+  const pileRef = useRef<HTMLSpanElement | null>(null);
+  const layerRef = useRef<HTMLSpanElement | null>(null);
+  const fanRef = useRef<HTMLDivElement | null>(null);
+  const viewRef = useRef<View>(view);
+  viewRef.current = view;
   const [guide, setGuide] = useState(guidanceDefault);
   const [sheetOpen, setSheetOpen] = useState(false);
   const shown = useRef<Lesson | null>(null);
@@ -160,9 +175,41 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
 
   useEffect(() => {
     if (outcome !== 'playing' || awaitingLastCard || engine.turn !== 'computer' || sheetOpen) return;
-    const timer = setTimeout(() => setView((current) => computerStep(current)), 650);
+    const pending = flight.current && !flight.current.consumed ? 0 : flight.current ? Math.max(0, flight.current.at + (flight.current.cards.length - 1) * FLIGHT_GAP_MS + FLIGHT_MS - Date.now()) : 0;
+    const timer = setTimeout(() => {
+      const next = computerStep(viewRef.current);
+      if (lastComputerPlay.length) { noteFlight(lastComputerPlay, 'computer'); lastComputerPlay = []; }
+      setView(next);
+    }, 900 + pending);
     return () => clearTimeout(timer);
   }, [outcome, awaitingLastCard, engine.turn, engine.move, sheetOpen]);
+
+  useLayoutEffect(() => {
+    const trip = flight.current;
+    const top = pileRef.current;
+    if (!trip || trip.consumed || !top || Date.now() - trip.at > 4000) return;
+    if (engine.discardPile[engine.discardPile.length - 1] !== trip.cards[trip.cards.length - 1]) return;
+    trip.consumed = true;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const fly = (el: HTMLElement, index: number, last: boolean) => {
+      const box = el.getBoundingClientRect();
+      const scale = box.width / (el.offsetWidth || 1) || 1;
+      const dx = (trip.origins[index].x - (box.left + box.width / 2)) / scale;
+      const dy = (trip.origins[index].y - (box.top + box.height / 2)) / scale;
+      const small = trip.from === 'computer' ? 0.42 : 0.78;
+      const spin = (trip.from === 'computer' ? 14 : -14) + (index % 2 ? 6 : -6);
+      const anim = el.animate([
+        { transform: `translate(${dx}px, ${dy}px) rotate(${spin}deg) scale(${small})`, opacity: 0.95, offset: 0 },
+        { transform: `translate(${dx * 0.35}px, ${dy * 0.35}px) rotate(${spin * 0.3}deg) scale(${(small + 1.15) / 2})`, opacity: 1, offset: 0.55 },
+        { transform: 'translate(0, 0) rotate(-3deg) scale(1)', opacity: 1, offset: 1 },
+      ], { duration: FLIGHT_MS, delay: index * FLIGHT_GAP_MS, easing: 'cubic-bezier(.25,.7,.3,1)', fill: 'backwards' });
+      if (!last) anim.onfinish = () => { el.style.display = 'none'; };
+    };
+    const layer = layerRef.current;
+    const extra = layer ? Array.from(layer.children) as HTMLElement[] : [];
+    extra.forEach((el, index) => fly(el, index, false));
+    fly(top, trip.cards.length - 1, true);
+  }, [engine.move, engine.discardPile]);
 
   function toggleGuide() {
     const next = !guide;
@@ -177,8 +224,8 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
 
   function matchingCardLabel(card: CardId): string {
     const label = cardIdLabel(card);
-    if (staged.includes(card)) return `Deselect ${label} from matching set`;
-    if (!staged.length) return `Play ${label}${canPlay(card) ? ', legal move' : ', not currently playable'}`;
+    if (staged.includes(card)) return `Deselect ${label}, number ${staged.indexOf(card) + 1} in your play`;
+    if (!staged.length) return `Select ${label}${canPlay(card) ? ', legal move' : ', not currently playable'}`;
     if (rank(card) === rank(staged[0])) return `Select ${label} as another matching card`;
     const rankName = cardIdLabel(staged[0]).split(' of ')[0].toLowerCase();
     const plural = rankName === 'six' ? 'sixes' : rankName === 'two' ? 'twos' : `${rankName}s`;
@@ -208,36 +255,56 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
 
   function playSet(cards: CardId[], aceSuit?: Suit) {
     cue('play');
+    noteFlight(cards, 'you');
     const before = engine;
     const after = applyAction(before, { type: 'play', cards, ...(aceSuit ? { chosenSuit: aceSuit } : {}) });
     afterYourPlay(before, after, cards, aceSuit);
   }
 
+  function refuse(cards: CardId[], reason: string) {
+    cue('bad');
+    setFlash(cards);
+    setWarn(reason);
+    window.setTimeout(() => setFlash((current) => (current === cards ? [] : current)), 1100);
+    window.setTimeout(() => setWarn((current) => (current === reason ? '' : current)), 6000);
+  }
+
   function chooseCard(card: CardId) {
     if (!yourTurn || outcome !== 'playing' || awaitingLastCard) return;
-    if (staged.length) {
-      if (rank(card) !== rank(staged[0])) { say('Cards played together must have the same number or picture.'); return; }
-      setStaged((current) => (current.includes(card) ? current.filter((item) => item !== card) : [...current, card]));
-      return;
-    }
-    if (!canPlay(card)) {
-      setView((current) => ({ ...current, hint: true, notice: explainUnplayable(card, engine) }));
-      return;
-    }
-    if (rank(card) === 'A') { setStaged([]); setAceChoice([card]); return; }
-    if (pending?.kind === 'black-king') { setStaged([]); playSet([card]); return; }
-    if (engine.playerHand.filter((item) => rank(item) === rank(card)).length > 1) {
+    setWarn('');
+    if (staged.includes(card)) { setStaged((current) => current.filter((item) => item !== card)); return; }
+    if (!staged.length) {
+      if (!canPlay(card)) { refuse([card], explainUnplayable(card, engine)); return; }
       setStaged([card]);
-      say(`You have matching ${rank(card)}s. Pick any others to play together. The last card you pick sets the suit. Then confirm.`);
       return;
     }
-    playSet([card]);
+    if (rank(card) !== rank(staged[0])) {
+      const first = cardIdLabel(staged[0]).split(' of ')[0].toLowerCase();
+      refuse([card], `Cards played together must be the same number or picture. You started with ${first === "six" ? "sixes" : first === "two" ? "twos" : first + "s"}, so the ${cardIdLabel(card)} cannot join.`);
+      return;
+    }
+    setStaged((current) => [...current, card]);
+  }
+
+  function noteFlight(cards: readonly CardId[], from: 'you' | 'computer') {
+    const origins = cards.map((card) => {
+      const el = from === 'you' ? document.querySelector<HTMLElement>(`[data-card="${card}"]`) : fanRef.current;
+      const box = el?.getBoundingClientRect();
+      return box ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : { x: 0, y: 0 };
+    });
+    flight.current = { cards: [...cards], from, origins, at: Date.now(), consumed: false };
   }
 
   function playStaged() {
     if (!staged.length) return;
-    if (!canPlay(staged[0])) { say('Start with a card that can legally follow the current card.'); return; }
+    if (!canPlay(staged[0])) { refuse([staged[0]], explainUnplayable(staged[0], engine)); return; }
     if (rank(staged[0]) === 'A') { setAceChoice(staged); return; }
+    if (!isLegalPlay(engine, { type: 'play', cards: staged })) {
+      refuse([...staged], staged.length === engine.playerHand.length && (rank(staged[staged.length - 1]) === '7' || rank(staged[staged.length - 1]) === 'J')
+        ? 'You cannot finish on a seven or a jack in this two-player game. Change the order or keep a card back.'
+        : 'Those cards cannot be played in that order. Try a different order, or play fewer cards.');
+      return;
+    }
     playSet(staged);
     setStaged([]);
   }
@@ -285,14 +352,14 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
     ? <div className="completion"><CheckCircle size={60} weight="light" /><p className="eyebrow">{outcome === 'won' ? 'GAME WON' : 'GOOD PRACTICE'}</p><h1>{outcome === 'won' ? <>You beat the<br />computer.</> : <>The computer<br />won this one.</>}</h1><p>{view.notice}</p><button className="primary" onClick={restart}><ArrowCounterClockwise size={18} />Play another guided game</button>{outcome === 'won' && <ShareButton label="Challenge a friend" build={challengeShareCard} />}<RealCards onStartNight={onStartNight} /><button className="secondary" onClick={onOpenPuzzles}>Try the rules puzzles <ArrowRight size={18} /></button><button className="secondary" onClick={onOpenCards}>Open card guide <ArrowRight size={18} /></button></div>
     : <>
       <div className={'turn-banner ' + (yourTurn ? 'you' : 'computer')} aria-live="polite"><span className="turn-dot" aria-hidden="true" /><span>GUIDED GAME · {yourTurn ? 'YOUR TURN' : 'COMPUTER TURN'}</span><button onClick={onExit}>Exit game</button></div>
-      <div className="opponent" aria-label={`Computer has ${engine.computerHand.length} cards`}><span>COMPUTER</span><div key={engine.computerHand.length} className="opp-fan">{engine.computerHand.slice(0, 5).map((_, i) => <CardImage code="back" key={i} />)}</div><strong>{engine.computerHand.length} card{engine.computerHand.length === 1 ? '' : 's'}</strong></div>
-      <div className="game-table"><button className={'draw-pile' + (advice && !advice.cards.length ? ' coach-pick' : '')} onClick={drawOrResolve} disabled={!yourTurn || awaitingLastCard || !!staged.length || missTurn} aria-label={missTurn ? 'Draw pile unavailable while resolving the eight' : pendingDraw ? `Pick up ${pendingDraw} cards` : legalCards.length ? 'Pick up one card instead of playing' : 'Draw a card'}><CardImage code="back" /><span>{missTurn ? 'Eight played' : pendingDraw ? `Pick up ${pendingDraw}` : legalCards.length ? 'Pick up instead' : 'Draw'}</span></button><div className="discard-pile"><span key={`${engine.move}-${topCard}`} className={'pile-card from-' + mover}><CardImage code={topCard} /></span><span>Current suit <b className={(engine.currentSuit === 'H' || engine.currentSuit === 'D') ? 'red' : ''}>{suitSymbols[engine.currentSuit]} {suitNames[engine.currentSuit]}</b></span></div></div>
-      <p className="game-notice" aria-live="polite">{!yourTurn ? 'Computer is choosing a card…' : view.notice}</p>
+      <div className="opponent" aria-label={`Computer has ${engine.computerHand.length} cards`}><span>COMPUTER</span><div key={engine.computerHand.length} ref={fanRef} className="opp-fan">{engine.computerHand.slice(0, 5).map((_, i) => <CardImage code="back" key={i} />)}</div><strong>{engine.computerHand.length} card{engine.computerHand.length === 1 ? '' : 's'}</strong></div>
+      <div className="game-table"><button className={'draw-pile' + (advice && !advice.cards.length ? ' coach-pick' : '')} onClick={drawOrResolve} disabled={!yourTurn || awaitingLastCard || !!staged.length || missTurn} aria-label={missTurn ? 'Draw pile unavailable while resolving the eight' : pendingDraw ? `Pick up ${pendingDraw} cards` : legalCards.length ? 'Pick up one card instead of playing' : 'Draw a card'}><CardImage code="back" /><span>{missTurn ? 'Eight played' : pendingDraw ? `Pick up ${pendingDraw}` : legalCards.length ? 'Pick up instead' : 'Draw'}</span></button><div className="discard-pile"><span className="pile-wrap"><span key={`${engine.move}-${topCard}`} ref={pileRef} className={'pile-card from-' + mover}><CardImage code={topCard} /></span><span key={`layer-${engine.move}`} ref={layerRef} className="flight-layer" aria-hidden="true">{flight.current && !flight.current.consumed && Date.now() - flight.current.at < 4000 && flight.current.cards[flight.current.cards.length - 1] === topCard ? flight.current.cards.slice(0, -1).map((code) => <span className="flying-card" key={code}><CardImage code={code} /></span>) : null}</span></span><span>Current suit <b className={(engine.currentSuit === 'H' || engine.currentSuit === 'D') ? 'red' : ''}>{suitSymbols[engine.currentSuit]} {suitNames[engine.currentSuit]}</b></span></div></div>
+      <p className={'game-notice' + (warn && yourTurn ? ' warn' : '')} aria-live="polite" role={warn ? 'alert' : undefined}>{!yourTurn ? 'Computer is choosing a card…' : warn || view.notice}</p>
       {!awaitingLastCard && <CoachPanel footer={<><button className="text-link" onClick={() => { const next = LEVELS[(LEVELS.indexOf(level) + 1) % LEVELS.length]; computerLevel = next; setLevel(next); try { localStorage.setItem('switchComputerLevel', next); } catch { /* storage unavailable */ } }}>Computer: {level[0].toUpperCase() + level.slice(1)}, {LEVEL_NOTE[level]}. Tap to change</button><button className="text-link" onClick={toggleGuide}>{guide ? 'Turn off automatic guidance cards' : 'Show a guidance card every turn'}</button><button className="text-link" onClick={() => { const next = !soundOn; setFeedbackEnabled(next); setSoundOn(next); if (next) cue('good'); }}>{soundOn ? 'Mute sounds and vibration' : 'Turn on sounds and vibration'}</button></>} open={sheetOpen} onOpenChange={setSheetOpen} advice={yourTurn ? advice : null} inlineTrigger={false} compact sheetOptions={yourTurn ? explainOptions(engine) : []} lesson={view.lesson} meaning={view.meaning} options={yourTurn && !missTurn ? explainOptions(engine) : []} />}
       {yourTurn && missTurn && !awaitingLastCard && <div className="miss-turn-action"><strong>The computer played an eight</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you must miss this turn.'}</p><button className="primary" onClick={drawOrResolve}>Accept missed turn <ArrowRight size={18} /></button></div>}
       {awaitingLastCard
         ? <div className="last-card-call"><HandPalm size={27} /><strong>One card remaining</strong><p>Say “Last Card” now. Forgetting costs two cards.</p><button className="primary" onClick={() => answerLastCard(true)}>Say “Last Card”</button><button className="text-link" onClick={() => answerLastCard(false)}>Continue without saying it</button></div>
-        : <><div className="game-actions"><button className={'hint-button ' + (view.hint ? 'active' : '')} onClick={() => setView((current) => ({ ...current, hint: !current.hint }))} disabled={!yourTurn}><Lightbulb size={19} weight={view.hint ? 'fill' : 'regular'} />{view.hint ? 'Hide hint' : 'Show hint'}</button>{view.lesson && (!yourTurn || !advice || advice.kind === 'accept') && <button className="why-button" onClick={() => setSheetOpen(true)}>Why &amp; tactics</button>}<span>{engine.playerHand.length} cards in your hand</span></div>{view.hint && <p className="game-hint"><Lightbulb size={17} />{gameHint}</p>}<div className={'player-hand' + (engine.playerHand.length > 10 ? ' dense' : '')} style={{ '--n': engine.playerHand.length } as React.CSSProperties} aria-label="Your hand">{engine.playerHand.map((card, index) => <button key={card} style={{ '--i': mover === 'deal' ? index : 0, zIndex: index + 1 } as React.CSSProperties} onClick={() => chooseCard(card)} className={((view.hint || guide) && yourTurn && canPlay(card) ? 'playable ' : '') + (advice?.cards.includes(card) ? 'coach-pick ' : '') + (staged.includes(card) ? 'selected' : '')} disabled={!yourTurn} aria-label={matchingCardLabel(card)}><CardImage code={card} /></button>)}</div>{staged.length > 0 && <div className="multi-action"><p>{staged.length} matching card{staged.length === 1 ? '' : 's'} selected</p><button className="primary" onClick={playStaged}>Play selected</button><button className="text-link" onClick={() => setStaged([])}>Cancel selection</button></div>}</>}
+        : <>{staged.length === 0 && <div className="game-actions"><button className={'hint-button ' + (view.hint ? 'active' : '')} onClick={() => setView((current) => ({ ...current, hint: !current.hint }))} disabled={!yourTurn}><Lightbulb size={19} weight={view.hint ? 'fill' : 'regular'} />{view.hint ? 'Hide hint' : 'Show hint'}</button>{view.lesson && (!yourTurn || !advice || advice.kind === 'accept') && <button className="why-button" onClick={() => setSheetOpen(true)}>Why &amp; tactics</button>}<span>{engine.playerHand.length} cards in your hand</span></div>}{view.hint && <p className="game-hint"><Lightbulb size={17} />{gameHint}</p>}<div className={'player-hand' + (engine.playerHand.length > 10 ? ' dense' : '')} style={{ '--n': engine.playerHand.length } as React.CSSProperties} aria-label="Your hand">{engine.playerHand.map((card, index) => <button key={card} style={{ '--i': mover === 'deal' ? index : 0, zIndex: index + 1 } as React.CSSProperties} data-card={card} onClick={() => chooseCard(card)} className={((view.hint || guide) && yourTurn && canPlay(card) ? 'playable ' : '') + (advice?.cards.includes(card) ? 'coach-pick ' : '') + (staged.includes(card) ? 'selected ' : '') + (flash.includes(card) ? 'illegal' : '')} disabled={!yourTurn} aria-label={matchingCardLabel(card)}><CardImage code={card} />{staged.includes(card) && <i className="order-badge" aria-hidden="true">{staged.indexOf(card) + 1}</i>}</button>)}</div>{staged.length > 0 && <div className="multi-action"><p>{staged.length === 1 ? '1 card selected' : `${staged.length} cards selected, played in the order you tapped them. The last card sets the suit.`}</p><button className="primary" onClick={playStaged}>Play selected</button><button className="text-link" onClick={() => setStaged([])}>Clear selection</button></div>}</>}
       {aceChoice && <div className="suit-choice" role="dialog" aria-label="Choose a suit"><p>Choose the suit for your ace</p><div>{(['S', 'H', 'D', 'C'] as Suit[]).map((chosen) => <button key={chosen} className={(chosen === 'H' || chosen === 'D') ? 'red' : ''} onClick={() => { const cards = aceChoice; setAceChoice(null); setStaged([]); playSet(cards, chosen); }}>{suitSymbols[chosen]}<span>{suitNames[chosen]}</span></button>)}</div><button className="text-link" onClick={() => setAceChoice(null)}>Cancel</button></div>}
     </>}</section>;
 }

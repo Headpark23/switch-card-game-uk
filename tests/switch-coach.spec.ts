@@ -13,6 +13,8 @@ const base = {
   move: 3,
 };
 
+test.describe.configure({ timeout: 60_000 });
+
 test("the coach lists every kind of option the engine offers", async ({ page }) => {
   await page.goto("/");
   const result = await page.evaluate(async (state) => {
@@ -82,8 +84,9 @@ test("the guided game shows what happened and the options on your turn", async (
   await page.getByRole("button", { name: "Play against the computer" }).click();
   await expect(page.getByRole("button", { name: /Why & tactics: Play/ })).toBeVisible();
 
-  await page.getByRole("button", { name: "Play Nine of hearts, legal move" }).click();
-  await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible({ timeout: 4_000 });
+  await page.getByRole("button", { name: "Select Nine of hearts, legal move" }).click();
+  await page.getByRole("button", { name: "Play selected" }).click();
+  await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible({ timeout: 9_000 });
   await page.getByRole("button", { name: /Why & tactics/ }).click();
   await expect(page.getByRole("dialog")).toContainText("What that means");
   await expect(page.getByRole("dialog")).toContainText("Coach's pick");
@@ -93,9 +96,10 @@ test("the guided game shows what happened and the options on your turn", async (
 test("every move has a lesson card with what was played and what you could play", async ({ page }) => {
   await page.goto("/?testDeck=1");
   await page.getByRole("button", { name: "Play against the computer" }).click();
-  await page.getByRole("button", { name: "Play Nine of hearts, legal move" }).click();
+  await page.getByRole("button", { name: "Select Nine of hearts, legal move" }).click();
+  await page.getByRole("button", { name: "Play selected" }).click();
   await expect(page.getByText("GUIDED GAME · COMPUTER TURN")).toBeVisible();
-  await expect(page.getByText("The computer played an eight")).toBeVisible({ timeout: 4_000 });
+  await expect(page.getByText("The computer played an eight")).toBeVisible({ timeout: 9_000 });
 
   await page.getByRole("button", { name: /Tell me more|Why & tactics/ }).click();
   const sheet = page.getByRole("dialog");
@@ -121,14 +125,15 @@ test("a guidance card comes up every turn, and the computer waits for you to clo
   await expect(sheet).toHaveCount(0);
 
   // Your move gets a card, and the computer does not move until it is closed.
-  await page.getByRole("button", { name: "Play Nine of hearts, legal move" }).click();
+  await page.getByRole("button", { name: "Select Nine of hearts, legal move" }).click();
+  await page.getByRole("button", { name: "Play selected" }).click();
   await expect(sheet).toContainText("You played the nine of hearts.");
   await page.waitForTimeout(1_200);
   await expect(page.getByText("GUIDED GAME · COMPUTER TURN")).toBeVisible();
   await sheet.getByRole("button", { name: "Got it" }).click();
 
   // The computer's move gets a card with your options.
-  await expect(sheet).toContainText("An eight: miss a turn", { timeout: 4_000 });
+  await expect(sheet).toContainText("An eight: miss a turn", { timeout: 9_000 });
   await expect(sheet).toContainText("Coach's pick");
   await expect(sheet).toContainText("Your cards, one by one");
 
@@ -149,16 +154,17 @@ test("by default no guidance card covers the table; the quiet strip opens it on 
   const done = sheet.getByRole("button", { name: "Got it" });
   expect(await done.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
   await done.click();
-  await page.getByRole("button", { name: "Play Nine of hearts, legal move" }).click();
+  await page.getByRole("button", { name: "Select Nine of hearts, legal move" }).click();
+  await page.getByRole("button", { name: "Play selected" }).click();
   await expect(sheet).toHaveCount(0);
-  await expect(page.getByText("The computer played an eight")).toBeVisible({ timeout: 4_000 });
+  await expect(page.getByText("The computer played an eight")).toBeVisible({ timeout: 9_000 });
 });
 
 test("matching-card selection exposes full names and truthful states", async ({ page }) => {
   await page.goto("/?testDeck=partialKing");
   await page.getByRole("button", { name: "Play against the computer" }).click();
-  await page.getByRole("button", { name: "Play King of spades, legal move" }).click();
-  await expect(page.getByRole("button", { name: "Deselect King of spades from matching set" })).toBeVisible();
+  await page.getByRole("button", { name: "Select King of spades, legal move" }).click();
+  await expect(page.getByRole("button", { name: "Deselect King of spades, number 1 in your play" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Select King of hearts as another matching card" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Three of clubs, choose only matching kings" })).toBeVisible();
 });
