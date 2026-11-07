@@ -179,7 +179,7 @@ export default function Prototype() {
         {page !== 'Tutorial' && !rulesOpen && <Suspense fallback={null}><AppFooter page={page} onPrivacy={() => go('Privacy')} /></Suspense>}
       </main>
     </MobileScroll>
-    <nav className="bottom-tabs" aria-label="Main navigation" style={{ bottom: bottomInset }}>
+    <nav className="bottom-tabs" aria-label="Main navigation" style={{ bottom: bottomInset, ['--nav-extend' as string]: `${bottomInset}px` }}>
       {([{ name: 'Learn', label: 'Rules', Icon: BookOpen }, { name: 'Cards', label: 'Cards', Icon: Cards }, { name: 'Modes', label: 'Play', Icon: PlayCircle }, { name: 'Club', label: 'Club', Icon: Trophy }, { name: 'Questions', label: 'Questions', Icon: Question }] as const).map(({ name, label, Icon }) => {
         const clubView = page === 'Score' && scoreView !== 'score';
         const active = name === 'Club' ? clubView
