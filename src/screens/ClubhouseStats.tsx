@@ -5,6 +5,7 @@ import { buildLeaderboard, getClubName, leaderboardShareCard, putClubName } from
 import { KeyboardInput, useKeyboard } from '../mobile';
 import { deriveClubhouseSummary, derivePlayerStats, deriveRivalries, type MilestoneId } from '../switch/analytics';
 import { getHistory } from '../switch/history';
+import { deriveDashboard } from '../switch/dashboard';
 import { archiveProfile, getProfiles, renameProfile } from '../switch/profiles';
 
 type Extensions = Record<string, unknown>;
@@ -61,6 +62,8 @@ export default function ClubhouseStats({ extensions, onChange }: Props) {
   const rivalries = deriveRivalries(nights, allProfiles).filter((entry) => entry.profileAId === profile.id || entry.profileBId === profile.id).slice(0, 3);
   const leaderboard = buildLeaderboard(allProfiles, nights);
   const club = getClubName(extensions);
+  const dash = deriveDashboard(nights, allProfiles);
+  const maxNights = Math.max(1, ...dash.months.map((month) => month.nights));
   const bestRate = summary.bestWinRateProfileId ? withStats.find((entry) => entry.profile.id === summary.bestWinRateProfileId)?.stats : null;
 
   function run(action: () => Extensions) {
@@ -70,6 +73,19 @@ export default function ClubhouseStats({ extensions, onChange }: Props) {
 
   return <section className="club-panel" aria-labelledby="stats-title">
     <p className="eyebrow">THE RECORD BOOK</p>
+    <section className="dashboard" aria-label="Club dashboard">
+      <div className="dash-tiles">
+        <div><b>{dash.totalNights}</b><span>night{dash.totalNights === 1 ? '' : 's'} played</span></div>
+        <div><b>{dash.activePlayers}</b><span>players</span></div>
+        <div><b>{dash.champion ? dash.champion.name : '–'}</b><span>{dash.champion ? `top of the table · ${dash.champion.wins} win${dash.champion.wins === 1 ? '' : 's'}` : 'no winner yet'}</span></div>
+        <div><b>{dash.hot ? `${dash.hot.name} 🔥` : '–'}</b><span>{dash.hot ? `${dash.hot.streak} wins in a row` : 'no hot streak yet'}</span></div>
+      </div>
+      <h3>Nights played by month</h3>
+      <div className="month-chart" role="img" aria-label="Nights played per month">
+        {dash.months.map((month) => <div key={month.key}><b>{month.nights}</b><span className="bar" style={{ height: `${Math.max(4, (month.nights / maxNights) * 70)}px` }} /><small>{month.label}</small></div>)}
+      </div>
+      {dash.busiest && <p className="dash-note">Busiest month: {dash.busiest.label} with {dash.busiest.nights} night{dash.busiest.nights === 1 ? '' : 's'}.</p>}
+    </section>
     <h2 className="leaderboard-title">{club ? `${club} leaderboard` : 'Club leaderboard'}</h2>
     <ol className="leaderboard" aria-label="Club leaderboard">{leaderboard.map((row) => <li key={row.profileId} className={row.rank === 1 ? 'leader' : ''}>
       <span className="lb-rank">{row.rank === 1 ? <Crown size={20} weight="fill" aria-label="Leader" /> : row.rank}</span>

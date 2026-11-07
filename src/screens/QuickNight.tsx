@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { ArrowRight, Crown, Minus, Plus } from '@phosphor-icons/react';
 import { cue } from '../feedback';
 import { KeyboardInput, useKeyboard } from '../mobile';
-import { addNight, createNightRecord, type NightCompletion } from '../switch/history';
+import { addNight, createNightRecord, type NightCompletion, type SwitchNightRecord } from '../switch/history';
+import { ShareButton } from '../ShareButton';
+import { getClubName, nightShareCard } from '../switch/club';
 import { ensureProfiles, getProfiles } from '../switch/profiles';
 import { loadScorekeeper, saveScorekeeper, SCOREKEEPER_STORAGE_KEY } from '../switch/storage';
 import type { Player } from '../switch/types';
@@ -17,6 +19,7 @@ export default function QuickNight({ onBack, onHistory }: { onBack: () => void; 
   const [rounds, setRounds] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  const [savedNight, setSavedNight] = useState<SwitchNightRecord | null>(null);
 
   const wins = (id: string) => rounds.filter((winner) => winner === id).length;
   const leader = players ? [...players].sort((a, b) => wins(b.id) - wins(a.id))[0] : null;
@@ -58,6 +61,7 @@ export default function QuickNight({ onBack, onHistory }: { onBack: () => void; 
     const current = loadScorekeeper(raw).state.extensions;
     const night = createNightRecord(`Quick night · ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`, completion);
     persist(addNight(current, night), players);
+    setSavedNight(night);
     setDone(true); cue('win');
   }
 
@@ -65,7 +69,8 @@ export default function QuickNight({ onBack, onHistory }: { onBack: () => void; 
     <Crown size={44} weight="light" /><p className="eyebrow">NIGHT SAVED</p>
     <h1 id="quick-title">{leader ? `${leader.name} takes the night.` : 'Night saved.'}</h1>
     <p>{rounds.length} round{rounds.length === 1 ? '' : 's'} played. It is in your history and stats.</p>
-    <button className="primary" onClick={onHistory}>See history <ArrowRight size={18} /></button>
+    {savedNight && <ShareButton className="primary" label="Share the result" build={() => nightShareCard(savedNight, getClubName(loaded.state.extensions))} />}
+    <button className="secondary" onClick={onHistory}>See history <ArrowRight size={18} /></button>
     <button className="secondary" onClick={onBack}>Done</button>
   </section>;
 

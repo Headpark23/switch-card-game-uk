@@ -91,3 +91,19 @@ export function leaderboardShareCard(rows: readonly LeaderboardRow[], nights: nu
     filename: "switch-leaderboard.png",
   };
 }
+
+/** The picture a new player sends after beating the computer: it doubles as an invitation. */
+export function challengeShareCard(): ShareCardContent {
+  return {
+    club: "",
+    eyebrow: "LEARNED IN ONE GAME",
+    title: "I beat the computer at Switch.",
+    subtitle: "Your turn. Learn it in ten minutes, then play for real.",
+    rows: [
+      { rank: null, label: "Beat the computer", value: "Won", highlight: true },
+      { rank: null, label: "Power cards", value: "Mastered", highlight: false },
+      { rank: null, label: "Next up", value: "Real cards", highlight: false },
+    ],
+    filename: "switch-challenge.png",
+  };
+}

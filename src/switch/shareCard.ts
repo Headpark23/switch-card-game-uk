@@ -79,17 +79,17 @@ export async function renderShareCard(content: ShareCardContent): Promise<Blob> 
   ctx.fillRect(80, H - 120, W - 160, 3);
   ctx.fillStyle = "#59605b";
   ctx.font = sans(26);
-  ctx.fillText("Scores, leagues and stats for your card night", 80, H - 62);
+  ctx.fillText("Learn Switch free: switchcardgame.co.uk", 80, H - 62);
 
   return new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("The picture could not be made."))), "image/png"));
 }
 
 /** Opens the phone's share sheet when it can share files, otherwise downloads the picture. */
-export async function shareOrDownload(blob: Blob, filename: string, title: string): Promise<"shared" | "downloaded"> {
+export async function shareOrDownload(blob: Blob, filename: string, title: string, text = "Learn Switch free: https://switchcardgame.co.uk"): Promise<"shared" | "downloaded"> {
   const file = new File([blob], filename, { type: "image/png" });
   if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title });
+      await navigator.share({ files: [file], title, text });
       return "shared";
     } catch (reason) {
       if (reason instanceof DOMException && reason.name === "AbortError") return "shared";

@@ -47,3 +47,34 @@ test("share buttons make a real PNG picture", async ({ page }) => {
   await page.getByRole("button", { name: "Share this night" }).click();
   expect((await night).suggestedFilename()).toBe("switch-friday-night-1.png");
 });
+
+test("the stats dashboard summarises the club from saved nights", async ({ page }) => {
+  await seed(page);
+  const dash = page.getByRole("region", { name: "Club dashboard" });
+  await expect(dash).toBeVisible();
+  await expect(dash).toContainText("5");
+  await expect(dash).toContainText("nights played");
+  await expect(dash).toContainText("Alex");
+  await expect(dash).toContainText("3 wins");
+  await expect(dash.getByRole("img", { name: "Nights played per month" })).toBeVisible();
+});
+
+test("a finished quick night can be shared as a picture straight away", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Quick night", exact: true }).click();
+  const names = page.getByPlaceholder("Enter name");
+  await names.nth(0).fill("Ann"); await names.nth(1).fill("Ben");
+  await page.getByRole("button", { name: "Deal the cards" }).click();
+  await page.getByRole("button", { name: "Ann won the round" }).click();
+  await page.getByRole("button", { name: "Finish the night" }).click();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Share the result" }).click();
+  expect((await download).suggestedFilename()).toMatch(/^switch-quick-night-.*\.png$/);
+});
+
+test("the challenge picture is a real invitation", async ({ page }) => {
+  await page.goto("/");
+  const card = await page.evaluate(async () => (await import("/src/switch/club.ts")).challengeShareCard());
+  expect(card.title).toContain("beat the computer");
+  expect(card.rows.length).toBe(3);
+});
