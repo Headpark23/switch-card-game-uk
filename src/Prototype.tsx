@@ -44,7 +44,7 @@ export default function Prototype() {
   const [selected, setSelected] = useState<(typeof powers)[number] | null>(null);
   const [ruleStep, setRuleStep] = useState(0);
   const [scrollKey, setScrollKey] = useState('');
-  const [scoreView, setScoreView] = useState<'score' | 'stats' | 'leagues' | 'history'>('score');
+  const [scoreView, setScoreView] = useState<'score' | 'stats' | 'leagues' | 'trophies' | 'history'>('score');
   const [rulesOpen, setRulesOpen] = useState(false);
   const [welcome, setWelcome] = useState(() => { try { return window.localStorage.getItem('switchWelcome') !== 'done'; } catch { return false; } });
   const keyboard = useKeyboard();
@@ -76,7 +76,7 @@ export default function Prototype() {
   }
   const startGuidedGame = () => go('Tutorial');
   const closeWelcome = () => { setWelcome(false); try { window.localStorage.setItem('switchWelcome', 'done'); } catch { /* storage unavailable */ } };
-  const openNight = (view: 'score' | 'stats' | 'leagues' | 'history') => { setScoreView(view); go('Score'); };
+  const openNight = (view: 'score' | 'stats' | 'leagues' | 'trophies' | 'history') => { setScoreView(view); go('Score'); };
 
   const result = rules.filter((r) => (r.q + ' ' + r.a).toLowerCase().includes(query.toLowerCase()));
   return <div className="switch-app" onFocusCapture={resetDeviceScroll}>
