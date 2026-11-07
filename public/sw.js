@@ -1,5 +1,5 @@
 /* Switch offline support. Same-origin GETs only; nothing leaves the device. */
-const CACHE = 'switch-offline-v2';
+const CACHE = 'switch-offline-v3';
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -27,7 +27,7 @@ self.addEventListener('message', (event) => {
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
-  if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
 
   if (request.mode === 'navigate') {
     // Network first so updates arrive; fall back to the saved app shell offline.

@@ -4,7 +4,7 @@ test("after one visit the app works with no network, including saved nights", as
   await page.goto("/");
   await page.evaluate(() => navigator.serviceWorker.ready);
   // Give the app time to save its files.
-  await expect.poll(async () => page.evaluate(async () => (await (await caches.open("switch-offline-v2")).keys()).length), { timeout: 15_000 }).toBeGreaterThan(60);
+  await expect.poll(async () => page.evaluate(async () => (await (await caches.open("switch-offline-v3")).keys()).length), { timeout: 15_000 }).toBeGreaterThan(60);
 
   await context.setOffline(true);
   await page.reload();

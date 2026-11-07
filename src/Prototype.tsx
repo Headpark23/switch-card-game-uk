@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useLayoutEffect, useState } from 'react';
 import { ArrowRight, BookOpen, Cards, PlayCircle, Trophy, Question, UsersThree, ChatCircle, Club, MagnifyingGlass, X, DownloadSimple, CheckCircle, Lightbulb } from '@phosphor-icons/react';
+import WatchNight from './screens/WatchNight';
 import Referee from './screens/Referee';
 import NightReminder from './screens/NightReminder';
 import { BottomSheet, KeyboardInput, MobileScroll, useKeyboard, useKeyboardInsets } from './mobile';
@@ -21,7 +22,7 @@ const SwitchScorekeeper = lazy(() => import('./screens/Scorekeeper'));
 const QuickNight = lazy(() => import('./screens/QuickNight'));
 const Puzzles = lazy(() => import('./screens/Puzzles'));
 
-type Page = 'Learn' | 'Cards' | 'Modes' | 'Club' | 'Questions' | 'Tutorial' | 'Score' | 'Quick' | 'Puzzles';
+type Page = 'Learn' | 'Cards' | 'Modes' | 'Club' | 'Watch' | 'Questions' | 'Tutorial' | 'Score' | 'Quick' | 'Puzzles';
 
 function downloadRules() {
   const text = 'SWITCH — Rules for a better game night\n\n'
@@ -41,7 +42,8 @@ function Loading() {
 }
 
 export default function Prototype() {
-  const [page, setPage] = useState<Page>('Learn');
+  const urlNight = (() => { try { return (new URLSearchParams(window.location.search).get('night') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); } catch { return ''; } })();
+  const [page, setPage] = useState<Page>(urlNight ? 'Watch' : 'Learn');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<(typeof powers)[number] | null>(null);
   const [ruleStep, setRuleStep] = useState(0);
@@ -97,7 +99,7 @@ export default function Prototype() {
               <button className="home-tile" onClick={() => openNight('score')}><UsersThree size={26} weight="fill" /><strong>Start a game night</strong><small>Scores, leagues, cups</small></button>
               <button className="home-tile" aria-label="Quick night" onClick={() => go('Quick')}><Lightbulb size={26} weight="fill" /><strong>Quick night</strong><small>Real cards, 60 seconds</small></button>
             </div>
-            <div className="night-shortcuts"><button className="text-link" onClick={() => openNight('stats')}>Stats</button><button className="text-link" onClick={() => openNight('leagues')}>Leagues</button><button className="text-link" onClick={() => openNight('history')}>History</button><button className="text-link" onClick={() => go('Puzzles')}>Puzzles</button><button className="text-link" onClick={() => setPlanOpen(true)}>Plan a night</button></div>
+            <div className="night-shortcuts"><button className="text-link" onClick={() => openNight('stats')}>Stats</button><button className="text-link" onClick={() => openNight('leagues')}>Leagues</button><button className="text-link" onClick={() => openNight('history')}>History</button><button className="text-link" onClick={() => go('Puzzles')}>Puzzles</button><button className="text-link" onClick={() => setPlanOpen(true)}>Plan a night</button><button className="text-link" onClick={() => go('Watch')}>Join a night</button></div>
           </section>
           {(() => { const p = powers[new Date().getDate() % powers.length]; return <button className="home-daily" onClick={() => setSelected(p)}><Fan codes={p.cards.slice(0, 3)} /><span><small>POWER CARD OF THE DAY</small><strong>{p.name}</strong><em>{p.short}</em><i>Tap to learn it <ArrowRight size={13} /></i></span></button>; })()}
           <AccountPanel home />
@@ -167,6 +169,7 @@ export default function Prototype() {
             {page === 'Score' && <SwitchScorekeeper onBack={() => go(scoreView === 'score' ? 'Modes' : 'Learn')} initialView={scoreView} onView={setScoreView} />}
             {page === 'Tutorial' && <GuidedGame onExit={() => go('Learn')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onOpenPuzzles={() => go('Puzzles')} onStatusChange={onGameStatus} />}
             {page === 'Quick' && <QuickNight onBack={() => go('Learn')} onHistory={() => openNight('history')} />}
+            {page === 'Watch' && <WatchNight initialCode={urlNight} onBack={() => go('Learn')} />}
             {page === 'Puzzles' && <Puzzles onBack={() => go('Learn')} onTutorial={startGuidedGame} />}
           </Suspense>
         </>}
@@ -176,7 +179,7 @@ export default function Prototype() {
       {([{ name: 'Learn', label: 'Rules', Icon: BookOpen }, { name: 'Cards', label: 'Cards', Icon: Cards }, { name: 'Modes', label: 'Play', Icon: PlayCircle }, { name: 'Club', label: 'Club', Icon: Trophy }, { name: 'Questions', label: 'Questions', Icon: Question }] as const).map(({ name, label, Icon }) => {
         const clubView = page === 'Score' && scoreView !== 'score';
         const active = name === 'Club' ? clubView
-          : page === name || (name === 'Learn' && (page === 'Tutorial' || page === 'Puzzles')) || (name === 'Modes' && (page === 'Quick' || (page === 'Score' && !clubView)));
+          : page === name || (name === 'Learn' && (page === 'Tutorial' || page === 'Puzzles' || page === 'Watch')) || (name === 'Modes' && (page === 'Quick' || (page === 'Score' && !clubView)));
         const open = () => { if (name === 'Club') openNight(scoreView === 'score' ? 'stats' : scoreView); else go(name); };
         return <button key={name} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} onClick={open}><span className="tab-icon"><Icon weight={active ? 'fill' : 'regular'} size={23} /></span><span className="tab-label">{label}</span></button>;
       })}
