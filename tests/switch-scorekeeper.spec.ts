@@ -199,36 +199,16 @@ test("a league finished level on points and wins asks for a deciding game", asyn
   await expect(page.getByRole("heading", { name: "Cross-league playoffs" })).toBeVisible();
 });
 
-test("Knock Out works out who drops out from the cards held, using card totals on a tie", async ({ page }) => {
+test("Knock Out drops the round's last player each round until one champion remains", async ({ page }) => {
   await openScorekeeper(page);
   await page.getByRole("button", { name: "Knockout" }).click();
+  for (let index = 0; index < 3; index += 1) await page.getByRole("button", { name: "More players" }).click();
   await fillVisibleNames(page);
   await page.getByRole("button", { name: "Start Knockout" }).click();
-  await page.getByLabel("Cards held by Player 1").fill("0");
-  await page.getByLabel("Cards held by Player 2").fill("4");
-  await page.getByLabel("Cards held by Player 3").fill("2");
-  await page.getByRole("button", { name: "Settle the round" }).click();
-  await expect(page.getByText("Player 2 holds the most cards and drops out.")).toBeVisible();
-  await expect(page.getByText("2 still playing")).toBeVisible();
-  await page.getByLabel("Cards held by Player 1").fill("3");
-  await page.getByLabel("Cards held by Player 3").fill("3");
-  await page.getByRole("button", { name: "Settle the round" }).click();
-  await expect(page.getByText(/Level on cards/)).toBeVisible();
-  await page.getByLabel("Card total for Player 1").fill("20");
-  await page.getByLabel("Card total for Player 3").fill("31");
-  await page.getByRole("button", { name: "Settle the round" }).click();
+  for (const left of [6, 5, 4, 3, 2]) {
+    await expect(page.getByText(new RegExp(`${left} still playing`))).toBeVisible();
+    await page.getByRole("button", { name: "LOST" }).first().click();
+  }
   await expect(page.getByText("CHAMPION", { exact: true })).toBeVisible();
-});
-
-test("roundLoser follows the ruling", async ({ page }) => {
-  await page.goto("/");
-  const out = await page.evaluate(async () => {
-    const k = await import("/src/switch/knockout.ts");
-    return [
-      k.roundLoser([{ id: "a", cards: 1 }, { id: "b", cards: 5 }]),
-      k.roundLoser([{ id: "a", cards: 3 }, { id: "b", cards: 3 }]).status,
-      k.roundLoser([{ id: "a", cards: 3, value: 9 }, { id: "b", cards: 3, value: 9 }]).status,
-    ];
-  });
-  expect(out).toEqual([{ status: "loser", id: "b", byValue: false }, "tie", "tie"]);
+  await expect(page.getByText("LOST", { exact: true })).toHaveCount(5);
 });

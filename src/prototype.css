@@ -319,6 +319,5 @@
 .consent-note{font-size:11px;line-height:1.45;color:var(--muted)}.consent-note a{color:var(--green)}
 .switch-app button.community{border:0;background:none;width:max-content;max-width:100%;text-align:left}.footer-actions{gap:6px}.footer-actions button{padding:9px 11px;font-size:12.5px;white-space:nowrap}
 .switch-content.interior .app-footer{margin-left:-24px;margin-right:-24px}
-.knockout-round{display:grid;gap:8px;margin:14px 0;padding:14px;border:1px solid var(--line);border-radius:14px;background:#fffaf0}.knockout-round h3{font-size:15px;margin:0}.knockout-round label{display:flex;align-items:center;gap:8px}.knockout-round label span{flex:1;font-weight:600;font-size:14px}.knockout-round input{width:84px;border:1px solid #bdb5a1;border-radius:8px;padding:9px;background:#fffdf9;font:inherit;text-align:center}
 .draw-pile{position:relative}.draw-flier{position:absolute;inset:0;z-index:6;display:flex;align-items:flex-start;justify-content:center;pointer-events:none}.draw-flier img{max-height:100%;width:auto}
 .format-note{margin:12px 2px 14px!important;line-height:1.45}

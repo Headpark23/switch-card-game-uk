@@ -27,7 +27,7 @@ Decided 7 Nov 2026, after playing 10,000 simulated games (2 to 6 players, four d
 ## Scoring rulings (owner decisions, 7 Nov 2026)
 
 10. **Darts:** the first player to three legs wins the set (3-0, 3-1 and 3-2 all count). No two-clear-legs rule. First to the agreed number of sets (3 or 5) wins the match and the scorekeeper then stops.
-11. **Knock Out:** a round ends as soon as one player goes out. Whoever holds the most cards then drops out; if level, add up the card values and the highest drops out.
+11. **Knock Out (owner revised 2026-11-07):** each round, the player who finishes last loses and is out; everyone else progresses. Six players become 5, then 4, 3, 2, and the last two play for the win. Number of cards held is irrelevant.
 12. **Group Play / leagues:** finishing places earn points (number of players for 1st down to 1). Level on points: most round wins; still level: a deciding game. The app never breaks a tie silently.
 13. **Scorekeeper:** follows the written rules. Domino and one v one stop at the target and show the winner; domino records whether an ace counts as 1 or 11; darts offers 3 or 5 sets.
 

@@ -24,20 +24,3 @@ export function undoKnockout(state: KnockoutState): KnockoutState {
   if (state.eliminatedIds.length === 0) return state;
   return { ...state, eliminatedIds: state.eliminatedIds.slice(0, -1), championId: null };
 }
-
-export interface RoundHand { readonly id: string; readonly cards: number; readonly value?: number }
-export type RoundResult =
-  | { readonly status: "loser"; readonly id: string; readonly byValue: boolean }
-  | { readonly status: "tie"; readonly ids: readonly string[]; readonly needValues: boolean };
-
-/** Rule 11: the most cards held drops out; if level, the highest card total drops out. */
-export function roundLoser(hands: readonly RoundHand[]): RoundResult {
-  const most = Math.max(...hands.map((hand) => hand.cards));
-  const level = hands.filter((hand) => hand.cards === most);
-  if (level.length === 1) return { status: "loser", id: level[0].id, byValue: false };
-  if (level.some((hand) => hand.value === undefined)) return { status: "tie", ids: level.map((hand) => hand.id), needValues: true };
-  const top = Math.max(...level.map((hand) => hand.value ?? 0));
-  const worst = level.filter((hand) => (hand.value ?? 0) === top);
-  if (worst.length === 1) return { status: "loser", id: worst[0].id, byValue: true };
-  return { status: "tie", ids: worst.map((hand) => hand.id), needValues: false };
-}
