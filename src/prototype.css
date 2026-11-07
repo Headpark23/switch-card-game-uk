@@ -339,3 +339,18 @@
 .bottom-tabs .active .tab-icon svg{color:#e6c97f}
 .bottom-tabs .active:after{content:none}
 .switch-app .bottom-tabs button:hover{filter:none}
+
+/* leagues: grouped name boxes, random draw */
+.switch-app .draw-box{margin:10px 0 12px;padding:12px;border:1px dashed #c8bea9;border-radius:12px;background:#fffdf6}
+.switch-app .draw-box p{font-size:12px;line-height:1.45;color:var(--muted);margin:0 0 10px}
+.switch-app .draw-box button{width:100%;min-height:44px}
+.switch-app .draw-box .draw-done{margin:8px 0 0;color:var(--green);font-weight:600}
+.switch-app .league-setup{margin:12px 0;padding:12px;border:1px solid var(--line);border-left:4px solid #b8860b;border-radius:12px;background:#fff}
+.switch-app .league-setup-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.switch-app .league-setup-head h2{margin:0;font-size:18px}
+.switch-app .mini-stepper{display:flex;align-items:center;gap:6px}
+.switch-app .mini-stepper strong{font-size:12px;min-width:64px;text-align:center}
+.switch-app .mini-stepper button{width:36px;height:36px;border:1px solid #c8bea9;border-radius:50%;background:#fff}
+.switch-app .league-setup .house-note{margin:4px 0 8px}
+.switch-app .league-setup .player-fields{margin:0}
+.switch-app .draw-note{font-size:12px;line-height:1.45;color:var(--muted);margin:10px 2px 4px}

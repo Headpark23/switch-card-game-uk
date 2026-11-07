@@ -20,6 +20,8 @@ export interface ScoreSession {
   readonly target: number;
   /** One v One played as legs: an odd number of legs, first to a majority wins. Scores then count legs won. */
   readonly bestOf?: number;
+  /** One v One played as games: first player to win this many games takes the match. Scores count games won. */
+  readonly firstTo?: number;
   readonly darts: DartsState | null;
   readonly history: readonly ScoreSnapshot[];
 }
@@ -52,7 +54,10 @@ function playerBounds(format: ScoreFormat): readonly [number, number] {
   return [2, 2];
 }
 
-export function createSession(format: ScoreFormat, names: readonly (string | Player)[], options: { target?: number; setsToWin?: number; bestOf?: number } = {}): ScoreSession {
+/** True when One v One is counting games won (or legacy legs) rather than points. */
+export const isGameMatch = (session: ScoreSession): boolean => session.firstTo !== undefined || session.bestOf !== undefined;
+
+export function createSession(format: ScoreFormat, names: readonly (string | Player)[], options: { target?: number; setsToWin?: number; bestOf?: number; firstTo?: number } = {}): ScoreSession {
   const [minimum, maximum] = playerBounds(format);
   if (names.length < minimum || names.length > maximum) throw new Error(`${format} supports ${minimum}–${maximum} players.`);
   const players = names.map((entry, index) => {
@@ -61,6 +66,12 @@ export function createSession(format: ScoreFormat, names: readonly (string | Pla
     return { id: typeof entry === "string" ? `player-${index + 1}` : entry.id, name };
   });
   const scores = Object.fromEntries(players.map((player) => [player.id, 0]));
+  const firstTo = options.firstTo;
+  if (firstTo !== undefined) {
+    if (format !== "head-to-head") throw new Error("Only One v One can be played as games.");
+    if (!Number.isInteger(firstTo) || firstTo < 1 || firstTo > 99) throw new ScoreValidationError("whole-number", "Enter how many games to play, from 1 to 99.");
+    return { format, players, scores, target: firstTo, firstTo, darts: null, history: [] };
+  }
   const bestOf = options.bestOf;
   if (bestOf !== undefined) {
     if (format !== "head-to-head") throw new Error("Only One v One can be played as legs.");
@@ -100,11 +111,11 @@ export function applyScoreCommand(session: ScoreSession, command: ScoreCommand):
   if (scoreWinnerId(session)) throw new ScoreValidationError("finished", "The match is over. Undo the last score to carry on.");
   const history = remember(session);
   if (command.type === "add-score") {
-    if ((session.format !== "domino" && session.format !== "head-to-head") || session.bestOf !== undefined) throw new ScoreValidationError("wrong-format", "This format does not use round scores.");
+    if ((session.format !== "domino" && session.format !== "head-to-head") || isGameMatch(session)) throw new ScoreValidationError("wrong-format", "This format does not use round scores.");
     const value = parseScore(command.value);
     return { ...session, scores: { ...session.scores, [command.playerId]: session.scores[command.playerId] + value }, history };
   }
-  if (session.bestOf !== undefined) {
+  if (isGameMatch(session)) {
     return { ...session, scores: { ...session.scores, [command.playerId]: session.scores[command.playerId] + 1 }, history };
   }
   if (session.format !== "darts" || !session.darts) throw new ScoreValidationError("wrong-format", "Only darts uses legs.");

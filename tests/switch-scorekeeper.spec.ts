@@ -213,34 +213,89 @@ test("Knock Out drops the round's last player each round until one champion rema
   await expect(page.getByText("LOST", { exact: true })).toHaveCount(5);
 });
 
-test("One v One as legs: odd best-of, match ends when a player reaches the majority", async ({ page }) => {
+test("One v One is played to a number of games: first to N wins", async ({ page }) => {
+  await openScorekeeper(page);
+  await page.getByRole("button", { name: "One v One" }).click();
+  await expect(page.getByText("Target score")).toHaveCount(0);
+  await fillVisibleNames(page);
+  await page.getByLabel("Games to win").fill("4");
+  await page.getByRole("button", { name: "Start One v One" }).click();
+  await expect(page.getByText("First to 4 games")).toBeVisible();
+  for (let game = 0; game < 3; game += 1) await page.getByRole("button", { name: "Win game" }).first().click();
+  for (let game = 0; game < 3; game += 1) await page.getByRole("button", { name: "Win game" }).last().click();
+  await expect(page.getByText(/wins the match/)).toHaveCount(0);
+  await page.getByRole("button", { name: "Win game" }).first().click();
+  await expect(page.getByText("Player 1 wins the match!")).toBeVisible();
+  await expect(page.getByText("4 games", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Win game" }).first()).toBeDisabled();
+});
+
+test("One v One needs a sensible number of games", async ({ page }) => {
   await openScorekeeper(page);
   await page.getByRole("button", { name: "One v One" }).click();
   await fillVisibleNames(page);
-  await page.getByRole("button", { name: "Legs", exact: true }).click();
-  await expect(page.getByText("Best of (odd) · first to 5")).toBeVisible();
-  await page.getByRole("button", { name: "Fewer legs" }).click();
-  await expect(page.getByText("Best of (odd) · first to 4")).toBeVisible();
-  await page.getByRole("button", { name: "More legs" }).click();
+  await page.getByLabel("Games to win").fill("");
   await page.getByRole("button", { name: "Start One v One" }).click();
-  await expect(page.getByText("Best of 9 · first to 5 legs")).toBeVisible();
-  for (let leg = 0; leg < 4; leg += 1) await page.getByRole("button", { name: "Win leg" }).first().click();
-  for (let leg = 0; leg < 4; leg += 1) await page.getByRole("button", { name: "Win leg" }).last().click();
-  await expect(page.getByText(/wins the match/)).toHaveCount(0);
-  await page.getByRole("button", { name: "Win leg" }).first().click();
-  await expect(page.getByText("Player 1 wins the match!")).toBeVisible();
-  await expect(page.getByText("5 legs", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Win leg" }).first()).toBeDisabled();
+  await expect(page.getByRole("alert")).toContainText(/how many games/i);
 });
 
-test("legs scoring rejects even numbers and other formats", async ({ page }) => {
+test("games scoring rejects bad counts and other formats", async ({ page }) => {
   await page.goto("/");
   const out = await page.evaluate(async () => {
     const s = await import("/src/switch/scoring.ts");
     const tryIt = (fn: () => unknown) => { try { fn(); return "ok"; } catch (e) { return (e as Error).message; } };
-    return [tryIt(() => s.createSession("head-to-head", ["A", "B"], { bestOf: 8 })), tryIt(() => s.createSession("domino", ["A", "B"], { bestOf: 9 })), s.createSession("head-to-head", ["A", "B"], { bestOf: 9 }).target];
+    return [tryIt(() => s.createSession("head-to-head", ["A", "B"], { firstTo: 0 })), tryIt(() => s.createSession("domino", ["A", "B"], { firstTo: 4 })), s.createSession("head-to-head", ["A", "B"], { firstTo: 4 }).target, s.createSession("head-to-head", ["A", "B"], { bestOf: 9 }).target];
   });
-  expect(out[0]).toMatch(/odd/);
+  expect(out[0]).toMatch(/games/);
   expect(out[1]).toMatch(/Only One v One/);
-  expect(out[2]).toBe(5);
+  expect(out[2]).toBe(4);
+  expect(out[3]).toBe(5);
+});
+
+test("leagues can differ in size: 4, 4 and 3 players, drawn at random", async ({ page }) => {
+  await openScorekeeper(page);
+  await page.getByRole("button", { name: "Tournament Groups" }).click();
+  await page.getByRole("button", { name: "More leagues" }).click();
+  await page.getByRole("button", { name: "Fewer players in League 3" }).click();
+  await expect(page.getByRole("region", { name: "League 3 players" }).getByPlaceholder("Enter name")).toHaveCount(3);
+  await expect(page.getByRole("region", { name: "League 1 players" }).getByPlaceholder("Enter name")).toHaveCount(4);
+  await fillVisibleNames(page);
+  await page.getByRole("button", { name: "Draw leagues at random" }).click();
+  await expect(page.getByText("Drawn! Check each league below.")).toBeVisible();
+  const drawn: string[] = [];
+  const boxes = page.getByPlaceholder("Enter name");
+  for (let index = 0; index < await boxes.count(); index += 1) drawn.push(await boxes.nth(index).inputValue());
+  expect([...drawn].sort()).toEqual(Array.from({ length: 11 }, (_, index) => `Player ${index + 1}`).sort());
+  await page.getByRole("button", { name: "Start Tournament Groups" }).click();
+  await expect(page.getByText("Round 1 of 3 · 3 points for 1st down to 1 for last")).toBeVisible();
+  await expect(page.getByText("Round 1 of 4 · 4 points for 1st down to 1 for last")).toHaveCount(2);
+});
+
+test("a 4, 4 and 3 player league night plays through to playoffs with a plate bye", async ({ page }) => {
+  await openScorekeeper(page);
+  await page.getByRole("button", { name: "Tournament Groups" }).click();
+  await page.getByRole("button", { name: "More leagues" }).click();
+  await page.getByRole("button", { name: "Fewer players in League 3" }).click();
+  await fillVisibleNames(page);
+  await page.getByRole("button", { name: "Start Tournament Groups" }).click();
+  const places = ["1st", "2nd", "3rd"];
+  const leagues: [number, number][] = [[1, 4], [5, 4], [9, 3]];
+  for (let round = 0; round < 4; round += 1) {
+    for (const [first, size] of leagues) {
+      if (round >= size) continue;
+      for (let place = 0; place < size - 1; place += 1) await page.getByRole("button", { name: `Player ${first + place} finished ${places[place]}` }).click();
+    }
+  }
+  await expect(page.getByRole("heading", { name: "Cross-league playoffs" })).toBeVisible();
+  await expect(page.getByText("has a bye")).toBeVisible();
+});
+
+test("the Cup explains the random draw and gives an odd table a bye", async ({ page }) => {
+  await openScorekeeper(page);
+  await page.getByRole("button", { name: "Switch Cup" }).click();
+  await expect(page.getByText(/The draw is at random/)).toBeVisible();
+  await page.getByRole("button", { name: "More players" }).click();
+  await fillVisibleNames(page);
+  await page.getByRole("button", { name: "Start Switch Cup" }).click();
+  await expect(page.getByText(/has the bye this round/)).toBeVisible();
 });

@@ -2,7 +2,7 @@ import type { CupState } from "./cup";
 import type { League, PlayoffBracket } from "./leagues";
 import { rankLeague } from "./leagues";
 import type { KnockoutState } from "./knockout";
-import type { ScoreFormat, ScoreSession } from "./scoring";
+import { isGameMatch, type ScoreFormat, type ScoreSession } from "./scoring";
 import type { Player } from "./types";
 
 export interface HistorySection {
@@ -116,10 +116,10 @@ export function completionFromSession(session: ScoreSession): NightCompletion | 
     winnerIds: [leaders[0].id],
     outcome: `${leaders[0].name} won`,
     details: [{
-      heading: session.bestOf ? `Final legs · best of ${session.bestOf}` : "Final scores",
+      heading: isGameMatch(session) ? `Final games · first to ${session.target}` : "Final scores",
       lines: [...session.players]
         .sort((left, right) => (session.scores[right.id] ?? 0) - (session.scores[left.id] ?? 0))
-        .map((player) => `${player.name} — ${session.scores[player.id] ?? 0} ${session.bestOf ? "legs" : "points"}`),
+        .map((player) => `${player.name} — ${session.scores[player.id] ?? 0} ${isGameMatch(session) ? "games" : "points"}`),
     }],
   };
 }
@@ -161,14 +161,14 @@ export function completionFromCup(state: CupState): NightCompletion | null {
 }
 
 function playoffLines(bracket: PlayoffBracket): string[] {
-  return bracket.fixtures.map((fixture) => `${fixture.home.player.name} v ${fixture.away.player.name}`);
+  return [...bracket.fixtures.map((fixture) => `${fixture.home.player.name} v ${fixture.away.player.name}`), ...(bracket.bye ? [`${bracket.bye.player.name} has a bye`] : [])];
 }
 
 export function completionFromLeagues(
   leagues: readonly League[],
   playoffs: { readonly status: "not-ready"; readonly reason: string } | ReadyPlayoffs | null,
 ): NightCompletion | null {
-  if (!playoffs || playoffs.status !== "ready" || leagues.length < 2 || leagues.some((league) => league.results.length < 4)) return null;
+  if (!playoffs || playoffs.status !== "ready" || leagues.length < 2 || leagues.some((league) => league.results.length < 3)) return null;
   const winnerIds = leagues.map((league) => rankLeague(league.results, league.playoffOrder)[0].player.id);
   const players = leagues.flatMap((league) => league.results.map((result) => result.player));
   return {

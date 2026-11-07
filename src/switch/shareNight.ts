@@ -1,7 +1,7 @@
 import type { CupState } from "./cup";
 import type { KnockoutState } from "./knockout";
 import { rankLeague, type League } from "./leagues";
-import { scoreWinnerId, type ScoreSession } from "./scoring";
+import { isGameMatch, scoreWinnerId, type ScoreSession } from "./scoring";
 
 export interface NightSnapshot {
   readonly title: string;
@@ -21,11 +21,11 @@ export function buildSnapshot(input: { club?: string; session: ScoreSession | nu
     const darts = session.format === "darts";
     const lines = session.players.map((player) => ({
       label: player.name,
-      value: darts ? `${session.darts?.sets[player.id] ?? 0} sets · ${session.darts?.legs[player.id] ?? 0} legs` : `${session.scores[player.id] ?? 0} ${session.bestOf ? "legs" : "points"}`,
+      value: darts ? `${session.darts?.sets[player.id] ?? 0} sets · ${session.darts?.legs[player.id] ?? 0} legs` : `${session.scores[player.id] ?? 0} ${isGameMatch(session) ? "games" : "points"}`,
       lead: winner === player.id,
     }));
     const name = session.format === "domino" ? "Domino" : session.format === "darts" ? "Darts" : "One v One";
-    return { title, format: session.format, status: winner ? `${session.players.find((p) => p.id === winner)?.name} wins the match` : darts ? `First to ${session.darts?.setsToWin ?? 3} sets` : session.bestOf ? `${name} · best of ${session.bestOf}, first to ${session.target}` : `${name} · first to ${session.target}`, lines };
+    return { title, format: session.format, status: winner ? `${session.players.find((p) => p.id === winner)?.name} wins the match` : darts ? `First to ${session.darts?.setsToWin ?? 3} sets` : isGameMatch(session) ? `${name} · first to ${session.target} games` : `${name} · first to ${session.target}`, lines };
   }
   if (knockout) {
     const still = knockout.players.filter((player) => !knockout.eliminatedIds.includes(player.id));

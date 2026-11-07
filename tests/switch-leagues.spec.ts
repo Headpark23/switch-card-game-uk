@@ -17,7 +17,7 @@ test("league standings are stable and cross-league playoffs use four leagues", a
       ranked: leagues.rankLeague(configured[0].results),
       playoffs: leagues.createCrossLeaguePlayoffs(configured, () => 0),
       oneLeague: leagues.createCrossLeaguePlayoffs(configured.slice(0, 1), () => 0),
-      shortLeague: leagues.createCrossLeaguePlayoffs([{ ...configured[0], results: configured[0].results.slice(0, 3) }, configured[1]], () => 0),
+      shortLeague: leagues.createCrossLeaguePlayoffs([{ ...configured[0], results: configured[0].results.slice(0, 2) }, configured[1]], () => 0),
     };
   });
 
@@ -52,4 +52,27 @@ test("level on points, then round wins, then a deciding game", async ({ page }) 
   expect(result.needed).toEqual(["p0vp1"]);
   expect(result.blocked).toBe("not-ready");
   expect(result.afterPlayoff.slice(0, 2)).toEqual(["p1", "p0"]);
+});
+
+test("leagues of 4, 4 and 3 give a two-per-league championship and a plate with a bye", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const leagues = await import("/src/switch/leagues.ts");
+    const make = (leagueIndex: number, size: number) => ({
+      id: `league-${leagueIndex}`, name: `League ${leagueIndex}`, playoffOrder: [],
+      results: Array.from({ length: size }, (_, playerIndex) => ({ player: { id: `l${leagueIndex}p${playerIndex}`, name: `L${leagueIndex}P${playerIndex}` }, points: size - playerIndex })),
+    });
+    const outcome = leagues.createCrossLeaguePlayoffs([make(1, 4), make(2, 4), make(3, 3)], () => 0);
+    const two = leagues.createCrossLeaguePlayoffs([make(1, 4), make(2, 4)], () => 0);
+    const names = (bracket: { fixtures: { home: { player: { name: string } }; away: { player: { name: string } } }[] }) => bracket.fixtures.map((fixture) => `${fixture.home.player.name} v ${fixture.away.player.name}`);
+    return { status: outcome.status, championship: names(outcome.championship), plate: names(outcome.plate), bye: outcome.plate.bye?.player.name ?? null, plateEntrants: outcome.plate.entrants.length, twoPlate: names(two.plate), twoBye: two.plate.bye ?? null };
+  });
+  expect(result.status).toBe("ready");
+  expect(result.championship).toHaveLength(3);
+  expect(result.plateEntrants).toBe(5);
+  expect(result.plate).toHaveLength(2);
+  expect(result.bye).not.toBeNull();
+  // The familiar eight-player shape is unchanged: 3rd of one league v 4th of the other.
+  expect(result.twoPlate).toEqual(["L1P2 v L2P3", "L2P2 v L1P3"]);
+  expect(result.twoBye).toBeNull();
 });

@@ -5,7 +5,7 @@ export interface League { readonly id: string; readonly name: string; readonly r
 export interface LeagueStanding extends LeagueResult { readonly rank: number; /** Level with a neighbour on points, wins and play-offs: a deciding game is needed. */ readonly tied: boolean }
 export interface PlayoffEntrant { readonly player: Player; readonly leagueId: string; readonly seed: number }
 export interface PlayoffFixture { readonly id: string; readonly home: PlayoffEntrant; readonly away: PlayoffEntrant }
-export interface PlayoffBracket { readonly entrants: readonly PlayoffEntrant[]; readonly fixtures: readonly PlayoffFixture[] }
+export interface PlayoffBracket { readonly entrants: readonly PlayoffEntrant[]; readonly fixtures: readonly PlayoffFixture[]; /** With an odd number of entrants one player goes straight through. */ readonly bye?: PlayoffEntrant }
 
 export function rankLeague(results: readonly LeagueResult[], playoffOrder: readonly string[] = []): LeagueStanding[] {
   const order = (id: string) => { const at = playoffOrder.indexOf(id); return at < 0 ? Number.POSITIVE_INFINITY : at; };
@@ -41,6 +41,30 @@ function bracketFor(leagues: readonly League[], positions: readonly [number, num
   return { entrants: [...first, ...second], fixtures };
 }
 
+/** Everyone ranked third or lower, best first. Each plays someone from another league where possible; an odd one out gets a bye. */
+function plateFor(leagues: readonly League[]): PlayoffBracket {
+  const pool: PlayoffEntrant[] = [];
+  const deepest = Math.max(...leagues.map((league) => league.results.length));
+  for (let place = 2; place < deepest; place += 1) {
+    for (const league of leagues) {
+      const entry = rankLeague(league.results, league.playoffOrder)[place];
+      if (entry) pool.push({ player: entry.player, leagueId: league.id, seed: place + 1 });
+    }
+  }
+  const entrants = [...pool];
+  const fixtures: PlayoffFixture[] = [];
+  let bye: PlayoffEntrant | undefined;
+  while (pool.length) {
+    const home = pool.shift() as PlayoffEntrant;
+    if (!pool.length) { bye = home; break; }
+    let at = pool.length - 1;
+    for (let index = pool.length - 1; index >= 0; index -= 1) if (pool[index].leagueId !== home.leagueId) { at = index; break; }
+    const [away] = pool.splice(at, 1);
+    fixtures.push({ id: `plate-${fixtures.length + 1}`, home, away });
+  }
+  return { entrants, fixtures, ...(bye ? { bye } : {}) };
+}
+
 export function createCrossLeaguePlayoffs(leagues: readonly League[], random: RandomSource):
   | { readonly status: "not-ready"; readonly reason: string }
   | { readonly status: "ready"; readonly championship: PlayoffBracket; readonly plate: PlayoffBracket } {
@@ -48,10 +72,10 @@ export function createCrossLeaguePlayoffs(leagues: readonly League[], random: Ra
   if (leagues.length < 2 || leagues.length > 4) return { status: "not-ready", reason: "Choose two to four leagues." };
   const undecided = leagues.flatMap((league) => playoffsNeeded(league).map(([a, b]) => `${a.name} v ${b.name}`));
   if (undecided.length) return { status: "not-ready", reason: `Level on points and wins: play a deciding game (${undecided.join(", ")}).` };
-  if (leagues.some((league) => rankLeague(league.results).length < 4)) return { status: "not-ready", reason: "Each league needs four completed entrants." };
+  if (leagues.some((league) => rankLeague(league.results).length < 3)) return { status: "not-ready", reason: "Each league needs at least three entrants." };
   return {
     status: "ready",
     championship: bracketFor(leagues, [0, 1], "championship"),
-    plate: bracketFor(leagues, [2, 3], "plate"),
+    plate: plateFor(leagues),
   };
 }

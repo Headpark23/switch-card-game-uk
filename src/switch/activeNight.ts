@@ -14,6 +14,8 @@ export type ActiveNight =
     readonly kind: 'league';
     readonly players: readonly Player[];
     readonly leagueCount: number;
+    /** Players in each league. Older saves leave this out, meaning every league has four. */
+    readonly sizes?: readonly number[];
     readonly scores: Readonly<Record<string, number>>;
     readonly wins: Readonly<Record<string, number>>;
     readonly rounds: Readonly<Record<string, number>>;
@@ -81,6 +83,7 @@ export function getActiveNight(extensions: Readonly<Record<string, unknown>>): A
   if (item.kind === 'knockout' && knockout(item.state)) return item as unknown as ActiveNight;
   if (item.kind === 'cup' && cup(item.state)) return item as unknown as ActiveNight;
   if (item.kind === 'league' && players(item.players) && Number.isInteger(item.leagueCount) && Number(item.leagueCount) >= 1 && Number(item.leagueCount) <= 4
+    && (item.sizes === undefined || (Array.isArray(item.sizes) && item.sizes.length === item.leagueCount && item.sizes.every((size) => Number.isInteger(size) && size >= 3 && size <= 6)))
     && numberMap(item.scores) && numberMap(item.wins) && numberMap(item.rounds) && stringLists(item.picks) && stringLists(item.playoffOrder)) return item as unknown as ActiveNight;
   return null;
 }
