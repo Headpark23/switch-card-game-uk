@@ -281,3 +281,35 @@ test("king penalties cancel one five-card unit per red king", async ({ page }) =
   expect(result.oneBlack).toEqual({ kind: "black-king", units: 1, cards: 5 });
   expect(result.twoBlack).toEqual({ kind: "black-king", units: 2, cards: 10 });
 });
+
+test("kings count card by card in the order played (owner ruling 14)", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const rules = await import("/src/switch/rules.ts");
+    const pen = (units: number) => (units ? { kind: "black-king", units, cards: units * 5 } : null);
+    const state = (hand: string[], units: number) => ({
+      playerHand: [...hand, "3D"], computerHand: ["9C", "10C"], drawPile: ["2S", "3S", "4S", "5S", "6S", "7S", "8S", "9S", "10S", "JS", "QS", "5C"],
+      discardPile: ["5D", "KD"], currentSuit: "D", turn: "player", pendingPenalty: pen(units), status: "playing", winner: null, move: 2,
+    });
+    const owed = (hand: string[], units: number, cards: string[]) => {
+      try { return rules.applyAction(state(hand, units), { type: "play", cards }).pendingPenalty?.cards ?? 0; } catch { return "illegal"; }
+    };
+    return {
+      oneBlack: owed(["KC"], 0, ["KC"]),
+      blackOnFive: owed(["KS"], 1, ["KS"]),
+      redOnTen: owed(["KH"], 2, ["KH"]),
+      twoRedsOnTen: owed(["KH", "KD"], 2, ["KH", "KD"]),
+      blackThenRed: owed(["KS", "KH"], 0, ["KS", "KH"]),
+      redThenBlack: owed(["KH", "KS"], 0, ["KH", "KS"]),
+      twoRedsTwoBlacks: owed(["KH", "KD", "KS", "KC"], 0, ["KH", "KD", "KS", "KC"]),
+      oneRedTwoBlacks: owed(["KH", "KS", "KC"], 0, ["KH", "KS", "KC"]),
+      twoRedsOneBlack: owed(["KH", "KD", "KS"], 0, ["KH", "KD", "KS"]),
+      twoBlacksTwoReds: owed(["KS", "KC", "KH", "KD"], 0, ["KC", "KS", "KH", "KD"]),
+      loneRedNoPenalty: owed(["KH"], 0, ["KH"]),
+    };
+  });
+  expect(result).toEqual({
+    oneBlack: 5, blackOnFive: 10, redOnTen: 5, twoRedsOnTen: 0, blackThenRed: 0, redThenBlack: 5,
+    twoRedsTwoBlacks: 10, oneRedTwoBlacks: 10, twoRedsOneBlack: 5, twoBlacksTwoReds: 0, loneRedNoPenalty: 0,
+  });
+});

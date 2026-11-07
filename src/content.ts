@@ -1,6 +1,6 @@
 export const powers = [
-  {name:'Black kings',cards:['KS','KC'],short:'Pick up five',text:'The next player picks up 5 cards, unless they pass the penalty on with another black king.',extra:'Black kings stack: two mean 10 cards. Each red king cancels one black king.'},
-  {name:'Red kings',cards:['KH','KD'],short:'Cancel a black king',text:'Play a red king to cancel the effect of one black king.',extra:'You need one red king for each black king played.'},
+  {name:'Black kings',cards:['KS','KC'],short:'Pick up five',text:'The next player picks up 5 cards, unless they pass the penalty on with another black king.',extra:'Black kings stack: two mean 10 cards. Each red king takes 5 off.'},
+  {name:'Red kings',cards:['KH','KD'],short:'Cancel a black king',text:'Play a red king to take 5 off a black king penalty.',extra:'One red king takes a 10-card penalty down to 5; two bring it to nothing.'},
   {name:'Twos',cards:['2H','2S','2D','2C'],short:'Pick up two',text:'The next player picks up 2 cards, unless they play another two.',extra:'Each two adds 2 to the penalty. All four twos make a maximum of 8 cards.'},
   {name:'Eights',cards:['8H','8S'],short:'Miss a turn',text:'The next player misses their turn.',extra:'They can counter with another eight, passing the effect to the next player.'},
   {name:'Sevens',cards:['7H','7S'],short:'Play again',text:'Play another card after a seven.',extra:'You cannot finish on a seven, because you still have to play again.'},
@@ -13,7 +13,7 @@ export const rules = [
   {q:'Do I have to play a card if I can?',a:'No. On a normal turn you may choose to pick up one card and end your turn. This can be useful when you want to save an ace, king, two or another valuable card for later. Active pick-up and missed-turn penalties must still be resolved normally.'},
   {q:'Can I play several cards at once?',a:'Yes. Play two, three or four cards of the same number together. The first card must match the suit or the number of the previous card. The last card you put down decides the suit the next player follows.'},
   {q:'Can I finish on a seven?',a:'No. A seven means play again, so it cannot be your last card.'},
-  {q:'What happens after a black king?',a:'A black king adds 5 cards to the penalty. The next player may play another black king to pass on 10, or use a red king to cancel one black king. The chain continues until someone cannot respond and picks up the full outstanding penalty.'},
+  {q:'What happens after a black king?',a:'A black king adds 5 cards to the penalty. The next player may play another black king to pass on 10, or use a red king to take 5 off. The chain continues until someone cannot respond and picks up the full outstanding penalty.'},
   {q:'When can I play an ace?',a:'You can play an ace at any time on an ordinary card, even when it does not match the current suit or number. After playing it, choose the suit the next player must follow. An ace cannot interrupt an active black king, two or eight.'},
   {q:'What if I forget to say “Last Card”?',a:'Announce “Last Card” as soon as you have one card remaining. Forgetting means picking up 2 cards as a penalty, if another player spots it before you play your next card.'},
   {q:'Can I finish on a jack?',a:'In a two-player game you cannot finish on a jack, because the reversal brings play straight back to you. With three or more players a jack can be your last card. Agree any house-rule exceptions before starting.'},
@@ -24,7 +24,7 @@ export const rules = [
   {q:'Can I win with a two, an eight, a king or an ace?',a:'Yes. If your last card is a two, an eight, a king or an ace, you win at once and nobody picks up anything. The only cards you cannot finish on are a seven, and a jack in a two-player game. In a two-player game an eight brings play back to you, but it can still be your winning card.'},
   {q:'Do I lose my turn when I pick up?',a:'Yes. Picking up ends your turn, whether it is the one card you take on a normal turn or a penalty from twos or kings. The next player then plays. Only a seven lets you play again.'},
   {q:'What if I play two eights, or two sevens, together?',a:'Several eights still make the next player miss just one turn, and several sevens still give you just one extra turn. Playing them together is a quick way to shed cards, not a way to double the effect.'},
-  {q:'Can I play a black king and a red king together?',a:'Yes, as a set. Each red king cancels one black king inside the same play, so a black king and a red king played together cancel out. Facing a black king, a black king passes the penalty on and a red king cancels one.'},
+  {q:'Can I play a black king and a red king together?',a:'Yes, as a set, and the order matters because the card on top counts last. Each black king adds 5, each red king takes 5 off, in the order you lay them down. Black then red: the red cancels it and the next player picks up nothing. Red then black: the black is on top, so the next player picks up 5. Two reds then two blacks make 10.'},
   {q:'What if I cannot play after a seven?',a:'Pick up one card and your turn ends, exactly like any other turn where you cannot play.'},
 ];
 export const modes = [

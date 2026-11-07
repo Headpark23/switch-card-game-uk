@@ -14,7 +14,7 @@ for (const n of [2, 3, 4]) {
     while (g.winner === null && g.moves < 600) {
       snapshots.push({
         n, hand: [...g.hands[g.cur]], others: g.hands.filter((_, k) => k !== g.cur).flat(), draw: [...g.draw], discard: [...g.discard], suit: g.suit, penalty: g.penalty,
-        legal: legalPlays(g).map((p) => ({ key: [...p.cards].sort().join(",") + (rankOf(p.cards[0]) === "A" ? "@" + p.suit : "") })),
+        legal: legalPlays(g).map((p) => ({ key: (rankOf(p.cards[0]) === "K" ? [...p.cards] : [...p.cards].sort()).join(",") + (rankOf(p.cards[0]) === "A" ? "@" + p.suit : "") })),
       });
       const plays = legalPlays(g);
       step(g, STYLES[names[g.cur]](g, plays, random));
@@ -48,7 +48,7 @@ const result = await page.evaluate(async (all) => {
     const pen = !s.penalty ? null : s.penalty.kind === "two" ? { kind: "draw-two", cards: s.penalty.cards } : s.penalty.kind === "king" ? { kind: "black-king", units: s.penalty.units, cards: s.penalty.cards } : { kind: "miss-turn" };
     const ctx = { discardPile: s.discard, currentSuit: s.suit, pendingPenalty: pen };
     const engine = rules.legalActionsFor(s.hand, ctx, { jackMayFinish: s.n > 2 }).filter((a) => a.type === "play")
-      .map((a) => [...a.cards].sort().join(",") + (a.cards[0].slice(0, -1) === "A" ? "@" + a.chosenSuit : ""));
+      .map((a) => (a.cards[0].slice(0, -1) === "K" ? [...a.cards] : [...a.cards].sort()).join(",") + (a.cards[0].slice(0, -1) === "A" ? "@" + a.chosenSuit : ""));
     const mine = new Set(s.legal.map((l) => l.key));
     const theirs = new Set(engine);
     checked++;

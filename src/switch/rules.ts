@@ -59,6 +59,11 @@ function matchingSubsets(cards: readonly CardId[]): CardId[][] {
   return subsets;
 }
 
+function orderings(cards: readonly CardId[]): CardId[][] {
+  if (cards.length <= 1) return [[...cards]];
+  return cards.flatMap((card, index) => orderings([...cards.slice(0, index), ...cards.slice(index + 1)]).map((rest) => [card, ...rest]));
+}
+
 /** Every legal action for one hand. A set of matching cards is listed once, in a canonical order. */
 export function legalActionsFor(
   hand: readonly CardId[],
@@ -78,6 +83,14 @@ export function legalActionsFor(
       const firstLegal = subset.find((card) => playable.includes(card));
       if (!firstLegal) continue;
 
+      if (rank === "K") {
+        for (const cards of orderings(subset)) {
+          if (!playable.includes(cards[0])) continue;
+          if (cannotBeFinalPlay(cards, hand, options)) continue;
+          actions.push({ type: "play", cards });
+        }
+        continue;
+      }
       const cards = [firstLegal, ...subset.filter((card) => card !== firstLegal)];
       if (cannotBeFinalPlay(cards, hand, options)) continue;
       if (rank === "A") {
@@ -213,10 +226,13 @@ export function applyAction(state: GameState, action: GameAction): GameState {
   } else if (playedRank === "8") {
     pendingPenalty = { kind: "miss-turn" };
   } else if (playedRank === "K") {
-    const previousUnits = state.pendingPenalty?.kind === "black-king" ? state.pendingPenalty.units : 0;
-    const blackKings = played.filter((card) => card === "KS" || card === "KC").length;
-    const redKings = played.filter((card) => card === "KH" || card === "KD").length;
-    const units = Math.max(0, Math.min(2, previousUnits + blackKings - redKings));
+    // Ruling 14: kings count card by card, in the order laid down. A black king adds 5, a red king takes 5 off
+    // (never below nothing), so the card on top decides: black then red cancels, red then black leaves 5.
+    let units = state.pendingPenalty?.kind === "black-king" ? state.pendingPenalty.units : 0;
+    for (const card of played) {
+      if (card === "KS" || card === "KC") units = Math.min(2, units + 1);
+      else units = Math.max(0, units - 1);
+    }
     if (units > 0) {
       pendingPenalty = {
         kind: "black-king",

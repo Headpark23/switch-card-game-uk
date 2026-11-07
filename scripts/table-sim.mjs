@@ -44,6 +44,8 @@ const playable = (g, c) => {
 };
 const cannotFinish = (g, rank) => rank === "7" || (rank === "J" && g.n === 2);
 
+const perms = (a) => (a.length <= 1 ? [a] : a.flatMap((x, i) => perms([...a.slice(0, i), ...a.slice(i + 1)]).map((r) => [x, ...r])));
+
 export function legalPlays(g, p = g.cur) {
   const hand = g.hands[p];
   const out = [];
@@ -53,6 +55,10 @@ export function legalPlays(g, p = g.cur) {
       const set = same.filter((_, i) => mask & (1 << i));
       if (cannotFinish(g, rank) && set.length === hand.length) continue;
       if (!set.some((c) => playable(g, c))) continue;
+      if (rank === "K") {
+        for (const order of perms(set)) if (playable(g, order[0])) out.push({ cards: order, suit: suitOf(order.at(-1)) });
+        continue;
+      }
       for (const last of set) {
         const lead = set.find((c) => c !== last && playable(g, c)) ?? (playable(g, last) ? last : null);
         if (!lead) continue;
@@ -109,10 +115,9 @@ export function step(g, decision) {
   if (rank === "2") g.penalty = { kind: "two", cards: (g.penalty?.cards ?? 0) + 2 * k };
   else if (rank === "8") g.penalty = { kind: "miss" };
   else if (rank === "K") {
-    const black = cards.filter((c) => "SC".includes(suitOf(c))).length;
-    const red = k - black;
-    const units = Math.max(0, Math.min(2, (g.penalty?.units ?? 0) + black - red));
-    if (black && red) g.ambiguous["black+red king in one play"] = (g.ambiguous["black+red king in one play"] ?? 0) + 1;
+    let units = g.penalty?.kind === "king" ? g.penalty.units : 0;
+    for (const c of cards) units = "SC".includes(suitOf(c)) ? Math.min(2, units + 1) : Math.max(0, units - 1);
+    if (cards.some((c) => "SC".includes(suitOf(c))) && cards.some((c) => "HD".includes(suitOf(c)))) g.ambiguous["black+red king in one play"] = (g.ambiguous["black+red king in one play"] ?? 0) + 1;
     g.penalty = units ? { kind: "king", units, cards: units * 5 } : null;
   } else g.penalty = null;
   let next;

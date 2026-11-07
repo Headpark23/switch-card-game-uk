@@ -32,3 +32,5 @@ Decided 7 Nov 2026, after playing 10,000 simulated games (2 to 6 players, four d
 13. **Scorekeeper:** follows the written rules. Domino and one v one stop at the target and show the winner; domino records whether an ace counts as 1 or 11; darts offers 3 or 5 sets.
 
 `scripts/scoring-sim.mjs` plays every format through the real scoring modules.
+
+14. **Kings count card by card, in the order played (8 Nov 2026, replaces the net-count part of ruling 8).** A black king adds 5, a red king takes 5 off, never below nothing. One black = 5; black on 5 = 10; one red on 10 = 5; two reds on 10 = 0; black then red = 0; red then black = 5; two reds then two blacks = 10; one red then two blacks = 10. A lone red king with nothing pending is an ordinary card. Mixed sets may still be played; the order laid down decides the result.

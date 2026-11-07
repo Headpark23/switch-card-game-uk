@@ -127,8 +127,7 @@ export function chooseComputerAction(
   // A black king played with a red king in one set cancels itself. That is legal, but it wastes the penalty,
   // so the computer only does it when it has nothing else to play.
   const selfCancelling = (action: GameAction) => action.type === "play"
-    && action.cards.some((card) => card === "KS" || card === "KC")
-    && action.cards.some((card) => card === "KH" || card === "KD");
+    && action.cards.some((card, index) => (card === "KH" || card === "KD") && action.cards.slice(0, index).some((earlier) => earlier === "KS" || earlier === "KC"));
   const sensible = allActions.filter((action) => !selfCancelling(action));
   const actions = sensible.length > 0 ? sensible : allActions;
 
