@@ -96,6 +96,7 @@ export default function Prototype() {
             </div>
             <div className="night-shortcuts"><button className="text-link" onClick={() => openNight('stats')}>Stats</button><button className="text-link" onClick={() => openNight('leagues')}>Leagues</button><button className="text-link" onClick={() => openNight('history')}>History</button><button className="text-link" onClick={() => go('Puzzles')}>Puzzles</button></div>
           </section>
+          {(() => { const p = powers[new Date().getDate() % powers.length]; return <button className="home-daily" onClick={() => setSelected(p)}><Fan codes={p.cards.slice(0, 3)} /><span><small>POWER CARD OF THE DAY</small><strong>{p.name}</strong><em>{p.short}</em><i>Tap to learn it <ArrowRight size={13} /></i></span></button>; })()}
           <AccountPanel home />
           </>}
           {rulesOpen && <>

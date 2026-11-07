@@ -111,3 +111,24 @@ test("computer never finishes illegally on a seven or two-player jack", async ({
   expect(result.seven).toEqual({ type: "draw" });
   expect(result.jack).toEqual({ type: "draw" });
 });
+
+test("the computer never wastes a black king by pairing it with a red king", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const ai = await import("/src/switch/ai.ts");
+    const base = {
+      playerHand: ["3C", "4D", "9H", "10D", "QC"], computerHand: ["KS", "KD", "9S"], drawPile: ["2C", "3H"], discardPile: ["5S"],
+      currentSuit: "S", turn: "computer", pendingPenalty: null, status: "playing", winner: null, move: 5,
+    };
+    const picks: string[] = [];
+    for (const level of ["relaxed", "standard", "sharp"]) {
+      for (let seed = 1; seed <= 40; seed += 1) {
+        const action = ai.chooseComputerAction(base, () => (seed % 10) / 10, level);
+        if (action.type === "play") picks.push(action.cards.join("+"));
+      }
+    }
+    return picks;
+  });
+  expect(result.length).toBeGreaterThan(0);
+  expect(result.filter((play) => play.includes("KS") && play.includes("KD"))).toEqual([]);
+});

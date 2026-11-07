@@ -21,7 +21,7 @@ function stacked(opening: readonly CardId[]): CardId[] {
 }
 
 const DECKS: Readonly<Record<string, () => CardId[]>> = {
-  "1": () => stacked(["9H", "3C", "7H", "2C", "KH", "AS", "JH", "8H", "2D", "KC", "4H", "JS", "7S", "KD", "3H", "AH", "AC", "KS", "8S", "2S", "2H"]),
+  "1": () => stacked(["9H", "3C", "7H", "2C", "KH", "AS", "JH", "8H", "2D", "KC", "4H", "JS", "7S", "5D", "3H", "AH", "AC", "KS", "8S", "2S", "2H"]),
   blackKingChain: () => stacked(["AS", "KS", "KH", "9H", "3C", "7H", "JH", "KC", "4D", "5D", "6D", "9S", "QH", "10D", "3H"]),
   partialKing: () => stacked(["KS", "KH", "3C", "4D", "5D", "6D", "7D", "KC", "2H", "3H", "4H", "5H", "6H", "7H", "9S"]),
 };

@@ -146,13 +146,12 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
     return () => cancelAnimationFrame(frame);
   }, [engine.move, outcome, aceChoice]);
 
-  // Teach the opening once. Further cards open only when the player asks for full guidance.
+  // Coaching never covers the table by itself: the quiet strip is always there, and a full card opens only when the player turns guidance on or taps the strip.
   useEffect(() => {
-    const openingLesson = engine.move === 0;
-    if ((!openingLesson && !guide) || outcome !== 'playing' || awaitingLastCard || !view.lesson || shown.current === view.lesson) return;
+    if (!guide || outcome !== 'playing' || awaitingLastCard || !view.lesson || shown.current === view.lesson) return;
     shown.current = view.lesson;
     setSheetOpen(true);
-  }, [guide, outcome, awaitingLastCard, view.lesson, engine.move]);
+  }, [guide, outcome, awaitingLastCard, view.lesson]);
 
   useEffect(() => {
     if (outcome !== 'playing' || awaitingLastCard || engine.turn !== 'computer' || sheetOpen) return;

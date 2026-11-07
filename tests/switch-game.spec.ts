@@ -15,7 +15,6 @@ test("the shuffled pack contains all 52 unique card faces", async ({ page, reque
 async function startGame(page: Page) {
   await page.goto("/?testDeck=1");
   await page.getByRole("button", { name: "Play against the computer" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Got it" }).click();
   await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible();
   await expect(page.getByRole("region", { name: "52-card game with 52 unique cards" })).toBeVisible();
 }
@@ -59,7 +58,6 @@ test("an off-suit ace is playable on an ordinary card and changes suit", async (
 test("black kings stack and the computer picks up the full penalty", async ({ page }) => {
   await page.goto("/?testDeck=blackKingChain");
   await page.getByRole("button", { name: "Play against the computer" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Got it" }).click();
 
   await play(page, "AS");
   await page.getByRole("dialog", { name: "Choose a suit" }).getByRole("button", { name: /clubs/i }).click();
@@ -75,7 +73,6 @@ test("black kings stack and the computer picks up the full penalty", async ({ pa
 test("one red king leaves five cards from a ten-card black-king stack", async ({ page }) => {
   await page.goto("/?testDeck=partialKing");
   await page.getByRole("button", { name: "Play against the computer" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Got it" }).click();
 
   await play(page, "KS");
   await page.getByRole("button", { name: "Play selected" }).click();
@@ -201,7 +198,6 @@ for (const device of ["iPhone", "Pixel 10"]) {
       await page.getByText("Pixel 10").click();
     }
     await page.getByRole("button", { name: "Play against the computer" }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "Got it" }).click();
     await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible();
     await expect(page.locator(".turn-banner.you")).toBeVisible();
     await expect(page.getByRole("button", { name: /Why & tactics: / })).toBeVisible();

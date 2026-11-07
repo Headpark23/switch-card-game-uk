@@ -120,10 +120,17 @@ export function chooseComputerAction(
     throw new Error("The computer can choose only during its own turn.");
   }
 
-  const actions = legalMoves(state);
-  if (actions.length === 0) {
+  const allActions = legalMoves(state);
+  if (allActions.length === 0) {
     throw new Error("The computer has no legal Switch action.");
   }
+  // A black king played with a red king in one set cancels itself. That is legal, but it wastes the penalty,
+  // so the computer only does it when it has nothing else to play.
+  const selfCancelling = (action: GameAction) => action.type === "play"
+    && action.cards.some((card) => card === "KS" || card === "KC")
+    && action.cards.some((card) => card === "KH" || card === "KD");
+  const sensible = allActions.filter((action) => !selfCancelling(action));
+  const actions = sensible.length > 0 ? sensible : allActions;
 
   if (level === "relaxed" && random() < 0.5) {
     const index = Math.min(actions.length - 1, Math.floor(Math.max(0, random()) * actions.length));
