@@ -179,3 +179,7 @@
 .game-tutorial .game-actions{gap:6px;flex-wrap:nowrap}.game-tutorial .game-actions>span{margin-left:auto;font-size:11px;white-space:nowrap}
 .coach-meaning{padding-right:0!important}.game-tutorial .game-actions>span{font-size:10px}
 .why-button{font-family:'DM Sans',system-ui,sans-serif!important;font-size:12px!important;line-height:1.1}
+.install-banner{position:absolute;z-index:19;left:10px;right:10px;display:flex;align-items:center;gap:10px;padding:10px 8px 10px 12px;border:1.5px solid var(--gold);border-radius:16px;background:#053527;color:#fff;box-shadow:0 8px 22px #05352740}
+.install-banner>svg{color:#d7b776;flex-shrink:0}.install-banner span{display:grid;flex:1;min-width:0;font-size:13px;line-height:1.25}.install-banner small{font-size:11px;color:#cfd9d2}
+.install-banner .install-go{border:0;border-radius:999px;background:#d7b776;color:#053527;font-weight:700;font-size:14px;padding:0 16px;min-height:40px}
+.install-banner .install-x{display:grid;place-items:center;width:32px;height:40px;border:0;background:none;color:#cfd9d2}

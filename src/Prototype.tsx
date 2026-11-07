@@ -4,7 +4,7 @@ import { BottomSheet, KeyboardInput, MobileScroll, useKeyboard, useKeyboardInset
 import { modes, powers, ruleChapters, rules } from './content';
 import { AdSlot, Fan } from './ui';
 import { enableOffline } from './offline';
-import InstallButton from './InstallButton';
+import InstallButton, { InstallBanner } from './InstallButton';
 import '@fontsource/dm-serif-display/400.css';
 import '@fontsource/dm-sans/400.css';
 import '@fontsource/dm-sans/500.css';
@@ -180,6 +180,7 @@ export default function Prototype() {
         return <button key={name} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} onClick={() => go(name)}><Icon weight={active ? 'fill' : 'regular'} size={26} /><span>{label}</span></button>;
       })}
     </nav>
+    {(page === 'Learn' || page === 'Cards' || page === 'Modes' || page === 'Questions') && <InstallBanner bottom={bottomInset + 71} />}
     <BottomSheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }} title={selected?.name || 'Card rule'}>
       {selected && <div className="rule-sheet"><Fan codes={selected.cards} /><p className="eyebrow">{selected.short}</p><p>{selected.text}</p><div className="exception"><strong>At the table</strong><p>{selected.extra}</p></div><button className="primary" onClick={() => setSelected(null)}>Got it <CheckCircle size={19} /></button></div>}
     </BottomSheet>
