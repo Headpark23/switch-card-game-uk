@@ -28,8 +28,8 @@ test("named domino scores persist, validate and undo", async ({ page }) => {
   await page.reload();
   await page.getByRole("button", { name: "Ways to play", exact: true }).click();
   await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
-  await expect(page.locator('input[value="Player 1"]')).toBeVisible();
-  await expect(page.locator('input[value="Player 2"]')).toBeVisible();
+  await expect(page.getByText("0 points").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Undo last score" })).toBeDisabled();
 });
 
 test("unreadable saved scores stay untouched until explicit setup", async ({ page }) => {

@@ -14,6 +14,7 @@ import { applyScoreCommand, scoreWinnerId, createSession, ScoreValidationError, 
 import { loadScorekeeper, saveScorekeeper, SCOREKEEPER_STORAGE_KEY, type ScorekeeperState } from '../switch/storage';
 import type { Player } from '../switch/types';
 import { getClubName } from '../switch/club';
+import { clearActiveNight, getActiveNight, putActiveNight, type ActiveNight } from '../switch/activeNight';
 
 const scoreFormats:{id:ScoreFormat;name:string;description:string}[]=[
   {id:'head-to-head',name:'One v One',description:'Simple wins or points for two players.'},
@@ -35,22 +36,25 @@ type ClubView='score'|'stats'|'leagues'|'history';
 export default function SwitchScorekeeper({onBack,initialView='score'}:{onBack:()=>void;initialView?:ClubView}){
   const keyboard=useKeyboard();
   const [loaded]=useState(()=>loadScorekeeper(typeof window==='undefined'?null:window.localStorage.getItem(SCOREKEEPER_STORAGE_KEY)));
-  const initialFormat=scoreFormats.some(item=>item.id===loaded.state.selectedFormat)?loaded.state.selectedFormat as ScoreFormat:'domino';
+  const active=getActiveNight(loaded.state.extensions);
+  const activeFormat:ScoreFormat|undefined=active?.kind==='score'?active.session.format:active?.kind==='knockout'?'knockout':active?.kind==='cup'?'cup':active?.kind==='league'?'league':undefined;
+  const initialFormat=activeFormat??(scoreFormats.some(item=>item.id===loaded.state.selectedFormat)?loaded.state.selectedFormat as ScoreFormat:'domino');
   const [format,setFormat]=useState<ScoreFormat>(initialFormat);
-  const [players,setPlayers]=useState<Player[]>(()=>loaded.state.players.length?[...loaded.state.players]:[newPlayer(0),newPlayer(1)]);
-  const [target,setTarget]=useState(String(loaded.state.target||100));
-  const [leagueCount,setLeagueCount]=useState(2);
-  const [session,setSession]=useState<ScoreSession|null>(null);
-  const [knockout,setKnockout]=useState<KnockoutState|null>(null);
-  const [cup,setCup]=useState<CupState|null>(null);
-  const [leagueScores,setLeagueScores]=useState<Record<string,number>>({});
-  const [leagueStarted,setLeagueStarted]=useState(false);
-  const [leagueWins,setLeagueWins]=useState<Record<string,number>>({});
-  const [leagueRounds,setLeagueRounds]=useState<Record<string,number>>({});
-  const [leaguePicks,setLeaguePicks]=useState<Record<string,string[]>>({});
-  const [playoffOrder,setPlayoffOrder]=useState<Record<string,string[]>>({});
-  const [setsToWin,setSetsToWin]=useState(3);
-  const [aceHigh,setAceHigh]=useState(false);
+  const activePlayers=active?.kind==='score'?active.session.players:active?.kind==='knockout'||active?.kind==='cup'?active.state.players:active?.kind==='league'?active.players:null;
+  const [players,setPlayers]=useState<Player[]>(()=>activePlayers?[...activePlayers]:loaded.state.players.length?[...loaded.state.players]:[newPlayer(0),newPlayer(1)]);
+  const [target,setTarget]=useState(String(active?.kind==='score'?active.session.target:loaded.state.target||100));
+  const [leagueCount,setLeagueCount]=useState(active?.kind==='league'?active.leagueCount:2);
+  const [session,setSession]=useState<ScoreSession|null>(active?.kind==='score'?active.session:null);
+  const [knockout,setKnockout]=useState<KnockoutState|null>(active?.kind==='knockout'?active.state:null);
+  const [cup,setCup]=useState<CupState|null>(active?.kind==='cup'?active.state:null);
+  const [leagueScores,setLeagueScores]=useState<Record<string,number>>(active?.kind==='league'?{...active.scores}:{});
+  const [leagueStarted,setLeagueStarted]=useState(active?.kind==='league');
+  const [leagueWins,setLeagueWins]=useState<Record<string,number>>(active?.kind==='league'?{...active.wins}:{});
+  const [leagueRounds,setLeagueRounds]=useState<Record<string,number>>(active?.kind==='league'?{...active.rounds}:{});
+  const [leaguePicks,setLeaguePicks]=useState<Record<string,string[]>>(active?.kind==='league'?Object.fromEntries(Object.entries(active.picks).map(([id,picks])=>[id,[...picks]])):{});
+  const [playoffOrder,setPlayoffOrder]=useState<Record<string,string[]>>(active?.kind==='league'?Object.fromEntries(Object.entries(active.playoffOrder).map(([id,order])=>[id,[...order]])):{});
+  const [setsToWin,setSetsToWin]=useState(active?.kind==='score'&&active.session.darts?active.session.darts.setsToWin:3);
+  const [aceHigh,setAceHigh]=useState(active?.kind==='score'?active.aceHigh:false);
   const [scoreInputs,setScoreInputs]=useState<Record<string,string>>({});
   const [error,setError]=useState('');
   const [savedRaw,setSavedRaw]=useState(loaded.originalRaw);
@@ -69,8 +73,8 @@ export default function SwitchScorekeeper({onBack,initialView='score'}:{onBack:(
   }
   function resizePlayers(count:number){setPlayers(current=>{const next=[...current];while(next.length<count)next.push(newPlayer(next.length));return next.slice(0,count);});}
   function chooseFormat(next:ScoreFormat){setFormat(next);setSession(null);setKnockout(null);setCup(null);setLeagueStarted(false);setSavedCurrent(false);setError('');const count=next==='league'?leagueCount*4:next==='knockout'?Math.min(6,Math.max(3,players.length)):next==='cup'?Math.min(10,Math.max(2,players.length)):2;resizePlayers(count);}
-  function persist(nextPlayers:readonly Player[],scores:Record<string,number>,extensionUpdates:Record<string,unknown>={}){
-    const nextExtensions={...storedExtensions,...extensionUpdates};
+  function persist(nextPlayers:readonly Player[],scores:Record<string,number>,extensionUpdates:Record<string,unknown>={},replaceExtensions=false){
+    const nextExtensions=replaceExtensions?{...extensionUpdates}:{...storedExtensions,...extensionUpdates};
     const state:ScorekeeperState={schemaVersion:1,selectedFormat:format,players:nextPlayers,scores,target:Number(target)||100,extensions:nextExtensions};
     const raw=saveScorekeeper(savedRaw,state);window.localStorage.setItem(SCOREKEEPER_STORAGE_KEY,raw);setSavedRaw(raw);
     setStoredExtensions(nextExtensions);
@@ -83,28 +87,31 @@ export default function SwitchScorekeeper({onBack,initialView='score'}:{onBack:(
       const ensured=ensureProfiles(storedExtensions,typed.map(player=>player.name));
       const named=[...ensured.players];const profileExt=ensured.extensions;
       setPlayers(current=>current.map((player,index)=>index<named.length?named[index]:player));
-      if(format==='knockout'){const next=createKnockout(named);setKnockout(next);persist(named,{},profileExt);return;}
-      if(format==='cup'){const next=createCup(named,Math.random);setCup(next);persist(named,{},profileExt);return;}
-      if(format==='league'){const scores=Object.fromEntries(named.map(player=>[player.id,loaded.state.scores[player.id]||0]));setLeagueScores(scores);setLeagueStarted(true);persist(named,scores,{...profileExt,leagueCount});return;}
+      if(format==='knockout'){const next=createKnockout(named);setKnockout(next);persist(named,{},putActiveNight(profileExt,{version:1,kind:'knockout',state:next}));return;}
+      if(format==='cup'){const next=createCup(named,Math.random);setCup(next);persist(named,{},putActiveNight(profileExt,{version:1,kind:'cup',state:next}));return;}
+      if(format==='league'){const scores=Object.fromEntries(named.map(player=>[player.id,loaded.state.scores[player.id]||0]));const snapshot:ActiveNight={version:1,kind:'league',players:named,leagueCount,scores,wins:{},rounds:{},picks:{},playoffOrder:{}};setLeagueScores(scores);setLeagueStarted(true);persist(named,scores,putActiveNight(profileExt,snapshot));return;}
       const created=createSession(format,named,{target:Number(target),setsToWin});
-      const restored={...created,scores:{...created.scores,...Object.fromEntries(named.map(player=>[player.id,loaded.state.scores[player.id]||0]))}};setSession(restored);persist(named,{...restored.scores},profileExt);
+      const restored={...created,scores:{...created.scores,...Object.fromEntries(named.map(player=>[player.id,loaded.state.scores[player.id]||0]))}};setSession(restored);persist(named,{...restored.scores},putActiveNight(profileExt,{version:1,kind:'score',session:restored,aceHigh}));
     }catch(reason){setError(reason instanceof Error?reason.message:'The scorekeeper could not start.');}
   }
-  function updateSession(next:ScoreSession){setSession(next);persist(next.players,{...next.scores},{darts:next.darts});}
-  function updateCup(next:CupState){setCup(next);persist(next.players,{}, {cup:next});}
+  function updateSession(next:ScoreSession){setSession(next);persist(next.players,{...next.scores},putActiveNight({darts:next.darts},{version:1,kind:'score',session:next,aceHigh}));}
+  function updateCup(next:CupState){setCup(next);persist(next.players,{},putActiveNight({cup:next},{version:1,kind:'cup',state:next}));}
   function addScore(playerId:string){if(!session)return;try{const next=applyScoreCommand(session,{type:'add-score',playerId,value:scoreInputs[playerId]??''});updateSession(next);setScoreInputs(current=>({...current,[playerId]:''}));setError('');}catch(reason){setError(reason instanceof ScoreValidationError?reason.message:'That score could not be added.');}}
   const leagues:League[]=leagueStarted?Array.from({length:leagueCount},(_,leagueIndex)=>({id:`league-${leagueIndex+1}`,name:`League ${leagueIndex+1}`,playoffOrder:playoffOrder[`league-${leagueIndex+1}`]||[],results:visiblePlayers.slice(leagueIndex*4,leagueIndex*4+4).map(player=>({player,points:leagueScores[player.id]||0,wins:leagueWins[player.id]||0}))})):[];
   const leagueDone=leagueStarted&&leagues.every(league=>(leagueRounds[league.id]||0)>=league.results.length);
   const playoffs=leagueDone?createCrossLeaguePlayoffs(leagues,Math.random):null;
   const PLACES=['1st','2nd','3rd','4th','5th','6th'];
-  function persistLeague(scores:Record<string,number>,wins:Record<string,number>,rounds:Record<string,number>,order:Record<string,string[]>){persist(visiblePlayers,scores,{leagueCount,leagueWins:wins,leagueRounds:rounds,leaguePlayoffOrder:order});}
+  function persistLeague(scores:Record<string,number>,wins:Record<string,number>,rounds:Record<string,number>,order:Record<string,string[]>,picks:Record<string,string[]>=leaguePicks){
+    const snapshot:ActiveNight={version:1,kind:'league',players:visiblePlayers,leagueCount,scores,wins,rounds,picks,playoffOrder:order};
+    persist(visiblePlayers,scores,putActiveNight({leagueCount,leagueWins:wins,leagueRounds:rounds,leaguePlayoffOrder:order},snapshot));
+  }
   function pickFinisher(league:League,playerId:string){
     const picks=[...(leaguePicks[league.id]||[]),playerId];const size=league.results.length;
-    if(picks.length<size-1){setLeaguePicks(current=>({...current,[league.id]:picks}));return;}
+    if(picks.length<size-1){const nextPicks={...leaguePicks,[league.id]:picks};setLeaguePicks(nextPicks);persistLeague(leagueScores,leagueWins,leagueRounds,playoffOrder,nextPicks);return;}
     const last=league.results.find(result=>!picks.includes(result.player.id))?.player.id as string;const finishing=[...picks,last];
     const scores={...leagueScores};const wins={...leagueWins};finishing.forEach((id,place)=>{scores[id]=(scores[id]||0)+(size-place);});wins[finishing[0]]=(wins[finishing[0]]||0)+1;
     const rounds={...leagueRounds,[league.id]:(leagueRounds[league.id]||0)+1};
-    setLeagueScores(scores);setLeagueWins(wins);setLeagueRounds(rounds);setLeaguePicks(current=>({...current,[league.id]:[]}));persistLeague(scores,wins,rounds,playoffOrder);
+    const nextPicks={...leaguePicks,[league.id]:[]};setLeagueScores(scores);setLeagueWins(wins);setLeagueRounds(rounds);setLeaguePicks(nextPicks);persistLeague(scores,wins,rounds,playoffOrder,nextPicks);
   }
   function settlePlayoff(league:League,winnerId:string,loserId:string){
     const order={...playoffOrder,[league.id]:[...(playoffOrder[league.id]||[]).filter(id=>id!==winnerId&&id!==loserId),winnerId,loserId]};
@@ -114,9 +121,9 @@ export default function SwitchScorekeeper({onBack,initialView='score'}:{onBack:(
   const currentRound=cup?.rounds.at(-1);
   const cupPlayer=(id:string)=>cup?.players.find(player=>player.id===id);
   const completion=session?completionFromSession(session):knockout?completionFromKnockout(knockout):cup?completionFromCup(cup):leagueStarted?completionFromLeagues(leagues,playoffs):null;
-  function persistHistory(nextExtensions:Record<string,unknown>){const currentPlayers=session?.players??knockout?.players??cup?.players??visiblePlayers;const currentScores=session?{...session.scores}:leagueStarted?leagueScores:{};persist(currentPlayers,currentScores,nextExtensions);}
-  function saveCompletedNight(){if(!completion||savedCurrent)return;keyboard.hide();try{const night=createNightRecord(nightName,completion);persistHistory(addNight(storedExtensions,night));setSavedCurrent(true);setError('');setView('history');}catch(reason){setError(reason instanceof Error?reason.message:'This night could not be saved.');}}
-  function reset(){if(!window.confirm('Reset this score session? Player names will be kept.'))return;setSession(null);setKnockout(null);setCup(null);setLeagueStarted(false);setLeagueScores({});setSavedCurrent(false);setError('');persist(visiblePlayers,{});}
+  function persistHistory(nextExtensions:Record<string,unknown>,replaceExtensions=false){const currentPlayers=session?.players??knockout?.players??cup?.players??visiblePlayers;const currentScores=session?{...session.scores}:leagueStarted?leagueScores:{};persist(currentPlayers,currentScores,nextExtensions,replaceExtensions);}
+  function saveCompletedNight(){if(!completion||savedCurrent)return;keyboard.hide();try{const night=createNightRecord(nightName,completion);persistHistory(clearActiveNight(addNight(storedExtensions,night)),true);setSavedCurrent(true);setError('');setView('history');}catch(reason){setError(reason instanceof Error?reason.message:'This night could not be saved.');}}
+  function reset(){if(!window.confirm('Reset this score session? Player names will be kept.'))return;setSession(null);setKnockout(null);setCup(null);setLeagueStarted(false);setLeagueScores({});setLeaguePicks({});setSavedCurrent(false);setError('');persist(visiblePlayers,{},clearActiveNight(storedExtensions),true);}
   return <section className="scorekeeper" aria-labelledby="scorekeeper-title"><div className={'scorekeeper-head'+(view==='score'?'':' compact')}><button className="text-link" onClick={onBack}>← Modes</button><p className="eyebrow">{getClubName(storedExtensions)?getClubName(storedExtensions).toUpperCase():'SWITCH NIGHT'}</p>{view==='score'?<><h1 id="scorekeeper-title">Keep every score straight.</h1></>:<span id="scorekeeper-title" hidden>Switch club</span>}</div><div className="club-tabs" aria-label="Scorekeeper sections">{([['score','Score'],['stats','Stats'],['leagues','Leagues'],['history','History']] as const).map(([id,label])=><button key={id} className={view===id?'active':''} aria-pressed={view===id} onClick={()=>{keyboard.hide();setView(id);}}>{label}</button>)}</div>
     {view==='stats'&&<ClubhouseStats extensions={storedExtensions} onChange={persistHistory}/>}
     {view==='leagues'&&<ClubhouseLeagues extensions={storedExtensions} onChange={persistHistory}/>}
@@ -133,7 +140,7 @@ export default function SwitchScorekeeper({onBack,initialView='score'}:{onBack:(
       {format==='darts'&&<div className="count-control"><span>Sets to win</span><button aria-pressed={setsToWin===3} onClick={()=>setSetsToWin(3)}>3</button><button aria-pressed={setsToWin===5} onClick={()=>setSetsToWin(5)}>5</button></div>}
       {error&&<p className="score-error" role="alert">{error}</p>}<button className="primary score-start" onClick={start}>Start {scoreFormats.find(item=>item.id===format)?.name} <ArrowRight size={18}/></button></>:
       <div className="active-score">{session&&<><div className="score-status"><strong>{scoreFormats.find(item=>item.id===session.format)?.name}</strong><span>{session.format==='darts'?`First to ${session.darts?.setsToWin??3} sets`:`Target ${session.target}${session.format==='domino'?` · ace ${aceHigh?11:1}`:''}`}</span></div>{scoreWinnerId(session)&&<p className="winner-banner" role="status">{session.players.find(player=>player.id===scoreWinnerId(session))?.name} wins the match!</p>}{session.players.map(player=><article className="score-row" key={player.id}><div><strong>{player.name}</strong>{session.format==='darts'?<span>{session.darts?.sets[player.id]} sets · {session.darts?.legs[player.id]} legs</span>:<span>{session.scores[player.id]} points</span>}</div>{session.format==='darts'?<button className="primary" disabled={!!scoreWinnerId(session)} onClick={()=>updateSession(applyScoreCommand(session,{type:'win-leg',playerId:player.id}))}>Win leg</button>:<div className="score-entry"><KeyboardInput aria-label={`Score for ${player.name}`} inputMode="numeric" value={scoreInputs[player.id]||''} onChange={event=>setScoreInputs(current=>({...current,[player.id]:event.target.value}))}/><button disabled={!!scoreWinnerId(session)} onClick={()=>addScore(player.id)}>Add</button></div>}</article>)}{error&&<p className="score-error" role="alert">{error}</p>}<button className="secondary" disabled={!session.history.length} onClick={()=>updateSession(undoScoreCommand(session))}>Undo last score</button></>}
-        {knockout&&<><div className="score-status"><strong>Knockout</strong><span>{knockout.championId?'Champion decided':`${activeKnockout.length} still playing`}</span></div>{knockout.players.map(player=><article className={'score-row '+(knockout.eliminatedIds.includes(player.id)?'lost':'')} key={player.id}><div><strong>{player.name}</strong><span>{knockout.eliminatedIds.includes(player.id)?'LOST':knockout.championId===player.id?'CHAMPION':'Still in'}</span></div>{!knockout.eliminatedIds.includes(player.id)&&!knockout.championId&&<button onClick={()=>{const next=markLost(knockout,player.id);setKnockout(next);persist(next.players,{}, {knockout:next});}}>LOST</button>}</article>)}<button className="secondary" disabled={!knockout.eliminatedIds.length} onClick={()=>{const next=undoKnockout(knockout);setKnockout(next);persist(next.players,{}, {knockout:next});}}>Undo elimination</button></>}
+        {knockout&&<><div className="score-status"><strong>Knockout</strong><span>{knockout.championId?'Champion decided':`${activeKnockout.length} still playing`}</span></div>{knockout.players.map(player=><article className={'score-row '+(knockout.eliminatedIds.includes(player.id)?'lost':'')} key={player.id}><div><strong>{player.name}</strong><span>{knockout.eliminatedIds.includes(player.id)?'LOST':knockout.championId===player.id?'CHAMPION':'Still in'}</span></div>{!knockout.eliminatedIds.includes(player.id)&&!knockout.championId&&<button onClick={()=>{const next=markLost(knockout,player.id);setKnockout(next);persist(next.players,{},putActiveNight({knockout:next},{version:1,kind:'knockout',state:next}));}}>LOST</button>}</article>)}<button className="secondary" disabled={!knockout.eliminatedIds.length} onClick={()=>{const next=undoKnockout(knockout);setKnockout(next);persist(next.players,{},putActiveNight({knockout:next},{version:1,kind:'knockout',state:next}));}}>Undo elimination</button></>}
         {cup&&currentRound&&<><div className="score-status"><strong>Switch Cup</strong><span>{cup.championId?`${cupPlayer(cup.championId)?.name} is champion`:`Round ${currentRound.number}`}</span></div>{currentRound.byePlayerId&&<p className="bye-note"><strong>{cupPlayer(currentRound.byePlayerId)?.name}</strong> has the bye this round.</p>}{currentRound.fixtures.map(fixture=><article className="cup-fixture" key={fixture.id}><span>{fixture.winnerId?'Winner':'Choose winner'}</span>{fixture.playerIds.map(playerId=><button key={playerId} className={fixture.winnerId===playerId?'winner':''} disabled={!!fixture.winnerId} onClick={()=>updateCup(selectCupWinner(cup,fixture.id,playerId))}>{cupPlayer(playerId)?.name}</button>)}</article>)}{!cup.championId&&currentRound.fixtures.every(fixture=>fixture.winnerId)&&<button className="primary" onClick={()=>updateCup(drawNextCupRound(cup,Math.random))}>Draw next round <ArrowRight size={18}/></button>}</>}
         {leagueStarted&&<><div className="score-status"><strong>{leagueCount} league{leagueCount===1?'':'s'}</strong><span>{leagueDone?'All rounds played':'Tap players in the order they finish each round'}</span></div>{leagues.map(league=>{const picks=leaguePicks[league.id]||[];const rounds=leagueRounds[league.id]||0;const size=league.results.length;return <section className="league-table" key={league.id}><h2>{league.name}</h2><p className="house-note">{rounds>=size?'All '+size+' rounds played.':'Round '+(rounds+1)+' of '+size+' · '+size+' points for 1st down to 1 for last'}</p>{rankLeague(league.results,league.playoffOrder).map(entry=><article className="score-row" key={entry.player.id}><div><strong>{entry.rank}. {entry.player.name}</strong><span>{entry.points} points · {entry.wins??0} round win{(entry.wins??0)===1?'':'s'}{entry.tied?' · level':''}</span></div><button aria-label={picks.includes(entry.player.id)?entry.player.name+' finished '+PLACES[picks.indexOf(entry.player.id)]:entry.player.name+' finished '+PLACES[picks.length]} disabled={rounds>=size||picks.includes(entry.player.id)} onClick={()=>pickFinisher(league,entry.player.id)}>{picks.includes(entry.player.id)?PLACES[picks.indexOf(entry.player.id)]:'Finished '+PLACES[picks.length]}</button></article>)}{picks.length>0&&<button className="text-link" onClick={()=>setLeaguePicks(current=>({...current,[league.id]:[]}))}>Clear this round</button>}{rounds>=size&&playoffsNeeded(league).map(([first,second])=><div className="playoff-needed" key={first.id+second.id}><p>Level on points and round wins: play a deciding game.</p><button onClick={()=>settlePlayoff(league,first.id,second.id)}>{first.name} won</button><button onClick={()=>settlePlayoff(league,second.id,first.id)}>{second.name} won</button></div>)}</section>;})}{playoffs?.status==='ready'?<div className="playoffs"><h2>Cross-league playoffs</h2><h3>Championship</h3>{playoffs.championship.fixtures.map(fixture=><p key={fixture.id}>{fixture.home.player.name} <span>v</span> {fixture.away.player.name}</p>)}<h3>Plate</h3>{playoffs.plate.fixtures.map(fixture=><p key={fixture.id}>{fixture.home.player.name} <span>v</span> {fixture.away.player.name}</p>)}</div>:<p className="house-note">{playoffs?.status==='not-ready'?playoffs.reason:'Play every round in every league to unlock the cross-league playoffs.'}</p>}</>}
         <section className="night-completion" aria-label="Completed night"><p className="eyebrow">SAVE THE NIGHT</p><label><span>Night name</span><KeyboardInput aria-label="Night name" value={nightName} onChange={event=>setNightName(event.target.value)}/></label>{savedCurrent?<p className="night-ready"><CheckCircle size={18}/>Saved to history on this device.</p>:completion?<><p className="night-ready"><CheckCircle size={18}/>{completion.outcome}. This result is ready to save.</p><button className="primary" onClick={saveCompletedNight}>Save completed night</button></>:<p className="night-pending">Finish this format to save a trustworthy result. Tied target scores need a clear winner.</p>}</section>
