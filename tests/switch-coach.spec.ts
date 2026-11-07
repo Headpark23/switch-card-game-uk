@@ -80,8 +80,8 @@ test("an unplayable tap says why, and keeps the rule wording", async ({ page }) 
 test("the guided game shows what happened and the options on your turn", async ({ page }) => {
   await page.goto("/?testDeck=1");
   await page.getByRole("button", { name: "Play against the computer" }).click();
-  await expect(page.getByRole("region", { name: "Coach" })).toContainText("Your options");
-  await expect(page.getByRole("region", { name: "Coach" })).toContainText("Or pick up one card");
+  await expect(page.getByRole("region", { name: "Coach" })).toContainText("Coach's pick");
+  await expect(page.getByRole("button", { name: /Why & tactics/ })).toBeVisible();
 
   await page.getByRole("button", { name: "Play 9H, legal move" }).click();
   await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible({ timeout: 4_000 });
@@ -95,14 +95,16 @@ test("every move has a lesson card with what was played and what you could play"
   await expect(page.getByText("GUIDED GAME · COMPUTER TURN")).toBeVisible();
   await expect(page.getByText("The computer played an eight")).toBeVisible({ timeout: 4_000 });
 
-  await page.getByRole("button", { name: "Tell me more" }).click();
+  await page.getByRole("button", { name: /Tell me more|Why & tactics/ }).click();
   const sheet = page.getByRole("dialog");
   await expect(sheet).toContainText("An eight: miss a turn");
   await expect(sheet).toContainText("What was played");
   await expect(sheet).toContainText("The computer played the eight of hearts.");
   await expect(sheet).toContainText("The rule");
-  await expect(sheet).toContainText("What you could play now");
-  await expect(sheet).toContainText("Miss your turn");
+  await expect(sheet).toContainText("Coach's pick");
+  await expect(sheet).toContainText("Your cards, one by one");
+  await expect(sheet).toContainText("Accept the missed turn");
+  await expect(sheet).toContainText("Tactics for this hand");
   await expect(sheet).toContainText("Tip");
 });
 
@@ -125,10 +127,40 @@ test("a guidance card comes up every turn, and the computer waits for you to clo
 
   // The computer's move gets a card with your options.
   await expect(sheet).toContainText("An eight: miss a turn", { timeout: 4_000 });
-  await expect(sheet).toContainText("What you could play now");
+  await expect(sheet).toContainText("Coach's pick");
+  await expect(sheet).toContainText("Your cards, one by one");
 
   // Guidance can be switched off for good.
   await sheet.getByRole("button", { name: "Turn off automatic guidance cards" }).click();
   await expect(sheet).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem("switchGuidance"))).toBe("off");
+});
+
+test("the tactics coach recommends a legal move with reasons for any hand", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const tactics = await import("/src/switch/tactics.ts");
+    const rules = await import("/src/switch/rules.ts");
+    const base = { drawPile: [], discardPile: ["7H"], currentSuit: "H", turn: "player", pendingPenalty: null, status: "playing", winner: null, move: 0 };
+    const cases = [
+      { ...base, playerHand: ["3H", "7C", "9S", "KD", "AS"], computerHand: ["4C", "5C", "6C", "9D", "10D"] },
+      { ...base, playerHand: ["9H"], computerHand: ["4C"], discardPile: ["9D"] },
+      { ...base, playerHand: ["2S", "9H"], computerHand: ["4C", "5D"], pendingPenalty: { kind: "draw-two", cards: 2 }, discardPile: ["2D"] },
+      { ...base, playerHand: ["9S", "KD"], computerHand: ["4C", "5D", "3C"], pendingPenalty: { kind: "black-king", units: 1, cards: 5 }, discardPile: ["KS"], currentSuit: "S" },
+      { ...base, playerHand: ["9H"], computerHand: ["4C", "5D", "3C"], pendingPenalty: { kind: "miss-turn" }, discardPile: ["8D"], currentSuit: "D" },
+      { ...base, playerHand: ["3S", "4S"], computerHand: ["4C", "5D", "3C"], discardPile: ["9D"], currentSuit: "D" },
+    ];
+    return cases.map((state) => {
+      const advice = tactics.adviseMove(state as never);
+      const legal = rules.legalMoves(state as never);
+      const okPlay = advice.kind !== "play" || legal.some((m: { type: string; cards?: string[] }) => m.type === "play" && JSON.stringify(m.cards) === JSON.stringify(advice.cards));
+      return { kind: advice.kind, headline: advice.headline, reasons: advice.reasons.length, notes: advice.notes.length === state.playerHand.length, okPlay };
+    });
+  });
+  for (const entry of result) { expect(entry.okPlay).toBe(true); expect(entry.reasons).toBeGreaterThan(0); expect(entry.notes).toBe(true); }
+  expect(result[1].headline).toMatch(/Play the 9 of hearts/);
+  expect(result[2].headline).toMatch(/Play the 2 of spades/);
+  expect(result[3].headline).toMatch(/Play the K of diamonds/);
+  expect(result[4].kind).toBe("accept");
+  expect(result[5].kind).toBe("pickup");
 });

@@ -160,3 +160,22 @@
 .puzzle-result{display:flex;gap:10px;border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.4}.puzzle-result p{margin:2px 0 0}.puzzle-result.good{background:#e3eddf;color:#1f5a3a}.puzzle-result.bad{background:#f8ded7;color:#7d281c}
 .welcome-card{margin:12px 16px;padding:14px;border:1.5px solid var(--gold);border-radius:16px;background:linear-gradient(135deg,#fffaf0,#f4ead0)}.welcome-card h2{font-size:22px;margin:2px 0 10px}.welcome-card div{display:grid;grid-template-columns:1fr 1fr;gap:8px}.welcome-card button{min-height:44px;font-size:13px}
 .dispute-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}.dispute-chips button{min-height:36px;padding:6px 12px;border:1px solid #c8bea9;border-radius:18px;background:#fffdf7;font-size:12px;text-transform:capitalize}.dispute-chips button.active{background:var(--green);color:#fff;border-color:var(--green)}
+
+/* Tactics coach: a specific pick for every move, marked on the card itself */
+.coach-pick{display:flex;gap:9px;align-items:center;margin:6px 0 2px}
+.coach-pick .pick-cards{display:flex;flex:0 0 auto}.coach-pick .pick-cards .playing-card{width:32px;margin-left:-14px;border-radius:5px}.coach-pick .pick-cards .playing-card:first-child{margin-left:0}
+.coach-pick p{margin:0;font-size:12px;line-height:1.38;color:var(--ink)}.coach-pick p strong{display:block;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#8a652b}.coach-pick p b{font-weight:600}
+.player-hand button.coach-pick{position:relative}.player-hand button.coach-pick::after{content:"PICK";position:absolute;left:50%;top:-6px;transform:translateX(-50%);font-size:8px;letter-spacing:.8px;font-weight:700;color:#fff;background:var(--gold);padding:1px 5px;border-radius:7px;box-shadow:0 1px 3px #0003;pointer-events:none;z-index:2}
+.player-hand button.coach-pick .playing-card{filter:drop-shadow(0 0 7px #e6b84acc) drop-shadow(0 4px 6px #0a282040)}
+.draw-pile.coach-pick .playing-card{filter:drop-shadow(0 0 9px #ffe19acc)}
+.lesson-pick{background:#f6edcf;border-radius:12px;padding:10px 12px;margin-bottom:6px}.lesson-pick .lesson-cards{margin-bottom:4px}.lesson-pick ul,.tactics{margin:4px 0 0;padding-left:18px;font-size:13px;line-height:1.45}
+.card-notes{list-style:none;padding:0;margin:4px 0;display:grid;gap:7px}.card-notes li{display:grid;grid-template-columns:34px 1fr;gap:10px;align-items:center;font-size:12.5px;line-height:1.4}
+.card-notes .playing-card{width:34px!important}.card-notes li[data-legal=false]{opacity:.55}
+.coach .coach-more{position:static;display:block;margin:5px 0 0 auto;top:auto;right:auto;min-height:26px}
+.coach-pick{margin:4px 0 0}
+
+.coach-meaning strong{display:inline;margin-right:4px}
+.why-button{min-height:36px;padding:4px 12px;border:1px solid #c9a74f;background:#fffdf7;color:#7a5518;border-radius:18px;font-size:12px;font-weight:600}
+.game-tutorial .game-actions{gap:6px;flex-wrap:nowrap}.game-tutorial .game-actions>span{margin-left:auto;font-size:11px;white-space:nowrap}
+.coach-meaning{padding-right:0!important}.game-tutorial .game-actions>span{font-size:10px}
+.why-button{font-family:'DM Sans',system-ui,sans-serif!important;font-size:12px!important;line-height:1.1}

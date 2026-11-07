@@ -195,7 +195,7 @@ for (const device of ["iPhone", "Pixel 10"]) {
     await page.getByRole("button", { name: "Play against the computer" }).click();
     await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible();
     await expect(page.locator(".turn-banner.you")).toBeVisible();
-    await expect(page.getByRole("region", { name: "Coach" })).toContainText("Your options");
+    await expect(page.getByRole("region", { name: "Coach" })).toContainText("Coach's pick");
     await expectFitsOneScreen(page);
 
     await play(page, "9H");
