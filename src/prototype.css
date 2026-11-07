@@ -326,3 +326,4 @@
 /* The homepage hero repeats as a soft banner behind the header of every page. It sits behind the content and never takes up space. */
 .switch-content.interior{position:relative;isolation:isolate}
 .switch-content.interior::before{content:'';position:absolute;z-index:-1;top:0;left:0;right:0;height:170px;pointer-events:none;background:linear-gradient(180deg,rgba(251,248,240,.15) 0,rgba(251,248,240,.55) 55%,var(--cream) 100%),url('/images/hero.webp') center 22%/cover no-repeat}
+.switch-app button.share-app{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;border:0;border-radius:30px;background:var(--green);color:#fff;font-weight:600;font-size:14px;padding:12px 16px}.share-app svg{color:#d7b776}

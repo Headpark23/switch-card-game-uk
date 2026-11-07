@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { DownloadSimple } from '@phosphor-icons/react';
 import SampleDataBar from './SampleDataBar';
-import { AccountPanel } from '../AccountPanel';
 import { SIGN_IN_AVAILABLE } from '../auth';
 import { ShareButton } from '../ShareButton';
 import { getClubName, nightShareCard } from '../switch/club';
@@ -73,7 +72,6 @@ export default function NightHistory({ extensions, onChange }: Props) {
           <button className="text-link history-delete" aria-label={`Delete ${night.title}`} onClick={() => removeNight(night.id, night.title)}>Delete this night</button>
         </div>
       </details>)}</div>}
-    <AccountPanel />
     <div className="backup-panel">
       <h3>Back up your club</h3>
       <p>{SIGN_IN_AVAILABLE

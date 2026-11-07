@@ -61,3 +61,17 @@ test("export keeps club data and leaves the sign-in out; erase removes only swit
   });
   expect(out).toEqual({ keys: ["switchClub"], removed: 2, left: ["unrelated"] });
 });
+
+test("the footer has a share button that uses the share sheet, or copies the link", async ({ page }) => {
+  await page.addInitScript(() => { (window as unknown as { __shared: unknown }).__shared = null; Object.defineProperty(navigator, "share", { value: (data: unknown) => { (window as unknown as { __shared: unknown }).__shared = data; return Promise.resolve(); }, configurable: true }); });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Share Switch with friends/ }).click();
+  expect(await page.evaluate(() => (window as unknown as { __shared: { url: string } }).__shared?.url)).toBe("https://switchcardgame.co.uk");
+});
+
+test("History no longer shows a second Google sign-in", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "History", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Back up your club" })).toBeVisible();
+  await expect(page.getByText(/Switch member|Cloud backup/)).toHaveCount(0);
+});

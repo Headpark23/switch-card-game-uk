@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ShareNetwork } from '@phosphor-icons/react';
 import { BottomSheet, KeyboardTextarea } from '../mobile';
 import { FEEDBACK_KINDS, diagnostics, feedbackLink, type FeedbackKind } from '../switch/privacy';
 
@@ -31,11 +32,35 @@ export function FeedbackSheet({ kind, onClose, page }: { kind: FeedbackKind | nu
 }
 
 // A double tap on a button above can land on these once the page shifts, so only a first tap (or the keyboard) opens a sheet.
+const APP_URL = 'https://switchcardgame.co.uk';
+const SHARE_TEXT = 'Switch: the rules, scores and a friendly practice game for card night. Free, and it works offline.';
+
+/** Opens the phone's share sheet; where there is none, copies the link instead. */
+export function ShareAppButton() {
+  const [note, setNote] = useState('');
+  async function share() {
+    setNote('');
+    try {
+      if (typeof navigator.share === 'function') { await navigator.share({ title: 'Switch', text: SHARE_TEXT, url: APP_URL }); return; }
+      await navigator.clipboard.writeText(`${SHARE_TEXT} ${APP_URL}`);
+      setNote('Link copied. Paste it into a message to friends and family.');
+    } catch (reason) {
+      if ((reason as Error)?.name === 'AbortError') return;
+      setNote(`Copy this link to share: ${APP_URL}`);
+    }
+  }
+  return <>
+    <button className="share-app" onClick={() => void share()}><ShareNetwork size={18} weight="fill" /> Share Switch with friends &amp; family</button>
+    {note && <p role="status" className="share-note">{note}</p>}
+  </>;
+}
+
 export default function AppFooter({ page, onPrivacy }: { page: string; onPrivacy: () => void }) {
   const [hits, setHits] = useState<number | null>(null);
   const [kind, setKind] = useState<FeedbackKind | null>(null);
   useEffect(() => { let live = true; void countThisVisit().then((value) => { if (live) setHits(value); }); return () => { live = false; }; }, []);
   return <footer className="app-footer">
+    <ShareAppButton />
     <div className="footer-actions" role="group" aria-label="Get in touch">
       {(Object.keys(FEEDBACK_KINDS) as FeedbackKind[]).map((key) => <button key={key} onClick={(event) => { if (event.detail < 2) setKind(key); }}>{FEEDBACK_KINDS[key].label}</button>)}
     </div>
