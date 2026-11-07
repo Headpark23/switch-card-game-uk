@@ -1,5 +1,7 @@
 import { lazy, Suspense, useCallback, useLayoutEffect, useState } from 'react';
 import { ArrowRight, BookOpen, Cards, PlayCircle, Trophy, Question, UsersThree, ChatCircle, Club, MagnifyingGlass, X, DownloadSimple, CheckCircle, Lightbulb } from '@phosphor-icons/react';
+import Referee from './screens/Referee';
+import NightReminder from './screens/NightReminder';
 import { BottomSheet, KeyboardInput, MobileScroll, useKeyboard, useKeyboardInsets } from './mobile';
 import { modes, powers, ruleChapters, rules } from './content';
 import { Fan } from './ui';
@@ -44,6 +46,7 @@ export default function Prototype() {
   const [selected, setSelected] = useState<(typeof powers)[number] | null>(null);
   const [ruleStep, setRuleStep] = useState(0);
   const [scrollKey, setScrollKey] = useState('');
+  const [planOpen, setPlanOpen] = useState(false);
   const [scoreView, setScoreView] = useState<'score' | 'stats' | 'leagues' | 'trophies' | 'history'>('score');
   const [rulesOpen, setRulesOpen] = useState(false);
   const [welcome, setWelcome] = useState(() => { try { return window.localStorage.getItem('switchWelcome') !== 'done'; } catch { return false; } });
@@ -94,7 +97,7 @@ export default function Prototype() {
               <button className="home-tile" onClick={() => openNight('score')}><UsersThree size={26} weight="fill" /><strong>Start a game night</strong><small>Scores, leagues, cups</small></button>
               <button className="home-tile" aria-label="Quick night" onClick={() => go('Quick')}><Lightbulb size={26} weight="fill" /><strong>Quick night</strong><small>Real cards, 60 seconds</small></button>
             </div>
-            <div className="night-shortcuts"><button className="text-link" onClick={() => openNight('stats')}>Stats</button><button className="text-link" onClick={() => openNight('leagues')}>Leagues</button><button className="text-link" onClick={() => openNight('history')}>History</button><button className="text-link" onClick={() => go('Puzzles')}>Puzzles</button></div>
+            <div className="night-shortcuts"><button className="text-link" onClick={() => openNight('stats')}>Stats</button><button className="text-link" onClick={() => openNight('leagues')}>Leagues</button><button className="text-link" onClick={() => openNight('history')}>History</button><button className="text-link" onClick={() => go('Puzzles')}>Puzzles</button><button className="text-link" onClick={() => setPlanOpen(true)}>Plan a night</button></div>
           </section>
           {(() => { const p = powers[new Date().getDate() % powers.length]; return <button className="home-daily" onClick={() => setSelected(p)}><Fan codes={p.cards.slice(0, 3)} /><span><small>POWER CARD OF THE DAY</small><strong>{p.name}</strong><em>{p.short}</em><i>Tap to learn it <ArrowRight size={13} /></i></span></button>; })()}
           <AccountPanel home />
@@ -142,6 +145,7 @@ export default function Prototype() {
           </>}
           {page === 'Questions' && <>
             <p className="eyebrow">SETTLE THE DEBATE</p><h1>There’s a rule<br />for that.</h1><p className="intro">Quick answers, before the next card lands.</p>
+            <Referee />
             <div className="dispute-chips" role="group" aria-label="Common disputes">{['ace', 'last card', 'jack', 'seven', 'king', 'two', 'eight', 'deck runs out'].map((chip) => <button key={chip} className={query === chip ? 'active' : ''} onClick={() => { keyboard.hide(); setQuery(query === chip ? '' : chip); }}>{chip}</button>)}</div>
             <div className="search"><MagnifyingGlass size={21} /><KeyboardInput aria-label="Search rules" placeholder="Try “ace” or “last card”" value={query} onChange={(e) => setQuery(e.target.value)} />{query && <button aria-label="Clear search" onClick={() => setQuery('')}><X size={16} /></button>}</div>
             <p className="results" aria-live="polite">{query ? `${result.length} matching ${result.length === 1 ? 'answer' : 'answers'}` : 'THE ESSENTIALS'}</p>
@@ -178,6 +182,7 @@ export default function Prototype() {
       })}
     </nav>
     {(page === 'Learn' || page === 'Cards' || page === 'Modes' || page === 'Questions') && <InstallBanner bottom={bottomInset + 76} />}
+    <NightReminder open={planOpen} onOpenChange={setPlanOpen} />
     <BottomSheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }} title={selected?.name || 'Card rule'}>
       {selected && <div className="rule-sheet"><Fan codes={selected.cards} /><p className="eyebrow">{selected.short}</p><p>{selected.text}</p><div className="exception"><strong>At the table</strong><p>{selected.extra}</p></div><button className="primary" onClick={() => setSelected(null)}>Got it <CheckCircle size={19} /></button></div>}
     </BottomSheet>

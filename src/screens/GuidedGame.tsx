@@ -1,6 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowCounterClockwise, ArrowRight, CheckCircle, HandPalm, Lightbulb } from '@phosphor-icons/react';
-import { chooseComputerAction } from '../switch/ai';
+import { chooseComputerAction, type ComputerLevel } from '../switch/ai';
+
+const LEVELS: ComputerLevel[] = ['relaxed', 'standard', 'sharp'];
+const LEVEL_NOTE: Record<ComputerLevel, string> = { relaxed: 'makes friendly mistakes', standard: 'plays sensibly', sharp: 'plays to beat you' };
+let computerLevel: ComputerLevel = (() => { try { const v = localStorage.getItem('switchComputerLevel'); return LEVELS.includes(v as ComputerLevel) ? v as ComputerLevel : 'standard'; } catch { return 'standard'; } })();
 import { cardIdLabel } from '../switch/cards';
 import { applyAction, createInitialGame, drawCards, legalMoves } from '../switch/rules';
 import type { CardId, GameState, Suit } from '../switch/types';
@@ -76,7 +80,7 @@ function computerStep(view: View): View {
   const { engine } = view;
   if (engine.status !== 'playing' || engine.turn !== 'computer') return view;
 
-  const action = chooseComputerAction(engine, Math.random);
+  const action = chooseComputerAction(engine, Math.random, computerLevel);
   const next = applyAction(engine, action);
 
   if (action.type === 'play') {
@@ -111,6 +115,7 @@ type Props = {
 
 export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPuzzles, onStatusChange }: Props) {
   const [soundOn, setSoundOn] = useState(feedbackEnabled);
+  const [level, setLevel] = useState<ComputerLevel>(computerLevel);
   const [view, setView] = useState<View>(openingView);
   const [aceChoice, setAceChoice] = useState<CardId[] | null>(null);
   const [staged, setStaged] = useState<CardId[]>([]);
@@ -283,7 +288,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
       <div className="opponent" aria-label={`Computer has ${engine.computerHand.length} cards`}><span>COMPUTER</span><div key={engine.computerHand.length} className="opp-fan">{engine.computerHand.slice(0, 5).map((_, i) => <CardImage code="back" key={i} />)}</div><strong>{engine.computerHand.length} card{engine.computerHand.length === 1 ? '' : 's'}</strong></div>
       <div className="game-table"><button className={'draw-pile' + (advice && !advice.cards.length ? ' coach-pick' : '')} onClick={drawOrResolve} disabled={!yourTurn || awaitingLastCard || !!staged.length || missTurn} aria-label={missTurn ? 'Draw pile unavailable while resolving the eight' : pendingDraw ? `Pick up ${pendingDraw} cards` : legalCards.length ? 'Pick up one card instead of playing' : 'Draw a card'}><CardImage code="back" /><span>{missTurn ? 'Eight played' : pendingDraw ? `Pick up ${pendingDraw}` : legalCards.length ? 'Pick up instead' : 'Draw'}</span></button><div className="discard-pile"><span key={`${engine.move}-${topCard}`} className={'pile-card from-' + mover}><CardImage code={topCard} /></span><span>Current suit <b className={(engine.currentSuit === 'H' || engine.currentSuit === 'D') ? 'red' : ''}>{suitSymbols[engine.currentSuit]} {suitNames[engine.currentSuit]}</b></span></div></div>
       <p className="game-notice" aria-live="polite">{!yourTurn ? 'Computer is choosing a card…' : view.notice}</p>
-      {!awaitingLastCard && <CoachPanel footer={<><button className="text-link" onClick={toggleGuide}>{guide ? 'Turn off automatic guidance cards' : 'Show a guidance card every turn'}</button><button className="text-link" onClick={() => { const next = !soundOn; setFeedbackEnabled(next); setSoundOn(next); if (next) cue('good'); }}>{soundOn ? 'Mute sounds and vibration' : 'Turn on sounds and vibration'}</button></>} open={sheetOpen} onOpenChange={setSheetOpen} advice={yourTurn ? advice : null} inlineTrigger={false} compact sheetOptions={yourTurn ? explainOptions(engine) : []} lesson={view.lesson} meaning={view.meaning} options={yourTurn && !missTurn ? explainOptions(engine) : []} />}
+      {!awaitingLastCard && <CoachPanel footer={<><button className="text-link" onClick={() => { const next = LEVELS[(LEVELS.indexOf(level) + 1) % LEVELS.length]; computerLevel = next; setLevel(next); try { localStorage.setItem('switchComputerLevel', next); } catch { /* storage unavailable */ } }}>Computer: {level[0].toUpperCase() + level.slice(1)}, {LEVEL_NOTE[level]}. Tap to change</button><button className="text-link" onClick={toggleGuide}>{guide ? 'Turn off automatic guidance cards' : 'Show a guidance card every turn'}</button><button className="text-link" onClick={() => { const next = !soundOn; setFeedbackEnabled(next); setSoundOn(next); if (next) cue('good'); }}>{soundOn ? 'Mute sounds and vibration' : 'Turn on sounds and vibration'}</button></>} open={sheetOpen} onOpenChange={setSheetOpen} advice={yourTurn ? advice : null} inlineTrigger={false} compact sheetOptions={yourTurn ? explainOptions(engine) : []} lesson={view.lesson} meaning={view.meaning} options={yourTurn && !missTurn ? explainOptions(engine) : []} />}
       {yourTurn && missTurn && !awaitingLastCard && <div className="miss-turn-action"><strong>The computer played an eight</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you must miss this turn.'}</p><button className="primary" onClick={drawOrResolve}>Accept missed turn <ArrowRight size={18} /></button></div>}
       {awaitingLastCard
         ? <div className="last-card-call"><HandPalm size={27} /><strong>One card remaining</strong><p>Say “Last Card” now. Forgetting costs two cards.</p><button className="primary" onClick={() => answerLastCard(true)}>Say “Last Card”</button><button className="text-link" onClick={() => answerLastCard(false)}>Continue without saying it</button></div>
