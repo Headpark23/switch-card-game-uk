@@ -4,7 +4,7 @@ import { CheckIcon, ChevronDownIcon } from "@radix-ui/react-icons";
 import { mobileAssets } from "./assets";
 import { iphoneGeometry, pixelGeometry, type MobileDeviceGeometry } from "./geometry";
 
-export type MobileDeviceId = "iphone" | "pixel-10";
+export type MobileDeviceId = "iphone" | "pixel-10" | "native";
 
 type MobileDevicePreset = {
   id: MobileDeviceId;
@@ -19,7 +19,43 @@ type MobileDevicePreset = {
   };
 };
 
-export const mobileDevices: Record<MobileDeviceId, MobileDevicePreset> = {
+/** True on a real phone (touch + small screen) or with ?native=1; ?frame=1 forces the framed preview. */
+export function detectNativePhone(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("frame") === "1") return false;
+    if (params.get("native") === "1") return true;
+    const touch = window.matchMedia("(pointer: coarse)").matches;
+    const small = Math.min(window.innerWidth, window.innerHeight) <= 820;
+    return touch && small;
+  } catch {
+    return false;
+  }
+}
+
+function nativePreset(): MobileDevicePreset {
+  const standalone =
+    window.matchMedia?.("(display-mode: standalone)").matches ||
+    (navigator as unknown as { standalone?: boolean }).standalone === true;
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  return {
+    id: "native",
+    label: "This phone",
+    platform: "ios",
+    bezel: "",
+    bezelLayer: "below-screen",
+    geometry: {
+      device: { width, height },
+      screen: { x: 0, y: 0, width, height, radius: 0 },
+      safeArea: { top: standalone ? 50 : 8, bottom: standalone ? 24 : 0 },
+      keyboard: { height: 0 },
+    },
+  };
+}
+
+export const mobileDevices: Record<Exclude<MobileDeviceId, "native">, MobileDevicePreset> = {
   iphone: {
     id: "iphone",
     label: "iPhone",
@@ -52,9 +88,14 @@ const MobileDeviceContext = createContext<MobileDeviceContextValue | null>(null)
 
 export function MobileDeviceProvider({ children }: PropsWithChildren) {
   const [deviceId, setDeviceId] = useState<MobileDeviceId>("iphone");
+  const [native] = useState(() => (detectNativePhone() ? nativePreset() : null));
   const value = useMemo(
-    () => ({ device: mobileDevices[deviceId], deviceId, setDeviceId }),
-    [deviceId],
+    () => ({
+      device: native ?? mobileDevices[deviceId as Exclude<MobileDeviceId, "native">],
+      deviceId: (native ? "native" : deviceId) as MobileDeviceId,
+      setDeviceId,
+    }),
+    [deviceId, native],
   );
 
   return <MobileDeviceContext.Provider value={value}>{children}</MobileDeviceContext.Provider>;

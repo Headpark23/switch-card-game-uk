@@ -738,3 +738,20 @@ p {
   border-radius: 0;
   object-fit: fill;
 }
+
+/* Real phone: the app fills the screen. No bezel, fake status bar, fake keyboard or custom cursor. */
+.device-screen.device-screen-native {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  border-radius: 0;
+  box-shadow: none;
+}
+.device-screen-native,
+.device-screen-native * { cursor: auto !important; }
+.device-screen-native .status-bar,
+.device-screen-native .home-indicator-svg,
+.device-screen-native .android-navigation-bar,
+.device-screen-native .keyboard-dock,
+.device-screen-native .device-camera { display: none !important; }
