@@ -18,7 +18,7 @@
 
 const MAX_BODY_BYTES = 1_000_000;
 const COOKIE = "switch_session";
-const SESSION_SECONDS = 60 * 60 * 24 * 30;
+const SESSION_SECONDS = 60 * 60 * 24 * 365; // stay signed in for a year
 const encoder = new TextEncoder();
 
 const json = (body, status = 200, headers = {}) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...headers } });

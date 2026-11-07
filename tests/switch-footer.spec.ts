@@ -75,3 +75,11 @@ test("History no longer shows a second Google sign-in", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Back up your club" })).toBeVisible();
   await expect(page.getByText(/Switch member|Cloud backup/)).toHaveCount(0);
 });
+
+test("the scorekeeper has no sign-in prompt of its own", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await expect(page.getByRole("heading", { name: "Keep every score straight." })).toBeVisible();
+  await expect(page.getByText(/Optional Google sign-in|Continue with Google/)).toHaveCount(0);
+});

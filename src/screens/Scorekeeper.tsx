@@ -4,7 +4,6 @@ import { KeyboardInput, useKeyboard } from '../mobile';
 import { createCup, drawNextCupRound, selectCupWinner, type CupState } from '../switch/cup';
 import { createCrossLeaguePlayoffs, playoffsNeeded, rankLeague, type League } from '../switch/leagues';
 import { createKnockout, markLost, undoKnockout, type KnockoutState } from '../switch/knockout';
-import { googleSignInConfigured, mountGoogleOneTap, signOutGoogleSession, type SignedInUser } from '../switch/googleIdentity';
 import { addNight, completionFromCup, completionFromKnockout, completionFromLeagues, completionFromSession, createNightRecord } from '../switch/history';
 import { ensureProfiles, getProfiles } from '../switch/profiles';
 import ClubhouseLeagues from './ClubhouseLeagues';
@@ -29,13 +28,6 @@ const scoreFormats:{id:ScoreFormat;name:string;description:string}[]=[
   {id:'cup',name:'Switch Cup',description:'Two to ten players with automatic byes.'},
 ];
 const newPlayer=(index:number):Player=>({id:`player-${Date.now()}-${index}`,name:''});
-function GoogleOneTap(){
-  const buttonRef=useRef<HTMLDivElement>(null);const [user,setUser]=useState<SignedInUser|null>(null);const [message,setMessage]=useState('');const configured=googleSignInConfigured();
-  useEffect(()=>{if(!buttonRef.current||!configured||user)return;let active=true;mountGoogleOneTap(buttonRef.current,signedIn=>{if(active)setUser(signedIn);},error=>{if(active)setMessage(error);}).catch(error=>{if(active)setMessage(error instanceof Error?error.message:'Google sign-in failed.');});return()=>{active=false;};},[configured,user]);
-  if(user)return <div className="google-account"><span>Signed in as</span><strong>{user.name||user.email}</strong><button onClick={()=>signOutGoogleSession().then(()=>setUser(null)).catch(error=>setMessage(error instanceof Error?error.message:'Sign-out failed.'))}>Sign out</button>{message&&<p role="alert">{message}</p>}</div>;
-  if(!configured)return null;
-  return <div className="google-signin"><div><strong>Optional Google sign-in</strong><span>Use Switch without an account, or sign in for future sharing and sync.</span></div>{configured?<div ref={buttonRef} className="google-button"/>:<p>Google sign-in is ready for a client ID and secure verification endpoint.</p>}{message&&<p role="alert">{message}</p>}</div>;
-}
 type ClubView='score'|'stats'|'leagues'|'trophies'|'history';
 export default function SwitchScorekeeper({onBack,initialView='score',onView}:{onBack:()=>void;initialView?:ClubView;onView?:(view:ClubView)=>void}){
   const keyboard=useKeyboard();
@@ -141,7 +133,7 @@ export default function SwitchScorekeeper({onBack,initialView='score',onView}:{o
     {view==='leagues'&&<ClubhouseLeagues extensions={storedExtensions} onChange={persistHistory}/>}
     {view==='trophies'&&<TrophyRoom extensions={storedExtensions} onChange={persistHistory}/>}
     {view==='history'&&<NightHistory extensions={storedExtensions} onChange={persistHistory}/>}
-    {view==='score'&&<><GoogleOneTap/>
+    {view==='score'&&<>
     {loaded.status==='unreadable'&&<div className="score-warning" role="alert"><strong>Saved scores could not be read.</strong><span>They have not been overwritten. Starting a new session will replace them only after you confirm your setup.</span></div>}
     {!session&&!knockout&&!cup&&!leagueStarted?<><div className="format-grid" aria-label="Score format">{scoreFormats.map(item=><button key={item.id} className={format===item.id?'active':''} aria-pressed={format===item.id} onClick={()=>chooseFormat(item.id)}><strong>{item.name}</strong></button>)}</div><p className="format-note">{scoreFormats.find(item=>item.id===format)?.description}</p>
       {format==='league'&&<div className="count-control"><span>Leagues</span><button aria-label="Fewer leagues" disabled={leagueCount===1} onClick={()=>{const next=leagueCount-1;setLeagueCount(next);resizePlayers(next*4);}}>−</button><strong>{leagueCount}</strong><button aria-label="More leagues" disabled={leagueCount===4} onClick={()=>{const next=leagueCount+1;setLeagueCount(next);resizePlayers(next*4);}}>+</button></div>}
