@@ -217,6 +217,7 @@ test("One v One is played to a number of games: first to N wins", async ({ page 
   await openScorekeeper(page);
   await page.getByRole("button", { name: "One v One" }).click();
   await expect(page.getByText("Target score")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "First to", exact: true })).toHaveAttribute("aria-pressed", "true");
   await fillVisibleNames(page);
   await page.getByLabel("Games to win").fill("4");
   await page.getByRole("button", { name: "Start One v One" }).click();
@@ -256,9 +257,10 @@ test("leagues can differ in size: 4, 4 and 3 players, drawn at random", async ({
   await openScorekeeper(page);
   await page.getByRole("button", { name: "Tournament Groups" }).click();
   await page.getByRole("button", { name: "More leagues" }).click();
-  await page.getByRole("button", { name: "Fewer players in League 3" }).click();
-  await expect(page.getByRole("region", { name: "League 3 players" }).getByPlaceholder("Enter name")).toHaveCount(3);
-  await expect(page.getByRole("region", { name: "League 1 players" }).getByPlaceholder("Enter name")).toHaveCount(4);
+  await page.getByRole("button", { name: "Fewer players" }).click();
+  await expect(page.getByPlaceholder("Enter name")).toHaveCount(11);
+  await expect(page.getByRole("region", { name: "League 3 players" }).getByRole("listitem")).toHaveCount(3);
+  await expect(page.getByRole("region", { name: "League 1 players" }).getByRole("listitem")).toHaveCount(4);
   await fillVisibleNames(page);
   await page.getByRole("button", { name: "Draw leagues at random" }).click();
   await expect(page.getByText("Drawn! Check each league below.")).toBeVisible();
@@ -275,7 +277,7 @@ test("a 4, 4 and 3 player league night plays through to playoffs with a plate by
   await openScorekeeper(page);
   await page.getByRole("button", { name: "Tournament Groups" }).click();
   await page.getByRole("button", { name: "More leagues" }).click();
-  await page.getByRole("button", { name: "Fewer players in League 3" }).click();
+  await page.getByRole("button", { name: "Fewer players" }).click();
   await fillVisibleNames(page);
   await page.getByRole("button", { name: "Start Tournament Groups" }).click();
   const places = ["1st", "2nd", "3rd"];
@@ -298,4 +300,18 @@ test("the Cup explains the random draw and gives an odd table a bye", async ({ p
   await fillVisibleNames(page);
   await page.getByRole("button", { name: "Start Switch Cup" }).click();
   await expect(page.getByText(/has the bye this round/)).toBeVisible();
+});
+
+test("One v One can also be played as best of an odd number of games", async ({ page }) => {
+  await openScorekeeper(page);
+  await page.getByRole("button", { name: "One v One" }).click();
+  await fillVisibleNames(page);
+  await page.getByRole("button", { name: "Best of", exact: true }).click();
+  await expect(page.getByText("Best of (odd) · first to 4")).toBeVisible();
+  await page.getByRole("button", { name: "More games" }).click();
+  await expect(page.getByText("Best of (odd) · first to 5")).toBeVisible();
+  await page.getByRole("button", { name: "Start One v One" }).click();
+  await expect(page.getByText("Best of 9 · first to 5 games")).toBeVisible();
+  for (let game = 0; game < 5; game += 1) await page.getByRole("button", { name: "Win game" }).first().click();
+  await expect(page.getByText("Player 1 wins the match!")).toBeVisible();
 });

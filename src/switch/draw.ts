@@ -7,3 +7,10 @@ export function shuffled<T>(items: readonly T[], random: () => number = Math.ran
   }
   return result;
 }
+
+/** Share players across leagues as evenly as possible, bigger leagues first: 11 across 3 gives 4, 4 and 3. */
+export function evenSizes(players: number, leagues: number): number[] {
+  const base = Math.floor(players / leagues);
+  const extra = players % leagues;
+  return Array.from({ length: leagues }, (_, index) => base + (index < extra ? 1 : 0));
+}

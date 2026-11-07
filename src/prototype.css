@@ -354,3 +354,11 @@
 .switch-app .league-setup .house-note{margin:4px 0 8px}
 .switch-app .league-setup .player-fields{margin:0}
 .switch-app .draw-note{font-size:12px;line-height:1.45;color:var(--muted);margin:10px 2px 4px}
+
+.switch-app .games-field{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 0 4px;padding:8px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.switch-app .games-field span{font-size:12px;font-weight:600}
+.switch-app .games-field input{width:64px;height:40px;text-align:center;border:1px solid #c9bfaa;border-radius:10px;background:#fffdf9;font:inherit;color:var(--ink)}
+.switch-app .league-size{font-size:11px;color:var(--muted)}
+.switch-app .league-names{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.switch-app .league-names li{padding:5px 10px;border-radius:999px;background:#eef3ec;color:var(--green);font-size:12px;font-weight:600}
+.switch-app .league-names li.empty{background:transparent;border:1px dashed #c8bea9;color:var(--muted);font-weight:400}
