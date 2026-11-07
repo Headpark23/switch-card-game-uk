@@ -210,7 +210,7 @@
 .game-tutorial .player-hand .playing-card,.game-tutorial .player-hand.dense .playing-card{width:62px}
 .game-tutorial .player-hand button.selected{transform:translateY(-8px)}
 .game-tutorial .game-table{padding:10px 12px}.game-tutorial .game-table .playing-card{width:62px}.game-tutorial .discard-pile .playing-card{width:68px}
-.game-tutorial .player-hand button.coach-pick{z-index:60!important;transform:translateY(-6px)}
+.game-tutorial .player-hand button.coach-pick{transform:translateY(-6px)}
 .game-tutorial .player-hand button.coach-pick::after{top:-9px}
 .device-screen[data-device="pixel-10"] .game-tutorial .game-table,.device-screen[data-device="pixel-10"] .game-tutorial .player-hand{min-height:215px}
 
@@ -280,3 +280,42 @@
 .watch-night{display:grid;gap:10px}.watch-night h1{margin:0}.join-form{display:grid;gap:10px}.join-form label{display:grid;gap:4px;font-weight:600;font-size:13px}.watch-status{font-weight:700;color:var(--green);margin:0}.watch-lines{list-style:none;padding:0;margin:0;display:grid;gap:6px}.watch-lines li{display:flex;justify-content:space-between;gap:10px;border:1px solid #d5c7a8;background:#fffaf0;border-radius:12px;padding:12px 14px;font-size:15px}.watch-lines li.lead{background:#e3f0e4;border-color:#9cc79f}
 .home-hub .night-shortcuts{flex-wrap:wrap;justify-content:center;gap:0 18px;margin:8px 4px 0}.home-hub .night-shortcuts .text-link{min-height:30px;white-space:nowrap}
 .home-hub .night-shortcuts{display:grid;grid-template-columns:repeat(3,1fr);justify-items:center;gap:0 6px}.home-hub .night-shortcuts .text-link{background:#fffaf0cc;border-radius:8px;padding:0 6px}
+
+/* a big hand goes onto two rows so no card hides another, and nothing jumps in front of its neighbours */
+.game-tutorial .player-hand.two-rows{display:grid;grid-template-columns:repeat(var(--per),minmax(0,1fr));row-gap:12px;justify-items:start;align-items:start;min-height:0;padding:16px 18px 12px 8px}
+.game-tutorial .player-hand.two-rows button+button{margin-left:0}
+.game-tutorial .player-hand.two-rows .playing-card{width:56px}
+.game-tutorial .player-hand button.selected{transform:translateY(-14px)}
+.bottom-sheet:has(.plan-night){--cream:#fbf8f0;--green:#053527;--ink:#092e23;--gold:#ac7b26;--muted:#59605b;--line:#ded7c7;color:var(--ink);font-family:'DM Sans',sans-serif}
+.dashboard .month-chart{margin-bottom:46px}.dashboard .month-chart+.dash-note{margin-top:0!important}
+.join-form input{width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff;font-size:16px;letter-spacing:3px;text-transform:uppercase}
+
+/* Footer, feedback sheet and privacy page */
+.app-footer{margin:28px 0 0;padding:18px 18px 4px;border-top:1px solid var(--line);text-align:center;display:grid;gap:10px}
+.switch-content.home .app-footer{margin-top:20px}
+.footer-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.footer-actions button{border:1px solid var(--line);background:#fffaf0;border-radius:999px;padding:9px 14px;min-height:44px;font-weight:600;font-size:13px;color:var(--green)}
+.footer-line{font-size:12px;color:var(--muted)}
+.footer-link{border:0;background:none;padding:10px 6px;min-height:44px;text-decoration:underline;text-underline-offset:3px;color:var(--green);font-size:12px}
+.hit-counter{font-variant-numeric:tabular-nums}
+.footer-copy{font-size:11px;color:var(--muted);letter-spacing:.4px}
+.feedback-sheet{display:grid;gap:10px;padding:2px 2px 14px;font-family:'DM Sans',sans-serif}
+.feedback-sheet label{font-weight:600;font-size:14px}
+.feedback-sheet textarea{width:100%;border:1px solid #bdb5a1;border-radius:10px;padding:12px;font:inherit;font-size:15px;background:#fffdf9;color:#092e23;resize:none}
+.feedback-sheet .feedback-check{display:flex;gap:10px;align-items:flex-start;font-weight:400;font-size:13px;line-height:1.4}
+.feedback-sheet .feedback-check input{margin-top:2px;width:20px;height:20px;flex:none}
+.feedback-sheet small{font-size:12px;line-height:1.45;color:#59605b}
+.feedback-sheet .primary{display:flex;justify-content:center;align-items:center;border-radius:30px;background:#053527;color:#fff!important;text-decoration:none;min-height:48px;padding:12px 18px;font-weight:600}
+.feedback-sheet .primary.disabled{opacity:.4;pointer-events:none}
+.bottom-sheet:has(.feedback-sheet){--cream:#fbf8f0;--green:#053527;--ink:#092e23;--gold:#ac7b26;--muted:#59605b;--line:#ded7c7;color:#092e23}
+.privacy-page{display:grid;gap:6px}
+.privacy-page h2{font-size:22px!important;margin:22px 0 6px!important}
+.privacy-copy p{font-size:14px;line-height:1.6;color:var(--muted)}
+.privacy-copy a{color:var(--green)}
+.privacy-controls{display:grid;gap:10px;margin-top:20px;padding:16px;border:1px solid var(--line);border-radius:14px;background:#fffaf0}
+.privacy-controls h2{margin:0 0 2px!important}
+.privacy-confirm{display:grid;gap:8px;padding:12px;border-radius:10px;background:#fdecea;border:1px solid #e3b4ac}
+.privacy-confirm p{font-size:14px;line-height:1.5}
+.consent-note{font-size:11px;line-height:1.45;color:var(--muted)}.consent-note a{color:var(--green)}
+.switch-app button.community{border:0;background:none;width:max-content;max-width:100%;text-align:left}.footer-actions{gap:6px}.footer-actions button{padding:9px 11px;font-size:12.5px;white-space:nowrap}
+.switch-content.interior .app-footer{margin-left:-24px;margin-right:-24px}

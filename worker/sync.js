@@ -117,9 +117,15 @@ export async function handleSync(request, env, fetcher = fetch) {
   if (url.pathname === "/api/auth/me" && request.method === "GET") {
     return session ? json({ account: { name: session.name, email: session.email, picture: session.picture } }) : json({ error: "Not signed in" }, 401);
   }
-  if (url.pathname !== "/api/sync" || !["GET", "PUT"].includes(request.method)) return json({ error: "Not found" }, 404);
+  if (url.pathname !== "/api/sync" || !["GET", "PUT", "DELETE"].includes(request.method)) return json({ error: "Not found" }, 404);
   if (!env.DB) return json({ error: "Cloud storage is not set up on this server" }, 503);
   if (!session) return json({ error: "Not signed in" }, 401);
+
+  if (request.method === "DELETE") {
+    // GDPR erasure: the signed-in person can remove their cloud copy at any time.
+    await env.DB.prepare("DELETE FROM club_sync WHERE user_id = ?").bind(session.sub).run();
+    return json({ ok: true });
+  }
 
   if (request.method === "GET") {
     const row = await env.DB.prepare("SELECT document, updated_at FROM club_sync WHERE user_id = ?").bind(session.sub).first();

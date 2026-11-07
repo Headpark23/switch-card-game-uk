@@ -95,6 +95,14 @@ export async function signOut() {
   try { (await loadGoogle()).accounts.id.disableAutoSelect(); } catch { /* offline: nothing to forget */ }
 }
 
+/** GDPR erasure: removes this account's cloud copy, then signs out on this phone. The data on the phone stays. */
+export async function deleteCloudCopy(fetcher: typeof fetch = fetch): Promise<void> {
+  const response = await fetcher(SYNC_URL, { method: 'DELETE' });
+  if (response.status === 401) throw new Error('Your sign-in has ended. Sign in again, then delete the cloud copy.');
+  if (!response.ok) throw new Error('The cloud copy could not be deleted right now. Please try again.');
+  await signOut();
+}
+
 export type SyncOutcome = 'uploaded' | 'downloaded' | 'merged' | 'up-to-date';
 
 /**

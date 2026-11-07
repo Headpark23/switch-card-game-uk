@@ -21,8 +21,10 @@ const GuidedGame = lazy(() => import('./screens/GuidedGame'));
 const SwitchScorekeeper = lazy(() => import('./screens/Scorekeeper'));
 const QuickNight = lazy(() => import('./screens/QuickNight'));
 const Puzzles = lazy(() => import('./screens/Puzzles'));
+const Privacy = lazy(() => import('./screens/Privacy'));
+const AppFooter = lazy(() => import('./screens/AppFooter'));
 
-type Page = 'Learn' | 'Cards' | 'Modes' | 'Club' | 'Watch' | 'Questions' | 'Tutorial' | 'Score' | 'Quick' | 'Puzzles';
+type Page = 'Learn' | 'Cards' | 'Modes' | 'Club' | 'Watch' | 'Questions' | 'Tutorial' | 'Score' | 'Quick' | 'Puzzles' | 'Privacy';
 
 function downloadRules() {
   const text = 'SWITCH — Rules for a better game night\n\n'
@@ -156,7 +158,7 @@ export default function Prototype() {
             <p className="house-note">Every table has its traditions. These answers follow the rules in your original Switch guide.</p>
             <button className="download" onClick={downloadRules}><DownloadSimple size={20} />Keep a copy of the rules</button>
             <InstallButton />
-            <a className="community" href="/privacy.html" target="_blank" rel="noreferrer">Privacy: what stays on your phone <ArrowRight size={16} /></a>
+            <button className="community" onClick={() => go('Privacy')}>Privacy: what stays on your phone <ArrowRight size={16} /></button>
             <a className="community" href="https://783j5slzrfvf.trickle.host/#comments" target="_blank" rel="noreferrer">Visit the original community discussion <ArrowRight size={16} /></a>
           </>}
           {page === 'Modes' && <>
@@ -171,8 +173,10 @@ export default function Prototype() {
             {page === 'Quick' && <QuickNight onBack={() => go('Learn')} onHistory={() => openNight('history')} />}
             {page === 'Watch' && <WatchNight initialCode={urlNight} onBack={() => go('Learn')} />}
             {page === 'Puzzles' && <Puzzles onBack={() => go('Learn')} onTutorial={startGuidedGame} />}
+            {page === 'Privacy' && <Privacy onBack={() => go('Learn')} />}
           </Suspense>
         </>}
+        {page !== 'Tutorial' && !rulesOpen && <Suspense fallback={null}><AppFooter page={page} onPrivacy={() => go('Privacy')} /></Suspense>}
       </main>
     </MobileScroll>
     <nav className="bottom-tabs" aria-label="Main navigation" style={{ bottom: bottomInset }}>
@@ -184,7 +188,7 @@ export default function Prototype() {
         return <button key={name} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} onClick={open}><span className="tab-icon"><Icon weight={active ? 'fill' : 'regular'} size={23} /></span><span className="tab-label">{label}</span></button>;
       })}
     </nav>
-    {(page === 'Learn' || page === 'Cards' || page === 'Modes' || page === 'Questions') && <InstallBanner bottom={bottomInset + 76} />}
+    {page === 'Learn' && !rulesOpen && <InstallBanner bottom={bottomInset + 76} />}
     <NightReminder open={planOpen} onOpenChange={setPlanOpen} />
     <BottomSheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }} title={selected?.name || 'Card rule'}>
       {selected && <div className="rule-sheet"><Fan codes={selected.cards} /><p className="eyebrow">{selected.short}</p><p>{selected.text}</p><div className="exception"><strong>At the table</strong><p>{selected.extra}</p></div><button className="primary" onClick={() => setSelected(null)}>Got it <CheckCircle size={19} /></button></div>}

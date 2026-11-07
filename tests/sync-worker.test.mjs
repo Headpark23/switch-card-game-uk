@@ -9,12 +9,12 @@ function fakeDb() {
   const rows = new Map();
   return {
     rows,
-    prepare() {
+    prepare(sql) {
       return {
         bind(...args) {
           return {
             first: async () => (rows.has(args[0]) ? rows.get(args[0]) : null),
-            run: async () => { rows.set(args[0], { document: args[1], updated_at: args[2] }); },
+            run: async () => { if (/^\s*DELETE/i.test(sql)) rows.delete(args[0]); else rows.set(args[0], { document: args[1], updated_at: args[2] }); },
           };
         },
       };
@@ -94,7 +94,8 @@ test("blocks writes from another site and bad bodies", async () => {
   const foreign = call("PUT", "/api/sync", cookie, { document: doc }, { Origin: "https://evil.test" });
   assert.equal((await handleSync(foreign, env)).status, 403);
   assert.equal((await handleSync(call("PUT", "/api/sync", cookie, { document: { hello: 1 } }), env)).status, 400);
-  assert.equal((await handleSync(call("DELETE", "/api/sync", cookie), env)).status, 404);
+  assert.equal((await handleSync(call("PATCH", "/api/sync", cookie), env)).status, 404);
+  assert.equal((await handleSync(call("DELETE", "/api/sync", cookie, undefined, { Origin: "https://evil.test" }), env)).status, 403);
 });
 
 test("me reports the signed-in account, and logout clears the cookie", async () => {
@@ -104,4 +105,16 @@ test("me reports the signed-in account, and logout clears the cookie", async () 
   assert.equal((await handleSync(call("GET", "/api/auth/me"), env)).status, 401);
   const out = await handleSync(post("/api/auth/logout", {}), env);
   assert.match(out.headers.get("Set-Cookie"), /Max-Age=0/);
+});
+
+test("a signed-in person can erase their cloud copy, and only theirs", async () => {
+  const env = newEnv();
+  const alex = (await signIn(env)).cookie;
+  const blair = (await signIn(env, { ...good, sub: "user-2" })).cookie;
+  await handleSync(call("PUT", "/api/sync", alex, { document: doc }), env);
+  await handleSync(call("PUT", "/api/sync", blair, { document: doc }), env);
+  assert.equal((await handleSync(call("DELETE", "/api/sync", null), env)).status, 401);
+  assert.equal((await handleSync(call("DELETE", "/api/sync", alex), env)).status, 200);
+  assert.equal((await (await handleSync(call("GET", "/api/sync", alex), env)).json()).document, null);
+  assert.deepEqual((await (await handleSync(call("GET", "/api/sync", blair), env)).json()).document, doc);
 });

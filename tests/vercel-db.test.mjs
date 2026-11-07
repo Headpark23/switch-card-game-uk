@@ -3,7 +3,7 @@ import test from "node:test";
 import { makeDb } from "../api/_db.js";
 import { handleSync, signSession } from "../worker/sync.js";
 
-const memory = () => { const rows = new Map(); return { read: async (id) => rows.get(id) ?? null, write: async (id, row) => { rows.set(id, row); } }; };
+const memory = () => { const rows = new Map(); return { read: async (id) => rows.get(id) ?? null, write: async (id, row) => { rows.set(id, row); }, remove: async (id) => { rows.delete(id); } }; };
 
 test("the file-backed store keeps one club per Google account", async () => {
   const db = makeDb(memory());
@@ -17,4 +17,6 @@ test("the file-backed store keeps one club per Google account", async () => {
   assert.deepEqual((await (await call("GET", cookie)).json()).document, doc);
   assert.equal((await (await call("GET", other)).json()).document, null);
   assert.equal((await call("GET", "bad.cookie")).status, 401);
+  assert.equal((await call("DELETE", cookie)).status, 200);
+  assert.equal((await (await call("GET", cookie)).json()).document, null);
 });

@@ -58,6 +58,7 @@ export function AccountPanel({ home = false }: { home?: boolean }) {
       : <>
         <p>{home ? 'One tap with Google. Your club, stats and leagues are saved safely and follow you to any phone.' : 'Sign in with Google to back up your club and open it on any phone. Switch still works without it.'}</p>
         <div ref={buttonRef} className="google-button" />
+        <p className="consent-note">By signing in you agree that Google shares your name, email and picture with Switch to keep your backup. <a href="/privacy.html" target="_blank" rel="noreferrer">See privacy &amp; how to delete it</a>.</p>
       </>}
     {message && <p role="status" className="share-note">{message}</p>}
   </div>;
