@@ -1,5 +1,5 @@
 /* Switch offline support. Same-origin GETs only; nothing leaves the device. */
-const CACHE = 'switch-offline-v1';
+const CACHE = 'switch-offline-v2';
 
 self.addEventListener('install', () => self.skipWaiting());
 

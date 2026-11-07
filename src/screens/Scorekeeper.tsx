@@ -33,7 +33,7 @@ function GoogleOneTap(){
   return <div className="google-signin"><div><strong>Optional Google sign-in</strong><span>Use Switch without an account, or sign in for future sharing and sync.</span></div>{configured?<div ref={buttonRef} className="google-button"/>:<p>Google sign-in is ready for a client ID and secure verification endpoint.</p>}{message&&<p role="alert">{message}</p>}</div>;
 }
 type ClubView='score'|'stats'|'leagues'|'history';
-export default function SwitchScorekeeper({onBack,initialView='score'}:{onBack:()=>void;initialView?:ClubView}){
+export default function SwitchScorekeeper({onBack,initialView='score',onView}:{onBack:()=>void;initialView?:ClubView;onView?:(view:ClubView)=>void}){
   const keyboard=useKeyboard();
   const [loaded]=useState(()=>loadScorekeeper(typeof window==='undefined'?null:window.localStorage.getItem(SCOREKEEPER_STORAGE_KEY)));
   const active=getActiveNight(loaded.state.extensions);
@@ -62,6 +62,7 @@ export default function SwitchScorekeeper({onBack,initialView='score'}:{onBack:(
   const [nightName,setNightName]=useState('Switch Night');
   const [savedCurrent,setSavedCurrent]=useState(false);
   const [view,setView]=useState<ClubView>(initialView);
+  useEffect(()=>{setView(initialView);},[initialView]);
   const requiredCount=format==='league'?leagueCount*4:format==='knockout'?Math.min(6,Math.max(3,players.length)):format==='cup'?Math.min(10,Math.max(2,players.length)):2;
   const visiblePlayers=players.slice(0,requiredCount);
   const savedPlayers=getProfiles(storedExtensions).filter(profile=>!profile.archived);
@@ -129,7 +130,7 @@ export default function SwitchScorekeeper({onBack,initialView='score'}:{onBack:(
   function persistHistory(nextExtensions:Record<string,unknown>,replaceExtensions=false){const currentPlayers=session?.players??knockout?.players??cup?.players??visiblePlayers;const currentScores=session?{...session.scores}:leagueStarted?leagueScores:{};persist(currentPlayers,currentScores,nextExtensions,replaceExtensions);}
   function saveCompletedNight(){if(!completion||savedCurrent)return;keyboard.hide();try{const night=createNightRecord(nightName,completion);persistHistory(clearActiveNight(addNight(storedExtensions,night)),true);setSavedCurrent(true);setError('');setView('history');}catch(reason){setError(reason instanceof Error?reason.message:'This night could not be saved.');}}
   function reset(){if(!window.confirm('Reset this score session? Player names will be kept.'))return;setSession(null);setKnockout(null);setCup(null);setLeagueStarted(false);setLeagueScores({});setLeaguePicks({});setSavedCurrent(false);setError('');persist(visiblePlayers,{},clearActiveNight(storedExtensions),true);}
-  return <section className="scorekeeper" aria-labelledby="scorekeeper-title"><div className={'scorekeeper-head'+(view==='score'?'':' compact')}><button className="text-link" onClick={onBack}>← Modes</button><p className="eyebrow">{getClubName(storedExtensions)?getClubName(storedExtensions).toUpperCase():'SWITCH NIGHT'}</p>{view==='score'?<><h1 id="scorekeeper-title">Keep every score straight.</h1></>:<span id="scorekeeper-title" hidden>Switch club</span>}</div><div className="club-tabs" aria-label="Scorekeeper sections">{([['score','Score'],['stats','Stats'],['leagues','Leagues'],['history','History']] as const).map(([id,label])=><button key={id} className={view===id?'active':''} aria-pressed={view===id} onClick={()=>{keyboard.hide();setView(id);}}>{label}</button>)}</div>
+  return <section className="scorekeeper" aria-labelledby="scorekeeper-title"><div className={'scorekeeper-head'+(view==='score'?'':' compact')}><button className="text-link" onClick={onBack}>{view==='score'?'← Ways to play':'← Home'}</button><p className="eyebrow">{getClubName(storedExtensions)?getClubName(storedExtensions).toUpperCase():'SWITCH NIGHT'}</p>{view==='score'?<><h1 id="scorekeeper-title">Keep every score straight.</h1></>:<span id="scorekeeper-title" hidden>Switch club</span>}</div><div className="club-tabs" aria-label="Scorekeeper sections">{([['score','Score'],['stats','Stats'],['leagues','Leagues'],['history','History']] as const).map(([id,label])=><button key={id} className={view===id?'active':''} aria-pressed={view===id} onClick={()=>{keyboard.hide();setView(id);onView?.(id);}}>{label}</button>)}</div>
     {view==='stats'&&<ClubhouseStats extensions={storedExtensions} onChange={persistHistory}/>}
     {view==='leagues'&&<ClubhouseLeagues extensions={storedExtensions} onChange={persistHistory}/>}
     {view==='history'&&<NightHistory extensions={storedExtensions} onChange={persistHistory}/>}

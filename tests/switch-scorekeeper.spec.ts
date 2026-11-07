@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function openScorekeeper(page: Page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "Ways to play", exact: true }).click();
+  await page.getByRole("button", { name: "Play", exact: true }).click();
   await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
   await expect(page.getByRole("heading", { name: "Keep every score straight." })).toBeVisible();
 }
@@ -26,7 +26,7 @@ test("named domino scores persist, validate and undo", async ({ page }) => {
   await expect(page.getByText("0 points").first()).toBeVisible();
 
   await page.reload();
-  await page.getByRole("button", { name: "Ways to play", exact: true }).click();
+  await page.getByRole("button", { name: "Play", exact: true }).click();
   await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
   await expect(page.getByText("0 points").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Undo last score" })).toBeDisabled();
@@ -36,7 +36,7 @@ test("unreadable saved scores stay untouched until explicit setup", async ({ pag
   await page.goto("/");
   await page.evaluate(() => localStorage.setItem("switchScoreKeeper", "{broken"));
   await page.reload();
-  await page.getByRole("button", { name: "Ways to play", exact: true }).click();
+  await page.getByRole("button", { name: "Play", exact: true }).click();
   await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
   await expect(page.getByRole("alert")).toContainText("have not been overwritten");
   expect(await page.evaluate(() => localStorage.getItem("switchScoreKeeper"))).toBe("{broken");
@@ -110,7 +110,7 @@ test("a completed night is named, saved once and restored with its result", asyn
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("switchScoreKeeper") ?? "{}").extensions.switchNightHistory)).toHaveLength(1);
 
   await page.reload();
-  await page.getByRole("button", { name: "Ways to play", exact: true }).click();
+  await page.getByRole("button", { name: "Play", exact: true }).click();
   await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
   await page.getByRole("button", { name: "History", exact: true }).click();
   await page.getByText("Friday Final", { exact: true }).click();
@@ -142,7 +142,7 @@ test("history exports and deletes only after confirmation", async ({ page }) => 
     },
   })));
   await page.reload();
-  await page.getByRole("button", { name: "Ways to play", exact: true }).click();
+  await page.getByRole("button", { name: "Play", exact: true }).click();
   await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
 
   await page.getByRole("button", { name: "History", exact: true }).click();
@@ -168,7 +168,7 @@ for (const device of ["iPhone", "Pixel 10"]) {
       await page.getByRole("button", { name: /Preview device/ }).click();
       await page.getByText("Pixel 10").click();
     }
-    await page.getByRole("button", { name: "Ways to play", exact: true }).click();
+    await page.getByRole("button", { name: "Play", exact: true }).click();
     await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
     await expect(page.locator(".score-start")).toBeVisible();
     const fit = await page.evaluate(() => {

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useLayoutEffect, useState } from 'react';
-import { ArrowRight, BookOpen, Cards, UsersThree, ChatCircle, Club, MagnifyingGlass, X, DownloadSimple, CheckCircle, Lightbulb } from '@phosphor-icons/react';
+import { ArrowRight, BookOpen, Cards, PlayCircle, Trophy, Question, UsersThree, ChatCircle, Club, MagnifyingGlass, X, DownloadSimple, CheckCircle, Lightbulb } from '@phosphor-icons/react';
 import { BottomSheet, KeyboardInput, MobileScroll, useKeyboard, useKeyboardInsets } from './mobile';
 import { modes, powers, ruleChapters, rules } from './content';
 import { Fan } from './ui';
@@ -19,7 +19,7 @@ const SwitchScorekeeper = lazy(() => import('./screens/Scorekeeper'));
 const QuickNight = lazy(() => import('./screens/QuickNight'));
 const Puzzles = lazy(() => import('./screens/Puzzles'));
 
-type Page = 'Learn' | 'Cards' | 'Modes' | 'Questions' | 'Tutorial' | 'Score' | 'Quick' | 'Puzzles';
+type Page = 'Learn' | 'Cards' | 'Modes' | 'Club' | 'Questions' | 'Tutorial' | 'Score' | 'Quick' | 'Puzzles';
 
 function downloadRules() {
   const text = 'SWITCH — Rules for a better game night\n\n'
@@ -160,7 +160,7 @@ export default function Prototype() {
             <button className="download" onClick={downloadRules}><DownloadSimple size={20} />Download game-night rules</button>
           </>}
           <Suspense fallback={<Loading />}>
-            {page === 'Score' && <SwitchScorekeeper onBack={() => go('Modes')} initialView={scoreView} />}
+            {page === 'Score' && <SwitchScorekeeper onBack={() => go(scoreView === 'score' ? 'Modes' : 'Learn')} initialView={scoreView} onView={setScoreView} />}
             {page === 'Tutorial' && <GuidedGame onExit={() => go('Learn')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onOpenPuzzles={() => go('Puzzles')} onStatusChange={onGameStatus} />}
             {page === 'Quick' && <QuickNight onBack={() => go('Learn')} onHistory={() => openNight('history')} />}
             {page === 'Puzzles' && <Puzzles onBack={() => go('Learn')} onTutorial={startGuidedGame} />}
@@ -169,12 +169,15 @@ export default function Prototype() {
       </main>
     </MobileScroll>
     <nav className="bottom-tabs" aria-label="Main navigation" style={{ bottom: bottomInset }}>
-      {([{ name: 'Learn', label: 'Rules', Icon: BookOpen }, { name: 'Cards', label: 'Cards', Icon: Cards }, { name: 'Modes', label: 'Ways to play', Icon: UsersThree }, { name: 'Questions', label: 'Questions', Icon: ChatCircle }] as const).map(({ name, label, Icon }) => {
-        const active = page === name || (name === 'Learn' && page === 'Tutorial') || (name === 'Modes' && (page === 'Score' || page === 'Quick')) || (name === 'Learn' && page === 'Puzzles');
-        return <button key={name} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} onClick={() => go(name)}><Icon weight={active ? 'fill' : 'regular'} size={26} /><span>{label}</span></button>;
+      {([{ name: 'Learn', label: 'Rules', Icon: BookOpen }, { name: 'Cards', label: 'Cards', Icon: Cards }, { name: 'Modes', label: 'Play', Icon: PlayCircle }, { name: 'Club', label: 'Club', Icon: Trophy }, { name: 'Questions', label: 'Questions', Icon: Question }] as const).map(({ name, label, Icon }) => {
+        const clubView = page === 'Score' && scoreView !== 'score';
+        const active = name === 'Club' ? clubView
+          : page === name || (name === 'Learn' && (page === 'Tutorial' || page === 'Puzzles')) || (name === 'Modes' && (page === 'Quick' || (page === 'Score' && !clubView)));
+        const open = () => { if (name === 'Club') openNight(scoreView === 'score' ? 'stats' : scoreView); else go(name); };
+        return <button key={name} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} onClick={open}><span className="tab-icon"><Icon weight={active ? 'fill' : 'regular'} size={23} /></span><span className="tab-label">{label}</span></button>;
       })}
     </nav>
-    {(page === 'Learn' || page === 'Cards' || page === 'Modes' || page === 'Questions') && <InstallBanner bottom={bottomInset + 71} />}
+    {(page === 'Learn' || page === 'Cards' || page === 'Modes' || page === 'Questions') && <InstallBanner bottom={bottomInset + 76} />}
     <BottomSheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }} title={selected?.name || 'Card rule'}>
       {selected && <div className="rule-sheet"><Fan codes={selected.cards} /><p className="eyebrow">{selected.short}</p><p>{selected.text}</p><div className="exception"><strong>At the table</strong><p>{selected.extra}</p></div><button className="primary" onClick={() => setSelected(null)}>Got it <CheckCircle size={19} /></button></div>}
     </BottomSheet>

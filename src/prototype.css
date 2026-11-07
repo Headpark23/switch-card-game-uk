@@ -238,3 +238,13 @@
 .home-daily{flex:1 1 auto;display:flex;align-items:center;gap:14px;margin:14px 20px 78px;padding:14px 16px;min-height:96px;border:1px solid #ddd2bd;border-radius:16px;background:linear-gradient(180deg,#fffdf7,#f6efdc);text-align:left;color:var(--green);max-height:170px}
 .home-daily .card-fan{width:96px;flex:none}.home-daily span{display:flex;flex-direction:column;gap:3px}.home-daily small{font-size:9px;letter-spacing:1.5px;font-weight:600;color:#8a652b}.home-daily strong{font-family:'DM Serif Display',Georgia,serif;font-weight:400;font-size:22px}.home-daily em{font-style:normal;font-size:13px;color:var(--muted)}.home-daily i{font-style:normal;font-size:12px;display:inline-flex;align-items:center;gap:4px;margin-top:4px;text-decoration:underline;text-decoration-color:var(--gold);text-underline-offset:4px}
 @media (max-height:700px){.home-daily{display:none}}
+
+/* Bottom navigation: five clear tabs */
+.bottom-tabs{background:#fffdf7f2;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid #e6dcc6;padding:7px 4px 8px;min-height:68px;gap:2px;box-shadow:0 -8px 26px #1f3a2c14}
+.bottom-tabs button{flex:1 1 0;min-width:0;gap:3px;padding:2px 0 0;font-size:10.5px;font-weight:500;color:#6a7068;letter-spacing:.1px}
+.bottom-tabs .tab-icon{display:flex;align-items:center;justify-content:center;width:54px;height:30px;border-radius:15px;transition:background .18s,color .18s}
+.bottom-tabs .active{color:var(--green);font-weight:700}
+.bottom-tabs .active .tab-icon{background:#e3ebd9;color:var(--green)}
+.bottom-tabs .active:after{content:none}
+.bottom-tabs .active .tab-icon svg{color:var(--green)}
+@media (min-height:780px){.game-tutorial .game-table .playing-card{width:66px}.game-tutorial .opponent .playing-card{width:30px}}
