@@ -5,7 +5,7 @@
 - Needs a deployed HTTPS URL. Deploying needs explicit approval (see `docs/release/SWITCH-RELEASE-CHECKLIST.md`).
 
 ## Before any store submission
-- [ ] Add a real support email to `public/privacy.html` and the listing.
+- [x] Support email (headpark@gmail.com) is on `public/privacy.html` and the listing.
 - [ ] Choose a domain and set it as the manifest `start_url` origin if different.
 - [ ] Re-record screenshots with `node scripts/store-screenshots.mjs <deployed-url>` and review each one.
 - [ ] Decide on Google sign-in (see `docs/google-sign-in.md`); if enabled, list it in the privacy answers.

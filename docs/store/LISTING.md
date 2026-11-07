@@ -24,4 +24,4 @@ Switch is the companion for the card game you play with real cards.
 **Screenshots:** `docs/store/01-home.png` to `06-referee.png` (regenerate with `node scripts/store-screenshots.mjs <url>`).
 These include the device frame; export frameless crops if a store requires raw screen captures.
 
-**Privacy policy URL:** `https://<your-domain>/privacy.html` (add a support email to the page first).
+**Privacy policy URL:** `https://<your-domain>/privacy.html` (support email: headpark@gmail.com).
