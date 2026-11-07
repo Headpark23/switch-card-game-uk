@@ -25,7 +25,7 @@ const scoreFormats:{id:ScoreFormat;name:string;description:string}[]=[
   {id:'head-to-head',name:'One v One',description:'Choose how many games to play: the first player to win that many takes the match.'},
   {id:'domino',name:'Domino',description:'Any whole-number round score and a flexible target.'},
   {id:'darts',name:'Darts',description:'Legs, sets and a two-leg lead.'},
-  {id:'league',name:'Tournament Groups',description:'One to four groups of four, followed by championship and plate playoffs.'},
+  {id:'league',name:'Tournament Groups',description:'One to four leagues of 3 to 6 players, drawn at random, then championship and plate playoffs.'},
   {id:'knockout',name:'Knockout',description:'Three to six players; mark the round loser LOST.'},
   {id:'cup',name:'Switch Cup',description:'Two to ten players with automatic byes.'},
 ];
