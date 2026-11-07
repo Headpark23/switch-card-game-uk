@@ -1,5 +1,8 @@
 import { get, put } from "@vercel/blob";
 import { handleNight } from "./_night.js";
+import { makeLimiter, tooMany } from "./_limit.js";
+
+const allow = makeLimiter({ max: 120, windowMs: 60_000 });
 
 const store = {
   async read(code) {
@@ -14,6 +17,7 @@ const store = {
 
 export default {
   async fetch(request) {
+    if (!allow(request)) return tooMany();
     if (!process.env.BLOB_READ_WRITE_TOKEN) return new Response(JSON.stringify({ error: "Sharing is not switched on yet." }), { status: 503, headers: { "content-type": "application/json" } });
     try { return await handleNight(request, store); } catch { return new Response(JSON.stringify({ error: "Sharing is unavailable right now." }), { status: 503, headers: { "content-type": "application/json" } }); }
   },

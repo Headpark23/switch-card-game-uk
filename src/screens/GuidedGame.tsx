@@ -179,6 +179,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
     const timer = setTimeout(() => {
       const next = computerStep(viewRef.current);
       if (lastComputerPlay.length) { noteFlight(lastComputerPlay, 'computer'); lastComputerPlay = []; }
+      else if (next.engine.computerHand.length > viewRef.current.engine.computerHand.length) flyDraw(next.engine.computerHand.length - viewRef.current.engine.computerHand.length, 'computer');
       setView(next);
     }, 900 + pending);
     return () => clearTimeout(timer);
@@ -295,6 +296,34 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
     flight.current = { cards: [...cards], from, origins, at: Date.now(), consumed: false };
   }
 
+  /** Card backs slide from the draw pile to whoever picked up, so a pick-up is as visible as a play. */
+  function flyDraw(count: number, to: 'you' | 'computer') {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const pile = document.querySelector<HTMLElement>('.draw-pile');
+    const target = to === 'you' ? document.querySelector<HTMLElement>('.player-hand') : fanRef.current;
+    const back = pile?.querySelector('img');
+    if (!pile || !target || !back) return;
+    const from = pile.getBoundingClientRect();
+    const end = target.getBoundingClientRect();
+    const scale = from.width / (pile.offsetWidth || 1) || 1;
+    const dx = (end.left + end.width / 2 - (from.left + from.width / 2)) / scale;
+    const dy = (end.top + end.height / 2 - (from.top + from.height / 2)) / scale;
+    for (let index = 0; index < Math.min(count, 5); index += 1) {
+      const flier = document.createElement('span');
+      flier.className = 'draw-flier';
+      flier.setAttribute('aria-hidden', 'true');
+      flier.appendChild(back.cloneNode() as HTMLElement);
+      pile.appendChild(flier);
+      const anim = flier.animate([
+        { transform: 'translate(0, 0) rotate(0deg) scale(1)', opacity: 1, offset: 0 },
+        { transform: `translate(${dx * 0.6}px, ${dy * 0.6}px) rotate(${to === 'you' ? 8 : -8}deg) scale(.9)`, opacity: 1, offset: 0.65 },
+        { transform: `translate(${dx}px, ${dy}px) rotate(0deg) scale(.7)`, opacity: 0, offset: 1 },
+      ], { duration: 1000, delay: index * 260, easing: 'cubic-bezier(.25,.7,.3,1)', fill: 'backwards' });
+      anim.onfinish = () => flier.remove();
+      anim.oncancel = () => flier.remove();
+    }
+  }
+
   function playStaged() {
     if (!staged.length) return;
     if (!canPlay(staged[0])) { refuse([staged[0]], explainUnplayable(staged[0], engine)); return; }
@@ -313,6 +342,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
     if (!yourTurn || outcome !== 'playing') return;
     cue(pendingDraw ? 'penalty' : 'draw');
     const count = pendingDraw || 1;
+    if (pending?.kind !== 'miss-turn') flyDraw(count, 'you');
     const next = applyAction(engine, pending?.kind === 'miss-turn' ? { type: 'accept-missed-turn' } : { type: 'draw' });
     setView((current) => ({
       ...current, engine: next, hint: false,

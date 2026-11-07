@@ -40,3 +40,12 @@ test("a played card visibly travels from the hand and takes over a second to lan
   expect(flights.length).toBeGreaterThan(0);
   await expect(page.getByText("The computer played an eight")).toBeVisible({ timeout: 9_000 });
 });
+
+test("picking up sends card backs flying from the draw pile to your hand", async ({ page }) => {
+  await page.goto("/?testDeck=1");
+  await page.getByRole("button", { name: "Play against the computer" }).click();
+  await page.locator(".draw-pile").click();
+  await expect(page.locator(".draw-flier").first()).toBeAttached();
+  await page.screenshot({ path: "draw-shot.png" });
+  await expect(page.locator(".draw-flier")).toHaveCount(0, { timeout: 4000 });
+});
