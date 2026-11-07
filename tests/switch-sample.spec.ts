@@ -50,3 +50,14 @@ test("every card face is a real image of the same shape", async ({ page }) => {
   });
   expect(shapes).toEqual(["256x372"]);
 });
+
+test("History offers to remove sample data and shows the real, empty state afterwards", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "History", exact: true }).click();
+  await page.getByRole("button", { name: "Load sample club" }).click();
+  await expect(page.getByText("Showing sample data. It is not your real record.")).toBeVisible();
+  await expect(page.getByText("No completed nights saved yet.")).toHaveCount(0);
+  await page.getByRole("button", { name: "Remove sample" }).click();
+  await expect(page.getByText("No completed nights saved yet.")).toBeVisible();
+  await expect(page.getByText("Showing sample data. It is not your real record.")).toHaveCount(0);
+});

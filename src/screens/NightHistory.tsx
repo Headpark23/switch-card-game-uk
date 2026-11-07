@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DownloadSimple } from '@phosphor-icons/react';
+import SampleDataBar from './SampleDataBar';
 import { AccountPanel } from '../AccountPanel';
 import { SIGN_IN_AVAILABLE } from '../auth';
 import { ShareButton } from '../ShareButton';
@@ -60,6 +61,7 @@ export default function NightHistory({ extensions, onChange }: Props) {
       <div><p className="eyebrow">ON THIS DEVICE</p><h2 id="night-history-title">Switch Night history</h2></div>
       {nights.length > 0 && <button className="secondary" onClick={downloadHistory}><DownloadSimple size={16} />Export history</button>}
     </div>
+    <SampleDataBar offer={nights.length === 0} extensions={extensions} onChange={onChange} />
     {nights.length === 0
       ? <p className="history-empty">No completed nights saved yet. Finish a score session and save it to build your real game-night story.</p>
       : <div className="history-list">{nights.map((night) => <details className="history-card" key={night.id}>
