@@ -123,6 +123,7 @@ test("a player without an eight can clearly accept the missed turn", async ({ pa
 test("the main rules story teaches the complete game in five interactive steps", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Know the rules. Own the table." })).toBeVisible();
+  await page.getByRole("button", { name: "Learn the rules" }).click();
   await expect(page.getByRole("heading", { name: "Deal everyone in." })).toBeVisible();
   await expect(page.getByText(/When the deck runs out/)).toBeVisible();
 
@@ -195,7 +196,7 @@ for (const device of ["iPhone", "Pixel 10"]) {
     await page.getByRole("button", { name: "Play against the computer" }).click();
     await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible();
     await expect(page.locator(".turn-banner.you")).toBeVisible();
-    await expect(page.getByRole("region", { name: "Coach" })).toContainText("Coach's pick");
+    await expect(page.getByRole("button", { name: /Why & tactics: / })).toBeVisible();
     await expectFitsOneScreen(page);
 
     await play(page, "9H");

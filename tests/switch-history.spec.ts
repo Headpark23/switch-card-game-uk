@@ -15,7 +15,8 @@ test("all six formats create trustworthy completion snapshots", async ({ page })
 
     let domino = scoring.createSession("domino", players, { target: 100 });
     domino = scoring.applyScoreCommand(domino, { type: "add-score", playerId: "a", value: 110 });
-    let tied = scoring.applyScoreCommand(domino, { type: "add-score", playerId: "b", value: 110 });
+    // The scorekeeper now stops at the target, so build the level position directly to prove completion still refuses it.
+    const tied = { ...domino, scores: { a: 110, b: 110 } };
 
     let darts = scoring.createSession("darts", players, { setsToWin: 1 });
     for (let index = 0; index < 3; index += 1) darts = scoring.applyScoreCommand(darts, { type: "win-leg", playerId: "a" });

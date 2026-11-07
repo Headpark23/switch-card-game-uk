@@ -38,19 +38,26 @@ test("domino and head-to-head accept flexible safe integers only", async ({ page
   expect(result.errors).toEqual(["required", "non-negative", "whole-number", "safe-integer"]);
 });
 
-test("darts awards a set only after three legs and a two-leg lead", async ({ page }) => {
+test("darts awards a set to the first player to three legs, and ends at the agreed sets", async ({ page }) => {
   await page.goto("/");
   const result = await page.evaluate(async () => {
     const scoring = await import("/src/switch/scoring.ts");
     let session = scoring.createSession("darts", ["A", "B"], { setsToWin: 3 });
     const [a, b] = session.players.map((player: { id: string }) => player.id);
-    for (const winner of [a, a, b, b, a, b, a, a]) {
+    for (const winner of [a, a, b, b, a]) {
       session = scoring.applyScoreCommand(session, { type: "win-leg", playerId: winner });
     }
-    return session;
+    const afterFirstSet = JSON.parse(JSON.stringify(session.darts));
+    let won = scoring.createSession("darts", ["A", "B"], { setsToWin: 3 });
+    for (let leg = 0; leg < 9; leg += 1) won = scoring.applyScoreCommand(won, { type: "win-leg", playerId: a });
+    let blocked = "";
+    try { scoring.applyScoreCommand(won, { type: "win-leg", playerId: a }); } catch (error) { blocked = (error as { code: string }).code; }
+    return { ...session, afterFirstSet, winner: scoring.scoreWinnerId(won), blocked };
   });
 
-  expect(result.darts.sets[result.players[0].id]).toBe(1);
-  expect(result.darts.legs[result.players[0].id]).toBe(0);
-  expect(result.darts.legs[result.players[1].id]).toBe(0);
+  expect(result.afterFirstSet.sets[result.players[0].id]).toBe(1);
+  expect(result.afterFirstSet.legs[result.players[0].id]).toBe(0);
+  expect(result.afterFirstSet.legs[result.players[1].id]).toBe(0);
+  expect(result.winner).toBe(result.players[0].id);
+  expect(result.blocked).toBe("finished");
 });

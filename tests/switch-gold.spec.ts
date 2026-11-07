@@ -43,15 +43,16 @@ test("quick night: names, tap round winners, finish, and it lands in history", a
 
 test("dispute chips filter the rule answers", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Rules help", exact: true }).click();
+  await page.getByRole("button", { name: "Questions", exact: true }).click();
   await page.getByRole("button", { name: "last card", exact: true }).click();
   await expect(page.getByText(/matching answer/)).toBeVisible();
 });
 
 test("the welcome card appears once and remembers the choice", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("Are you new to Switch?")).toBeVisible();
-  await page.getByRole("button", { name: "I know the rules" }).click();
+  await expect(page.getByText("New here? Start with the five moves.")).toBeVisible();
+  await page.getByRole("button", { name: /Learn the rules/ }).click();
+  await page.getByRole("button", { name: "Home" }).click();
   await page.reload();
-  await expect(page.getByText("Are you new to Switch?")).toHaveCount(0);
+  await expect(page.getByText("New here? Start with the five moves.")).toHaveCount(0);
 });

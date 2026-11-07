@@ -79,3 +79,12 @@ When any text-entry control loses focus, dismiss the simulated keyboard. If the 
 - Fixed phone chrome should not animate with pushed screens. Screen content can animate; the status bar, camera cutout, and preview chrome should stay put.
 - Keep the keyboard below the home indicator/safe area layer in z-index, and above ordinary app UI while visible.
 - Keep the home indicator as the topmost safe-area layer in the z-index above everything else in the prototype.
+
+## Rules rulings (owner decisions)
+
+- The game rules are sacrosanct. Nine rulings on contentious points are recorded in `docs/RULES-RULINGS.md` (win on 8/2/K/A, first card of a set matches suit or number, picking up ends your turn, several 8s or 7s count once, mixed kings allowed, deck flips oldest-first). Never change a rule, the engine or the in-app rule text without the owner's say-so, and keep all three in step.
+- `scripts/table-sim.mjs` plays 2 to 6 player games from the written rules; `tests/switch-rules-sim.spec.ts` proves the engine agrees with it.
+- Tutorial layout: the table and the player's hand come first. Coaching is one quiet strip that opens a sheet; never stack tips above the cards.
+
+## Scoring rulings
+Darts: first to three legs wins a set. Knock Out: round ends at the first winner, most cards held drops out. Leagues: place points (N..1), then round wins, then a deciding game. Scorekeeper ends matches at target or sets. See `docs/RULES-RULINGS.md` items 10-13. Home screen is a one-screen hub of action tiles; the five-move rules guide opens from "Learn the rules".

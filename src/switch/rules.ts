@@ -119,7 +119,8 @@ export function drawCards(state: GameState, count: number, recipient: Turn): Gam
     if (drawPile.length === 0) {
       if (discardPile.length <= 1) break;
       const topDiscard = discardPile.at(-1) as CardId;
-      drawPile.push(...discardPile.slice(0, -1));
+      // Turning the played pile face down flips it, so the oldest card ends up on top. No shuffling.
+      drawPile.push(...discardPile.slice(0, -1).reverse());
       discardPile.splice(0, discardPile.length, topDiscard);
     }
 

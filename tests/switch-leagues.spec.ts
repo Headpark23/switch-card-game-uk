@@ -9,7 +9,7 @@ test("league standings are stable and cross-league playoffs use four leagues", a
       name: `League ${leagueIndex}`,
       results: [0, 1, 2, 3].map((playerIndex) => ({
         player: { id: `l${leagueIndex}p${playerIndex}`, name: `Player ${leagueIndex}-${playerIndex}` },
-        points: playerIndex < 2 ? 10 : 4,
+        points: [10, 9, 4, 3][playerIndex],
       })),
     });
     const configured = [1, 2, 3, 4].map(makeLeague);
@@ -28,4 +28,28 @@ test("league standings are stable and cross-league playoffs use four leagues", a
   expect(result.playoffs.championship.fixtures.every((fixture: { home: { leagueId: string }; away: { leagueId: string } }) => fixture.home.leagueId !== fixture.away.leagueId)).toBe(true);
   expect(result.oneLeague.status).toBe("not-ready");
   expect(result.shortLeague.status).toBe("not-ready");
+});
+
+test("level on points, then round wins, then a deciding game", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const leagues = await import("/src/switch/leagues.ts");
+    const players = [0, 1, 2, 3].map((index) => ({ id: `p${index}`, name: `P${index}` }));
+    const make = (points: number[], wins: number[], playoffOrder: string[] = []) => ({
+      id: "l1", name: "L1", playoffOrder,
+      results: players.map((player, index) => ({ player, points: points[index], wins: wins[index] })),
+    });
+    const second = { ...make([8, 8, 5, 3], [2, 2, 1, 0]), id: "l2", name: "L2" };
+    const byWins = leagues.rankLeague(make([8, 8, 5, 3], [1, 3, 1, 0]).results).map((entry: { player: { id: string } }) => entry.player.id);
+    const level = make([8, 8, 5, 3], [2, 2, 1, 0]);
+    const needed = leagues.playoffsNeeded(level).map(([a, b]: { id: string }[]) => `${a.id}v${b.id}`);
+    const blocked = leagues.createCrossLeaguePlayoffs([level, second], () => 0);
+    const settled = make([8, 8, 5, 3], [2, 2, 1, 0], ["p1", "p0"]);
+    const afterPlayoff = leagues.rankLeague(settled.results, settled.playoffOrder).map((entry: { player: { id: string } }) => entry.player.id);
+    return { byWins, needed, blocked: blocked.status, afterPlayoff };
+  });
+  expect(result.byWins.slice(0, 2)).toEqual(["p1", "p0"]);
+  expect(result.needed).toEqual(["p0vp1"]);
+  expect(result.blocked).toBe("not-ready");
+  expect(result.afterPlayoff.slice(0, 2)).toEqual(["p1", "p0"]);
 });

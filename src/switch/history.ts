@@ -169,7 +169,7 @@ export function completionFromLeagues(
   playoffs: { readonly status: "not-ready"; readonly reason: string } | ReadyPlayoffs | null,
 ): NightCompletion | null {
   if (!playoffs || playoffs.status !== "ready" || leagues.length < 2 || leagues.some((league) => league.results.length < 4)) return null;
-  const winnerIds = leagues.map((league) => rankLeague(league.results)[0].player.id);
+  const winnerIds = leagues.map((league) => rankLeague(league.results, league.playoffOrder)[0].player.id);
   const players = leagues.flatMap((league) => league.results.map((result) => result.player));
   return {
     format: "league",
@@ -180,7 +180,7 @@ export function completionFromLeagues(
     details: [
       ...leagues.map((league) => ({
         heading: league.name,
-        lines: rankLeague(league.results).map((entry) => `${entry.rank}. ${entry.player.name} — ${entry.points} points`),
+        lines: rankLeague(league.results, league.playoffOrder).map((entry) => `${entry.rank}. ${entry.player.name} — ${entry.points} points`),
       })),
       { heading: "Championship fixtures", lines: playoffLines(playoffs.championship) },
       { heading: "Plate fixtures", lines: playoffLines(playoffs.plate) },

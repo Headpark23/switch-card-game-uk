@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function openClubhouse(page: Page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "Modes", exact: true }).click();
+  await page.getByRole("button", { name: "Ways to play", exact: true }).click();
   await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
 }
 
@@ -83,7 +83,7 @@ test("a backup file can be downloaded and restored, and a wrong file changes not
     localStorage.setItem("switchScoreKeeper", JSON.stringify({ schemaVersion: 1, selectedFormat: "domino", players: [], scores: {}, target: 100, extensions: { switchProfiles: profiles } }));
   });
   await page.reload();
-  await page.getByRole("button", { name: "Modes", exact: true }).click();
+  await page.getByRole("button", { name: "Ways to play", exact: true }).click();
   await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
   await page.getByRole("button", { name: "History", exact: true }).click();
 

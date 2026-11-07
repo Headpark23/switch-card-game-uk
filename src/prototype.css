@@ -188,3 +188,42 @@
 .dash-tiles b{font-family:'DM Serif Display',Georgia,serif;font-weight:400;font-size:27px;line-height:1.05;color:var(--green);overflow-wrap:anywhere}
 .dash-tiles span{font-size:11px;color:var(--muted);line-height:1.3}
 .dashboard h3{margin:0 0 10px}.dash-note{font-size:12px;color:var(--muted);margin:26px 0 0!important}
+.account-home{margin:14px 18px 6px}
+
+/* Calmer tutorial: one quiet coach strip, a one-line hand fan, more room for the table. */
+.coach-strip{display:flex;align-items:center;gap:9px;width:100%;margin:0;padding:6px 10px;border:0;border-left:3px solid var(--gold);border-radius:8px;background:#f7f1de;text-align:left;color:var(--ink);min-height:44px}
+.coach-strip .pick-cards{display:flex;flex:0 0 auto}.coach-strip .pick-cards .playing-card{width:26px;margin-left:-10px;border-radius:4px}.coach-strip .pick-cards .playing-card:first-child{margin-left:0}
+.coach-strip .strip-text{display:grid;gap:1px;min-width:0;flex:1}
+.coach-strip b{font-size:12.5px;font-weight:600;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical}
+.coach-strip small{font-size:11px;line-height:1.3;color:var(--muted);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.coach-strip.quiet{background:transparent;border-left-color:#d9cfb7}
+.coach-strip .strip-go{font-size:11px;font-weight:600;color:#7a5518;white-space:nowrap}
+.game-tutorial .game-notice{background:none;border:0;padding:2px 4px;font-size:12px;color:var(--muted);text-align:center;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.game-tutorial .game-actions{justify-content:space-between}
+.game-tutorial .game-actions>span{margin-left:0}
+.game-tutorial .hint-button{min-height:32px;padding:2px 10px;font-size:12px;border-color:#d9cfb7}
+.game-tutorial .player-hand,.game-tutorial .player-hand.dense{container-type:inline-size;display:flex;flex-wrap:nowrap;justify-content:center;gap:0;padding:12px 8px 8px;overflow:visible}
+.game-tutorial .player-hand button{position:relative;flex:0 0 auto;padding:0;border:0;background:none;border-radius:8px}
+.game-tutorial .player-hand button+button{margin-left:min(6px,calc((100cqw - 16px - 62px*var(--n)) / (var(--n) - 1)))}
+.game-tutorial .player-hand .playing-card,.game-tutorial .player-hand.dense .playing-card{width:62px}
+.game-tutorial .player-hand button.selected{transform:translateY(-8px)}
+.game-tutorial .game-table{padding:10px 12px}.game-tutorial .game-table .playing-card{width:62px}.game-tutorial .discard-pile .playing-card{width:68px}
+.game-tutorial .player-hand button.coach-pick{z-index:60!important;transform:translateY(-6px)}
+.game-tutorial .player-hand button.coach-pick::after{top:-9px}
+
+.mode-list details>p.mode-how{background:#f1ecdf;border-radius:10px;padding:12px 14px;margin:0 0 20px 42px;color:var(--green);font-size:14px;line-height:1.55}
+.mode-list details>p.mode-how strong{font-weight:600}
+
+/* One-screen home: nudges instead of a long scroll */
+.home-hub{padding:50px 20px 12px;background:url('/images/hero.webp') center top/cover no-repeat;min-height:0}
+.home-hub .wordmark{width:132px}.home-hub .wordmark>svg{width:16px;height:16px}.home-hub .wordmark>div{font-size:35px}.home-hub .wordmark p{font-size:6px;letter-spacing:1.5px}
+.home-hub h1{font-size:34px;line-height:1;margin:14px 0 6px}
+.home-sub{font-size:13px;color:#38453e;margin:0 0 14px!important}
+.home-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.home-tile{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;border:1px solid #ddd2bd;border-radius:16px;background:#fffdf7ee;padding:14px 13px;min-height:112px;box-shadow:0 8px 20px #173a2b10;color:var(--green)}
+.home-tile svg{color:var(--gold)}.home-tile strong{font-family:'DM Serif Display',Georgia,serif;font-weight:400;font-size:18px;line-height:1.1;letter-spacing:-.3px}.home-tile small{font-size:11px;color:var(--muted)}
+.home-tile.learn{background:var(--green);border-color:var(--green);color:#fff}.home-tile.learn small{color:#e8dfc4}.home-tile.learn svg{color:#d7b776}
+.home-tile.start-here{outline:2px solid var(--gold);outline-offset:2px}
+.home-hub .night-shortcuts{display:flex;justify-content:space-between;margin:12px 4px 0}.home-hub .night-shortcuts .text-link{font-size:13px}
+.rules-back{margin:56px 20px 0;font-size:13px}
+@media (max-height:700px){.home-hub{padding-top:34px}.home-hub .wordmark p{display:none}.home-hub h1{font-size:28px;margin-top:8px}.home-sub{margin-bottom:8px!important}.home-tile{min-height:84px;padding:10px 11px}.home-tile strong{font-size:16px}.home-hub .night-shortcuts{margin-top:8px}}

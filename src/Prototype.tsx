@@ -5,6 +5,7 @@ import { modes, powers, ruleChapters, rules } from './content';
 import { AdSlot, Fan } from './ui';
 import { enableOffline } from './offline';
 import InstallButton, { InstallBanner } from './InstallButton';
+import { AccountPanel } from './AccountPanel';
 import '@fontsource/dm-serif-display/400.css';
 import '@fontsource/dm-sans/400.css';
 import '@fontsource/dm-sans/500.css';
@@ -53,6 +54,7 @@ export default function Prototype() {
   const [ruleStep, setRuleStep] = useState(0);
   const [scrollKey, setScrollKey] = useState('');
   const [scoreView, setScoreView] = useState<'score' | 'stats' | 'leagues' | 'history'>('score');
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [welcome, setWelcome] = useState(() => { try { return window.localStorage.getItem('switchWelcome') !== 'done'; } catch { return false; } });
   const keyboard = useKeyboard();
   const { bottomInset } = useKeyboardInsets();
@@ -75,6 +77,7 @@ export default function Prototype() {
   const onGameStatus = useCallback((key: string) => setScrollKey(key), []);
 
   function go(next: Page) {
+    if (next === 'Learn') setRulesOpen(false);
     keyboard.hide();
     setPage(next);
     setQuery('');
@@ -91,17 +94,23 @@ export default function Prototype() {
     <MobileScroll key={page} className="switch-scroll">
       <main className={'switch-content ' + (page === 'Learn' ? 'home' : 'interior') + (page === 'Tutorial' ? ' tutorial-page' : '')}>
         {page === 'Learn' ? <>
-          <section className="rules-banner">
+          {!rulesOpen && <>
+          <section className="home-hub">
             <div className="wordmark"><Club weight="fill" /><div>SWITCH</div><p>RULES FOR A BETTER<br />GAME NIGHT</p></div>
-            <p className="eyebrow">THE COMPLETE GUIDE</p>
             <h1>Know the rules.<br />Own the table.</h1>
-            <p>Five clear steps, then a guided game to put them into practice.</p>
-            <button className="primary" onClick={() => openNight('score')}>Start a game night <ArrowRight size={19} /></button>
-            <div className="night-shortcuts"><button className="text-link" onClick={() => openNight('stats')}>Stats</button><button className="text-link" onClick={() => openNight('leagues')}>Leagues</button><button className="text-link" onClick={() => openNight('history')}>History</button></div>
-            <button className="secondary practise" onClick={startGuidedGame}>Play against the computer</button>
-            <div className="night-shortcuts"><button className="text-link" onClick={() => go('Quick')}>Quick night</button><button className="text-link" onClick={() => go('Puzzles')}>Puzzles</button><button className="text-link" onClick={() => go('Questions')}>Rules help</button></div>
+            <p className="home-sub">{welcome ? 'New here? Start with the five moves.' : 'Where to next?'}</p>
+            <div className="home-tiles">
+              <button className={'home-tile learn' + (welcome ? ' start-here' : '')} onClick={() => { closeWelcome(); setRuleStep(0); setRulesOpen(true); }}><BookOpen size={26} weight="fill" /><strong>Learn the rules</strong><small>Five clear moves{welcome ? ' · start here' : ''}</small></button>
+              <button className="home-tile" onClick={startGuidedGame}><Cards size={26} weight="fill" /><strong>Play against the computer</strong><small>Guided, with hints</small></button>
+              <button className="home-tile" onClick={() => openNight('score')}><UsersThree size={26} weight="fill" /><strong>Start a game night</strong><small>Scores, leagues, cups</small></button>
+              <button className="home-tile" aria-label="Quick night" onClick={() => go('Quick')}><Lightbulb size={26} weight="fill" /><strong>Quick night</strong><small>Real cards, 60 seconds</small></button>
+            </div>
+            <div className="night-shortcuts"><button className="text-link" onClick={() => openNight('stats')}>Stats</button><button className="text-link" onClick={() => openNight('leagues')}>Leagues</button><button className="text-link" onClick={() => openNight('history')}>History</button><button className="text-link" onClick={() => go('Puzzles')}>Puzzles</button></div>
           </section>
-          {welcome && <section className="welcome-card" aria-label="Welcome"><p className="eyebrow">FIRST TIME HERE?</p><h2>Are you new to Switch?</h2><div><button className="primary" onClick={() => { closeWelcome(); setRuleStep(0); document.getElementById('rule-story-title')?.scrollIntoView(); }}>Teach me the rules</button><button className="secondary" onClick={closeWelcome}>I know the rules</button></div></section>}
+          <AccountPanel home />
+          </>}
+          {rulesOpen && <>
+          <button className="text-link rules-back" onClick={() => setRulesOpen(false)}><ArrowRight size={16} style={{ transform: 'rotate(180deg)' }} /> Home</button>
           <section className="rule-narrative" aria-labelledby="rule-story-title">
             <p className="eyebrow">THE MAIN EVENT</p>
             <h2 id="rule-story-title">Learn Switch<br />in five moves.</h2>
@@ -134,6 +143,7 @@ export default function Prototype() {
           {SHOW_MONETISATION_PREVIEW && <button className="member-strip" onClick={() => setMembership(true)}><Crown size={24} /><span>More time at the table<small>Explore an ad-free experience</small></span><ArrowRight size={20} /></button>}
           <InstallButton />
           <button className="download" onClick={downloadRules}><DownloadSimple size={20} />Download all rules</button>
+          </>}
         </> : <>
           <header className="small-brand">
             <button onClick={() => go('Learn')} aria-label="Switch home"><Club weight="fill" size={20} /> SWITCH</button>
@@ -159,9 +169,9 @@ export default function Prototype() {
             {ads}
           </>}
           {page === 'Modes' && <>
-            <p className="eyebrow">YOUR PEOPLE. YOUR GAME.</p><h1>Make a night<br />of it.</h1><p className="intro">Six ways to play. One great card game.</p>
+            <p className="eyebrow">YOUR PEOPLE. YOUR GAME.</p><h1>Make a night<br />of it.</h1><p className="intro">Six ways to play. Tap any one to see what it means and how a night runs.</p>
             <button className="primary mode-score-cta" onClick={() => openNight('score')}>Open the Switch scorekeeper <ArrowRight size={18} /></button>
-            <div className="mode-list">{modes.map((m, i) => <details key={m.name}><summary><span className="mode-number">0{i + 1}</span><span><strong>{m.name}</strong><small>{m.label}</small></span></summary><p>{m.text}</p></details>)}</div>
+            <div className="mode-list">{modes.map((m, i) => <details key={m.name}><summary><span className="mode-number">0{i + 1}</span><span><strong>{m.name}</strong><small>{m.label}</small></span></summary><p>{m.text}</p>{m.how && <p className="mode-how"><strong>In plain English: </strong>{m.how}</p>}</details>)}</div>
             {ads}
             <button className="download" onClick={downloadRules}><DownloadSimple size={20} />Download game-night rules</button>
           </>}
@@ -175,7 +185,7 @@ export default function Prototype() {
       </main>
     </MobileScroll>
     <nav className="bottom-tabs" aria-label="Main navigation" style={{ bottom: bottomInset }}>
-      {([{ name: 'Learn', label: 'Rules', Icon: BookOpen }, { name: 'Cards', label: 'Cards', Icon: Cards }, { name: 'Modes', label: 'Modes', Icon: UsersThree }, { name: 'Questions', label: 'Questions', Icon: ChatCircle }] as const).map(({ name, label, Icon }) => {
+      {([{ name: 'Learn', label: 'Rules', Icon: BookOpen }, { name: 'Cards', label: 'Cards', Icon: Cards }, { name: 'Modes', label: 'Ways to play', Icon: UsersThree }, { name: 'Questions', label: 'Questions', Icon: ChatCircle }] as const).map(({ name, label, Icon }) => {
         const active = page === name || (name === 'Learn' && page === 'Tutorial') || (name === 'Modes' && (page === 'Score' || page === 'Quick')) || (name === 'Learn' && page === 'Puzzles');
         return <button key={name} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} onClick={() => go(name)}><Icon weight={active ? 'fill' : 'regular'} size={26} /><span>{label}</span></button>;
       })}

@@ -10,7 +10,7 @@ const MESSAGES: Record<SyncOutcome, string> = {
 };
 
 /** Google one-tap sign-in plus cloud backup. Renders nothing until a Google client ID is configured. */
-export function AccountPanel() {
+export function AccountPanel({ home = false }: { home?: boolean }) {
   const [account, setAccount] = useState<Account | null>(loadAccount);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
@@ -47,8 +47,8 @@ export function AccountPanel() {
 
   if (!SIGN_IN_AVAILABLE) return null;
 
-  return <div className="account-panel">
-    <h3><CloudCheck size={18} weight="fill" /> Cloud backup</h3>
+  return <div className={home ? 'account-panel account-home' : 'account-panel'}>
+    <h3><CloudCheck size={18} weight="fill" /> {home ? (account ? `Welcome back, ${account.name.split(' ')[0]}` : 'Become a Switch member') : 'Cloud backup'}</h3>
     {account
       ? <>
         <p className="account-who">{account.picture && <img src={account.picture} alt="" referrerPolicy="no-referrer" />}<span><strong>{account.name}</strong><small>{account.email}</small></span></p>
@@ -56,7 +56,7 @@ export function AccountPanel() {
         <button className="text-link" onClick={() => { void signOut(); setAccount(null); setMessage('Signed out. Your club stays on this phone.'); }}>Sign out</button>
       </>
       : <>
-        <p>Sign in with Google to back up your club and open it on any phone. Switch still works without it.</p>
+        <p>{home ? 'One tap with Google. Your club, stats and leagues are saved safely and follow you to any phone.' : 'Sign in with Google to back up your club and open it on any phone. Switch still works without it.'}</p>
         <div ref={buttonRef} className="google-button" />
       </>}
     {message && <p role="status" className="share-note">{message}</p>}

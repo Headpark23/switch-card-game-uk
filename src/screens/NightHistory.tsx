@@ -73,7 +73,7 @@ export default function NightHistory({ extensions, onChange }: Props) {
     <AccountPanel />
     <div className="backup-panel">
       <h3>Back up your club</h3>
-      <p>Everything stays on this device. A backup file keeps your players, nights and leagues safe if you change phone or clear your browser.</p>
+      <p>Your club is saved on this device. Signing in with Google also backs it up to the cloud, and a backup file keeps your players, nights and leagues safe if you change phone or clear your browser.</p>
       <button className="secondary" onClick={downloadBackup}><DownloadSimple size={16} />Back up everything</button>
       <label className="restore"><span>Restore from a backup file</span><input type="file" accept="application/json,.json" aria-label="Restore backup file" onChange={(event) => { void restoreBackup(event.target.files?.[0]); event.target.value = ''; }} /></label>
       {backupMessage && <p role="status">{backupMessage}</p>}

@@ -27,7 +27,7 @@ export type ScoreCommand =
   | { readonly type: "win-leg"; readonly playerId: string };
 
 export class ScoreValidationError extends Error {
-  constructor(public readonly code: "required" | "non-negative" | "whole-number" | "safe-integer" | "unknown-player" | "wrong-format", message: string) {
+  constructor(public readonly code: "required" | "non-negative" | "whole-number" | "safe-integer" | "unknown-player" | "wrong-format" | "finished", message: string) {
     super(message);
     this.name = "ScoreValidationError";
   }
@@ -74,8 +74,22 @@ function requirePlayer(session: ScoreSession, playerId: string): void {
   if (!session.players.some((player) => player.id === playerId)) throw new ScoreValidationError("unknown-player", "Choose a current player.");
 }
 
+/** The match winner once someone reaches the target (domino, one v one) or wins enough sets (darts). */
+export function scoreWinnerId(session: ScoreSession): string | null {
+  if (session.format === "darts" && session.darts) {
+    return session.players.find((player) => (session.darts as DartsState).sets[player.id] >= (session.darts as DartsState).setsToWin)?.id ?? null;
+  }
+  if (session.format === "domino" || session.format === "head-to-head") {
+    const reached = session.players.filter((player) => session.scores[player.id] >= session.target);
+    if (reached.length === 0) return null;
+    return [...reached].sort((left, right) => session.scores[right.id] - session.scores[left.id])[0].id;
+  }
+  return null;
+}
+
 export function applyScoreCommand(session: ScoreSession, command: ScoreCommand): ScoreSession {
   requirePlayer(session, command.playerId);
+  if (scoreWinnerId(session)) throw new ScoreValidationError("finished", "The match is over. Undo the last score to carry on.");
   const history = remember(session);
   if (command.type === "add-score") {
     if (session.format !== "domino" && session.format !== "head-to-head") throw new ScoreValidationError("wrong-format", "This format does not use round scores.");
@@ -84,9 +98,9 @@ export function applyScoreCommand(session: ScoreSession, command: ScoreCommand):
   }
   if (session.format !== "darts" || !session.darts) throw new ScoreValidationError("wrong-format", "Only darts uses legs.");
   const legs = { ...session.darts.legs, [command.playerId]: session.darts.legs[command.playerId] + 1 };
-  const opponent = session.players.find((player) => player.id !== command.playerId) as Player;
   const sets = { ...session.darts.sets };
-  if (legs[command.playerId] >= 3 && legs[command.playerId] - legs[opponent.id] >= 2) {
+  // Ruling: first to three legs takes the set.
+  if (legs[command.playerId] >= 3) {
     sets[command.playerId] += 1;
     for (const player of session.players) legs[player.id] = 0;
   }

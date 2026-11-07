@@ -80,12 +80,14 @@ test("an unplayable tap says why, and keeps the rule wording", async ({ page }) 
 test("the guided game shows what happened and the options on your turn", async ({ page }) => {
   await page.goto("/?testDeck=1");
   await page.getByRole("button", { name: "Play against the computer" }).click();
-  await expect(page.getByRole("region", { name: "Coach" })).toContainText("Coach's pick");
-  await expect(page.getByRole("button", { name: /Why & tactics/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Why & tactics: Play/ })).toBeVisible();
 
   await page.getByRole("button", { name: "Play 9H, legal move" }).click();
   await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible({ timeout: 4_000 });
-  await expect(page.getByRole("region", { name: "Coach" })).toContainText("What that means");
+  await page.getByRole("button", { name: /Why & tactics/ }).click();
+  await expect(page.getByRole("dialog")).toContainText("What that means");
+  await expect(page.getByRole("dialog")).toContainText("Coach's pick");
+  await page.getByRole("button", { name: "Got it" }).click();
 });
 
 test("every move has a lesson card with what was played and what you could play", async ({ page }) => {

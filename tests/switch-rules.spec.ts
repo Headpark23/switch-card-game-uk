@@ -135,7 +135,8 @@ test("draw pile turnover preserves the top discard and safely exhausts", async (
     };
   });
 
-  expect(result.playerHand).toEqual(["9H", "AS", "3D", "2C"]);
+  // Ruling 9: turning the played pile face down means the oldest card is drawn first.
+  expect(result.playerHand).toEqual(["9H", "AS", "2C", "3D"]);
   expect(result.drawPile).toEqual([]);
   expect(result.discardPile).toEqual(["4H"]);
   expect(result.uniqueCount).toBe(result.zoneCount);
