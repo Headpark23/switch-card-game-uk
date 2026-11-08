@@ -73,7 +73,7 @@ test("Knockout and Cup progress resume after refresh", async ({ page }) => {
   await expect(page.getByText("2 still playing", { exact: true })).toBeVisible();
 
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Reset session" }).click();
+  await page.getByRole("button", { name: "Change game type" }).click();
   await page.getByRole("button", { name: "Switch Cup" }).click();
   await fillNames(page);
   await page.getByRole("button", { name: "Start Switch Cup" }).click();

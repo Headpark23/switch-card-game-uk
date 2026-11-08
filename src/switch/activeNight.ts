@@ -21,6 +21,8 @@ export type ActiveNight =
     readonly rounds: Readonly<Record<string, number>>;
     readonly picks: Readonly<Record<string, readonly string[]>>;
     readonly playoffOrder: Readonly<Record<string, readonly string[]>>;
+    /** Knockout progress for the championship and plate play-offs. */
+    readonly playoffKnockouts?: Readonly<Record<string, KnockoutState>>;
   };
 
 function record(value: unknown): Record<string, unknown> | null {

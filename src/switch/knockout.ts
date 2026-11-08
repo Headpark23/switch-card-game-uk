@@ -24,3 +24,9 @@ export function undoKnockout(state: KnockoutState): KnockoutState {
   if (state.eliminatedIds.length === 0) return state;
   return { ...state, eliminatedIds: state.eliminatedIds.slice(0, -1), championId: null };
 }
+
+/** League play-off groups (the championship and the plate) are knockouts too: two to twelve players, one drops out each game. */
+export function createPlayoffKnockout(players: readonly Player[]): KnockoutState {
+  if (players.length < 2 || players.length > 12) throw new Error("A play-off knockout needs two to twelve players.");
+  return { players: [...players], eliminatedIds: [], championId: null };
+}

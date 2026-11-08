@@ -19,7 +19,7 @@ test("score setup creates and reuses stable local profiles", async ({ page }) =>
   expect(saved.players[0].id).toBe(alexId);
 
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Reset session" }).click();
+  await page.getByRole("button", { name: "Change game type" }).click();
   await expect(page.getByRole("button", { name: "Use saved player Alex" })).toBeVisible();
   await names.nth(0).fill(" alex ");
   await page.getByRole("button", { name: "Start Domino" }).click();

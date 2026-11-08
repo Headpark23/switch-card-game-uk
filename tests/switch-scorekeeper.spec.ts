@@ -59,7 +59,7 @@ test("two complete leagues create championship and plate playoffs", async ({ pag
   await page.getByRole("button", { name: "Tournament Groups" }).click();
   await fillVisibleNames(page);
   await page.getByRole("button", { name: "Start Tournament Groups" }).click();
-  await expect(page.getByRole("heading", { name: "Cross-league playoffs" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Knockout playoffs" })).toHaveCount(0);
   // Four rounds per league. Players finish in the same order each time, so nothing is level.
   const places = ["1st", "2nd", "3rd"];
   for (let round = 0; round < 4; round += 1) {
@@ -67,7 +67,7 @@ test("two complete leagues create championship and plate playoffs", async ({ pag
       for (let place = 0; place < 3; place += 1) await page.getByRole("button", { name: `Player ${first + place} finished ${places[place]}` }).click();
     }
   }
-  await expect(page.getByRole("heading", { name: "Cross-league playoffs" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Knockout playoffs" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Championship" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Plate" })).toBeVisible();
 });
@@ -193,10 +193,10 @@ test("a league finished level on points and wins asks for a deciding game", asyn
     for (let place = 0; place < 3; place += 1) await page.getByRole("button", { name: `Player ${4 + order[place]} finished ${places[place]}` }).click();
   }
   await expect(page.getByText("Level on points and round wins: play a deciding game.").first()).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Cross-league playoffs" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Knockout playoffs" })).toHaveCount(0);
   await page.getByRole("button", { name: "Player 1 won" }).first().click();
   await page.getByRole("button", { name: "Player 5 won" }).first().click();
-  await expect(page.getByRole("heading", { name: "Cross-league playoffs" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Knockout playoffs" })).toBeVisible();
 });
 
 test("Knock Out drops the round's last player each round until one champion remains", async ({ page }) => {
@@ -288,16 +288,19 @@ test("a 4, 4 and 3 player league night plays through to playoffs with a plate by
       for (let place = 0; place < size - 1; place += 1) await page.getByRole("button", { name: `Player ${first + place} finished ${places[place]}` }).click();
     }
   }
-  await expect(page.getByRole("heading", { name: "Cross-league playoffs" })).toBeVisible();
-  await expect(page.getByText("has a bye")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Knockout playoffs" })).toBeVisible();
+  await expect(page.getByText(/Game 1 of 4/)).toBeVisible();
 });
 
 test("the Cup explains the random draw and gives an odd table a bye", async ({ page }) => {
   await openScorekeeper(page);
   await page.getByRole("button", { name: "Switch Cup" }).click();
-  await expect(page.getByText(/The draw is at random/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Draw the 1v1s at random" })).toBeVisible();
   await page.getByRole("button", { name: "More players" }).click();
   await fillVisibleNames(page);
+  await page.getByRole("button", { name: "Draw the 1v1s at random" }).click();
+  await expect(page.getByText("Round 1 draw")).toBeVisible();
+  await expect(page.getByText("has a bye")).toBeVisible();
   await page.getByRole("button", { name: "Start Switch Cup" }).click();
   await expect(page.getByText(/has the bye this round/)).toBeVisible();
 });
