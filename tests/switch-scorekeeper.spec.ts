@@ -318,3 +318,92 @@ test("One v One can also be played as best of an odd number of games", async ({ 
   for (let game = 0; game < 5; game += 1) await page.getByRole("button", { name: "Win game" }).first().click();
   await expect(page.getByText("Player 1 wins the match!")).toBeVisible();
 });
+
+async function reopenScorekeeper(page: Page) {
+  await page.reload();
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await expect(page.getByRole("heading", { name: "Keep every score straight." })).toBeVisible();
+}
+
+test("a saved night stays saved after a reload, and the next match starts at nil", async ({ page }) => {
+  await openScorekeeper(page);
+  await page.getByRole("button", { name: "One v One" }).click();
+  await fillVisibleNames(page);
+  await page.getByLabel("Games to win").fill("2");
+  await page.getByRole("button", { name: "Start One v One" }).click();
+  for (let game = 0; game < 2; game += 1) await page.getByRole("button", { name: "Win game" }).first().click();
+  await page.getByRole("button", { name: "Save completed night" }).click();
+
+  await reopenScorekeeper(page);
+  // The finished match must not come back to be saved a second time.
+  await expect(page.getByRole("button", { name: "Save completed night" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Start Domino" }).or(page.getByRole("button", { name: "Start One v One" }))).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("switchScoreKeeper") ?? "{}").extensions.switchNightHistory)).toHaveLength(1);
+
+  await page.getByRole("button", { name: "One v One", exact: true }).click();
+  await page.getByLabel("Games to win").fill("3");
+  await page.getByRole("button", { name: "Start One v One" }).click();
+  await expect(page.getByText("0 games", { exact: true })).toHaveCount(2);
+});
+
+test("changing game type stays changed after a reload", async ({ page }) => {
+  await openScorekeeper(page);
+  await fillVisibleNames(page);
+  await page.getByRole("button", { name: "Start Domino" }).click();
+  await page.getByLabel("Score for Player 1").fill("30");
+  await page.getByRole("button", { name: "Add" }).first().click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "↺ Change game type" }).click();
+  await expect(page.getByRole("button", { name: "Start Domino" })).toBeVisible();
+
+  await reopenScorekeeper(page);
+  await expect(page.getByRole("button", { name: "↺ Change game type" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Start Domino" }).click();
+  await expect(page.getByText("0 points", { exact: true })).toHaveCount(2);
+});
+
+test("four leagues of six reach the playoffs without crashing", async ({ page }) => {
+  await openScorekeeper(page);
+  await page.getByRole("button", { name: "Tournament Groups" }).click();
+  for (let index = 0; index < 2; index += 1) await page.getByRole("button", { name: "More leagues" }).click();
+  while (await page.getByRole("button", { name: "More players" }).isEnabled()) await page.getByRole("button", { name: "More players" }).click();
+  await expect(page.getByPlaceholder("Enter name")).toHaveCount(24);
+  await fillVisibleNames(page);
+  await page.getByRole("button", { name: "Start Tournament Groups" }).click();
+  // Each round, tap players in table order; the last place fills itself in.
+  for (let guard = 0; guard < 200; guard += 1) {
+    const next = page.locator(".league-table button:enabled", { hasText: /^Finished/ }).first();
+    if (!await next.count()) break;
+    await next.click();
+  }
+  await expect(page.getByRole("heading", { name: "Knockout playoffs" })).toBeVisible();
+  await expect(page.getByText(/Game 1 of 7 · 8 still playing/)).toBeVisible();
+  await expect(page.getByText(/Game 1 of 15 · 16 still playing/)).toBeVisible();
+});
+
+test("a league night saves only after the playoffs, crediting the champion and plate winner", async ({ page }) => {
+  await openScorekeeper(page);
+  await page.getByRole("button", { name: "Tournament Groups" }).click();
+  await fillVisibleNames(page);
+  await page.getByRole("button", { name: "Start Tournament Groups" }).click();
+  const places = ["1st", "2nd", "3rd"];
+  for (let round = 0; round < 4; round += 1) {
+    for (const first of [1, 5]) for (let place = 0; place < 3; place += 1) await page.getByRole("button", { name: `Player ${first + place} finished ${places[place]}` }).click();
+  }
+  await expect(page.getByRole("heading", { name: "Knockout playoffs" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save completed night" })).toHaveCount(0);
+  await expect(page.getByText(/then the championship and plate knockouts/)).toBeVisible();
+
+  const championship = page.locator(".playoff-group").nth(0);
+  const plate = page.locator(".playoff-group").nth(1);
+  for (let game = 0; game < 3; game += 1) await championship.getByRole("button", { name: "LOST" }).last().click();
+  await expect(page.getByRole("button", { name: "Save completed night" })).toHaveCount(0);
+  for (let game = 0; game < 3; game += 1) await plate.getByRole("button", { name: "LOST" }).last().click();
+
+  await expect(page.getByText(/won the championship; .* won the plate/)).toBeVisible();
+  await page.getByRole("button", { name: "Save completed night" }).click();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("switchScoreKeeper") ?? "{}").extensions.switchNightHistory.at(-1));
+  expect(saved.winnerIds).toHaveLength(1);
+  expect(saved.details.map((section: { heading: string }) => section.heading)).toEqual(["League 1", "League 2", "Championship", "Plate"]);
+});

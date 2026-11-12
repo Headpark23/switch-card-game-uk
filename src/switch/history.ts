@@ -160,30 +160,53 @@ export function completionFromCup(state: CupState): NightCompletion | null {
   };
 }
 
-function playoffLines(bracket: PlayoffBracket): string[] {
-  return [...bracket.fixtures.map((fixture) => `${fixture.home.player.name} v ${fixture.away.player.name}`), ...(bracket.bye ? [`${bracket.bye.player.name} has a bye`] : [])];
+/** Knockout progress for the league play-offs, keyed "championship" and "plate". */
+export type LeaguePlayoffKnockouts = Readonly<Record<string, KnockoutState | undefined>>;
+
+/** How a play-off knockout went: who went out in which order, then the winner. */
+function knockoutLines(state: KnockoutState): string[] {
+  const lines = state.eliminatedIds.map((id, index) => `Game ${index + 1}: ${playerName(state.players, id)} out`);
+  if (state.championId) lines.push(`${playerName(state.players, state.championId)} — winner`);
+  return lines;
 }
 
+/**
+ * A league night is complete only when the championship knockout has a winner and the plate is
+ * decided too (or had a single player, who takes it on a bye). The championship winner is the
+ * night's winner; the plate winner is recorded in the outcome and details.
+ */
 export function completionFromLeagues(
   leagues: readonly League[],
   playoffs: { readonly status: "not-ready"; readonly reason: string } | ReadyPlayoffs | null,
+  knockouts: LeaguePlayoffKnockouts = {},
 ): NightCompletion | null {
   if (!playoffs || playoffs.status !== "ready" || leagues.length < 2 || leagues.some((league) => league.results.length < 3)) return null;
-  const winnerIds = leagues.map((league) => rankLeague(league.results, league.playoffOrder)[0].player.id);
+  const championship = knockouts.championship;
+  if (!championship?.championId) return null;
+  const plateEntrants = playoffs.plate.entrants;
+  const plate = knockouts.plate;
+  let plateWinnerId: string | null = null;
+  if (plateEntrants.length === 1) plateWinnerId = plateEntrants[0].player.id;
+  else if (plateEntrants.length > 1) {
+    if (!plate?.championId) return null;
+    plateWinnerId = plate.championId;
+  }
   const players = leagues.flatMap((league) => league.results.map((result) => result.player));
+  const champion = playerName(players, championship.championId);
+  const plateWinner = plateWinnerId ? playerName(players, plateWinnerId) : null;
   return {
     format: "league",
     formatLabel: FORMAT_LABELS.league,
     players: clone(players),
-    winnerIds,
-    outcome: `${winnerIds.map((id) => playerName(players, id)).join(" and ")} topped their leagues`,
+    winnerIds: [championship.championId],
+    outcome: plateWinner ? `${champion} won the championship; ${plateWinner} won the plate` : `${champion} won the championship`,
     details: [
       ...leagues.map((league) => ({
         heading: league.name,
-        lines: rankLeague(league.results, league.playoffOrder).map((entry) => `${entry.rank}. ${entry.player.name} — ${entry.points} points`),
+        lines: rankLeague(league.results, league.playoffOrder).map((entry) => `${entry.rank}. ${entry.player.name} — ${entry.points} ${entry.points === 1 ? "point" : "points"}`),
       })),
-      { heading: "Championship fixtures", lines: playoffLines(playoffs.championship) },
-      { heading: "Plate fixtures", lines: playoffLines(playoffs.plate) },
+      { heading: "Championship", lines: knockoutLines(championship) },
+      ...(plateWinnerId ? [{ heading: "Plate", lines: plate?.championId ? knockoutLines(plate) : [`${plateWinner} — winner (bye)`] }] : []),
     ],
   };
 }

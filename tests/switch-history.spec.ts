@@ -47,7 +47,17 @@ test("all six formats create trustworthy completion snapshots", async ({ page })
       darts: history.completionFromSession(darts),
       knockout: history.completionFromKnockout(knockout),
       cup: history.completionFromCup(cup),
-      league: history.completionFromLeagues(leagues, playoffs),
+      leagueBeforePlayoffs: history.completionFromLeagues(leagues, playoffs),
+      league: (() => {
+        if (playoffs.status !== "ready") return null;
+        // Championship: four players, last place out each game until one is left.
+        let championship = knockoutModule.createPlayoffKnockout(playoffs.championship.entrants.map((entry: { player: { id: string; name: string } }) => entry.player));
+        for (const id of ["p5", "p1", "p4"]) championship = knockoutModule.markLost(championship, id);
+        let plate = knockoutModule.createPlayoffKnockout(playoffs.plate.entrants.map((entry: { player: { id: string; name: string } }) => entry.player));
+        const halfway = history.completionFromLeagues(leagues, playoffs, { championship, plate });
+        for (const id of ["p3", "p7", "p6"]) plate = knockoutModule.markLost(plate, id);
+        return { halfway, done: history.completionFromLeagues(leagues, playoffs, { championship, plate }) };
+      })(),
     };
   });
 
@@ -57,7 +67,13 @@ test("all six formats create trustworthy completion snapshots", async ({ page })
   expect(result.darts?.outcome).toBe("Alex won");
   expect(result.knockout?.details[0].lines).toEqual(["Casey — LOST", "Blair — LOST", "Alex — CHAMPION"]);
   expect(result.cup?.details.some((section: { heading: string }) => section.heading === "Round 1")).toBe(true);
-  expect(result.league?.winnerIds).toEqual(["p0", "p4"]);
+  // A league night is not finished until both play-off knockouts are decided.
+  expect(result.leagueBeforePlayoffs).toBeNull();
+  expect(result.league?.halfway).toBeNull();
+  expect(result.league?.done?.winnerIds).toEqual(["p0"]);
+  expect(result.league?.done?.outcome).toBe("Player 1 won the championship; Player 3 won the plate");
+  expect(result.league?.done?.details.find((section: { heading: string }) => section.heading === "Championship")?.lines)
+    .toEqual(["Game 1: Player 6 out", "Game 2: Player 2 out", "Game 3: Player 5 out", "Player 1 — winner"]);
 });
 
 test("history is defensive, immutable, additive, deletable and portable", async ({ page }) => {

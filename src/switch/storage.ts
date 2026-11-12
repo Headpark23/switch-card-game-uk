@@ -89,9 +89,14 @@ export function loadScorekeeper(raw: string | null): LoadResult {
   }
 }
 
-export function saveScorekeeper(currentRaw: string | null, state: ScorekeeperState): string {
+/**
+ * Saves the scorekeeper. By default extensions already in storage are kept, so unknown legacy
+ * fields survive. Pass `replaceExtensions` when the caller holds the complete set and has removed
+ * keys on purpose (for example clearing the night in progress); otherwise they would come back.
+ */
+export function saveScorekeeper(currentRaw: string | null, state: ScorekeeperState, options: { replaceExtensions?: boolean } = {}): string {
   let extensions = { ...state.extensions };
-  if (currentRaw !== null) {
+  if (currentRaw !== null && !options.replaceExtensions) {
     try {
       extensions = { ...migrateScorekeeper(JSON.parse(currentRaw)).extensions, ...extensions };
     } catch {

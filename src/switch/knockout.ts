@@ -25,8 +25,11 @@ export function undoKnockout(state: KnockoutState): KnockoutState {
   return { ...state, eliminatedIds: state.eliminatedIds.slice(0, -1), championId: null };
 }
 
-/** League play-off groups (the championship and the plate) are knockouts too: two to twelve players, one drops out each game. */
+/** Most players a tournament night can hold: four leagues of six. */
+export const MAX_PLAYOFF_PLAYERS = 24;
+
+/** League play-off groups (the championship and the plate) are knockouts too: one drops out each game. Four leagues of six put sixteen in the plate. */
 export function createPlayoffKnockout(players: readonly Player[]): KnockoutState {
-  if (players.length < 2 || players.length > 12) throw new Error("A play-off knockout needs two to twelve players.");
+  if (players.length < 2 || players.length > MAX_PLAYOFF_PLAYERS) throw new Error(`A play-off knockout needs two to ${MAX_PLAYOFF_PLAYERS} players.`);
   return { players: [...players], eliminatedIds: [], championId: null };
 }
