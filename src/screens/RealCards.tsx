@@ -12,7 +12,7 @@ const steps = [
 export default function RealCards({ onStartNight }: { onStartNight: () => void }) {
   const [done, setDone] = useState<boolean[]>(steps.map(() => false));
   return <section className="real-cards" aria-labelledby="real-title">
-    <p className="eyebrow">NOW FOR THE REAL THING</p>
+    
     <h2 id="real-title"><Cards size={22} weight="fill" /> Play it with real cards</h2>
     <p>Switch is best across a table. Tick off the setup, then keep score on your phone.</p>
     <ul>{steps.map((step, index) => <li key={step}><label><input type="checkbox" checked={done[index]} onChange={() => setDone((current) => current.map((value, i) => (i === index ? !value : value)))} /><span>{step}</span></label></li>)}</ul>

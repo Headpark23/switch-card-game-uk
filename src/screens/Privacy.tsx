@@ -30,7 +30,7 @@ export default function Privacy(_props: { onBack: () => void }) {
   }
 
   return <section className="privacy-page" aria-labelledby="privacy-title">
-    <p className="eyebrow">PRIVACY &amp; YOUR DATA</p>
+    
     <h1 id="privacy-title">Your club is<br />yours.</h1>
     <p className="intro">Switch has no ads, no tracking cookies and no analytics. It keeps your club on your phone. Here is exactly what happens to your data.</p>
 

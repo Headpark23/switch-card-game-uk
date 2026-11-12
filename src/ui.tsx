@@ -1,7 +1,8 @@
 import { createDeck, rankOf, suitOf } from './switch/cards';
 import type { CardId, Suit } from './switch/types';
-import { useState, type ReactNode } from 'react';
-import { BottomSheet } from './mobile';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { BottomSheet, useScreenPortal } from './mobile';
 import type { CoachOption } from './switch/coach';
 import type { Lesson } from './switch/lessons';
 import type { Advice } from './switch/tactics';
@@ -17,6 +18,40 @@ export function CardImage({code}:{code:string}) {
   return <img className="playing-card" src={'/images/cards/'+code+'.webp'} alt={code==='back'?'Face-down deck':`${names[rank(code)]||rank(code)} of ${suits[suit(code)]}`} draggable={false}/>;
 }
 export function Fan({codes}:{codes:string[]}) {return <div className="card-fan">{codes.map(code=><CardImage key={code} code={code}/>)}</div>;}
+/**
+ * The felt card table as a page header: the app's signature surface, the same felt and gold rim as the guided game.
+ * Real cards fan off the right edge as the page's emblem.
+ */
+export function FeltHeader({title,intro,cards,id,compact=false,children}:{title:ReactNode;intro?:ReactNode;cards?:string[];id?:string;compact?:boolean;children?:ReactNode}) {
+  return <header className={'felt-header'+(cards?.length?' has-fan':'')+(compact?' compact':'')}>
+    <div className="felt-header-text"><h1 id={id}>{title}</h1>{intro&&<p>{intro}</p>}{children}</div>
+    {cards&&cards.length>0&&<div className="felt-header-fan" aria-hidden="true">{cards.map(code=><span key={code}><CardImage code={code}/></span>)}</div>}
+  </header>;
+}
+
+/** Two or three real cards as a small emblem, used where other apps would put an icon. */
+export function MiniFan({codes}:{codes:string[]}) {return <span className="mini-fan" aria-hidden="true">{codes.map(code=><CardImage key={code} code={code}/>)}</span>;}
+
+const SHOWER=['AS','KH','QC','JD','AH','KS','QD','JC','AD','KC','QS','JH','AC','KD','8H','7S'];
+/**
+ * A shower of playing cards across the phone screen when a match, knockout, cup or league is won.
+ * Decorative only: it never blocks taps, ends by itself, and is skipped for people who prefer reduced motion.
+ * Pass a new `trigger` value (such as the winner's id) to play it once.
+ */
+export function CardShower({trigger}:{trigger:string|null}) {
+  const {screenRef}=useScreenPortal();
+  const [burst,setBurst]=useState<string|null>(null);
+  useEffect(()=>{
+    if(!trigger)return;
+    if(typeof window!=='undefined'&&window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;
+    setBurst(trigger);
+    const timer=window.setTimeout(()=>setBurst(null),3200);
+    return ()=>window.clearTimeout(timer);
+  },[trigger]);
+  if(!burst||!screenRef.current)return null;
+  return createPortal(<div className="card-shower" aria-hidden="true">{SHOWER.map((code,index)=><span key={burst+code} style={{'--x':`${4+((index*29)%88)}%`,'--delay':`${(index%8)*110}ms`,'--spin':`${(index%2?1:-1)*(160+index*27)}deg`,'--drift':`${(index%3-1)*38}px`} as CSSProperties}><CardImage code={code}/></span>)}</div>,screenRef.current);
+}
+
 export function AdSlot({hidden}:{hidden:boolean}) {return hidden?null:<aside className="advertisement" aria-label="Demonstration advertising placement"><span>ADVERTISEMENT</span><small>Demo placement · no live ad</small></aside>;}
 
 /** Game-agnostic coaching panel: what the last move did, the coach's pick with reasons, and a full lesson with tactics on tap. */

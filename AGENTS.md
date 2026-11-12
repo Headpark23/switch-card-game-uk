@@ -93,3 +93,9 @@ Darts: first to three legs wins a set. Knock Out: whoever finishes last in a rou
 - One name per thing, everywhere: "Group Play" (one-night leagues and playoffs), "Knock Out", "Switch Cup", and "Seasons" for the long-running table across nights. The first bottom tab is "Home".
 - Every scorekeeper result can be corrected: league rounds undo until playoff games start, Cup results have Change and Undo, and a tie of any size is settled by one deciding game for the whole group.
 - Tutorial hints are optional: the coach strip offers the coach's pick but names the move only after Show hint, automatic guidance, or a tap on the strip.
+
+## Presentation decisions (Nov 2026, "bolder evolution, playful throughout")
+- The felt card table (green felt, gold rim, real cards) is the app's signature: main screens open with a `FeltHeader` (`src/ui.tsx`), the scorekeeper with its compact form. The status bar is runtime chrome with dark text, so felt never runs behind it.
+- Real playing cards are the icon language: home actions are four aces dealt onto the table, and game types and modes use `MiniFan` hands instead of numbers or generic icons. Other icons come from Phosphor in one weight; no emoji or text glyphs as icons.
+- No small-caps label above a heading, and no thick coloured side stripes on cards or callouts.
+- Wins are celebrated with `CardShower` (a match, Knock Out, Cup, league championship, beating the computer); it never blocks taps and is skipped under reduced motion.

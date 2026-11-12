@@ -1,7 +1,7 @@
 import SampleDataBar from './SampleDataBar';
 import { useState } from 'react';
 import { useConfirm } from '../Confirm';
-import { Crown } from '@phosphor-icons/react';
+import { Crown, Fire } from '@phosphor-icons/react';
 import { ShareButton } from '../ShareButton';
 import { buildLeaderboard, getClubName, leaderboardShareCard, putClubName } from '../switch/club';
 import { KeyboardInput, useKeyboard } from '../mobile';
@@ -48,7 +48,7 @@ export default function ClubhouseStats({ extensions, onChange }: Props) {
 
   if (!profiles.length || !nights.length) {
     return <section className="club-panel" aria-labelledby="stats-title">
-      <p className="eyebrow">THE RECORD BOOK</p>
+      
       <h2 id="stats-title">Stats appear after your first saved night.</h2>
       <p className="history-empty">Start a score session with your regular players, finish it and save the night. Every number here comes from real saved results, never made-up ones.</p>
       <SampleDataBar offer extensions={extensions} onChange={onChange} />
@@ -77,13 +77,13 @@ export default function ClubhouseStats({ extensions, onChange }: Props) {
 
   return <section className="club-panel" aria-labelledby="stats-title">
     <SampleDataBar extensions={extensions} onChange={onChange} />
-    <p className="eyebrow">THE RECORD BOOK</p>
+    
     <section className="dashboard" aria-label="Club dashboard">
       <div className="dash-tiles">
         <div><b>{dash.totalNights}</b><span>night{dash.totalNights === 1 ? '' : 's'} played</span></div>
         <div><b>{dash.activePlayers}</b><span>players</span></div>
         <div><b>{dash.champion ? dash.champion.name : '–'}</b><span>{dash.champion ? `top of the table · ${dash.champion.wins} win${dash.champion.wins === 1 ? '' : 's'}` : 'no winner yet'}</span></div>
-        <div><b>{dash.hot ? `${dash.hot.name} 🔥` : '–'}</b><span>{dash.hot ? `${dash.hot.streak} wins in a row` : 'no hot streak yet'}</span></div>
+        <div><b>{dash.hot ? <>{dash.hot.name} <Fire className="streak-flame" size={22} weight="fill" aria-hidden="true" /></> : '–'}</b><span>{dash.hot ? `${dash.hot.streak} wins in a row` : 'no hot streak yet'}</span></div>
       </div>
       <h3>Nights played by month</h3>
       <div className="month-chart" role="img" aria-label="Nights played per month">

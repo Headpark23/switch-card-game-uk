@@ -58,7 +58,7 @@ export default function ClubhouseLeagues({ extensions, onChange }: Props) {
 
   return <section className="club-panel" aria-labelledby="leagues-title">
     <SampleDataBar offer={profiles.length < 2} extensions={extensions} onChange={onChange} />
-    <p className="eyebrow">THE NOTICEBOARD</p>
+    
     <h2 id="leagues-title">Seasons</h2>
     <p className="intro">Your long-running table across many game nights — separate from the one-night Group Play format. Three points for a win, one for taking part. You choose which saved nights count.</p>
 

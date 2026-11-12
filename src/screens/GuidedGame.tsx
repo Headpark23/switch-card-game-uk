@@ -21,7 +21,7 @@ import { cue, feedbackEnabled, setFeedbackEnabled } from '../feedback';
 import RealCards from './RealCards';
 import { ShareButton } from '../ShareButton';
 import { challengeShareCard } from '../switch/club';
-import { CardImage, CoachPanel, isRedKing, rank, suit, suitNames, suitSymbols } from '../ui';
+import { CardImage, CardShower, CoachPanel, isRedKing, rank, suit, suitNames, suitSymbols } from '../ui';
 import { testDeckRequested, testGameFromUrl } from './devDecks';
 
 const YOUR_TURN_NOTICE = 'Your turn. Play a legal card, or pick up one to save your cards for later.';
@@ -382,8 +382,8 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
   const deckDescription = `${cardsInGame.length}-card game with ${new Set(cardsInGame).size} unique cards`;
   const missTurn = pending?.kind === 'miss-turn';
 
-  return <section className="tutorial game-tutorial" aria-label={deckDescription}>{outcome !== 'playing'
-    ? <div className="completion"><CheckCircle size={60} weight="light" /><p className="eyebrow">{outcome === 'won' ? 'GAME WON' : 'GOOD PRACTICE'}</p><h1>{outcome === 'won' ? <>You beat the<br />computer.</> : <>The computer<br />won this one.</>}</h1><p>{view.notice}</p><button className="primary" onClick={restart}><ArrowCounterClockwise size={18} />Play another guided game</button>{outcome === 'won' && <ShareButton label="Challenge a friend" build={challengeShareCard} />}<RealCards onStartNight={onStartNight} /><button className="secondary" onClick={onOpenPuzzles}>Try the rules puzzles <ArrowRight size={18} /></button><button className="secondary" onClick={onOpenCards}>Open card guide <ArrowRight size={18} /></button></div>
+  return <section className="tutorial game-tutorial" aria-label={deckDescription}><CardShower trigger={outcome === 'won' ? `won-${engine.move}` : null} />{outcome !== 'playing'
+    ? <div className="completion"><CheckCircle size={60} weight="light" /><h1>{outcome === 'won' ? <>You beat the<br />computer.</> : <>The computer<br />won this one.</>}</h1><p>{view.notice}</p><button className="primary" onClick={restart}><ArrowCounterClockwise size={18} />Play another guided game</button>{outcome === 'won' && <ShareButton label="Challenge a friend" build={challengeShareCard} />}<RealCards onStartNight={onStartNight} /><button className="secondary" onClick={onOpenPuzzles}>Try the rules puzzles <ArrowRight size={18} /></button><button className="secondary" onClick={onOpenCards}>Open card guide <ArrowRight size={18} /></button></div>
     : <>
       <div className={'turn-banner ' + (yourTurn ? 'you' : 'computer')} aria-live="polite"><span className="turn-dot" aria-hidden="true" /><span>GUIDED GAME · {yourTurn ? 'YOUR TURN' : 'COMPUTER TURN'}</span><button onClick={onExit}>Exit game</button></div>
       <div className="opponent" aria-label={`Computer has ${engine.computerHand.length} cards`}><span>COMPUTER</span><div key={engine.computerHand.length} ref={fanRef} className="opp-fan">{engine.computerHand.slice(0, 5).map((_, i) => <CardImage code="back" key={i} />)}</div><strong>{engine.computerHand.length} card{engine.computerHand.length === 1 ? '' : 's'}</strong></div>
