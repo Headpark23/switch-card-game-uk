@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowRight, CheckCircle, Trophy, XCircle } from '@phosphor-icons/react';
+import { ArrowRight, CaretLeft, CheckCircle, Fire, Trophy, XCircle } from '@phosphor-icons/react';
 import { cue } from '../feedback';
 import { badgeFor, checkAnswer, legalCardsFor, loadProgress, puzzles, recordResult, saveProgress, type PuzzleProgress } from '../switch/puzzles';
 import type { CardId } from '../switch/types';
@@ -34,10 +34,10 @@ export default function Puzzles({ onBack, onTutorial }: { onBack: () => void; on
   }
 
   return <section className="puzzles" aria-labelledby="puzzle-title">
-    <button className="text-link" onClick={onBack}>← Rules</button>
+    <button className="text-link back-link" onClick={onBack}><CaretLeft size={15} weight="bold" />Rules</button>
     <p className="eyebrow">PUZZLE {index + 1} OF {puzzles.length}</p>
     <h1 id="puzzle-title">What can you play?</h1>
-    <div className="puzzle-badge"><Trophy size={20} weight="fill" /><span><strong>{badge.name}</strong><small>{badge.next}</small></span><em aria-label={`Streak ${progress.streak}`}>🔥 {progress.streak}</em></div>
+    <div className="puzzle-badge"><Trophy size={20} weight="fill" /><span><strong>{badge.name}</strong><small>{badge.next}</small></span><em aria-label={`Streak ${progress.streak}`}><Fire size={15} weight="fill" aria-hidden="true" /> {progress.streak}</em></div>
     <div className="puzzle-card">
       <h2>{puzzle.title}</h2>
       <div className="puzzle-pile"><CardImage code={puzzle.top} /><p>Top card. Current suit: <b>{suitNames[puzzle.suit]}</b>.{puzzle.penalty ? <> {penaltyText(puzzle.penalty.kind, 'cards' in puzzle.penalty ? puzzle.penalty.cards : undefined)}</> : null}</p></div>

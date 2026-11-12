@@ -1,3 +1,4 @@
+import { CaretLeft } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { KeyboardInput, useKeyboard } from '../mobile';
 import { fetchShare, type NightSnapshot } from '../switch/shareNight';
@@ -23,8 +24,8 @@ export default function WatchNight({ initialCode, onBack }: { initialCode: strin
   function join() { keyboard.hide(); setSnapshot(null); setError(''); setCode(input.trim().toUpperCase()); }
 
   return <section className="watch-night" aria-labelledby="watch-title">
-    <button className="text-link" onClick={onBack}>← Home</button>
-    <p className="eyebrow">WATCH A NIGHT</p>
+    <button className="text-link back-link" onClick={onBack}><CaretLeft size={15} weight="bold" />Home</button>
+    
     <h1 id="watch-title">{snapshot ? snapshot.title : 'Join a night'}</h1>
     {!snapshot && <form className="join-form" onSubmit={(event) => { event.preventDefault(); join(); }}>
       <label><span>Night code</span><KeyboardInput aria-label="Night code" autoCapitalize="characters" maxLength={6} placeholder="e.g. K7M2QX" value={input} onChange={(event) => setInput(event.target.value.toUpperCase())} /></label>

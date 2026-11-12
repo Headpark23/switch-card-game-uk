@@ -1,11 +1,11 @@
 import { lazy, Suspense, useCallback, useLayoutEffect, useState } from 'react';
-import { ArrowRight, BookOpen, House, Cards, PlayCircle, Trophy, Question, UsersThree, ChatCircle, Club, MagnifyingGlass, X, DownloadSimple, CheckCircle, Lightbulb } from '@phosphor-icons/react';
+import { ArrowRight, BookOpen, House, ChartBar, ClockCounterClockwise, PuzzlePiece, CalendarPlus, Broadcast, Cards, PlayCircle, Trophy, Question, UsersThree, ChatCircle, Club, MagnifyingGlass, X, DownloadSimple, CheckCircle, Lightbulb } from '@phosphor-icons/react';
 import WatchNight from './screens/WatchNight';
 import Referee from './screens/Referee';
 import NightReminder from './screens/NightReminder';
 import { BottomSheet, KeyboardInput, MobileScroll, useKeyboard, useKeyboardInsets } from './mobile';
 import { modes, powers, ruleChapters, rules } from './content';
-import { Fan } from './ui';
+import { Fan, FeltHeader, MiniFan } from './ui';
 import { enableOffline } from './offline';
 import InstallButton, { InstallBanner } from './InstallButton';
 import { AccountPanel } from './AccountPanel';
@@ -23,6 +23,21 @@ const QuickNight = lazy(() => import('./screens/QuickNight'));
 const Puzzles = lazy(() => import('./screens/Puzzles'));
 const Privacy = lazy(() => import('./screens/Privacy'));
 const AppFooter = lazy(() => import('./screens/AppFooter'));
+
+/** Each way to play gets its own little hand of cards in place of a number or an icon. */
+const MODE_CARDS: Record<string, string[]> = {
+  'One v One': ['AS', 'AH'],
+  'Knock Out': ['2C', '8S', 'KS'],
+  'Group Play': ['QH', 'QS', 'QC'],
+  'Darts Scoring': ['3H', '3S', '3D'],
+  'Domino Scoring': ['5D', '6D'],
+  'Switch Cup': ['KH', 'KD'],
+};
+
+/** The corner index of a playing card, so each home tile reads as an ace dealt onto the table. */
+function TileIndex({ suit, flip = false }: { suit: string; flip?: boolean }) {
+  return <span className={'tile-index' + (flip ? ' flip' : '')} aria-hidden="true"><b>A</b><i>{suit}</i></span>;
+}
 
 type Page = 'Learn' | 'Cards' | 'Modes' | 'Club' | 'Watch' | 'Questions' | 'Tutorial' | 'Score' | 'Quick' | 'Puzzles' | 'Privacy';
 
@@ -98,21 +113,20 @@ export default function Prototype() {
             <h1>Know the rules.<br />Own the table.</h1>
             <p className="home-sub">{welcome ? 'New here? Start with the five moves.' : 'Where to next?'}</p>
             <div className="home-tiles">
-              <button className={'home-tile learn' + (welcome ? ' start-here' : '')} onClick={() => { closeWelcome(); setRuleStep(0); setRulesOpen(true); }}><BookOpen size={26} weight="fill" /><strong>Learn the rules</strong><small>Five clear moves{welcome ? ' · start here' : ''}</small></button>
-              <button className="home-tile" onClick={startGuidedGame}><Cards size={26} weight="fill" /><strong>Play against the computer</strong><small>Guided, with hints</small></button>
-              <button className="home-tile" onClick={() => openNight('score')}><UsersThree size={26} weight="fill" /><strong>Start a game night</strong><small>Scores, leagues, cups</small></button>
-              <button className="home-tile" aria-label="Quick night" onClick={() => go('Quick')}><Lightbulb size={26} weight="fill" /><strong>Quick night</strong><small>Real cards, 60 seconds</small></button>
+              <button className={'home-tile learn' + (welcome ? ' start-here' : '')} onClick={() => { closeWelcome(); setRuleStep(0); setRulesOpen(true); }}><TileIndex suit="♠" />{welcome && <em className="tile-flag">Start here</em>}<strong>Learn the rules</strong><small>Five clear moves</small><TileIndex suit="♠" flip /></button>
+              <button className="home-tile red" onClick={startGuidedGame}><TileIndex suit="♥" /><strong>Play against the computer</strong><small>Guided, with hints</small><TileIndex suit="♥" flip /></button>
+              <button className="home-tile" onClick={() => openNight('score')}><TileIndex suit="♣" /><strong>Start a game night</strong><small>Scores, leagues, cups</small><TileIndex suit="♣" flip /></button>
+              <button className="home-tile red" aria-label="Quick night" onClick={() => go('Quick')}><TileIndex suit="♦" /><strong>Quick night</strong><small>Real cards, 60 seconds</small><TileIndex suit="♦" flip /></button>
             </div>
-            <div className="night-shortcuts"><button className="text-link" onClick={() => openNight('stats')}>Stats</button><button className="text-link" onClick={() => openNight('leagues')}>Seasons</button><button className="text-link" onClick={() => openNight('history')}>History</button><button className="text-link" onClick={() => go('Puzzles')}>Puzzles</button><button className="text-link" onClick={() => setPlanOpen(true)}>Plan a night</button><button className="text-link" onClick={() => go('Watch')}>Join a night</button></div>
+            <div className="night-shortcuts"><button className="text-link" onClick={() => openNight('stats')}><ChartBar size={16} weight="bold" />Stats</button><button className="text-link" onClick={() => openNight('leagues')}><Trophy size={16} weight="bold" />Seasons</button><button className="text-link" onClick={() => openNight('history')}><ClockCounterClockwise size={16} weight="bold" />History</button><button className="text-link" onClick={() => go('Puzzles')}><PuzzlePiece size={16} weight="bold" />Puzzles</button><button className="text-link" onClick={() => setPlanOpen(true)}><CalendarPlus size={16} weight="bold" />Plan a night</button><button className="text-link" onClick={() => go('Watch')}><Broadcast size={16} weight="bold" />Join a night</button></div>
           </section>
-          {(() => { const p = powers[new Date().getDate() % powers.length]; return <button className="home-daily" onClick={() => setSelected(p)}><Fan codes={p.cards.slice(0, 3)} /><span><small>POWER CARD OF THE DAY</small><strong>{p.name}</strong><em>{p.short}</em><i>Tap to learn it <ArrowRight size={13} /></i></span></button>; })()}
+          {(() => { const p = powers[new Date().getDate() % powers.length]; return <button className="home-daily" onClick={() => setSelected(p)}><Fan codes={p.cards.slice(0, 3)} /><span><strong>{p.name}</strong><em>{p.short} · today’s power card</em><i>Tap to learn it <ArrowRight size={13} /></i></span></button>; })()}
           <AccountPanel home />
           </>}
           {rulesOpen && <>
           <button className="text-link rules-back" onClick={() => setRulesOpen(false)}><ArrowRight size={16} style={{ transform: 'rotate(180deg)' }} /> Home</button>
           <section className="rule-narrative" aria-labelledby="rule-story-title">
-            <p className="eyebrow">THE MAIN EVENT</p>
-            <h2 id="rule-story-title">Learn Switch<br />in five moves.</h2>
+                        <h2 id="rule-story-title">Learn Switch<br />in five moves.</h2>
             <p className="rule-intro">A clear, visual guide from the first deal to the winning card.</p>
             <div className="rule-steps" aria-label="Rule guide steps">
               {ruleChapters.map((chapter, index) => <button key={chapter.number} className={ruleStep === index ? 'active' : ''} aria-current={ruleStep === index ? 'step' : undefined} onClick={() => setRuleStep(index)}><span>{chapter.number}</span><small>{index === 0 ? 'Deal' : index === 1 ? 'Play' : index === 2 ? 'Power' : index === 3 ? 'Call' : 'Win'}</small></button>)}
@@ -137,7 +151,7 @@ export default function Prototype() {
             <p className="section-caption">The cards that change the game.</p>
             <div className="power-columns">{[powers[0], powers[2], powers[6]].map((p) => <button key={p.name} onClick={() => setSelected(p)}><Fan codes={p.cards} /><h3>{p.name}</h3><p>{p.short}.</p><span>View rule <ArrowRight size={12} /></span></button>)}</div>
           </section>
-          <section className="night-note"><p className="eyebrow">MAKE IT A GAME NIGHT</p><h2>A little friendly rivalry.</h2><p>From a quick head-to-head to your very own Switch Cup.</p><button className="text-link" onClick={() => go('Modes')}>Explore game modes <ArrowRight size={18} /></button></section>
+          <section className="night-note"><h2>A little friendly rivalry.</h2><p>From a quick head-to-head to your very own Switch Cup.</p><button className="text-link" onClick={() => go('Modes')}>Explore game modes <ArrowRight size={18} /></button></section>
           <InstallButton />
           <button className="download" onClick={downloadRules}><DownloadSimple size={20} />Download all rules</button>
           </>}
@@ -146,11 +160,11 @@ export default function Prototype() {
             <button onClick={() => go('Learn')} aria-label="Switch home"><Club weight="fill" size={20} /> SWITCH</button>
           </header>
           {page === 'Cards' && <>
-            <p className="eyebrow">YOUR TABLE-SIDE REFERENCE</p><h1>Every card.<br />Every possibility.</h1><p className="intro">Tap a card to see its effect, defence and exceptions.</p>
+            <FeltHeader title="Every card. Every possibility." intro="Tap a card to see its effect, defence and exceptions." cards={['KS', '2H', '8D']} />
             <div className="power-list">{powers.map((p) => <button key={p.name} onClick={() => setSelected(p)}><Fan codes={p.cards.slice(0, 2)} /><span><strong>{p.name}</strong><small>{p.short}</small></span><ArrowRight size={19} /></button>)}</div>
           </>}
           {page === 'Questions' && <>
-            <p className="eyebrow">SETTLE THE DEBATE</p><h1>There’s a rule<br />for that.</h1><p className="intro">Quick answers, before the next card lands.</p>
+            <FeltHeader title="There’s a rule for that." intro="Quick answers, before the next card lands." cards={['AS', '7H']} />
             <Referee />
             <div className="dispute-chips" role="group" aria-label="Common disputes">{['ace', 'last card', 'jack', 'seven', 'king', 'two', 'eight', 'deck runs out'].map((chip) => <button key={chip} className={query === chip ? 'active' : ''} onClick={() => { keyboard.hide(); setQuery(query === chip ? '' : chip); }}>{chip}</button>)}</div>
             <div className="search"><MagnifyingGlass size={21} /><KeyboardInput aria-label="Search rules" placeholder="Try “ace” or “last card”" value={query} onChange={(e) => setQuery(e.target.value)} />{query && <button aria-label="Clear search" onClick={() => setQuery('')}><X size={16} /></button>}</div>
@@ -164,13 +178,13 @@ export default function Prototype() {
             <a className="community" href="https://783j5slzrfvf.trickle.host/#comments" target="_blank" rel="noreferrer">Visit the original community discussion <ArrowRight size={16} /></a>
           </>}
           {page === 'Modes' && <>
-            <p className="eyebrow">YOUR PEOPLE. YOUR GAME.</p><h1>Make a night<br />of it.</h1><p className="intro">Six ways to play. Tap any one to see what it means and how a night runs.</p>
+            <FeltHeader title="Make a night of it." intro="Six ways to play. Tap any one to see what it means and how a night runs." cards={['QH', 'KC', 'JD']} />
             <button className="primary mode-score-cta" onClick={() => openNight('score')}>Open the Switch scorekeeper <ArrowRight size={18} /></button>
-            <div className="mode-list">{modes.map((m, i) => <details key={m.name}><summary><span className="mode-number">0{i + 1}</span><span><strong>{m.name}</strong><small>{m.label}</small></span></summary><p>{m.text}</p>{m.how && <p className="mode-how"><strong>In plain English: </strong>{m.how}</p>}</details>)}</div>
+            <div className="mode-list">{modes.map((m, i) => <details key={m.name}><summary><MiniFan codes={MODE_CARDS[m.name] ?? ['AS', 'AH']} /><span><strong>{m.name}</strong><small>{m.label}</small></span></summary><p>{m.text}</p>{m.how && <p className="mode-how"><strong>In plain English: </strong>{m.how}</p>}</details>)}</div>
             <button className="download" onClick={downloadRules}><DownloadSimple size={20} />Download game-night rules</button>
           </>}
           <Suspense fallback={<Loading />}>
-            {page === 'Score' && <SwitchScorekeeper onBack={() => go(scoreFrom.back)} backLabel={scoreFrom.back === 'Modes' ? '← Ways to play' : '← Home'} initialView={scoreView} onView={setScoreView} />}
+            {page === 'Score' && <SwitchScorekeeper onBack={() => go(scoreFrom.back)} backLabel={scoreFrom.back === 'Modes' ? 'Ways to play' : 'Home'} initialView={scoreView} onView={setScoreView} />}
             {page === 'Tutorial' && <GuidedGame onExit={() => go('Learn')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onOpenPuzzles={() => go('Puzzles')} onStatusChange={onGameStatus} />}
             {page === 'Quick' && <QuickNight onBack={() => go('Learn')} onHistory={() => openNight('history')} />}
             {page === 'Watch' && <WatchNight initialCode={urlNight} onBack={() => go('Learn')} />}
@@ -194,7 +208,7 @@ export default function Prototype() {
     {page === 'Learn' && !rulesOpen && <InstallBanner bottom={bottomInset + 76} />}
     <NightReminder open={planOpen} onOpenChange={setPlanOpen} />
     <BottomSheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }} title={selected?.name || 'Card rule'}>
-      {selected && <div className="rule-sheet"><Fan codes={selected.cards} /><p className="eyebrow">{selected.short}</p><p>{selected.text}</p><div className="exception"><strong>At the table</strong><p>{selected.extra}</p></div><button className="primary" onClick={() => setSelected(null)}>Got it <CheckCircle size={19} /></button></div>}
+      {selected && <div className="rule-sheet"><Fan codes={selected.cards} /><p className="rule-lead">{selected.short}</p><p>{selected.text}</p><div className="exception"><strong>At the table</strong><p>{selected.extra}</p></div><button className="primary" onClick={() => setSelected(null)}>Got it <CheckCircle size={19} /></button></div>}
     </BottomSheet>
   </div>;
 }

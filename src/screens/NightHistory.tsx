@@ -59,7 +59,7 @@ export default function NightHistory({ extensions, onChange }: Props) {
 
   return <section className="night-history" aria-labelledby="night-history-title">
     <div className="history-heading">
-      <div><p className="eyebrow">ON THIS DEVICE</p><h2 id="night-history-title">Switch Night history</h2></div>
+      <div><h2 id="night-history-title">Switch Night history</h2></div>
       {nights.length > 0 && <button className="secondary" onClick={downloadHistory}><DownloadSimple size={16} />Export history</button>}
     </div>
     <SampleDataBar offer={nights.length === 0} extensions={extensions} onChange={onChange} />

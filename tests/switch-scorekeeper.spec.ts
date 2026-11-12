@@ -355,12 +355,12 @@ test("changing game type stays changed after a reload", async ({ page }) => {
   await page.getByRole("button", { name: "Start Domino" }).click();
   await page.getByLabel("Score for Player 1").fill("30");
   await page.getByRole("button", { name: "Add" }).first().click();
-  await page.getByRole("button", { name: "↺ Change game type" }).click();
+  await page.getByRole("button", { name: "Change game type" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "End game" }).click();
   await expect(page.getByRole("button", { name: "Start Domino" })).toBeVisible();
 
   await reopenScorekeeper(page);
-  await expect(page.getByRole("button", { name: "↺ Change game type" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Change game type" })).toHaveCount(0);
   await page.getByRole("button", { name: "Start Domino" }).click();
   await expect(page.getByText("0 points", { exact: true })).toHaveCount(2);
 });
@@ -495,7 +495,7 @@ test("ending a game asks in an in-app sheet, and Cancel keeps the game", async (
   await openScorekeeper(page);
   await fillVisibleNames(page);
   await page.getByRole("button", { name: "Start Domino" }).click();
-  await page.getByRole("button", { name: "↺ Change game type" }).click();
+  await page.getByRole("button", { name: "Change game type" }).click();
   const sheet = page.getByRole("dialog");
   await expect(sheet).toContainText("End this game?");
   await sheet.getByRole("button", { name: "Cancel" }).click();
@@ -510,12 +510,12 @@ test("the back link and the lit bottom tab follow where the scorekeeper was open
   await page.getByRole("button", { name: "History", exact: true }).click();
   // Switching sections inside the scorekeeper does not move the bottom tab.
   await expect(nav.getByRole("button", { name: "Play" })).toHaveAttribute("aria-current", "page");
-  await page.getByRole("button", { name: "← Home" }).click();
+  await page.getByRole("button", { name: "Back to Home" }).click();
   await expect(page.getByRole("button", { name: /Learn the rules/ })).toBeVisible();
 
   await nav.getByRole("button", { name: "Play" }).click();
   await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
-  await page.getByRole("button", { name: "← Ways to play" }).click();
+  await page.getByRole("button", { name: "Back to Ways to play" }).click();
   await expect(page.getByRole("button", { name: "Open the Switch scorekeeper" })).toBeVisible();
 
   await nav.getByRole("button", { name: "Club" }).click();

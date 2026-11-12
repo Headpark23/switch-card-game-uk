@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, Crown, Minus, Plus } from '@phosphor-icons/react';
+import { ArrowRight, CaretLeft, Crown, Minus, Plus } from '@phosphor-icons/react';
 import { cue } from '../feedback';
 import { KeyboardInput, useKeyboard } from '../mobile';
 import { addNight, createNightRecord, type NightCompletion, type SwitchNightRecord } from '../switch/history';
@@ -66,7 +66,7 @@ export default function QuickNight({ onBack, onHistory }: { onBack: () => void; 
   }
 
   if (done && players) return <section className="quick-night" aria-labelledby="quick-title">
-    <Crown size={44} weight="light" /><p className="eyebrow">NIGHT SAVED</p>
+    <Crown size={44} weight="light" />
     <h1 id="quick-title">{leader ? `${leader.name} takes the night.` : 'Night saved.'}</h1>
     <p>{rounds.length} round{rounds.length === 1 ? '' : 's'} played. It is in your history and stats.</p>
     {savedNight && <ShareButton className="primary" label="Share the result" build={() => nightShareCard(savedNight, getClubName(loaded.state.extensions))} />}
@@ -75,8 +75,8 @@ export default function QuickNight({ onBack, onHistory }: { onBack: () => void; 
   </section>;
 
   return <section className="quick-night" aria-labelledby="quick-title">
-    <button className="text-link" onClick={onBack}>← Back</button>
-    <p className="eyebrow">TONIGHT&apos;S GAME</p>
+    <button className="text-link back-link" onClick={onBack}><CaretLeft size={15} weight="bold" />Back</button>
+    
     <h1 id="quick-title">{players ? 'Who won that round?' : 'Who is playing?'}</h1>
     {!players ? <>
       {saved.length > 0 && <div className="player-tokens" aria-label="Saved players">{saved.map((profile) => <button key={profile.id} data-colour={profile.colour} onClick={() => pickSaved(profile.name)}>{profile.name}</button>)}</div>}

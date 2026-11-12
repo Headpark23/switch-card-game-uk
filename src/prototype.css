@@ -4,7 +4,7 @@
 
 .device-screen:has(.switch-app){overflow:clip}
 .switch-app{overflow:clip}.tutorial-page .small-brand{margin-bottom:10px}.tutorial-page{padding-top:55px}.tutorial .intro{font-size:14px}.tutorial .table{margin:16px 0 12px;padding:12px;gap:8px}.tutorial .table .playing-card{width:56px}.tutorial h1{font-size:31px}.tutorial progress{margin-bottom:18px}.tutorial .choices{margin:8px 0}.tutorial .feedback{margin-bottom:6px!important;min-height:32px}.tutorial .choices .playing-card{width:44px}
-.game-tutorial{padding-bottom:8px}.game-tutorial .lesson-meta{margin-bottom:10px}.opponent{display:grid;grid-template-columns:72px 1fr 54px;align-items:center;gap:7px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:9px 0}.opponent>span{font-size:9px;letter-spacing:1.2px;color:var(--muted)}.opponent>strong{font-size:10px;text-align:right;font-weight:500}.opponent>div{display:flex;justify-content:center;height:39px}.opponent .playing-card{width:31px;margin-left:-17px;filter:drop-shadow(0 2px 2px #16302522)}.opponent .playing-card:first-child{margin-left:0}.game-table{display:flex;align-items:center;justify-content:center;gap:28px;background:#e8eddf;border-radius:15px;margin:13px 0 9px;padding:13px}.game-table button{border:0;background:none;padding:0}.game-table .playing-card{display:block;width:59px}.draw-pile,.discard-pile{display:flex;flex-direction:column;align-items:center;gap:5px}.draw-pile span,.discard-pile>span{font-size:9px;color:var(--muted)}.discard-pile b{display:block;font-size:10px;color:var(--green);margin-top:2px;text-transform:capitalize}.discard-pile b.red{color:#a43620}.game-notice{min-height:35px;font-size:12px;line-height:1.4;text-align:center;color:#35453d;margin:3px 0 8px!important}.game-actions{display:flex;align-items:center;justify-content:space-between;margin:4px 0 8px}.game-actions>span{font-size:10px;color:var(--muted)}.hint-button{display:flex;align-items:center;gap:6px;border:1px solid #c1b79e;background:#fffdf7;border-radius:20px;padding:7px 11px;font-size:11px!important}.hint-button.active{background:#f2e6bd;border-color:var(--gold)}.game-hint{display:flex;gap:7px;background:#f6edcf;border-left:3px solid var(--gold);border-radius:5px;padding:9px 10px;font-size:11px;line-height:1.45;margin-bottom:8px!important}.game-hint svg{flex-shrink:0;color:#9a6d19}.player-hand{display:grid;grid-template-columns:repeat(4,1fr);gap:6px 4px;min-height:143px}.player-hand button{border:2px solid transparent;background:none;border-radius:8px;padding:4px 0;min-width:0;transition:transform .15s,border-color .15s,background .15s}.player-hand button.playable{border-color:var(--gold);background:#f7edca;transform:translateY(-3px)}.player-hand button:disabled{opacity:.65}.player-hand .playing-card{display:block;width:47px;max-width:100%;margin:auto}.game-rule{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}.game-rule strong{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#8a652b}.game-rule p{font-size:10px;line-height:1.5;color:var(--muted);margin-top:4px!important}.last-card-call{background:#f4ecd4;border:1px solid #dcc58e;border-radius:13px;padding:15px;text-align:center;margin:8px 0}.last-card-call>svg{color:var(--gold)}.last-card-call strong{display:block;font-family:'DM Serif Display',Georgia,serif;font-size:22px;margin:4px 0}.last-card-call p{font-size:11px;color:var(--muted);margin-bottom:12px!important}.last-card-call .primary{min-height:42px;padding:9px}.last-card-call .text-link{margin:7px auto 0;font-size:10px}.suit-choice{position:absolute;z-index:25;left:20px;right:20px;top:150px;background:#fffdf7;border:1px solid #d9cdb6;border-radius:16px;padding:18px;box-shadow:0 15px 45px #0a281e38;text-align:center}.suit-choice>p{font-family:'DM Serif Display',Georgia,serif;font-size:22px;margin-bottom:14px!important}.suit-choice>div{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.suit-choice>div button{display:flex;flex-direction:column;align-items:center;border:1px solid #cfc5b0;background:#fff;border-radius:10px;padding:9px 4px;font-size:24px}.suit-choice>div button.red{color:#b33426}.suit-choice>div span{font-size:8px;text-transform:capitalize;color:var(--muted)}.suit-choice>.text-link{font-size:11px;margin:10px auto 0}.game-tutorial .completion{padding-top:14px}.game-tutorial .completion h1{font-size:43px}
+.game-tutorial{padding-bottom:8px}.game-tutorial .lesson-meta{margin-bottom:10px}.opponent{display:grid;grid-template-columns:72px 1fr 54px;align-items:center;gap:7px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:9px 0}.opponent>span{font-size:9px;letter-spacing:1.2px;color:var(--muted)}.opponent>strong{font-size:10px;text-align:right;font-weight:500}.opponent>div{display:flex;justify-content:center;height:39px}.opponent .playing-card{width:31px;margin-left:-17px;filter:drop-shadow(0 2px 2px #16302522)}.opponent .playing-card:first-child{margin-left:0}.game-table{display:flex;align-items:center;justify-content:center;gap:28px;background:#e8eddf;border-radius:15px;margin:13px 0 9px;padding:13px}.game-table button{border:0;background:none;padding:0}.game-table .playing-card{display:block;width:59px}.draw-pile,.discard-pile{display:flex;flex-direction:column;align-items:center;gap:5px}.draw-pile span,.discard-pile>span{font-size:9px;color:var(--muted)}.discard-pile b{display:block;font-size:10px;color:var(--green);margin-top:2px;text-transform:capitalize}.discard-pile b.red{color:#a43620}.game-notice{min-height:35px;font-size:12px;line-height:1.4;text-align:center;color:#35453d;margin:3px 0 8px!important}.game-actions{display:flex;align-items:center;justify-content:space-between;margin:4px 0 8px}.game-actions>span{font-size:10px;color:var(--muted)}.hint-button{display:flex;align-items:center;gap:6px;border:1px solid #c1b79e;background:#fffdf7;border-radius:20px;padding:7px 11px;font-size:11px!important}.hint-button.active{background:#f2e6bd;border-color:var(--gold)}.game-hint{display:flex;gap:7px;background:#f6edcf;border:1px solid #e3d9c4;border-radius:5px;padding:9px 10px;font-size:11px;line-height:1.45;margin-bottom:8px!important}.game-hint svg{flex-shrink:0;color:#9a6d19}.player-hand{display:grid;grid-template-columns:repeat(4,1fr);gap:6px 4px;min-height:143px}.player-hand button{border:2px solid transparent;background:none;border-radius:8px;padding:4px 0;min-width:0;transition:transform .15s,border-color .15s,background .15s}.player-hand button.playable{border-color:var(--gold);background:#f7edca;transform:translateY(-3px)}.player-hand button:disabled{opacity:.65}.player-hand .playing-card{display:block;width:47px;max-width:100%;margin:auto}.game-rule{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}.game-rule strong{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#8a652b}.game-rule p{font-size:10px;line-height:1.5;color:var(--muted);margin-top:4px!important}.last-card-call{background:#f4ecd4;border:1px solid #dcc58e;border-radius:13px;padding:15px;text-align:center;margin:8px 0}.last-card-call>svg{color:var(--gold)}.last-card-call strong{display:block;font-family:'DM Serif Display',Georgia,serif;font-size:22px;margin:4px 0}.last-card-call p{font-size:11px;color:var(--muted);margin-bottom:12px!important}.last-card-call .primary{min-height:42px;padding:9px}.last-card-call .text-link{margin:7px auto 0;font-size:10px}.suit-choice{position:absolute;z-index:25;left:20px;right:20px;top:150px;background:#fffdf7;border:1px solid #d9cdb6;border-radius:16px;padding:18px;box-shadow:0 15px 45px #0a281e38;text-align:center}.suit-choice>p{font-family:'DM Serif Display',Georgia,serif;font-size:22px;margin-bottom:14px!important}.suit-choice>div{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.suit-choice>div button{display:flex;flex-direction:column;align-items:center;border:1px solid #cfc5b0;background:#fff;border-radius:10px;padding:9px 4px;font-size:24px}.suit-choice>div button.red{color:#b33426}.suit-choice>div span{font-size:8px;text-transform:capitalize;color:var(--muted)}.suit-choice>.text-link{font-size:11px;margin:10px auto 0}.game-tutorial .completion{padding-top:14px}.game-tutorial .completion h1{font-size:43px}
 
 .player-hand button.selected{border-color:var(--green);background:#e1eadc;transform:translateY(-5px)}.multi-action{display:grid;grid-template-columns:1fr 120px;align-items:center;gap:5px 10px;background:#edf1e6;border-radius:10px;padding:9px 11px;margin-top:8px}.multi-action p{font-size:11px}.multi-action .primary{min-height:36px;padding:7px 10px;font-size:11px}.multi-action .text-link{grid-column:1/-1;margin:auto;font-size:9px;padding:2px}
 .home .hero{min-height:465px}.rule-narrative{padding:34px 20px 28px;background:linear-gradient(180deg,#f7f1e3 0%,var(--cream) 22%);border-top:1px solid #dbcba8}.rule-narrative>h2{font-size:37px}.rule-intro{font-size:14px;line-height:1.55;color:var(--muted);margin:11px 0 22px!important;max-width:310px}.rule-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:15px}.rule-steps button{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;border-bottom:2px solid #d8cfbb;background:transparent;padding:7px 1px 8px;color:#74776f}.rule-steps button.active{color:var(--green);border-color:var(--gold);background:#f3e8c9;border-radius:8px 8px 0 0}.rule-steps span{font-family:'DM Serif Display',Georgia,serif;font-size:19px;line-height:1}.rule-steps small{font-size:8px;letter-spacing:.5px;text-transform:uppercase}.rule-chapter{border:1px solid #ddd2bd;border-radius:16px;background:#fffdf7;box-shadow:0 9px 24px #173a2b0b;padding:17px}.rule-chapter-head{display:grid;grid-template-columns:1fr 105px;align-items:center;gap:8px}.rule-chapter-head>div>p{font-size:9px;letter-spacing:1.5px;font-weight:600;color:#8a652b}.rule-chapter-head h3{font-family:'DM Serif Display',Georgia,serif;font-size:27px;line-height:1.05;font-weight:400;margin:4px 0 0}.rule-chapter-head .card-fan{height:76px;padding:0}.rule-chapter-head .playing-card{width:44px;max-height:70px}.rule-chapter-body{font-size:13px;line-height:1.55;color:var(--muted);margin:12px 0!important}.rule-chapter ul{list-style:none;padding:0;margin:13px 0}.rule-chapter li{display:flex;gap:9px;align-items:flex-start;border-top:1px solid #eee7da;padding:9px 0;font-size:12px;line-height:1.45}.rule-chapter li svg{flex-shrink:0;color:var(--gold);margin-top:1px}.rule-chapter aside{display:flex;gap:8px;background:#f4ead0;border-radius:9px;padding:10px;font-size:11px;line-height:1.45;color:#4f514b}.rule-chapter aside svg{flex-shrink:0;color:#9e711e}.rule-controls{display:grid;grid-template-columns:1fr 1.5fr;gap:8px;margin-top:14px}.rule-controls .primary,.rule-controls .secondary{min-height:42px;padding:9px 11px;font-size:11px}.rule-controls .primary{gap:7px}.rule-search-link{display:flex;align-items:center;gap:11px;width:100%;margin-top:14px;border:0;border-top:1px solid var(--line);background:none;padding:15px 4px 4px;text-align:left}.rule-search-link>svg:first-child{color:var(--gold)}.rule-search-link>span{flex:1}.rule-search-link strong{display:block;font-size:13px}.rule-search-link small{display:block;color:var(--muted);font-size:10px;margin-top:2px}.rule-narrative+.power-preview{border-top:1px solid var(--line);padding-top:7px}
@@ -49,7 +49,7 @@
 .game-tutorial .opponent{padding:5px 0;margin:0}.game-tutorial .opponent>div{height:34px}.game-tutorial .opponent .playing-card{width:26px;margin-left:-14px}
 .game-tutorial .game-table{margin:0;padding:8px 10px;gap:34px}.game-tutorial .game-table .playing-card{width:54px}
 .game-tutorial .game-notice{min-height:0;margin:0!important;padding:7px 10px;border:1px solid var(--line);border-radius:10px;background:#fffdf7;font-size:12.5px;line-height:1.35;color:var(--ink);text-align:left}
-.pending-rule{margin:0!important;padding:6px 10px;border-left:3px solid var(--gold);background:#f6edcf;border-radius:5px;font-size:11.5px;line-height:1.4}.pending-rule strong{display:block;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#8a652b}
+.pending-rule{margin:0!important;padding:6px 10px;border:1px solid #e3d9c4;background:#f6edcf;border-radius:5px;font-size:11.5px;line-height:1.4}.pending-rule strong{display:block;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#8a652b}
 .game-tutorial .game-actions{margin:0}.game-tutorial .hint-button{min-height:36px;padding:4px 12px}
 .game-tutorial .game-hint{margin:0!important}
 .game-tutorial .player-hand{grid-template-columns:repeat(5,1fr);gap:4px 3px;min-height:0}.game-tutorial .player-hand .playing-card{width:52px}
@@ -57,7 +57,7 @@
 .game-tutorial .miss-turn-action,.game-tutorial .last-card-call,.game-tutorial .multi-action{margin:0}
 .game-tutorial .suit-choice{top:120px}
 @media(max-width:340px){.game-tutorial .player-hand{grid-template-columns:repeat(4,1fr)}}
-.coach{border-left:3px solid var(--gold);background:#f9f3dd;border-radius:6px;padding:5px 8px;display:grid;gap:3px;font-size:11px;line-height:1.3}
+.coach{border:1px solid #e3d9c4;background:#f9f3dd;border-radius:6px;padding:5px 8px;display:grid;gap:3px;font-size:11px;line-height:1.3}
 .coach p{margin:0!important}.coach-meaning strong{display:block;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#8a652b}
 .coach-title{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#8a652b;font-weight:700}
 .coach-options{list-style:none;margin:0;padding:0;display:grid;gap:4px}.coach-options li{display:flex;align-items:center;gap:8px}.coach-options small{color:var(--muted);font-size:11px}
@@ -82,7 +82,7 @@
 .lesson{display:grid;gap:6px;padding:4px 2px 18px}.lesson h4{margin:8px 0 0;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:#8a652b}.lesson p{margin:0;font-size:14px;line-height:1.5}
 .lesson-cards{display:flex;justify-content:center;gap:6px;margin-bottom:4px}.lesson-cards .playing-card{width:54px}
 .lesson .coach-options li{align-items:flex-start}.lesson .coach-options small{display:block;font-size:12.5px}
-.lesson-tip{background:#f9f3dd;border-left:3px solid var(--gold);border-radius:6px;padding:9px 10px;margin-top:8px!important}.lesson-tip strong{display:block;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:#8a652b}
+.lesson-tip{background:#f9f3dd;border:1px solid #e3d9c4;border-radius:6px;padding:9px 10px;margin-top:8px!important}.lesson-tip strong{display:block;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:#8a652b}
 
 .lesson-done{margin-top:10px}.lesson .text-link{margin:8px auto 0;font-size:12px}
 
@@ -192,7 +192,7 @@
 .account-home{margin:14px 18px 6px}
 
 /* Calmer tutorial: one quiet coach strip, a one-line hand fan, more room for the table. */
-.coach-strip{display:flex;align-items:center;gap:9px;width:100%;margin:0;padding:6px 10px;border:0;border-left:3px solid var(--gold);border-radius:8px;background:#f7f1de;text-align:left;color:var(--ink);min-height:44px}
+.coach-strip{display:flex;align-items:center;gap:9px;width:100%;margin:0;padding:6px 10px;border:1px solid #e3d9c4;border-radius:8px;background:#f7f1de;text-align:left;color:var(--ink);min-height:44px}
 .coach-strip .pick-cards{display:flex;flex:0 0 auto}.coach-strip .pick-cards .playing-card{width:26px;margin-left:-10px;border-radius:4px}.coach-strip .pick-cards .playing-card:first-child{margin-left:0}
 .coach-strip .strip-text{display:grid;gap:1px;min-width:0;flex:1}
 .coach-strip b{font-size:12.5px;font-weight:600;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical}
@@ -345,7 +345,7 @@
 .switch-app .draw-box p{font-size:12px;line-height:1.45;color:var(--muted);margin:0 0 10px}
 .switch-app .draw-box button{width:100%;min-height:44px}
 .switch-app .draw-box .draw-done{margin:8px 0 0;color:var(--green);font-weight:600}
-.switch-app .league-setup{margin:12px 0;padding:12px;border:1px solid var(--line);border-left:4px solid #b8860b;border-radius:12px;background:#fff}
+.switch-app .league-setup{margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}
 .switch-app .league-setup-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .switch-app .league-setup-head h2{margin:0;font-size:18px}
 .switch-app .mini-stepper{display:flex;align-items:center;gap:6px}
@@ -398,3 +398,139 @@
 @container screen (min-height:840px){.game-tutorial .game-table .playing-card{width:64px}.game-tutorial .discard-pile .playing-card{width:68px}}
 /* A card flying to the pile passes behind the "Current suit" label rather than hiding it. */
 .game-tutorial .discard-pile>span:not(.pile-wrap){position:relative;z-index:3}
+
+/* ============================================================
+   Presentation v2 — the felt table as the app's signature.
+   Same palette and type; bolder composition, real cards as the icon language.
+   ============================================================ */
+.switch-app ::selection{background:#f1d899;color:var(--ink)}
+.switch-app input,.switch-app textarea{caret-color:var(--gold)}
+
+/* Felt page header: the guided game's table, used to open every main screen. */
+.switch-content .felt-header{position:relative;isolation:isolate;margin:2px 0 24px;padding:24px 20px 24px;border-radius:22px;background:radial-gradient(ellipse at 28% 22%,#1b7a55 0%,#0b5239 52%,#053527 100%);border:2px solid var(--gold);box-shadow:inset 0 0 0 3px #053527,inset 0 0 0 4px #ac7b2655,inset 0 10px 26px #02150f88,0 18px 30px -16px #05352799;color:#fbf8f0}
+.switch-content .felt-header::after{content:'';position:absolute;z-index:-1;inset:0;border-radius:inherit;background:radial-gradient(circle at 78% 50%,#ffe9a833 0%,#ffe9a800 46%);pointer-events:none}
+.switch-content .felt-header h1{color:#fbf8f0;font-size:35px;line-height:1.02;letter-spacing:-1px;text-wrap:balance}
+.switch-content .felt-header p{color:#d7e3d6;font-size:14px;line-height:1.5;margin-top:10px!important}
+.felt-header.has-fan .felt-header-text{padding-right:104px}
+.felt-header-fan{position:absolute;right:12px;top:50%;width:112px;height:120px;transform:translateY(-50%)}
+.felt-header-fan span{position:absolute;left:50%;top:50%;width:60px;transform-origin:50% 115%;animation:fan-deal .7s cubic-bezier(.2,.8,.25,1) backwards}
+.felt-header-fan .playing-card{width:100%;display:block;filter:drop-shadow(0 8px 10px #02150fa0)}
+.felt-header-fan span:nth-child(1){transform:translate(-78%,-50%) rotate(-15deg)}
+.felt-header-fan span:nth-child(2){transform:translate(-50%,-56%) rotate(0deg);animation-delay:90ms}
+.felt-header-fan span:nth-child(3){transform:translate(-22%,-50%) rotate(15deg);animation-delay:180ms}
+.felt-header-fan span:nth-child(2):last-child{transform:translate(-30%,-52%) rotate(11deg)}
+@keyframes fan-deal{from{opacity:0;translate:0 -24px;rotate:-20deg}}
+
+/* Home: four aces dealt onto the table. */
+.home-hub .home-tiles{gap:12px;padding:2px}
+.home-hub .home-tile{position:relative;align-items:center;justify-content:center;gap:5px;text-align:center;min-height:128px;padding:24px 18px;border-radius:14px;background:linear-gradient(180deg,#fffefa,#fbf6ea);border:1px solid #e3d9c4;box-shadow:inset 0 1px 0 #fff,0 12px 22px -12px #173a2b66,0 2px 4px #173a2b14;color:var(--ink);transition:transform .2s cubic-bezier(.2,.8,.25,1),box-shadow .2s;outline:none}
+.home-hub .home-tile:nth-child(1){transform:rotate(-1.6deg)}
+.home-hub .home-tile:nth-child(2){transform:rotate(1.3deg)}
+.home-hub .home-tile:nth-child(3){transform:rotate(1deg)}
+.home-hub .home-tile:nth-child(4){transform:rotate(-1.2deg)}
+.home-hub .home-tile:hover{transform:translateY(-3px) rotate(0deg);box-shadow:inset 0 1px 0 #fff,0 18px 26px -12px #173a2b77,0 2px 4px #173a2b14;filter:none}
+.home-hub .home-tile:active{transform:translateY(1px) rotate(0deg) scale(.98)}
+.home-hub .home-tile strong{font-size:19px;line-height:1.08;color:var(--green)}
+.home-hub .home-tile small{font-size:11.5px;color:var(--muted)}
+.tile-index{position:absolute;top:7px;left:9px;display:flex;flex-direction:column;align-items:center;line-height:.86;font-family:'DM Serif Display',Georgia,serif;color:var(--ink)}
+.tile-index b{font-weight:400;font-size:18px}
+.tile-index i{font-style:normal;font-size:14px}
+.tile-index.flip{top:auto;left:auto;bottom:7px;right:9px;transform:rotate(180deg)}
+.home-tile.red .tile-index{color:#b2322a}
+.home-hub .home-tile.learn{background:radial-gradient(ellipse at 30% 20%,#1b7a55 0%,#0b5239 58%,#053527 100%);border:2px solid var(--gold);box-shadow:inset 0 0 0 3px #053527,inset 0 0 0 4px #ac7b2655,0 14px 24px -12px #05352799}
+.home-hub .home-tile.learn strong{color:#fbf8f0}
+.home-hub .home-tile.learn small{color:#d7e3d6}
+.home-hub .home-tile.learn .tile-index{color:#f1d899}
+.tile-flag{position:absolute;top:-10px;right:10px;padding:3px 9px;border-radius:999px;background:#f1d899;color:var(--ink);font-style:normal;font-size:10.5px;font-weight:700;letter-spacing:.3px;box-shadow:0 4px 10px -4px #05352788;transform:rotate(4deg)}
+.home-hub .night-shortcuts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0 0}
+.home-hub .night-shortcuts .text-link{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:38px;padding:0 8px;border:1px solid #e3d9c4;border-radius:999px;background:#fffdf8f2;font-size:12.5px;text-decoration:none;box-shadow:0 4px 10px -6px #173a2b55}
+.home-hub .night-shortcuts .text-link svg{color:var(--gold);flex:none}
+@media (max-height:700px){.home-hub .home-tile{min-height:96px;padding:18px 14px}}
+
+/* Small hands of cards standing in for numbers and icons. */
+.mini-fan{position:relative;display:inline-block;flex:none;width:54px;height:46px}
+.mini-fan .playing-card{position:absolute;left:50%;top:50%;width:27px;transform-origin:50% 115%;filter:drop-shadow(0 2px 3px #1a302340)}
+.mini-fan .playing-card:nth-child(1){transform:translate(-88%,-50%) rotate(-13deg)}
+.mini-fan .playing-card:nth-child(2){transform:translate(-50%,-54%)}
+.mini-fan .playing-card:nth-child(3){transform:translate(-12%,-50%) rotate(13deg)}
+.mini-fan .playing-card:nth-child(1):nth-last-child(2){transform:translate(-74%,-50%) rotate(-9deg)}
+.mini-fan .playing-card:nth-child(2):last-child{transform:translate(-26%,-52%) rotate(9deg)}
+.mode-list summary{gap:14px}
+
+/* Rule answers open with the same gold plus as the game modes, not the browser's triangle. */
+.answers summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-left:0;padding-right:2px}
+.answers summary::-webkit-details-marker{display:none}
+.answers summary::after{content:'+';flex:none;color:var(--gold);font-size:22px;line-height:1}
+.answers details[open] summary::after{content:'−'}
+
+/* A shower of real cards for a win. */
+.card-shower{position:absolute;inset:0;z-index:40;pointer-events:none;overflow:hidden}
+.card-shower span{position:absolute;top:-120px;left:var(--x);width:48px;animation:card-fall 2.7s cubic-bezier(.32,.05,.55,1) var(--delay) both}
+.card-shower .playing-card{display:block;width:100%;filter:drop-shadow(0 8px 10px #02150f55)}
+@keyframes card-fall{0%{opacity:0;transform:translate(0,0) rotate(0deg)}10%{opacity:1}100%{opacity:1;transform:translate(var(--drift),1180px) rotate(var(--spin))}}
+@media (prefers-reduced-motion:reduce){.card-shower{display:none}.felt-header-fan span{animation:none}}
+
+/* Scorekeeper: compact felt header, game types as little hands, scoreboard numbers that read across a table. */
+.back-link{gap:4px!important;text-decoration:none!important}
+.back-link svg{color:var(--gold)}
+.switch-content .felt-header.compact{margin:0 0 12px;padding:14px 16px;border-radius:18px}
+.switch-content .felt-header.compact h1{font-size:23px;line-height:1.08;letter-spacing:-.5px}
+.switch-content .felt-header.compact p{font-size:12.5px;margin-top:4px!important}
+.felt-header.compact.has-fan .felt-header-text{padding-right:70px}
+.felt-header.compact .felt-header-fan{right:6px;width:76px;height:70px}
+.felt-header.compact .felt-header-fan span{width:38px}
+.scorekeeper-head:not(.compact) .back-link{margin-bottom:8px}
+.scorekeeper .format-grid{grid-template-columns:repeat(3,1fr);gap:7px}
+.scorekeeper .format-grid button{flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:64px;padding:6px 4px 7px;border:1px solid #e0d6c2;border-radius:12px;background:linear-gradient(180deg,#fffefa,#fbf6ea);box-shadow:0 6px 12px -9px #173a2b66;transition:transform .15s,box-shadow .15s}
+.scorekeeper .format-grid .mini-fan{width:46px;height:30px}
+.scorekeeper .format-grid .mini-fan .playing-card{width:19px}
+.scorekeeper .format-grid strong{font-size:12px;line-height:1.15;color:var(--green)}
+.scorekeeper .format-grid button.active{padding:6px 4px 7px;border:2px solid var(--gold);background:radial-gradient(ellipse at 50% 20%,#1b7a55 0%,#0b5239 60%,#053527 100%);box-shadow:inset 0 0 0 2px #053527,0 10px 18px -10px #05352799}
+.scorekeeper .format-grid button.active strong{color:#fbf8f0}
+.scorekeeper .format-grid button:active{transform:scale(.97)}
+.scorekeeper .format-grid button.active .mini-fan .playing-card:nth-child(1){transform:translate(-100%,-52%) rotate(-18deg)}
+.scorekeeper .format-grid button.active .mini-fan .playing-card:nth-child(3){transform:translate(0,-52%) rotate(18deg)}
+.scorekeeper .format-grid .mini-fan .playing-card{transition:transform .25s cubic-bezier(.2,.8,.25,1)}
+.change-game svg{color:var(--gold)}
+
+/* Live scoreboard */
+.active-score .score-status{position:relative;align-items:center;padding:14px 16px;border-radius:16px;background:radial-gradient(ellipse at 25% 20%,#1b7a55 0%,#0b5239 55%,#053527 100%);border:2px solid var(--gold);box-shadow:inset 0 0 0 3px #053527,inset 0 0 0 4px #ac7b2655,0 12px 22px -14px #05352799}
+.active-score .score-status strong{font-size:22px;color:#fbf8f0}
+.active-score .score-status span{font-size:12px;color:#d7e3d6}
+.active-score .score-row{align-items:center;flex-wrap:nowrap;gap:12px;padding:12px 4px}
+.active-score .score-row strong{font-family:'DM Serif Display',Georgia,serif;font-weight:400;font-size:19px;color:var(--ink);letter-spacing:-.2px}
+.active-score .score-row span{font-size:13px;font-variant-numeric:tabular-nums;color:#4c5650;margin-top:1px}
+.active-score .score-row>.primary{min-width:96px;min-height:46px;border-radius:23px;font-size:13px!important;box-shadow:0 8px 14px -10px #053527cc}
+.active-score .score-row>.primary:active{transform:scale(.96)}
+.winner-banner{position:relative;display:flex;align-items:center;gap:12px;margin:12px 0 4px;padding:16px 18px;border-radius:16px;background:linear-gradient(135deg,#f6dfa0,#e8c46e);color:var(--ink);font-family:'DM Serif Display',Georgia,serif;font-size:22px;line-height:1.15;box-shadow:0 12px 24px -14px #8a652bcc;animation:winner-pop .6s cubic-bezier(.16,1,.3,1) both}
+@keyframes winner-pop{from{opacity:0;transform:scale(.9) translateY(6px)}}
+.winner-banner svg{flex:none;color:#8a652b}
+.night-completion-title{font-family:'DM Serif Display',Georgia,serif;font-weight:400;font-size:21px;color:var(--green);margin:0}
+@media (prefers-reduced-motion:reduce){.winner-banner{animation:none}}
+.switch-content .felt-header.compact{padding:12px 16px;margin-bottom:10px}
+.felt-header.compact .felt-header-fan{height:58px}
+.scorekeeper .format-grid button{min-height:56px;padding:5px 4px 6px}
+.scorekeeper .format-grid button.active{padding:5px 4px 6px}
+.scorekeeper .format-grid .mini-fan{height:26px}
+.scorekeeper .format-grid .mini-fan .playing-card{width:17px}
+.card-shower span{top:-80px;animation-duration:2.3s;animation-timing-function:cubic-bezier(.22,.55,.45,1)}
+.active-score .score-row>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.active-score .score-row .score-figure{display:flex;align-items:baseline;gap:4px;margin:0;font-size:12px;color:var(--muted);white-space:nowrap}
+.active-score .score-row .score-figure b{font-family:'DM Serif Display',Georgia,serif;font-weight:400;font-size:32px;line-height:1;color:var(--green);font-variant-numeric:tabular-nums}
+.rule-sheet .rule-lead{font-family:'DM Serif Display',Georgia,serif;font-size:24px;line-height:1.1;color:var(--green);margin:6px 0 8px!important;text-align:center}
+.switch-app .eyebrow{letter-spacing:1.2px}
+/* The fan hangs off the felt's top-right corner, like cards just dealt onto the table edge; the text keeps clear of it. */
+.felt-header.has-fan .felt-header-text{padding-right:112px}
+.felt-header:not(.compact) .felt-header-fan{top:-30px;right:-2px;width:118px;height:132px;transform:none}
+.felt-header:not(.compact) .felt-header-fan span{width:56px}
+.switch-content .felt-header:not(.compact){margin-top:26px}
+.felt-header.compact .felt-header-fan{top:50%;transform:translateY(-50%)}
+.streak-flame{color:#c8571f;vertical-align:-2px}
+.puzzle-badge em svg{color:#c8571f;vertical-align:-2px}
+/* Coaching strip: a full hairline frame rather than a thick coloured stripe. */
+.coach-strip{border-radius:12px}
+.coach-strip.quiet{border-color:#e9e1cf!important}
+.felt-header.has-fan:not(.compact) .felt-header-text h1{padding-right:84px;font-size:33px}
+.felt-header.has-fan:not(.compact) .felt-header-text{padding-right:0}
+.felt-header:not(.compact) .felt-header-fan{top:-26px;width:104px;height:118px}
+.felt-header:not(.compact) .felt-header-fan span{width:50px}
