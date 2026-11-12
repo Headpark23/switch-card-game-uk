@@ -52,7 +52,7 @@ test("the welcome card appears once and remembers the choice", async ({ page }) 
   await page.goto("/");
   await expect(page.getByText("New here? Start with the five moves.")).toBeVisible();
   await page.getByRole("button", { name: /Learn the rules/ }).click();
-  await page.getByRole("button", { name: "Home" }).click();
+  await page.locator(".rules-back").click();
   await page.reload();
   await expect(page.getByText("New here? Start with the five moves.")).toHaveCount(0);
 });

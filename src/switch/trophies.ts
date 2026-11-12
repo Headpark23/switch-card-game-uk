@@ -61,7 +61,7 @@ export const BADGES: readonly BadgeDefinition[] = [
   { id: "three-formats", label: "All-rounder", hint: "Play 3 different formats", glyph: "◆", need: 3 },
   { id: "full-house", label: "Full house", hint: "Play all 5 formats", glyph: "♠", need: 5 },
   { id: "cup-champion", label: "Cup champion", hint: "Win a Switch Cup", glyph: "🏆", need: 1 },
-  { id: "knockout-king", label: "Knockout king", hint: "Win a Knockout", glyph: "♚", need: 1 },
+  { id: "knockout-king", label: "Knockout king", hint: "Win a Knock Out", glyph: "♚", need: 1 },
   { id: "domino-master", label: "Domino master", hint: "Win 3 Domino nights", glyph: "▣", need: 3 },
   { id: "dart-thrower", label: "Bullseye", hint: "Win a Darts night", glyph: "◎", need: 1 },
   { id: "duellist", label: "Duellist", hint: "Win 3 One v One nights", glyph: "⚔", need: 3 },

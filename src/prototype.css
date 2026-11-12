@@ -365,3 +365,11 @@
 
 .change-game{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;border:2px solid var(--green);border-radius:24px;background:#fffdf7;color:var(--green);font:inherit;font-size:14px;font-weight:700}
 .playoff-group{margin-top:14px;padding-top:6px}.playoff-group+.playoff-group{border-top:1px solid #d7dfd1}.playoffs .playoff-note{font-size:11px;color:var(--muted);border:0;padding:2px 0 6px}.playoffs .playoff-status{font-size:12px;font-weight:600;border:0;padding:2px 0 6px}.playoff-group .secondary{width:100%;margin-top:8px}
+/* Undo and correction controls for leagues and the Cup */
+.league-actions{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;margin-top:4px}.league-actions .text-link{min-height:44px;font-size:13px}.league-actions .text-link:disabled{opacity:.45;text-decoration:none}
+.undo-note{font-size:12px;color:var(--muted)}
+.cup-fixture button.cup-change{grid-column:1/-1;justify-self:center;min-height:44px;border:0;background:none;font-size:13px;padding:0 8px}
+.playoff-needed p{font-size:13px;line-height:1.45}
+.playoff-needed{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px;border:1px solid #d5c7a8;border-radius:11px;background:#fffaf0;padding:10px}.playoff-needed p{grid-column:1/-1}
+.playoff-needed button:not(.text-link){min-height:44px;border:1px solid #c7bda8;border-radius:9px;background:#fff;font-size:13px;padding:6px 8px}.playoff-needed button:disabled:not(.text-link){opacity:1;background:#e3eddf;border-color:var(--green);font-weight:600}
+.playoff-needed .text-link{grid-column:1/-1;justify-self:center;min-height:44px;font-size:13px}

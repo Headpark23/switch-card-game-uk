@@ -44,21 +44,21 @@ test("unreadable saved scores stay untouched until explicit setup", async ({ pag
 
 test("six-player LOST mode reaches one champion", async ({ page }) => {
   await openScorekeeper(page);
-  await page.getByRole("button", { name: "Knockout" }).click();
+  await page.getByRole("button", { name: "Knock Out", exact: true }).click();
   await page.getByRole("button", { name: "More players" }).click();
   await page.getByRole("button", { name: "More players" }).click();
   await page.getByRole("button", { name: "More players" }).click();
   await fillVisibleNames(page);
-  await page.getByRole("button", { name: "Start Knockout" }).click();
+  await page.getByRole("button", { name: "Start Knock Out" }).click();
   for (let index = 0; index < 5; index += 1) await page.getByRole("button", { name: "LOST" }).last().click();
   await expect(page.getByText("CHAMPION", { exact: true })).toBeVisible();
 });
 
 test("two complete leagues create championship and plate playoffs", async ({ page }) => {
   await openScorekeeper(page);
-  await page.getByRole("button", { name: "Tournament Groups" }).click();
+  await page.getByRole("button", { name: "Group Play", exact: true }).click();
   await fillVisibleNames(page);
-  await page.getByRole("button", { name: "Start Tournament Groups" }).click();
+  await page.getByRole("button", { name: "Start Group Play" }).click();
   await expect(page.getByRole("heading", { name: "Knockout playoffs" })).toHaveCount(0);
   // Four rounds per league. Players finish in the same order each time, so nothing is level.
   const places = ["1st", "2nd", "3rd"];
@@ -84,7 +84,7 @@ test("ten-player Cup draws fixtures and a champion", async ({ page }) => {
       const fixture = chooseWinner.first().locator("..");
       await fixture.getByRole("button").first().click();
     }
-    const next = page.getByRole("button", { name: "Draw next round" });
+    const next = page.getByRole("button", { name: /^(Draw next round|Crown the champion)/ });
     if (await next.count()) await next.click();
   }
   await expect(page.getByText(/is champion/)).toBeVisible();
@@ -182,9 +182,9 @@ for (const device of ["iPhone", "Pixel 10"]) {
 
 test("a league finished level on points and wins asks for a deciding game", async ({ page }) => {
   await openScorekeeper(page);
-  await page.getByRole("button", { name: "Tournament Groups" }).click();
+  await page.getByRole("button", { name: "Group Play", exact: true }).click();
   await fillVisibleNames(page);
-  await page.getByRole("button", { name: "Start Tournament Groups" }).click();
+  await page.getByRole("button", { name: "Start Group Play" }).click();
   const places = ["1st", "2nd", "3rd"];
   // Rounds 1-2 swap the first two places, then rounds 3-4 swap them back, so players 1 and 2 finish level.
   const orders = [[1, 2, 3], [2, 1, 3], [1, 2, 3], [2, 1, 3]];
@@ -192,7 +192,7 @@ test("a league finished level on points and wins asks for a deciding game", asyn
     for (let place = 0; place < 3; place += 1) await page.getByRole("button", { name: `Player ${order[place]} finished ${places[place]}` }).click();
     for (let place = 0; place < 3; place += 1) await page.getByRole("button", { name: `Player ${4 + order[place]} finished ${places[place]}` }).click();
   }
-  await expect(page.getByText("Level on points and round wins: play a deciding game.").first()).toBeVisible();
+  await expect(page.getByText(/are level on points and round wins. They play one deciding game/).first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Knockout playoffs" })).toHaveCount(0);
   await page.getByRole("button", { name: "Player 1 won" }).first().click();
   await page.getByRole("button", { name: "Player 5 won" }).first().click();
@@ -201,10 +201,10 @@ test("a league finished level on points and wins asks for a deciding game", asyn
 
 test("Knock Out drops the round's last player each round until one champion remains", async ({ page }) => {
   await openScorekeeper(page);
-  await page.getByRole("button", { name: "Knockout" }).click();
+  await page.getByRole("button", { name: "Knock Out", exact: true }).click();
   for (let index = 0; index < 3; index += 1) await page.getByRole("button", { name: "More players" }).click();
   await fillVisibleNames(page);
-  await page.getByRole("button", { name: "Start Knockout" }).click();
+  await page.getByRole("button", { name: "Start Knock Out" }).click();
   for (const left of [6, 5, 4, 3, 2]) {
     await expect(page.getByText(new RegExp(`${left} still playing`))).toBeVisible();
     await page.getByRole("button", { name: "LOST" }).first().click();
@@ -255,7 +255,7 @@ test("games scoring rejects bad counts and other formats", async ({ page }) => {
 
 test("leagues can differ in size: 4, 4 and 3 players, drawn at random", async ({ page }) => {
   await openScorekeeper(page);
-  await page.getByRole("button", { name: "Tournament Groups" }).click();
+  await page.getByRole("button", { name: "Group Play", exact: true }).click();
   await page.getByRole("button", { name: "More leagues" }).click();
   await page.getByRole("button", { name: "Fewer players" }).click();
   await expect(page.getByPlaceholder("Enter name")).toHaveCount(11);
@@ -268,18 +268,18 @@ test("leagues can differ in size: 4, 4 and 3 players, drawn at random", async ({
   const boxes = page.getByPlaceholder("Enter name");
   for (let index = 0; index < await boxes.count(); index += 1) drawn.push(await boxes.nth(index).inputValue());
   expect([...drawn].sort()).toEqual(Array.from({ length: 11 }, (_, index) => `Player ${index + 1}`).sort());
-  await page.getByRole("button", { name: "Start Tournament Groups" }).click();
+  await page.getByRole("button", { name: "Start Group Play" }).click();
   await expect(page.getByText("Round 1 of 3 · 3 points for 1st down to 1 for last")).toBeVisible();
   await expect(page.getByText("Round 1 of 4 · 4 points for 1st down to 1 for last")).toHaveCount(2);
 });
 
 test("a 4, 4 and 3 player league night plays through to playoffs with a plate bye", async ({ page }) => {
   await openScorekeeper(page);
-  await page.getByRole("button", { name: "Tournament Groups" }).click();
+  await page.getByRole("button", { name: "Group Play", exact: true }).click();
   await page.getByRole("button", { name: "More leagues" }).click();
   await page.getByRole("button", { name: "Fewer players" }).click();
   await fillVisibleNames(page);
-  await page.getByRole("button", { name: "Start Tournament Groups" }).click();
+  await page.getByRole("button", { name: "Start Group Play" }).click();
   const places = ["1st", "2nd", "3rd"];
   const leagues: [number, number][] = [[1, 4], [5, 4], [9, 3]];
   for (let round = 0; round < 4; round += 1) {
@@ -365,12 +365,12 @@ test("changing game type stays changed after a reload", async ({ page }) => {
 
 test("four leagues of six reach the playoffs without crashing", async ({ page }) => {
   await openScorekeeper(page);
-  await page.getByRole("button", { name: "Tournament Groups" }).click();
+  await page.getByRole("button", { name: "Group Play", exact: true }).click();
   for (let index = 0; index < 2; index += 1) await page.getByRole("button", { name: "More leagues" }).click();
   while (await page.getByRole("button", { name: "More players" }).isEnabled()) await page.getByRole("button", { name: "More players" }).click();
   await expect(page.getByPlaceholder("Enter name")).toHaveCount(24);
   await fillVisibleNames(page);
-  await page.getByRole("button", { name: "Start Tournament Groups" }).click();
+  await page.getByRole("button", { name: "Start Group Play" }).click();
   // Each round, tap players in table order; the last place fills itself in.
   for (let guard = 0; guard < 200; guard += 1) {
     const next = page.locator(".league-table button:enabled", { hasText: /^Finished/ }).first();
@@ -384,9 +384,9 @@ test("four leagues of six reach the playoffs without crashing", async ({ page })
 
 test("a league night saves only after the playoffs, crediting the champion and plate winner", async ({ page }) => {
   await openScorekeeper(page);
-  await page.getByRole("button", { name: "Tournament Groups" }).click();
+  await page.getByRole("button", { name: "Group Play", exact: true }).click();
   await fillVisibleNames(page);
-  await page.getByRole("button", { name: "Start Tournament Groups" }).click();
+  await page.getByRole("button", { name: "Start Group Play" }).click();
   const places = ["1st", "2nd", "3rd"];
   for (let round = 0; round < 4; round += 1) {
     for (const first of [1, 5]) for (let place = 0; place < 3; place += 1) await page.getByRole("button", { name: `Player ${first + place} finished ${places[place]}` }).click();
@@ -406,4 +406,67 @@ test("a league night saves only after the playoffs, crediting the champion and p
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("switchScoreKeeper") ?? "{}").extensions.switchNightHistory.at(-1));
   expect(saved.winnerIds).toHaveLength(1);
   expect(saved.details.map((section: { heading: string }) => section.heading)).toEqual(["League 1", "League 2", "Championship", "Plate"]);
+});
+
+test("a wrong league round can be undone", async ({ page }) => {
+  await openScorekeeper(page);
+  await page.getByRole("button", { name: "Group Play", exact: true }).click();
+  await fillVisibleNames(page);
+  await page.getByRole("button", { name: "Start Group Play" }).click();
+  for (const [player, place] of [[1, "1st"], [2, "2nd"], [3, "3rd"]] as const) await page.getByRole("button", { name: `Player ${player} finished ${place}` }).click();
+  await expect(page.getByText("Round 2 of 4 · 4 points for 1st down to 1 for last")).toHaveCount(1);
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Undo last round" }).click();
+  await expect(page.getByText("Round 1 of 4 · 4 points for 1st down to 1 for last")).toHaveCount(2);
+  await expect(page.getByText(/^0 points/)).toHaveCount(8);
+
+  // The undo survives a reload.
+  await reopenScorekeeper(page);
+  await expect(page.getByText("Round 1 of 4 · 4 points for 1st down to 1 for last")).toHaveCount(2);
+});
+
+test("the Cup lets you change a result, labels the final and can take back the champion", async ({ page }) => {
+  await openScorekeeper(page);
+  await page.getByRole("button", { name: "Switch Cup" }).click();
+  await page.getByRole("button", { name: "More players" }).click();
+  await page.getByRole("button", { name: "More players" }).click();
+  await expect(page.getByPlaceholder("Enter name")).toHaveCount(4);
+  await fillVisibleNames(page);
+  await page.getByRole("button", { name: "Start Switch Cup" }).click();
+  const first = page.locator(".cup-fixture").first();
+  await first.getByRole("button").first().click();
+  const wrong = await first.locator("button.winner").innerText();
+  await first.getByRole("button", { name: /Change the winner of/ }).click();
+  await expect(first.locator("button.winner")).toHaveCount(0);
+  await first.getByRole("button").nth(1).click();
+  await expect(first.locator("button.winner")).not.toHaveText(wrong);
+
+  await page.locator(".cup-fixture").nth(1).getByRole("button").first().click();
+  await page.getByRole("button", { name: "Draw next round" }).click();
+  await expect(page.locator(".score-status")).toContainText("Final");
+  await page.getByRole("button", { name: "Undo the round 2 draw" }).click();
+  await expect(page.locator(".score-status")).toContainText("Round 1");
+  await page.getByRole("button", { name: "Draw next round" }).click();
+  await page.locator(".cup-fixture").first().getByRole("button").first().click();
+  await page.getByRole("button", { name: "Crown the champion" }).click();
+  await expect(page.getByText(/is champion/)).toBeVisible();
+  await page.getByRole("button", { name: "Undo crowning the champion" }).click();
+  await expect(page.getByRole("button", { name: "Crown the champion" })).toBeVisible();
+});
+
+test("a single league finishes with a final and a plate, and can be saved", async ({ page }) => {
+  await openScorekeeper(page);
+  await page.getByRole("button", { name: "Group Play", exact: true }).click();
+  await page.getByRole("button", { name: "Fewer leagues" }).click();
+  await expect(page.getByPlaceholder("Enter name")).toHaveCount(4);
+  await fillVisibleNames(page);
+  await page.getByRole("button", { name: "Start Group Play" }).click();
+  const places = ["1st", "2nd", "3rd"];
+  for (let round = 0; round < 4; round += 1) for (let place = 0; place < 3; place += 1) await page.getByRole("button", { name: `Player ${place + 1} finished ${places[place]}` }).click();
+  await expect(page.getByRole("heading", { name: "Knockout playoffs" })).toBeVisible();
+  await expect(page.locator(".playoff-group h3").first()).toHaveText("Final");
+  for (const group of [0, 1]) await page.locator(".playoff-group").nth(group).getByRole("button", { name: "LOST" }).last().click();
+  await expect(page.getByText("Player 1 won the championship; Player 3 won the plate")).toBeVisible();
+  await page.getByRole("button", { name: "Save completed night" }).click();
+  await expect(page.getByText("Player 1 won the championship; Player 3 won the plate").first()).toBeVisible();
 });

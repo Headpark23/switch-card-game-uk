@@ -22,7 +22,7 @@ const MILESTONES: Record<MilestoneId, { label: string; hint: string }> = {
 };
 
 const FORMAT_NAMES: Record<string, string> = {
-  'head-to-head': 'One v One', domino: 'Domino', darts: 'Darts', league: 'League night', knockout: 'Knockout', cup: 'Switch Cup',
+  'head-to-head': 'One v One', domino: 'Domino', darts: 'Darts', league: 'Group Play', knockout: 'Knock Out', cup: 'Switch Cup',
 };
 
 function WinDial({ rate }: { rate: number }) {

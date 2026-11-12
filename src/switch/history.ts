@@ -39,8 +39,8 @@ const FORMAT_LABELS: Record<ScoreFormat, string> = {
   "head-to-head": "One v One",
   domino: "Domino",
   darts: "Darts",
-  league: "Tournament Groups",
-  knockout: "Knockout",
+  league: "Group Play",
+  knockout: "Knock Out",
   cup: "Switch Cup",
 };
 
@@ -180,7 +180,7 @@ export function completionFromLeagues(
   playoffs: { readonly status: "not-ready"; readonly reason: string } | ReadyPlayoffs | null,
   knockouts: LeaguePlayoffKnockouts = {},
 ): NightCompletion | null {
-  if (!playoffs || playoffs.status !== "ready" || leagues.length < 2 || leagues.some((league) => league.results.length < 3)) return null;
+  if (!playoffs || playoffs.status !== "ready" || leagues.length < 1 || leagues.some((league) => league.results.length < 3)) return null;
   const championship = knockouts.championship;
   if (!championship?.championId) return null;
   const plateEntrants = playoffs.plate.entrants;

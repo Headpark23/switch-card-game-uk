@@ -23,6 +23,8 @@ export type ActiveNight =
     readonly playoffOrder: Readonly<Record<string, readonly string[]>>;
     /** Knockout progress for the championship and plate play-offs. */
     readonly playoffKnockouts?: Readonly<Record<string, KnockoutState>>;
+    /** Finishing order of each round played, per league, so the last round can be undone. */
+    readonly log?: Readonly<Record<string, readonly (readonly string[])[]>>;
   };
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -44,6 +46,11 @@ function numberMap(value: unknown): value is Record<string, number> {
 function stringLists(value: unknown): value is Record<string, string[]> {
   const item = record(value);
   return !!item && Object.values(item).every((entry) => Array.isArray(entry) && entry.every((id) => typeof id === 'string'));
+}
+
+function roundLogs(value: unknown): boolean {
+  const item = record(value);
+  return !!item && Object.values(item).every((rounds) => Array.isArray(rounds) && rounds.every((round) => Array.isArray(round) && round.every((id) => typeof id === 'string')));
 }
 
 function scoreSession(value: unknown): value is ScoreSession {
@@ -86,7 +93,8 @@ export function getActiveNight(extensions: Readonly<Record<string, unknown>>): A
   if (item.kind === 'cup' && cup(item.state)) return item as unknown as ActiveNight;
   if (item.kind === 'league' && players(item.players) && Number.isInteger(item.leagueCount) && Number(item.leagueCount) >= 1 && Number(item.leagueCount) <= 4
     && (item.sizes === undefined || (Array.isArray(item.sizes) && item.sizes.length === item.leagueCount && item.sizes.every((size) => Number.isInteger(size) && size >= 3 && size <= 6)))
-    && numberMap(item.scores) && numberMap(item.wins) && numberMap(item.rounds) && stringLists(item.picks) && stringLists(item.playoffOrder)) return item as unknown as ActiveNight;
+    && numberMap(item.scores) && numberMap(item.wins) && numberMap(item.rounds) && stringLists(item.picks) && stringLists(item.playoffOrder)
+    && (item.log === undefined || roundLogs(item.log))) return item as unknown as ActiveNight;
   return null;
 }
 

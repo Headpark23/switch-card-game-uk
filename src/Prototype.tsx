@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useLayoutEffect, useState } from 'react';
-import { ArrowRight, BookOpen, Cards, PlayCircle, Trophy, Question, UsersThree, ChatCircle, Club, MagnifyingGlass, X, DownloadSimple, CheckCircle, Lightbulb } from '@phosphor-icons/react';
+import { ArrowRight, BookOpen, House, Cards, PlayCircle, Trophy, Question, UsersThree, ChatCircle, Club, MagnifyingGlass, X, DownloadSimple, CheckCircle, Lightbulb } from '@phosphor-icons/react';
 import WatchNight from './screens/WatchNight';
 import Referee from './screens/Referee';
 import NightReminder from './screens/NightReminder';
@@ -55,7 +55,7 @@ export default function Prototype() {
   const [rulesOpen, setRulesOpen] = useState(false);
   const [welcome, setWelcome] = useState(() => { try { return window.localStorage.getItem('switchWelcome') !== 'done'; } catch { return false; } });
   const keyboard = useKeyboard();
-  const { bottomInset } = useKeyboardInsets();
+  const { bottomInset, isKeyboardVisible } = useKeyboardInsets();
 
   const resetDeviceScroll = () => {
     const screen = document.querySelector<HTMLElement>('[data-testid="device-screen"]');
@@ -101,7 +101,7 @@ export default function Prototype() {
               <button className="home-tile" onClick={() => openNight('score')}><UsersThree size={26} weight="fill" /><strong>Start a game night</strong><small>Scores, leagues, cups</small></button>
               <button className="home-tile" aria-label="Quick night" onClick={() => go('Quick')}><Lightbulb size={26} weight="fill" /><strong>Quick night</strong><small>Real cards, 60 seconds</small></button>
             </div>
-            <div className="night-shortcuts"><button className="text-link" onClick={() => openNight('stats')}>Stats</button><button className="text-link" onClick={() => openNight('leagues')}>Leagues</button><button className="text-link" onClick={() => openNight('history')}>History</button><button className="text-link" onClick={() => go('Puzzles')}>Puzzles</button><button className="text-link" onClick={() => setPlanOpen(true)}>Plan a night</button><button className="text-link" onClick={() => go('Watch')}>Join a night</button></div>
+            <div className="night-shortcuts"><button className="text-link" onClick={() => openNight('stats')}>Stats</button><button className="text-link" onClick={() => openNight('leagues')}>Seasons</button><button className="text-link" onClick={() => openNight('history')}>History</button><button className="text-link" onClick={() => go('Puzzles')}>Puzzles</button><button className="text-link" onClick={() => setPlanOpen(true)}>Plan a night</button><button className="text-link" onClick={() => go('Watch')}>Join a night</button></div>
           </section>
           {(() => { const p = powers[new Date().getDate() % powers.length]; return <button className="home-daily" onClick={() => setSelected(p)}><Fan codes={p.cards.slice(0, 3)} /><span><small>POWER CARD OF THE DAY</small><strong>{p.name}</strong><em>{p.short}</em><i>Tap to learn it <ArrowRight size={13} /></i></span></button>; })()}
           <AccountPanel home />
@@ -179,15 +179,16 @@ export default function Prototype() {
         {page !== 'Tutorial' && !rulesOpen && <Suspense fallback={null}><AppFooter page={page} onPrivacy={() => go('Privacy')} /></Suspense>}
       </main>
     </MobileScroll>
-    <nav className="bottom-tabs" aria-label="Main navigation" style={{ bottom: bottomInset, ['--nav-extend' as string]: `${bottomInset}px` }}>
-      {([{ name: 'Learn', label: 'Rules', Icon: BookOpen }, { name: 'Cards', label: 'Cards', Icon: Cards }, { name: 'Modes', label: 'Play', Icon: PlayCircle }, { name: 'Club', label: 'Club', Icon: Trophy }, { name: 'Questions', label: 'Questions', Icon: Question }] as const).map(({ name, label, Icon }) => {
+    {/* While typing, the keyboard needs the room: the tab bar steps aside and returns when it closes. */}
+    {!isKeyboardVisible && <nav className="bottom-tabs" aria-label="Main navigation" style={{ bottom: bottomInset, ['--nav-extend' as string]: `${bottomInset}px` }}>
+      {([{ name: 'Learn', label: 'Home', Icon: House }, { name: 'Cards', label: 'Cards', Icon: Cards }, { name: 'Modes', label: 'Play', Icon: PlayCircle }, { name: 'Club', label: 'Club', Icon: Trophy }, { name: 'Questions', label: 'Questions', Icon: Question }] as const).map(({ name, label, Icon }) => {
         const clubView = page === 'Score' && scoreView !== 'score';
         const active = name === 'Club' ? clubView
           : page === name || (name === 'Learn' && (page === 'Tutorial' || page === 'Puzzles' || page === 'Watch')) || (name === 'Modes' && (page === 'Quick' || (page === 'Score' && !clubView)));
         const open = () => { if (name === 'Club') openNight(scoreView === 'score' ? 'stats' : scoreView); else go(name); };
         return <button key={name} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} onClick={open}><span className="tab-icon"><Icon weight={active ? 'fill' : 'regular'} size={23} /></span><span className="tab-label">{label}</span></button>;
       })}
-    </nav>
+    </nav>}
     {page === 'Learn' && !rulesOpen && <InstallBanner bottom={bottomInset + 76} />}
     <NightReminder open={planOpen} onOpenChange={setPlanOpen} />
     <BottomSheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }} title={selected?.name || 'Card rule'}>

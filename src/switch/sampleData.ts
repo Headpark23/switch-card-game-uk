@@ -50,7 +50,7 @@ function buildNights(now: Date): SwitchNightRecord[] {
   const random = rng(20261107);
   const nights: SwitchNightRecord[] = [];
   const formats = ["domino", "head-to-head", "knockout", "darts", "cup", "domino", "knockout", "head-to-head", "cup", "darts", "domino", "knockout", "head-to-head", "cup", "domino", "knockout", "darts", "head-to-head"] as const;
-  const labels = { domino: "Domino", "head-to-head": "One v One", darts: "Darts", knockout: "Knockout", cup: "Switch Cup" } as const;
+  const labels = { domino: "Domino", "head-to-head": "One v One", darts: "Darts", knockout: "Knock Out", cup: "Switch Cup" } as const;
   formats.forEach((format, index) => {
     const when = new Date(now.getTime() - (formats.length - index) * 4 * 86_400_000);
     when.setHours(20, 15, 0, 0);

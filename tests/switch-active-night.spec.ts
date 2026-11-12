@@ -65,9 +65,9 @@ test("an unfinished Domino match resumes after refresh with undo history", async
 
 test("Knockout and Cup progress resume after refresh", async ({ page }) => {
   await openScorekeeper(page);
-  await page.getByRole("button", { name: "Knockout" }).click();
+  await page.getByRole("button", { name: "Knock Out", exact: true }).click();
   await fillNames(page);
-  await page.getByRole("button", { name: "Start Knockout" }).click();
+  await page.getByRole("button", { name: "Start Knock Out" }).click();
   await page.getByRole("button", { name: "LOST" }).first().click();
   await reopenScorekeeper(page);
   await expect(page.getByText("2 still playing", { exact: true })).toBeVisible();
@@ -84,9 +84,9 @@ test("Knockout and Cup progress resume after refresh", async ({ page }) => {
 
 test("partly entered group-league finishing order resumes after refresh", async ({ page }) => {
   await openScorekeeper(page);
-  await page.getByRole("button", { name: "Tournament Groups" }).click();
+  await page.getByRole("button", { name: "Group Play", exact: true }).click();
   await fillNames(page);
-  await page.getByRole("button", { name: "Start Tournament Groups" }).click();
+  await page.getByRole("button", { name: "Start Group Play" }).click();
   await page.getByRole("button", { name: "Player 1 finished 1st" }).click();
 
   await reopenScorekeeper(page);

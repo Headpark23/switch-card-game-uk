@@ -59,9 +59,9 @@ test("league seasons count eligible history once and lock when completed", async
     localStorage.setItem("switchScoreKeeper", JSON.stringify({ schemaVersion: 1, selectedFormat: "domino", players: [], scores: {}, target: 100, extensions: { switchProfiles: profiles, switchNightHistory: history } }));
   });
   await openClubhouse(page);
-  await page.getByRole("button", { name: "Leagues", exact: true }).click();
-  await page.getByLabel("League name").fill("Family League");
-  await page.getByRole("button", { name: "Create league season" }).click();
+  await page.getByRole("button", { name: "Seasons", exact: true }).click();
+  await page.getByLabel("Season name").fill("Family League");
+  await page.getByRole("button", { name: "Create season" }).click();
   await page.getByRole("button", { name: "Count Family Friday in Family League" }).dblclick();
 
   await expect(page.getByRole("row", { name: /1 Alex 1 1 3/ })).toBeVisible();

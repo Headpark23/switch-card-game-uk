@@ -29,7 +29,7 @@ test("the bottom bar has five tabs and Club opens stats, leagues and history", a
   await expect(nav.getByRole("button")).toHaveCount(5);
   await nav.getByRole("button", { name: "Club" }).click();
   await expect(nav.getByRole("button", { name: "Club" })).toHaveAttribute("aria-current", "page");
-  await page.getByRole("button", { name: "Leagues", exact: true }).click();
+  await page.getByRole("button", { name: "Seasons", exact: true }).click();
   await expect(nav.getByRole("button", { name: "Club" })).toHaveAttribute("aria-current", "page");
   await nav.getByRole("button", { name: "Play" }).click();
   await expect(nav.getByRole("button", { name: "Play" })).toHaveAttribute("aria-current", "page");

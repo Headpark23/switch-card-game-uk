@@ -20,14 +20,17 @@ export function Fan({codes}:{codes:string[]}) {return <div className="card-fan">
 export function AdSlot({hidden}:{hidden:boolean}) {return hidden?null:<aside className="advertisement" aria-label="Demonstration advertising placement"><span>ADVERTISEMENT</span><small>Demo placement · no live ad</small></aside>;}
 
 /** Game-agnostic coaching panel: what the last move did, the coach's pick with reasons, and a full lesson with tactics on tap. */
-export function CoachPanel({ meaning, options, sheetOptions = options, lesson, advice, inlineTrigger = true, compact = false, title = 'Your options', open: controlledOpen, onOpenChange, footer }: { meaning: string | null; options: readonly CoachOption[]; sheetOptions?: readonly CoachOption[]; lesson?: Lesson | null; advice?: Advice | null; inlineTrigger?: boolean; compact?: boolean; title?: string; open?: boolean; onOpenChange?: (open: boolean) => void; footer?: ReactNode }) {
+export function CoachPanel({ meaning, options, sheetOptions = options, lesson, advice, inlineTrigger = true, compact = false, title = 'Your options', open: controlledOpen, onOpenChange, footer, revealPick = true }: { meaning: string | null; revealPick?: boolean; options: readonly CoachOption[]; sheetOptions?: readonly CoachOption[]; lesson?: Lesson | null; advice?: Advice | null; inlineTrigger?: boolean; compact?: boolean; title?: string; open?: boolean; onOpenChange?: (open: boolean) => void; footer?: ReactNode }) {
   const [innerOpen, setInnerOpen] = useState(false);
   const open = controlledOpen ?? innerOpen;
   const setOpen = (value: boolean) => { setInnerOpen(value); onOpenChange?.(value); };
   const detail = lesson || advice;
   const showInline = !!meaning || (advice ? advice.kind !== 'accept' : options.length > 0) || (detail && inlineTrigger);
   const strip = compact
-    ? advice && advice.kind !== 'accept'
+    ? advice && advice.kind !== 'accept' && !revealPick
+      // Hints are optional: the strip offers the coach's pick without giving the move away.
+      ? <button className="coach-strip" onClick={() => setOpen(true)} aria-label="Why & tactics: see the coach's pick"><span className="pick-cards" aria-hidden="true"><CardImage code="back" /></span><span className="strip-text"><b>Your move</b><small>Stuck? Tap for the coach's pick and every card explained.</small></span><span className="strip-go" aria-hidden="true">Coach ›</span></button>
+      : advice && advice.kind !== 'accept'
       ? <button className="coach-strip" onClick={() => setOpen(true)} aria-label={`Why & tactics: ${advice.headline}`}><span className="pick-cards" aria-hidden="true">{advice.cards.slice(0, 2).map((card) => <CardImage key={card} code={card} />)}{!advice.cards.length && <CardImage code="back" />}</span><span className="strip-text"><b>{advice.headline}</b><small>{advice.reasons[0]}</small></span><span className="strip-go" aria-hidden="true">Why ›</span></button>
       : meaning ? <button className="coach-strip quiet" onClick={() => setOpen(true)} aria-label="What that means"><span className="strip-text"><small>{meaning}</small></span><span className="strip-go" aria-hidden="true">More ›</span></button> : null
     : null;

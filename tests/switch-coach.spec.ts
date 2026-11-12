@@ -82,7 +82,13 @@ test("an unplayable tap says why, and keeps the rule wording", async ({ page }) 
 test("the guided game shows what happened and the options on your turn", async ({ page }) => {
   await page.goto("/?testDeck=1");
   await page.getByRole("button", { name: "Play against the computer" }).click();
+  // Hints are optional: the strip offers the coach without naming the move until asked.
+  await expect(page.getByRole("button", { name: "Why & tactics: see the coach's pick" })).toBeVisible();
+  await expect(page.locator(".player-hand button.coach-pick")).toHaveCount(0);
+  await page.getByRole("button", { name: "Show hint" }).click();
   await expect(page.getByRole("button", { name: /Why & tactics: Play/ })).toBeVisible();
+  await expect(page.locator(".player-hand button.coach-pick")).not.toHaveCount(0);
+  await page.getByRole("button", { name: "Hide hint" }).click();
 
   await page.getByRole("button", { name: "Select Nine of hearts, legal move" }).click();
   await page.getByRole("button", { name: "Play selected" }).click();
@@ -206,4 +212,26 @@ test("the tactics coach recommends a legal move with reasons for any hand", asyn
   expect(result[3].headline).toMatch(/Play the K of diamonds/);
   expect(result[4].kind).toBe("accept");
   expect(result[5].kind).toBe("pickup");
+});
+
+test("the coach's tactics never tell you to keep the card it just told you to play", async ({ page }) => {
+  await page.goto("/");
+  const advice = await page.evaluate(async () => {
+    const { adviseMove } = await import("/src/switch/tactics.ts");
+    const { createInitialGame } = await import("/src/switch/rules.ts");
+    const results: { cards: string[]; tactics: string[] }[] = [];
+    for (let seed = 1; seed <= 400; seed += 1) {
+      let value = seed;
+      const random = () => { value = (value * 16807) % 2147483647; return value / 2147483647; };
+      const state = createInitialGame(random);
+      const move = adviseMove({ ...state, turn: "player" });
+      if (move.kind === "play") results.push({ cards: [...move.cards], tactics: [...move.tactics] });
+    }
+    return results;
+  });
+  // Playing your only ace (or only two) must not come with a tip to keep it.
+  const contradictions = advice.filter((entry) => (entry.cards.some((card) => card.startsWith("A")) && entry.tactics.some((tip) => /Keep your ace as a rescue/.test(tip)))
+    || (entry.cards.some((card) => card.startsWith("2")) && entry.tactics.some((tip) => /Your two is also a shield/.test(tip))));
+  expect(advice.length).toBeGreaterThan(50);
+  expect(contradictions).toEqual([]);
 });

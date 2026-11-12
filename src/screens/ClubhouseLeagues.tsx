@@ -33,7 +33,7 @@ export default function ClubhouseLeagues({ extensions, onChange }: Props) {
       setName('');
       setError('');
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'This league could not be created.');
+      setError(reason instanceof Error ? reason.message : 'This season could not be created.');
     }
   }
 
@@ -57,8 +57,8 @@ export default function ClubhouseLeagues({ extensions, onChange }: Props) {
   return <section className="club-panel" aria-labelledby="leagues-title">
     <SampleDataBar offer={profiles.length < 2} extensions={extensions} onChange={onChange} />
     <p className="eyebrow">THE NOTICEBOARD</p>
-    <h2 id="leagues-title">Season Leagues</h2>
-    <p className="intro">Your long-running table across many game nights — separate from the one-night Tournament Groups format. Three points for a win, one for taking part. You choose which saved nights count.</p>
+    <h2 id="leagues-title">Seasons</h2>
+    <p className="intro">Your long-running table across many game nights — separate from the one-night Group Play format. Three points for a win, one for taking part. You choose which saved nights count.</p>
 
     {seasons.map((season) => {
       const standings = seasonStandings(season, nights, allProfiles);
@@ -75,20 +75,20 @@ export default function ClubhouseLeagues({ extensions, onChange }: Props) {
         {counted.length > 0 && <><h4>Counted nights</h4><ul className="counted-nights">{counted.map((night) => <li key={night.id}>{night.title} <small>{night.outcome}</small></li>)}</ul></>}
         {season.status === 'active' && <>
           {open.length > 0 && <><h4>Nights you can count</h4>{open.map((night) => <button className="secondary count-night" key={night.id} aria-label={`Count ${night.title} in ${season.name}`} onClick={() => count(season, night)}>Count {night.title} <small>{night.outcome}</small></button>)}</>}
-          {open.length === 0 && <p className="history-empty">Save a night with at least two league players to count it here.</p>}
+          {open.length === 0 && <p className="history-empty">Save a night with at least two of this season's players to count it here.</p>}
           <button className="text-link" aria-label={`Complete ${season.name}`} onClick={() => { if (window.confirm(`Complete ${season.name}? The table is frozen and no more nights can be added.`)) save(seasons.map((entry) => (entry.id === season.id ? completeSeason(entry) : entry))); }}>Complete this season</button>
         </>}
       </article>;
     })}
 
     <div className="new-season">
-      <h3>Start a league season</h3>
+      <h3>Start a season</h3>
       {profiles.length < 2
         ? <p className="history-empty">Save two or more players first. Start a score session with your regulars and they will appear here.</p>
         : <>
-          <label><span>League name</span><KeyboardInput aria-label="League name" value={name} placeholder="Family League" onChange={(event) => setName(event.target.value)} /></label>
+          <label><span>Season name</span><KeyboardInput aria-label="Season name" value={name} placeholder="Family season 2026" onChange={(event) => setName(event.target.value)} /></label>
           <fieldset><legend>Who is in?</legend>{profiles.map((profile) => <label className="check" key={profile.id}><input type="checkbox" checked={members.includes(profile.id)} onChange={(event) => setPicked(event.target.checked ? [...members, profile.id] : members.filter((id) => id !== profile.id))} /><span>{profile.name}</span></label>)}</fieldset>
-          <button className="primary" onClick={create}>Create league season</button>
+          <button className="primary" onClick={create}>Create season</button>
         </>}
       {error && <p className="score-error" role="alert">{error}</p>}
     </div>

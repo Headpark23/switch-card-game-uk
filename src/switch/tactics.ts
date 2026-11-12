@@ -117,8 +117,9 @@ function reasonsFor(state: GameState, action: Play): string[] {
   return reasons.slice(0, 3);
 }
 
-function situationalTactics(state: GameState): string[] {
-  const hand = state.playerHand;
+/** Tactics for the hand left after `playing`, so a tip never contradicts the move the coach picked. */
+function situationalTactics(state: GameState, playing: readonly CardId[] = []): string[] {
+  const hand = state.playerHand.filter((card) => !playing.includes(card));
   const opponent = state.computerHand.length;
   const tactics: string[] = [];
   const counts = (Object.keys(SUITS) as Suit[]).map((suit) => ({ suit, n: hand.filter((card) => suitOf(card) === suit).length })).sort((a, b) => b.n - a.n);
@@ -186,8 +187,9 @@ export function adviseMove(input: GameState): Advice {
   }
 
   const cards = best.cards;
+  const pickTactics = situationalTactics(state, cards);
   const headline = cards.length === 1
     ? `Play ${the(cards[0])}${best.chosenSuit ? ` and choose ${SUITS[best.chosenSuit]}` : ""}`
     : `Play ${cards.map((card) => the(card)).join(", then ")}${best.chosenSuit ? ` and choose ${SUITS[best.chosenSuit]}` : ""}`;
-  return { kind: "play", cards, chosenSuit: best.chosenSuit, headline, reasons: reasonsFor(state, best), tactics, notes };
+  return { kind: "play", cards, chosenSuit: best.chosenSuit, headline, reasons: reasonsFor(state, best), tactics: pickTactics, notes };
 }

@@ -47,3 +47,34 @@ export function drawNextCupRound(state: CupState, random: RandomSource): CupStat
   if (advancing.length === 1) return { ...state, championId: advancing[0] };
   return { ...state, rounds: [...state.rounds, createRound(advancing, round.number + 1, random)] };
 }
+
+/** True when this round is the final: one match and nobody waiting on a bye. */
+export function isCupFinal(round: CupRound): boolean {
+  return round.fixtures.length === 1 && !round.byePlayerId;
+}
+
+/** Clears a result in the current round so the right winner can be tapped instead. */
+export function clearCupResult(state: CupState, fixtureId: string): CupState {
+  if (state.championId) throw new Error("Undo the champion first.");
+  const roundIndex = state.rounds.length - 1;
+  const round = state.rounds[roundIndex];
+  if (!round.fixtures.some((entry) => entry.id === fixtureId)) throw new Error("Only results in the current round can be changed.");
+  const fixtures = round.fixtures.map((entry) => entry.id === fixtureId ? { ...entry, winnerId: null } : entry);
+  return { ...state, rounds: state.rounds.map((entry, index) => index === roundIndex ? { ...round, fixtures } : entry) };
+}
+
+/** What "Undo" would take back now: the champion, or a round drawn before any of its games were played. */
+export function cupUndoStep(state: CupState): "champion" | "draw" | null {
+  if (state.championId) return "champion";
+  const round = state.rounds.at(-1) as CupRound;
+  if (state.rounds.length > 1 && round.fixtures.every((fixture) => !fixture.winnerId)) return "draw";
+  return null;
+}
+
+/** Steps the Cup back one stage, keeping every result already entered in earlier rounds. */
+export function undoCupStep(state: CupState): CupState {
+  const step = cupUndoStep(state);
+  if (step === "champion") return { ...state, championId: null };
+  if (step === "draw") return { ...state, rounds: state.rounds.slice(0, -1) };
+  throw new Error("Nothing to undo yet. Tap Change beside a result to fix it.");
+}

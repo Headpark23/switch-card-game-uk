@@ -26,7 +26,9 @@ test("league standings are stable and cross-league playoffs use four leagues", a
   expect(new Set(result.playoffs.championship.entrants.map((entry: { player: { id: string } }) => entry.player.id)).size).toBe(8);
   expect(new Set(result.playoffs.plate.entrants.map((entry: { player: { id: string } }) => entry.player.id)).size).toBe(8);
   expect(result.playoffs.championship.fixtures.every((fixture: { home: { leagueId: string }; away: { leagueId: string } }) => fixture.home.leagueId !== fixture.away.leagueId)).toBe(true);
-  expect(result.oneLeague.status).toBe("not-ready");
+  // One league plays on too: its top two meet for the title, everyone else plays the plate.
+  expect(result.oneLeague.status).toBe("ready");
+  expect(result.oneLeague.championship.entrants.map((entry: { player: { id: string } }) => entry.player.id)).toEqual(["l1p0", "l1p1"]);
   expect(result.shortLeague.status).toBe("not-ready");
 });
 
@@ -75,4 +77,55 @@ test("leagues of 4, 4 and 3 give a two-per-league championship and a plate with 
   // The familiar eight-player shape is unchanged: 3rd of one league v 4th of the other.
   expect(result.twoPlate).toEqual(["L1P2 v L2P3", "L2P2 v L1P3"]);
   expect(result.twoBye).toBeNull();
+});
+
+test("a three- or four-way tie is settled by one deciding game for the whole group, never by one pair", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const leagues = await import("/src/switch/leagues.ts");
+    const players = ["A", "B", "C", "D"].map((id) => ({ id, name: id }));
+    const make = (playoffOrder: string[]) => ({ id: "l1", name: "L1", playoffOrder, results: players.map((player) => ({ player, points: 10, wins: 1 })) });
+    const ids = (groups: { id: string }[][]) => groups.map((group) => group.map((player) => player.id).join(""));
+    const rank = (order: string[]) => leagues.rankLeague(make(order).results, order).map((entry: { player: { id: string }; tied: boolean }) => entry.player.id + (entry.tied ? "*" : ""));
+    return {
+      open: ids(leagues.tiedGroups(make([]))),
+      // An old-style result for one pair must not quietly rank the other two.
+      pairOnly: { groups: ids(leagues.tiedGroups(make(["A", "B"]))), table: rank(["A", "B"]), playoffs: leagues.createCrossLeaguePlayoffs([make(["A", "B"])], () => 0).status },
+      settled: { groups: ids(leagues.tiedGroups(make(["C", "A", "D", "B"]))), table: rank(["C", "A", "D", "B"]) },
+    };
+  });
+  expect(result.open).toEqual(["ABCD"]);
+  expect(result.pairOnly.groups).toEqual(["ABCD"]);
+  expect(result.pairOnly.table.every((entry: string) => entry.endsWith("*"))).toBe(true);
+  expect(result.pairOnly.playoffs).toBe("not-ready");
+  expect(result.settled.groups).toEqual([]);
+  expect(result.settled.table).toEqual(["C", "A", "D", "B"]);
+});
+
+test("league rounds can be undone exactly, until the play-offs begin", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const night = await import("/src/switch/leagueNight.ts");
+    const knockout = await import("/src/switch/knockout.ts");
+    const ids = ["a", "b", "c", "d"];
+    let progress = night.emptyLeagueProgress(ids);
+    for (const id of ["a", "b", "c"]) progress = night.recordFinisher(progress, "l1", ids, id);
+    const afterOne = { scores: { ...progress.scores }, wins: { ...progress.wins }, rounds: progress.rounds.l1 };
+    for (const id of ["d", "c", "b"]) progress = night.recordFinisher(progress, "l1", ids, id);
+    const afterTwo = { ...progress.scores };
+    const undone = night.undoLastRound(progress, "l1");
+    const players = ids.map((id) => ({ id, name: id }));
+    const started = { ...progress, playoffKnockouts: { championship: knockout.markLost(knockout.createPlayoffKnockout(players), "a") } };
+    return {
+      afterOne, afterTwo,
+      undone: { scores: undone.scores, wins: undone.wins, rounds: undone.rounds.l1, log: undone.log.l1.length },
+      blocked: night.undoRoundBlocker(started, "l1"),
+      legacy: night.undoRoundBlocker({ ...progress, log: {} }, "l1"),
+    };
+  });
+  expect(result.afterOne).toEqual({ scores: { a: 4, b: 3, c: 2, d: 1 }, wins: { a: 1 }, rounds: 1 });
+  expect(result.afterTwo).toEqual({ a: 5, b: 5, c: 5, d: 5 });
+  expect(result.undone).toEqual({ scores: { a: 4, b: 3, c: 2, d: 1 }, wins: { a: 1, d: 0 }, rounds: 1, log: 1 });
+  expect(result.blocked).toMatch(/play-off games first/);
+  expect(result.legacy).toMatch(/before undo was available/);
 });
