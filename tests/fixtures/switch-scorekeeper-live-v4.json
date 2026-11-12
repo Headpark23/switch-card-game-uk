@@ -1,0 +1,10 @@
+{
+  "mode": "domino",
+  "players": [
+    { "name": "Player One", "score": 42 },
+    { "name": "Player Two", "score": 18 }
+  ],
+  "target": 150,
+  "round": 4,
+  "tableTheme": "classic"
+}

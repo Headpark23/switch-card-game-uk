@@ -1,0 +1,14 @@
+# The protected mobile runtime is hashed byte-for-byte. Keep its text files
+# on LF across Windows and Linux so the integrity lock is portable.
+scripts/*.mjs text eol=lf
+vite.config.ts text eol=lf
+src/App.tsx text eol=lf
+src/main.tsx text eol=lf
+src/styles.css text eol=lf
+src/mobile/*.ts text eol=lf
+src/mobile/*.tsx text eol=lf
+public/assets/android/*.svg text eol=lf
+public/assets/status/*.svg text eol=lf
+worker/*.js text eol=lf
+
+*.png binary

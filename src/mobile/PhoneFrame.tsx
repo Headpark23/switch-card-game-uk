@@ -69,6 +69,23 @@ export function PhoneFrame({ children }: PropsWithChildren) {
   const contextValue = useMemo(() => ({ screenRef }), []);
   const mobileCursor = useMobileCursor();
 
+  if (device.id === "native") {
+    return (
+      <ScreenPortalContext.Provider value={contextValue}>
+        <div
+          ref={screenRef}
+          className="device-screen device-screen-native"
+          data-device="native"
+          data-phone-screen
+          data-testid="device-screen"
+          style={{ "--device-safe-area-bottom": `${geometry.safeArea.bottom}px` } as CSSProperties}
+        >
+          {children}
+        </div>
+      </ScreenPortalContext.Provider>
+    );
+  }
+
   return (
     <ScreenPortalContext.Provider value={contextValue}>
       <div className="phone-stage">

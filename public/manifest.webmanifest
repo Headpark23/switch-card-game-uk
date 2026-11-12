@@ -1,31 +1,16 @@
 {
-  "name": "The Card Companion — Rules, Scorekeeper & Leagues",
-  "short_name": "Card Companion",
-  "description": "The ultimate card game companion: verified UK rules for 10 top card games, digital live scorekeeper, family leagues & stats.",
-  "start_url": "./",
-  "scope": "./",
+  "name": "Switch — A better game night",
+  "short_name": "Switch",
+  "description": "Learn Switch, settle rules and keep score on card night.",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#053527",
+  "background_color": "#fbf6e6",
   "theme_color": "#053527",
   "icons": [
-    {
-      "src": "./icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "./icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "./apple-touch-icon.png",
-      "sizes": "180x180",
-      "type": "image/png"
-    }
-  ],
-  "categories": ["games", "utilities", "entertainment"]
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
 }

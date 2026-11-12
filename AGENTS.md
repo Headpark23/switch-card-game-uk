@@ -9,6 +9,7 @@
 - Keep Switch primarily instructional: quick rule answers, power-card reference, game modes, and a guided tutorial take priority over extra product features.
 - Treat the complete game rules as the app's main attraction. Lead with an attractive, interactive teaching narrative derived from the original app's Rules and Game Flow sections, then connect it directly to practice in the guided game.
 - Keep “Learn to play” as a complete guided game against the computer. Offer optional legal-move hints, explain invalid moves, enforce the app's Switch rules, and continue play until either side wins.
+- Switch is a companion for physical card nights (scores, leagues, stats); on-phone play exists only as a tutorial. The tutorial must be fabulous and encourage physical play: every move explains what was played, the rule, why it matters, what you could play and a tip, and the flow leads from practice to real cards to logging the night. Build the coach and lessons game-agnostic so the pattern can be reused in other physical card and board game apps.
 - Test existing interactions before changing them, then verify iPhone and Pixel layouts after each meaningful change.
 
 In ChatGPT Work Mode, run `sites-preview start "$PWD"`, open `http://terminal.local:4173/` in the cloud browser, and verify the rendered app and its primary interactions. Keep that preview open and tell the user to inspect it in the cloud browser; do not present the local URL as a user-facing chat link. In Codex Desktop, run the local server yourself, open the preview in the in-app browser, and provide the clickable local URL. Do not deploy to Sites unless the user explicitly asks to share, publish, or deploy. Do not give the user server-start instructions when you can run it.
@@ -78,3 +79,17 @@ When any text-entry control loses focus, dismiss the simulated keyboard. If the 
 - Fixed phone chrome should not animate with pushed screens. Screen content can animate; the status bar, camera cutout, and preview chrome should stay put.
 - Keep the keyboard below the home indicator/safe area layer in z-index, and above ordinary app UI while visible.
 - Keep the home indicator as the topmost safe-area layer in the z-index above everything else in the prototype.
+
+## Rules rulings (owner decisions)
+
+- The game rules are sacrosanct. Nine rulings on contentious points are recorded in `docs/RULES-RULINGS.md` (win on 8/2/K/A, first card of a set matches suit or number, picking up ends your turn, several 8s or 7s count once, mixed kings allowed, deck flips oldest-first). Never change a rule, the engine or the in-app rule text without the owner's say-so, and keep all three in step.
+- `scripts/table-sim.mjs` plays 2 to 6 player games from the written rules; `tests/switch-rules-sim.spec.ts` proves the engine agrees with it.
+- Tutorial layout: the table and the player's hand come first. Coaching is one quiet strip that opens a sheet; never stack tips above the cards.
+
+## Scoring rulings
+Darts: first to three legs wins a set. Knock Out: whoever finishes last in a round is out, until one player is left (ruling 11, revised). Leagues: place points (N..1), then round wins, then a deciding game. Scorekeeper ends matches at target or sets. See `docs/RULES-RULINGS.md` items 10-13. Home screen is a one-screen hub of action tiles; the five-move rules guide opens from "Learn the rules".
+
+## Naming and coaching decisions (Nov 2026)
+- One name per thing, everywhere: "Group Play" (one-night leagues and playoffs), "Knock Out", "Switch Cup", and "Seasons" for the long-running table across nights. The first bottom tab is "Home".
+- Every scorekeeper result can be corrected: league rounds undo until playoff games start, Cup results have Change and Undo, and a tie of any size is settled by one deciding game for the whole group.
+- Tutorial hints are optional: the coach strip offers the coach's pick but names the move only after Show hint, automatic guidance, or a tap on the strip.

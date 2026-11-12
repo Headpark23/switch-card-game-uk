@@ -1,82 +1,58 @@
-// Service Worker for The Card Companion (Offline PWA)
-const CACHE_NAME = 'card-companion-v2';
-const STATIC_ASSETS = [
-  './',
-  './index.html',
-  './manifest.webmanifest',
-  './icon-192.png',
-  './icon-512.png',
-  './apple-touch-icon.png'
-];
+/* Switch offline support. Same-origin GETs only; nothing leaves the device. */
+const CACHE = 'switch-offline-v3';
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('Pre-cache error:', err);
-      });
-    })
-  );
-  self.skipWaiting();
-});
+self.addEventListener('install', () => self.skipWaiting());
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    })
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    for (const key of await caches.keys()) if (key !== CACHE) await caches.delete(key);
+    await self.clients.claim();
+  })());
+});
+
+// The page tells us which files make up the app once it has fully loaded.
+self.addEventListener('message', (event) => {
+  if (event.data?.type !== 'precache') return;
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await Promise.all(event.data.urls.map(async (url) => {
+      try {
+        if (new URL(url, self.location.origin).origin !== self.location.origin) return;
+        if (!(await cache.match(url))) await cache.add(url);
+      } catch { /* one missing file must not block the rest */ }
+    }));
+  })());
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests
-  if (event.request.method !== 'GET') return;
+  const request = event.request;
+  const url = new URL(request.url);
+  if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
 
-  // Let external ad scripts and analytics pass through
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) {
+  if (request.mode === 'navigate') {
+    // Network first so updates arrive; fall back to the saved app shell offline.
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      try {
+        const fresh = await fetch(request);
+        if (fresh.ok) cache.put('/index.html', fresh.clone());
+        return fresh;
+      } catch {
+        return (await cache.match("/index.html", { ignoreVary: true })) || Response.error();
+      }
+    })());
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Return cached, and update in background
-        fetch(event.request)
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, networkResponse);
-              });
-            }
-          })
-          .catch(() => {});
-        return cachedResponse;
-      }
-
-      return fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const clone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, clone);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => {
-          // If offline and navigating to a page, serve cached index.html
-          if (event.request.mode === 'navigate') {
-            return caches.match('./index.html') || caches.match('./');
-          }
-        });
-    })
-  );
+  // Everything else: use the saved copy, refresh it in the background.
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE);
+    const saved = await cache.match(request, { ignoreVary: true });
+    const refresh = fetch(request).then((fresh) => {
+      if (fresh.ok) cache.put(request, fresh.clone());
+      return fresh;
+    });
+    if (saved) { refresh.catch(() => {}); return saved; }
+    return refresh;
+  })());
 });

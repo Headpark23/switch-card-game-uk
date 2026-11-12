@@ -1,0 +1,67 @@
+import { useState } from 'react';
+import { deleteCloudCopy, loadAccount, saveAccount } from '../auth';
+import { CONTACT_EMAIL, eraseDeviceData, exportDeviceData, switchKeys } from '../switch/privacy';
+
+type Confirm = null | 'device' | 'cloud';
+
+export default function Privacy(_props: { onBack: () => void }) {
+  const [confirm, setConfirm] = useState<Confirm>(null);
+  const [note, setNote] = useState('');
+  const [signedIn, setSignedIn] = useState(() => loadAccount() !== null);
+  const items = switchKeys().length;
+
+  function download() {
+    const url = URL.createObjectURL(new Blob([exportDeviceData()], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url; link.download = 'my-switch-data.json'; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setNote('Your data has been saved as my-switch-data.json.');
+  }
+  function eraseDevice() {
+    const count = eraseDeviceData();
+    setConfirm(null);
+    setNote(`Deleted ${count} stored ${count === 1 ? 'item' : 'items'} from this device. Reloading…`);
+    setTimeout(() => window.location.assign('/'), 900);
+  }
+  async function eraseCloud() {
+    setConfirm(null);
+    try { await deleteCloudCopy(); saveAccount(null); setSignedIn(false); setNote('Your cloud copy is deleted and you are signed out. Your club is still on this phone.'); }
+    catch (reason) { setNote(reason instanceof Error ? reason.message : 'The cloud copy could not be deleted. Please try again.'); }
+  }
+
+  return <section className="privacy-page" aria-labelledby="privacy-title">
+    <p className="eyebrow">PRIVACY &amp; YOUR DATA</p>
+    <h1 id="privacy-title">Your club is<br />yours.</h1>
+    <p className="intro">Switch has no ads, no tracking cookies and no analytics. It keeps your club on your phone. Here is exactly what happens to your data.</p>
+
+    <div className="privacy-controls">
+      <h2>Your controls</h2>
+      <button className="secondary" onClick={download}>Download my data</button>
+      <button className="secondary" onClick={() => setConfirm('device')}>Delete data on this device</button>
+      {signedIn && <button className="secondary" onClick={() => setConfirm('cloud')}>Delete my cloud copy</button>}
+      {confirm && <div className="privacy-confirm" role="alertdialog" aria-label="Confirm deletion">
+        <p><strong>{confirm === 'device' ? 'Delete everything Switch stores on this phone?' : 'Delete your cloud backup and sign out?'}</strong> {confirm === 'device' ? `That is ${items} stored ${items === 1 ? 'item' : 'items'}: players, scores, history and settings. This cannot be undone.` : 'Your club on this phone is kept. This cannot be undone.'}</p>
+        <button className="primary" onClick={() => (confirm === 'device' ? eraseDevice() : void eraseCloud())}>Yes, delete</button>
+        <button className="text-link" onClick={() => setConfirm(null)}>Keep it</button>
+      </div>}
+      {note && <p role="status" className="share-note">{note}</p>}
+    </div>
+
+    <div className="privacy-copy">
+      <h2>What stays on your phone</h2>
+      <p>Player names, scores, night history, puzzle progress and settings are saved in this browser's storage. Playing, learning and keeping score work offline and send nothing anywhere.</p>
+      <h2>If you sign in with Google</h2>
+      <p>Signing in is optional and needs your tick of consent. Google tells us your name, email address and profile picture, and we keep a private backup of your club so it can follow you to another phone. We use it only for that. A short-lived secure cookie keeps you signed in; it is essential to the feature and holds no tracking. Google may see that you used its sign-in button. Sign out or delete the cloud copy at any time.</p>
+      <h2>Shared nights</h2>
+      <p>If you share a night, its title, player first names and scores are stored under a six-letter code so friends can watch. It is deleted automatically after two weeks. Share first names only.</p>
+      <h2>Visit counter</h2>
+      <p>Each time the app opens, one number goes up by one. No cookie, no device ID and no IP address is saved by Switch. Our hosting provider (Vercel) briefly keeps standard server logs, which include IP addresses, for security.</p>
+      <h2>Feedback emails</h2>
+      <p>The feedback buttons open your own email app. We only receive what you choose to send, and use it to reply and improve Switch. Ask and we will delete it.</p>
+      <h2>Who is responsible</h2>
+      <p>M. White is the data controller. Contact <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. Under UK GDPR you can ask to see, correct, export, restrict or erase your data, object to its use, or withdraw consent, and the buttons above do most of that instantly. You can also complain to the Information Commissioner's Office at ico.org.uk. Data may be processed by Vercel and Google, including in the USA, under their standard safeguards.</p>
+      <h2>Children</h2>
+      <p>Switch is a family card game and works without an account. Please do not sign in if you are under 13 without a parent or guardian.</p>
+    </div>
+  </section>;
+}
