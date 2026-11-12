@@ -83,7 +83,9 @@ export default function Prototype() {
   }
   const startGuidedGame = () => go('Tutorial');
   const closeWelcome = () => { setWelcome(false); try { window.localStorage.setItem('switchWelcome', 'done'); } catch { /* storage unavailable */ } };
-  const openNight = (view: 'score' | 'stats' | 'leagues' | 'trophies' | 'history') => { setScoreView(view); go('Score'); };
+  // Where the scorekeeper was opened from decides its back link and which bottom tab stays lit, so neither jumps while you switch sections inside it.
+  const [scoreFrom, setScoreFrom] = useState<{ back: 'Learn' | 'Modes'; tab: 'Modes' | 'Club' }>({ back: 'Learn', tab: 'Modes' });
+  const openNight = (view: 'score' | 'stats' | 'leagues' | 'trophies' | 'history', back: 'Learn' | 'Modes' = page === 'Modes' ? 'Modes' : 'Learn') => { setScoreView(view); setScoreFrom({ back, tab: view === 'score' ? 'Modes' : 'Club' }); go('Score'); };
 
   const result = rules.filter((r) => (r.q + ' ' + r.a).toLowerCase().includes(query.toLowerCase()));
   return <div className="switch-app" onFocusCapture={resetDeviceScroll}>
@@ -168,7 +170,7 @@ export default function Prototype() {
             <button className="download" onClick={downloadRules}><DownloadSimple size={20} />Download game-night rules</button>
           </>}
           <Suspense fallback={<Loading />}>
-            {page === 'Score' && <SwitchScorekeeper onBack={() => go(scoreView === 'score' ? 'Modes' : 'Learn')} initialView={scoreView} onView={setScoreView} />}
+            {page === 'Score' && <SwitchScorekeeper onBack={() => go(scoreFrom.back)} backLabel={scoreFrom.back === 'Modes' ? '← Ways to play' : '← Home'} initialView={scoreView} onView={setScoreView} />}
             {page === 'Tutorial' && <GuidedGame onExit={() => go('Learn')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onOpenPuzzles={() => go('Puzzles')} onStatusChange={onGameStatus} />}
             {page === 'Quick' && <QuickNight onBack={() => go('Learn')} onHistory={() => openNight('history')} />}
             {page === 'Watch' && <WatchNight initialCode={urlNight} onBack={() => go('Learn')} />}
@@ -182,10 +184,10 @@ export default function Prototype() {
     {/* While typing, the keyboard needs the room: the tab bar steps aside and returns when it closes. */}
     {!isKeyboardVisible && <nav className="bottom-tabs" aria-label="Main navigation" style={{ bottom: bottomInset, ['--nav-extend' as string]: `${bottomInset}px` }}>
       {([{ name: 'Learn', label: 'Home', Icon: House }, { name: 'Cards', label: 'Cards', Icon: Cards }, { name: 'Modes', label: 'Play', Icon: PlayCircle }, { name: 'Club', label: 'Club', Icon: Trophy }, { name: 'Questions', label: 'Questions', Icon: Question }] as const).map(({ name, label, Icon }) => {
-        const clubView = page === 'Score' && scoreView !== 'score';
+        const clubView = page === 'Score' && scoreFrom.tab === 'Club';
         const active = name === 'Club' ? clubView
           : page === name || (name === 'Learn' && (page === 'Tutorial' || page === 'Puzzles' || page === 'Watch')) || (name === 'Modes' && (page === 'Quick' || (page === 'Score' && !clubView)));
-        const open = () => { if (name === 'Club') openNight(scoreView === 'score' ? 'stats' : scoreView); else go(name); };
+        const open = () => { if (name === 'Club') openNight(page === 'Score' && scoreView !== 'score' ? scoreView : 'stats', 'Learn'); else go(name); };
         return <button key={name} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} onClick={open}><span className="tab-icon"><Icon weight={active ? 'fill' : 'regular'} size={23} /></span><span className="tab-label">{label}</span></button>;
       })}
     </nav>}

@@ -81,6 +81,7 @@ export function createSession(format: ScoreFormat, names: readonly (string | Pla
   const target = parseScore(options.target ?? 100);
   if (target === 0) throw new ScoreValidationError("non-negative", "The target must be greater than zero.");
   const setsToWin = parseScore(options.setsToWin ?? 3);
+  if (format === "darts" && setsToWin < 1) throw new ScoreValidationError("non-negative", "Play to at least one set.");
   const darts = format === "darts" ? { legs: { ...scores }, sets: { ...scores }, setsToWin } : null;
   return { format, players, scores, target, darts, history: [] };
 }

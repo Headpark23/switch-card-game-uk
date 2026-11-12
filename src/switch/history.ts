@@ -119,7 +119,7 @@ export function completionFromSession(session: ScoreSession): NightCompletion | 
       heading: isGameMatch(session) ? `Final games · first to ${session.target}` : "Final scores",
       lines: [...session.players]
         .sort((left, right) => (session.scores[right.id] ?? 0) - (session.scores[left.id] ?? 0))
-        .map((player) => `${player.name} — ${session.scores[player.id] ?? 0} ${isGameMatch(session) ? "games" : "points"}`),
+        .map((player) => { const total = session.scores[player.id] ?? 0; return `${player.name} — ${total} ${isGameMatch(session) ? (total === 1 ? "game" : "games") : (total === 1 ? "point" : "points")}`; }),
     }],
   };
 }

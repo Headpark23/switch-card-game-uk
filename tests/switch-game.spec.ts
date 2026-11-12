@@ -141,7 +141,7 @@ test("the main rules story teaches the complete game in five interactive steps",
 
   await page.getByRole("button", { name: "03 POWER" }).click();
   await expect(page.getByText(/Twos add 2 cards to the penalty/)).toBeVisible();
-  await expect(page.getByText(/Black kings stack 5 at a time/)).toBeVisible();
+  await expect(page.getByText(/Black kings add 5 each; a red king takes 5 off/)).toBeVisible();
   await page.getByRole("button", { name: "04 CALL" }).click();
   await expect(page.getByText(/Forget to announce it and you pick up 2 penalty cards/)).toBeVisible();
   await page.getByRole("button", { name: "05 WIN" }).click();

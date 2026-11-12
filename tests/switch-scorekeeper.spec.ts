@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 async function openScorekeeper(page: Page) {
-  await page.goto("/");
+  await page.goto("/?typedDraw=1");
   await page.getByRole("button", { name: "Play", exact: true }).click();
   await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
   await expect(page.getByRole("heading", { name: "Keep every score straight." })).toBeVisible();
@@ -153,8 +153,10 @@ test("history exports and deletes only after confirmation", async ({ page }) => 
 
   await page.getByText("Family Friday", { exact: true }).click();
   let prompt = "";
-  page.once("dialog", async (dialog) => { prompt = dialog.message(); await dialog.accept(); });
   await page.getByRole("button", { name: "Delete Family Friday" }).click();
+  const confirmSheet = page.getByRole("dialog");
+  prompt = (await confirmSheet.innerText());
+  await confirmSheet.getByRole("button", { name: "Delete night" }).click();
   expect(prompt).toContain("Family Friday");
   await expect(page.getByText("No completed nights saved yet.")).toBeVisible();
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("switchScoreKeeper") ?? "{}"));
@@ -353,8 +355,8 @@ test("changing game type stays changed after a reload", async ({ page }) => {
   await page.getByRole("button", { name: "Start Domino" }).click();
   await page.getByLabel("Score for Player 1").fill("30");
   await page.getByRole("button", { name: "Add" }).first().click();
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "↺ Change game type" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "End game" }).click();
   await expect(page.getByRole("button", { name: "Start Domino" })).toBeVisible();
 
   await reopenScorekeeper(page);
@@ -415,8 +417,8 @@ test("a wrong league round can be undone", async ({ page }) => {
   await page.getByRole("button", { name: "Start Group Play" }).click();
   for (const [player, place] of [[1, "1st"], [2, "2nd"], [3, "3rd"]] as const) await page.getByRole("button", { name: `Player ${player} finished ${place}` }).click();
   await expect(page.getByText("Round 2 of 4 · 4 points for 1st down to 1 for last")).toHaveCount(1);
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Undo last round" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Undo round" }).click();
   await expect(page.getByText("Round 1 of 4 · 4 points for 1st down to 1 for last")).toHaveCount(2);
   await expect(page.getByText(/^0 points/)).toHaveCount(8);
 
@@ -469,4 +471,55 @@ test("a single league finishes with a final and a plate, and can be saved", asyn
   await expect(page.getByText("Player 1 won the championship; Player 3 won the plate")).toBeVisible();
   await page.getByRole("button", { name: "Save completed night" }).click();
   await expect(page.getByText("Player 1 won the championship; Player 3 won the plate").first()).toBeVisible();
+});
+
+test("starting Group Play without tapping Draw still draws the leagues", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => { let seed = 42; Math.random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }; });
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("button", { name: "Group Play", exact: true }).click();
+  await fillVisibleNames(page);
+  // The draw comes after the names, and nothing is ranked before a round is played.
+  const order = await page.locator(".player-fields, .draw-box").evaluateAll((nodes) => nodes.map((node) => node.className));
+  expect(order).toEqual(["player-fields", "draw-box"]);
+  await page.getByRole("button", { name: "Start Group Play" }).click();
+  const leagueOne = await page.locator(".league-table").first().locator(".score-row strong").allInnerTexts();
+  expect(leagueOne.some((name) => /^\d\./.test(name))).toBe(false);
+  expect(leagueOne).not.toEqual(["Player 1", "Player 2", "Player 3", "Player 4"]);
+  const everyone = await page.locator(".league-table .score-row strong").allInnerTexts();
+  expect([...everyone].sort()).toEqual(Array.from({ length: 8 }, (_, index) => `Player ${index + 1}`).sort());
+});
+
+test("ending a game asks in an in-app sheet, and Cancel keeps the game", async ({ page }) => {
+  await openScorekeeper(page);
+  await fillVisibleNames(page);
+  await page.getByRole("button", { name: "Start Domino" }).click();
+  await page.getByRole("button", { name: "↺ Change game type" }).click();
+  const sheet = page.getByRole("dialog");
+  await expect(sheet).toContainText("End this game?");
+  await sheet.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByLabel("Score for Player 1")).toBeVisible();
+});
+
+test("the back link and the lit bottom tab follow where the scorekeeper was opened from", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Start a game night/ }).click();
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  await expect(nav.getByRole("button", { name: "Play" })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("button", { name: "History", exact: true }).click();
+  // Switching sections inside the scorekeeper does not move the bottom tab.
+  await expect(nav.getByRole("button", { name: "Play" })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("button", { name: "← Home" }).click();
+  await expect(page.getByRole("button", { name: /Learn the rules/ })).toBeVisible();
+
+  await nav.getByRole("button", { name: "Play" }).click();
+  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("button", { name: "← Ways to play" }).click();
+  await expect(page.getByRole("button", { name: "Open the Switch scorekeeper" })).toBeVisible();
+
+  await nav.getByRole("button", { name: "Club" }).click();
+  await expect(nav.getByRole("button", { name: "Club" })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("button", { name: "Score", exact: true }).click();
+  await expect(nav.getByRole("button", { name: "Club" })).toHaveAttribute("aria-current", "page");
 });

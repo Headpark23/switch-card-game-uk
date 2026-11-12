@@ -112,7 +112,7 @@ export function explainLesson(before: GameState, after: GameState, cards: readon
     return {
       ...base,
       title: "A matching set",
-      rule: "You may play two or more cards of the same number together, in any order. The last card you play sets the suit.",
+      rule: "You may play two or more cards of the same number together. The first card must match the suit or number of the pile, and the last card you play sets the suit.",
       why: `Playing ${cards.length} cards at once empties your hand faster. The suit is now ${suitNow}.`,
       tip: "Order the set so the last card is the suit you hold most of. It sets up your next turn.",
     };

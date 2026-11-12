@@ -87,7 +87,7 @@ When any text-entry control loses focus, dismiss the simulated keyboard. If the 
 - Tutorial layout: the table and the player's hand come first. Coaching is one quiet strip that opens a sheet; never stack tips above the cards.
 
 ## Scoring rulings
-Darts: first to three legs wins a set. Knock Out: round ends at the first winner, most cards held drops out. Leagues: place points (N..1), then round wins, then a deciding game. Scorekeeper ends matches at target or sets. See `docs/RULES-RULINGS.md` items 10-13. Home screen is a one-screen hub of action tiles; the five-move rules guide opens from "Learn the rules".
+Darts: first to three legs wins a set. Knock Out: whoever finishes last in a round is out, until one player is left (ruling 11, revised). Leagues: place points (N..1), then round wins, then a deciding game. Scorekeeper ends matches at target or sets. See `docs/RULES-RULINGS.md` items 10-13. Home screen is a one-screen hub of action tiles; the five-move rules guide opens from "Learn the rules".
 
 ## Naming and coaching decisions (Nov 2026)
 - One name per thing, everywhere: "Group Play" (one-night leagues and playoffs), "Knock Out", "Switch Cup", and "Seasons" for the long-running table across nights. The first bottom tab is "Home".

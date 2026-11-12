@@ -1,5 +1,6 @@
 import SampleDataBar from './SampleDataBar';
 import { useState } from 'react';
+import { useConfirm } from '../Confirm';
 import { Crown } from '@phosphor-icons/react';
 import { ShareButton } from '../ShareButton';
 import { buildLeaderboard, getClubName, leaderboardShareCard, putClubName } from '../switch/club';
@@ -36,6 +37,7 @@ function WinDial({ rate }: { rate: number }) {
 
 export default function ClubhouseStats({ extensions, onChange }: Props) {
   const keyboard = useKeyboard();
+  const [confirm, confirmSheet] = useConfirm();
   const allProfiles = getProfiles(extensions);
   const profiles = allProfiles.filter((profile) => !profile.archived);
   const nights = getHistory(extensions);
@@ -155,9 +157,9 @@ export default function ClubhouseStats({ extensions, onChange }: Props) {
       <label><span>New name</span><KeyboardInput aria-label="New name" value={rename} placeholder={profile.name} onChange={(event) => setRename(event.target.value)} /></label>
       <div className="manage-actions">
         <button className="secondary" onClick={() => run(() => renameProfile(extensions, profile.id, rename))}>Rename</button>
-        <button className="text-link" onClick={() => { if (window.confirm(`Archive ${profile.name}? Their history and stats are kept, but they stop appearing in new games.`)) run(() => archiveProfile(extensions, profile.id)); }}>Archive</button>
+        <button className="text-link" onClick={async () => { if (await confirm({ title: `Archive ${profile.name}?`, message: 'Their history and stats are kept, but they stop appearing in new games.', confirmLabel: 'Archive player' })) run(() => archiveProfile(extensions, profile.id)); }}>Archive</button>
       </div>
       {error && <p className="score-error" role="alert">{error}</p>}
     </details>
-  </section>;
+  {confirmSheet}</section>;
 }

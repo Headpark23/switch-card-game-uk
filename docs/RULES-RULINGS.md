@@ -12,7 +12,7 @@ Decided 7 Nov 2026, after playing 10,000 simulated games (2 to 6 players, four d
 | 4 | Does picking up end your turn? | Yes, for both the single card on a normal turn and for penalties from twos or kings. Only a 7 lets you play again. |
 | 5 | Several 8s in one play | Still one missed turn, however many 8s. |
 | 6 | Several 7s in one play | Still one extra turn, however many 7s. |
-| 7 | A black and a red king in one play | Allowed. Each red king cancels one black king inside the same play. |
+| 7 | A black and a red king in one play | Allowed. How they count is set by ruling 14: card by card, in the order played. |
 | 8 | After a 7, if you cannot or will not play | Pick up one card and your turn ends. |
 | 9 | Order of cards when the deck runs out | Turn the played pile (not the top card) face down without shuffling, so the oldest card is drawn first. |
 
@@ -33,9 +33,9 @@ Decided 7 Nov 2026, after playing 10,000 simulated games (2 to 6 players, four d
 
 `scripts/scoring-sim.mjs` plays every format through the real scoring modules.
 
-14. **Kings count card by card, in the order played (8 Nov 2026, replaces the net-count part of ruling 8).** A black king adds 5, a red king takes 5 off, never below nothing. One black = 5; black on 5 = 10; one red on 10 = 5; two reds on 10 = 0; black then red = 0; red then black = 5; two reds then two blacks = 10; one red then two blacks = 10. A lone red king with nothing pending is an ordinary card. Mixed sets may still be played; the order laid down decides the result.
+14. **Kings count card by card, in the order played (8 Nov 2026, replaces the net-count part of ruling 7).** A black king adds 5, a red king takes 5 off, never below nothing. One black = 5; black on 5 = 10; one red on 10 = 5; two reds on 10 = 0; black then red = 0; red then black = 5; two reds then two blacks = 10; one red then two blacks = 10. A lone red king with nothing pending is an ordinary card. Mixed sets may still be played; the order laid down decides the result.
 
-15. **One v One is played to a number of games (7 Nov 2026, owner request; replaces the odd best-of legs and the points target).** The host types how many games to play, any whole number: with 4, the first player to win 4 games takes the match and the scorekeeper stops. Scores count games won.
+15. **One v One is played to a number of games (7 Nov 2026, owner request; replaces the odd best-of legs and the points target).** The host types how many games to play, any whole number: with 4, the first player to win 4 games takes the match and the scorekeeper stops. Scores count games won. The scorekeeper also offers best of an odd number of games (first to a majority wins), added at the owner's request on the same day (commit 1cd9239).
 
 16. **Leagues can be different sizes, and the draw is random (7 Nov 2026, owner request).** Each league has 3 to 6 players (for example two leagues of 4 and one of 3), and plays as many games as it has players: 3 games for 3 players, 4 for 4. Points are the number of players in that league for first, down to 1 for last. Names are typed first and the app draws who goes in which league at random. Playoffs: the top two in each league contest the championship; everyone else (third place and below) contests the plate, paired across leagues where possible, and with an odd number one plate player gets a bye. The Switch Cup is drawn at random too, and with an odd number a random player gets a bye each round.
 

@@ -373,3 +373,19 @@
 .playoff-needed{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px;border:1px solid #d5c7a8;border-radius:11px;background:#fffaf0;padding:10px}.playoff-needed p{grid-column:1/-1}
 .playoff-needed button:not(.text-link){min-height:44px;border:1px solid #c7bda8;border-radius:9px;background:#fff;font-size:13px;padding:6px 8px}.playoff-needed button:disabled:not(.text-link){opacity:1;background:#e3eddf;border-color:var(--green);font-weight:600}
 .playoff-needed .text-link{grid-column:1/-1;justify-self:center;min-height:44px;font-size:13px}
+/* In-app confirmation sheet */
+.confirm-sheet{display:grid;gap:10px;padding:2px 4px 20px;font-family:'DM Sans',sans-serif;color:var(--ink)}.confirm-sheet p{font-size:15px;line-height:1.5;color:#38453e;margin:0 0 6px}
+.confirm-sheet .primary.destructive{background:#8a3027}
+/* Legibility at the table: the smallest everyday text is raised to at least 11px. Decorative wordmark lines are left as they are. */
+.switch-app .eyebrow{font-size:11px}
+.switch-app .results{font-size:11px}
+.switch-app .format-note{font-size:12px}
+.switch-app .bottom-tabs button{font-size:11px}
+.switch-app .history-card summary small{font-size:11px}
+.switch-app .history-detail>p{font-size:12px}
+.switch-app .history-detail h3{font-size:11px}
+.switch-app .history-detail section p{font-size:12.5px}
+.switch-app .cup-fixture>span{font-size:11px}
+.switch-app .night-ready,.switch-app .night-pending{font-size:12.5px}
+.switch-app .night-completion label>span{font-size:12px}
+.switch-app .night-completion .primary{font-size:14px}

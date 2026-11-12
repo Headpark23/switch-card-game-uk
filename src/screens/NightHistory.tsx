@@ -6,16 +6,18 @@ import { ShareButton } from '../ShareButton';
 import { getClubName, nightShareCard } from '../switch/club';
 import { deleteNight, exportHistory, getHistory } from '../switch/history';
 import { loadScorekeeper, saveScorekeeper, SCOREKEEPER_STORAGE_KEY } from '../switch/storage';
+import { useConfirm } from '../Confirm';
 
 type Extensions = Record<string, unknown>;
 type Props = { extensions: Extensions; onChange: (next: Extensions) => void };
 
 export default function NightHistory({ extensions, onChange }: Props) {
   const nights = getHistory(extensions);
+  const [confirm, confirmSheet] = useConfirm();
   const [backupMessage, setBackupMessage] = useState('');
 
-  function removeNight(id: string, title: string) {
-    if (!window.confirm(`Delete “${title}” from this device? This cannot be undone.`)) return;
+  async function removeNight(id: string, title: string) {
+    if (!await confirm({ title: `Delete “${title}”?`, message: 'It is removed from this device and from your stats. This cannot be undone.', confirmLabel: 'Delete night', destructive: true })) return;
     onChange(deleteNight(extensions, id));
   }
 
@@ -47,7 +49,7 @@ export default function NightHistory({ extensions, onChange }: Props) {
       if (parsed === null || typeof parsed !== 'object' || parsed.schemaVersion !== 1) throw new Error('not a Switch backup');
       const loaded = loadScorekeeper(raw);
       if (loaded.status !== 'loaded') throw new Error('unreadable');
-      if (!window.confirm('Replace everything on this device with this backup? Your current players, nights and leagues will be overwritten.')) return;
+      if (!await confirm({ title: 'Restore this backup?', message: 'Everything on this device is replaced by the backup: players, nights and seasons.', confirmLabel: 'Replace with backup', destructive: true })) return;
       window.localStorage.setItem(SCOREKEEPER_STORAGE_KEY, saveScorekeeper(null, loaded.state));
       window.location.reload();
     } catch {
@@ -64,7 +66,7 @@ export default function NightHistory({ extensions, onChange }: Props) {
     {nights.length === 0
       ? <p className="history-empty">No completed nights saved yet. Finish a score session and save it to build your real game-night story.</p>
       : <div className="history-list">{nights.map((night) => <details className="history-card" key={night.id}>
-        <summary><span><strong>{night.title}</strong><small>{night.formatLabel} · {new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(night.completedAt))}</small></span><b>{night.outcome}</b></summary>
+        <summary><span><strong>{night.title}</strong><small>{night.formatLabel} · {new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(night.completedAt))}</small></span><b>{night.outcome}</b></summary>
         <div className="history-detail">
           <p>{night.players.map((player) => player.name).join(' · ')}</p>
           {night.details.map((section) => <section key={section.heading}><h3>{section.heading}</h3>{section.lines.map((line, index) => <p key={`${section.heading}-${index}`}>{line}</p>)}</section>)}
@@ -75,11 +77,11 @@ export default function NightHistory({ extensions, onChange }: Props) {
     <div className="backup-panel">
       <h3>Back up your club</h3>
       <p>{SIGN_IN_AVAILABLE
-        ? 'Your club is saved on this device. Signing in with Google also backs it up to the cloud. A backup file gives you another copy of your players, nights and leagues.'
-        : 'Your club is saved only on this device. Download a backup file to keep your players, nights and leagues safe if you change phone or clear your browser.'}</p>
+        ? 'Your club is saved on this device. Signing in with Google also backs it up to the cloud. A backup file gives you another copy of your players, nights and seasons.'
+        : 'Your club is saved only on this device. Download a backup file to keep your players, nights and seasons safe if you change phone or clear your browser.'}</p>
       <button className="secondary" onClick={downloadBackup}><DownloadSimple size={16} />Back up everything</button>
       <label className="restore"><span>Restore from a backup file</span><input type="file" accept="application/json,.json" aria-label="Restore backup file" onChange={(event) => { void restoreBackup(event.target.files?.[0]); event.target.value = ''; }} /></label>
       {backupMessage && <p role="status">{backupMessage}</p>}
     </div>
-  </section>;
+  {confirmSheet}</section>;
 }

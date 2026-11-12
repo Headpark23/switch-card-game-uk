@@ -18,8 +18,8 @@ test("score setup creates and reuses stable local profiles", async ({ page }) =>
   const alexId = saved.extensions.switchProfiles.find((profile: { name: string }) => profile.name === "Alex").id;
   expect(saved.players[0].id).toBe(alexId);
 
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Change game type" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "End game" }).click();
   await expect(page.getByRole("button", { name: "Use saved player Alex" })).toBeVisible();
   await names.nth(0).fill(" alex ");
   await page.getByRole("button", { name: "Start Domino" }).click();
@@ -68,8 +68,8 @@ test("league seasons count eligible history once and lock when completed", async
   await expect(page.getByRole("row", { name: /2 Blair 1 0 1/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Count Family Friday in Family League" })).toHaveCount(0);
 
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Complete Family League" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Complete season" }).click();
   await expect(page.getByText("Season complete", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "History", exact: true }).click();
@@ -101,7 +101,7 @@ test("a backup file can be downloaded and restored, and a wrong file changes not
 
   // Wipe the device, then restore from the backup.
   await page.evaluate(() => localStorage.removeItem("switchScoreKeeper"));
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByLabel("Restore backup file").setInputFiles({ name: "backup.json", mimeType: "application/json", buffer: Buffer.from(backup) });
+  await page.getByRole("dialog").getByRole("button", { name: "Replace with backup" }).click();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("switchScoreKeeper") ?? "{}").extensions?.switchProfiles?.[0]?.name)).toBe("Alex");
 });

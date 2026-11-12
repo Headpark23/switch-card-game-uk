@@ -1,5 +1,6 @@
 import SampleDataBar from './SampleDataBar';
 import { useState } from 'react';
+import { useConfirm } from '../Confirm';
 import { ShareButton } from '../ShareButton';
 import { getClubName, seasonShareCard } from '../switch/club';
 import { KeyboardInput, useKeyboard } from '../mobile';
@@ -12,6 +13,7 @@ type Props = { extensions: Extensions; onChange: (next: Extensions) => void };
 
 export default function ClubhouseLeagues({ extensions, onChange }: Props) {
   const keyboard = useKeyboard();
+  const [confirm, confirmSheet] = useConfirm();
   const allProfiles = getProfiles(extensions);
   const profiles = allProfiles.filter((profile) => !profile.archived);
   const seasons = getSeasons(extensions);
@@ -76,7 +78,7 @@ export default function ClubhouseLeagues({ extensions, onChange }: Props) {
         {season.status === 'active' && <>
           {open.length > 0 && <><h4>Nights you can count</h4>{open.map((night) => <button className="secondary count-night" key={night.id} aria-label={`Count ${night.title} in ${season.name}`} onClick={() => count(season, night)}>Count {night.title} <small>{night.outcome}</small></button>)}</>}
           {open.length === 0 && <p className="history-empty">Save a night with at least two of this season's players to count it here.</p>}
-          <button className="text-link" aria-label={`Complete ${season.name}`} onClick={() => { if (window.confirm(`Complete ${season.name}? The table is frozen and no more nights can be added.`)) save(seasons.map((entry) => (entry.id === season.id ? completeSeason(entry) : entry))); }}>Complete this season</button>
+          <button className="text-link" aria-label={`Complete ${season.name}`} onClick={async () => { if (await confirm({ title: `Complete ${season.name}?`, message: 'The table is frozen and no more nights can be added.', confirmLabel: 'Complete season' })) save(seasons.map((entry) => (entry.id === season.id ? completeSeason(entry) : entry))); }}>Complete this season</button>
         </>}
       </article>;
     })}
@@ -92,5 +94,5 @@ export default function ClubhouseLeagues({ extensions, onChange }: Props) {
         </>}
       {error && <p className="score-error" role="alert">{error}</p>}
     </div>
-  </section>;
+  {confirmSheet}</section>;
 }

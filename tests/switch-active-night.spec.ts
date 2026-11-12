@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 async function openScorekeeper(page: Page) {
-  await page.goto("/");
+  await page.goto("/?typedDraw=1");
   await page.getByRole("button", { name: "Play", exact: true }).click();
   await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
 }
@@ -72,8 +72,8 @@ test("Knockout and Cup progress resume after refresh", async ({ page }) => {
   await reopenScorekeeper(page);
   await expect(page.getByText("2 still playing", { exact: true })).toBeVisible();
 
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Change game type" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "End game" }).click();
   await page.getByRole("button", { name: "Switch Cup" }).click();
   await fillNames(page);
   await page.getByRole("button", { name: "Start Switch Cup" }).click();
