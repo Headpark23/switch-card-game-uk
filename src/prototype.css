@@ -389,3 +389,12 @@
 .switch-app .night-ready,.switch-app .night-pending{font-size:12.5px}
 .switch-app .night-completion label>span{font-size:12px}
 .switch-app .night-completion .primary{font-size:14px}
+/* Guided game uses the whole screen: the felt table takes any spare height so no empty band sits under the hand.
+   Hand cards keep their size so each overlapping card still leaves a full finger-width to tap.
+   The scroll area is the size container for these queries. */
+.switch-scroll{container:screen/size}
+.tutorial-page .game-tutorial{display:flex;flex-direction:column;min-height:calc(100cqh - 50px - var(--mobile-safe-area-height) - 100px)}
+.tutorial-page .game-tutorial .game-table{flex:1 0 auto}
+@container screen (min-height:840px){.game-tutorial .game-table .playing-card{width:64px}.game-tutorial .discard-pile .playing-card{width:68px}}
+/* A card flying to the pile passes behind the "Current suit" label rather than hiding it. */
+.game-tutorial .discard-pile>span:not(.pile-wrap){position:relative;z-index:3}
