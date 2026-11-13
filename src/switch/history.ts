@@ -92,6 +92,30 @@ function isNightRecord(value: unknown): value is SwitchNightRecord {
     && value.details.every(isSection);
 }
 
+/** Every game, leg or round in the order it was played, worked out from the running scores. */
+function playByPlay(session: ScoreSession): HistorySection | null {
+  const steps = [...session.history, { scores: session.scores, darts: session.darts }];
+  const lines: string[] = [];
+  for (let index = 1; index < steps.length; index += 1) {
+    const before = steps[index - 1];
+    const after = steps[index];
+    if (session.format === "darts") {
+      const winner = session.players.find((player) => (after.darts?.legs[player.id] ?? 0) !== (before.darts?.legs[player.id] ?? 0) || (after.darts?.sets[player.id] ?? 0) > (before.darts?.sets[player.id] ?? 0));
+      const tookSet = winner && (after.darts?.sets[winner.id] ?? 0) > (before.darts?.sets[winner.id] ?? 0);
+      if (winner) lines.push(`Leg ${index}: ${winner.name}${tookSet ? ` — takes the set (${session.players.map((player) => after.darts?.sets[player.id] ?? 0).join("–")})` : ""}`);
+      continue;
+    }
+    const scorer = session.players.find((player) => (after.scores[player.id] ?? 0) !== (before.scores[player.id] ?? 0));
+    if (!scorer) continue;
+    const running = session.players.map((player) => after.scores[player.id] ?? 0).join("–");
+    lines.push(isGameMatch(session)
+      ? `Game ${index}: ${scorer.name} won (${running})`
+      : `${scorer.name} +${(after.scores[scorer.id] ?? 0) - (before.scores[scorer.id] ?? 0)} (${running})`);
+  }
+  if (!lines.length) return null;
+  return { heading: session.format === "darts" ? "Leg by leg" : isGameMatch(session) ? "Game by game" : "Score by score", lines };
+}
+
 export function completionFromSession(session: ScoreSession): NightCompletion | null {
   if (session.format === "darts" && session.darts) {
     const winner = session.players.find((player) => session.darts && session.darts.sets[player.id] >= session.darts.setsToWin);
@@ -105,7 +129,7 @@ export function completionFromSession(session: ScoreSession): NightCompletion | 
       details: [{
         heading: "Final sets",
         lines: session.players.map((player) => `${player.name} — ${session.darts?.sets[player.id] ?? 0} sets`),
-      }],
+      }, ...[playByPlay(session)].filter((section): section is HistorySection => section !== null)],
     };
   }
   if (session.format !== "domino" && session.format !== "head-to-head") return null;
@@ -123,7 +147,7 @@ export function completionFromSession(session: ScoreSession): NightCompletion | 
       lines: [...session.players]
         .sort((left, right) => (session.scores[right.id] ?? 0) - (session.scores[left.id] ?? 0))
         .map((player) => { const total = session.scores[player.id] ?? 0; return `${player.name} — ${total} ${isGameMatch(session) ? (total === 1 ? "game" : "games") : (total === 1 ? "point" : "points")}`; }),
-    }],
+    }, ...[playByPlay(session)].filter((section): section is HistorySection => section !== null)],
   };
 }
 

@@ -1,4 +1,5 @@
-import type { ComponentType } from 'react';
+import { useState, type ComponentType, type ReactNode } from 'react';
+import { BottomSheet } from '../mobile';
 import {
   Airplane, Armchair, Barbell, Brain, CalendarCheck, CalendarStar, Cards, Columns, Compass, Cpu, Crosshair, Crown, Diamond, DiamondsFour, Fire, Flag, Globe,
   GlobeHemisphereWest, GridFour, Handshake, House, Lightning, MapPin, MapTrifold, Medal, Moon, Ranking, Robot, Rocket, ShieldStar, Smiley, Spade, Stamp, Star,
@@ -30,8 +31,38 @@ export function BadgeChip({ badge, size = 58 }: { badge: BadgeProgress; size?: n
   </span>;
 }
 
-/** Every badge, grouped by what it is about. Earned chips shine; the rest show how far along you are. */
+const TIER_NAMES: Record<BadgeProgress['tier'], string> = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum' };
+
+/** Tap a chip and this says what the badge is, how to earn it and how far along you are. */
+export function BadgeSheet({ badge, onClose }: { badge: BadgeProgress | null; onClose: () => void }) {
+  const [shown, setShown] = useState(badge);
+  if (badge && badge !== shown) setShown(badge);
+  const category = BADGE_CATEGORIES.find((entry) => entry.id === shown?.category);
+  const left = shown ? shown.need - shown.have : 0;
+  return <BottomSheet open={!!badge} onOpenChange={(next) => { if (!next) onClose(); }} title={shown?.label ?? ''} snap={0.5}>
+    {shown && <div className="award-sheet">
+      <BadgeChip badge={shown} size={96} />
+      <p className="award-kind">{TIER_NAMES[shown.tier]} badge · {category?.name}</p>
+      <p className="award-how"><strong>How to earn it:</strong> {shown.hint}.</p>
+      {shown.earned
+        ? <p className="award-status done">Earned. It stays yours while the nights and games behind it are saved.</p>
+        : <><span className="award-bar" aria-hidden="true"><b style={{ width: `${Math.round((shown.have / shown.need) * 100)}%` }} /></span>
+          <p className="award-status">{shown.have} of {shown.need} so far · {left} to go</p></>}
+      {category && <p className="award-note">{category.name}: {category.blurb}</p>}
+    </div>}
+  </BottomSheet>;
+}
+
+/** A chip you can tap to read about the badge. */
+export function BadgeButton({ badge, size, onOpen, children }: { badge: BadgeProgress; size?: number; onOpen: (badge: BadgeProgress) => void; children?: ReactNode }) {
+  return <button type="button" className="award-tap" aria-label={`${badge.label}: ${badge.earned ? 'earned' : `${badge.have} of ${badge.need}`}. Show details`} onClick={() => onOpen(badge)}>
+    <BadgeChip badge={badge} size={size} />{children}
+  </button>;
+}
+
+/** Every badge, grouped by what it is about. Earned chips shine; the rest show how far along you are. Tap one for its description. */
 export function BadgeWall({ badges }: { badges: readonly BadgeProgress[] }) {
+  const [open, setOpen] = useState<BadgeProgress | null>(null);
   return <div className="badge-wall">
     {BADGE_CATEGORIES.map((category) => {
       const list = badges.filter((badge) => badge.category === category.id);
@@ -42,13 +73,15 @@ export function BadgeWall({ badges }: { badges: readonly BadgeProgress[] }) {
         <p>{category.blurb}</p>
         <ul className="chip-grid" aria-label={`${category.name} badges`}>
           {list.map((badge) => <li key={badge.id} className={'badge ' + (badge.earned ? 'earned' : 'locked')}>
-            <BadgeChip badge={badge} />
-            <strong>{badge.label}</strong>
-            <small>{badge.earned ? badge.hint : `${badge.have} of ${badge.need}`}</small>
+            <BadgeButton badge={badge} onOpen={setOpen}>
+              <strong>{badge.label}</strong>
+              <small>{badge.earned ? badge.hint : `${badge.have} of ${badge.need}`}</small>
+            </BadgeButton>
           </li>)}
         </ul>
       </section>;
     })}
+    <BadgeSheet badge={open} onClose={() => setOpen(null)} />
   </div>;
 }
 

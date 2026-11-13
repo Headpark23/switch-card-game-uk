@@ -92,9 +92,9 @@ export function explainLesson(before: GameState, after: GameState, cards: readon
     const odd = cards.length % 2 === 1;
     return {
       ...base,
-      title: odd ? "A jack: reverse the order" : "Two jacks cancel out",
-      rule: "A single jack reverses the direction of play. Two jacks reverse it twice, so nothing changes. With two players, a reverse brings play straight back to the person who played it.",
-      why: odd ? `In a two-player game ${side === "you" ? "you play" : "the computer plays"} again.` : "The reverses cancel, so play moves on to the next player as normal.",
+      title: odd ? "A jack: reverse the order" : "Two jacks: play again",
+      rule: "One or three jacks reverse the direction of play. Two or four jacks never reverse: whoever played them plays again. With two players, a reverse brings play straight back to the person who played it, so any jacks mean play again.",
+      why: odd ? `In a two-player game ${side === "you" ? "you play" : "the computer plays"} again.` : `Two or four jacks always mean play again, so ${side === "you" ? "you play" : "the computer plays"} again.`,
       tip: "With two players a jack works like a seven. Remember that you cannot finish on one.",
     };
   }

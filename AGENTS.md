@@ -106,3 +106,10 @@ Darts: first to three legs wins a set. Knock Out: whoever finishes last in a rou
 - Home is a compact dashboard on the photographic `hero.webp` background: greeting, resume cards, four launch tiles (Play cards, Keep score, My club, Achievements), recent activity, discovery chips (Learn rules, Puzzles, Questions, Plan a night, Join a night).
 - The table game is presented through `src/switch/presentation.ts`: the engine decides a move once, the screen walks its steps (pause, each card landing in order from the right seat, effect) and only then shows the next player. Never render the engine's final pile early. Active seat: red glow plus readable text (YOUR MOVE / NAME IS CHOOSING).
 - Storage inventory: `docs/STORAGE-KEYS.md`. Never reset or rename keys; new data gets new keys.
+
+## Nobody loses a score (owner decisions, 13 Nov 2026)
+- Every game played is a stat: wins and losses, on nights and against the computer, all count and all show in Me > History. Tapping a row opens the full record (date, night name, venue, every score).
+- A phone's games follow its owner. Games played before they chose a name sit under the automatic "You" player and are merged into the name they pick (`src/switch/identity.ts`); never repoint "me" without `claimMe`.
+- A shared night code is how results travel: a friend who joins says which player they are, and every night the host saves under that code is added to the friend's own history and stats, even if their app was closed (`src/switch/joinedNights.ts`, results kept by `api/_night.js`). Saved results queue on the host's phone until they reach the server.
+- When a night is won the scorekeeper asks to save it straight away, in a sheet. Saving is never something the host has to scroll to find.
+- Jacks (ruling 18): one or three reverse; two or four never reverse and mean play again, so they cannot be a last play.

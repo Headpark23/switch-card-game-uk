@@ -38,7 +38,7 @@ function playActionsFor(card: CardId): GameAction[] {
 
 /** Table variations that depend on how many people are playing. */
 export interface TableOptions {
-  /** With three or more players a jack reverses direction, so it may be the winning card. */
+  /** With three or more players one or three jacks reverse direction, so they may be the winning play. Two or four jacks always mean play again (ruling 18), so they never are. */
   readonly jackMayFinish: boolean;
 }
 
@@ -47,7 +47,7 @@ const TWO_PLAYER_OPTIONS: TableOptions = Object.freeze({ jackMayFinish: false })
 function cannotBeFinalPlay(cards: readonly CardId[], hand: readonly CardId[], options: TableOptions): boolean {
   if (cards.length !== hand.length) return false;
   const playedRank = rankOf(cards[0]);
-  return playedRank === "7" || (playedRank === "J" && !options.jackMayFinish);
+  return playedRank === "7" || (playedRank === "J" && (!options.jackMayFinish || cards.length % 2 === 0));
 }
 
 function matchingSubsets(cards: readonly CardId[]): CardId[][] {
@@ -242,7 +242,8 @@ export function applyAction(state: GameState, action: GameAction): GameState {
     }
   }
 
-  const keepsTurn = playedRank === "7" || (playedRank === "J" && played.length % 2 === 1);
+  // Ruling 18: two or four jacks mean play again. One or three reverse, which with two players is also play again.
+  const keepsTurn = playedRank === "7" || playedRank === "J";
 
   return {
     ...state,

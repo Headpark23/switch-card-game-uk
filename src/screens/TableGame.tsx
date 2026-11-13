@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { ArrowClockwise, ArrowCounterClockwise, ArrowRight, CheckCircle, HandPalm, Lightbulb, Timer } from '@phosphor-icons/react';
+import { ArrowClockwise, ArrowCounterClockwise, ArrowRight, CheckCircle, HandPalm, Lightbulb, SortAscending, Timer } from '@phosphor-icons/react';
 import type { ComputerLevel } from '../switch/ai';
 import { cardIdLabel } from '../switch/cards';
 import { explainUnplayable } from '../switch/coach';
@@ -14,6 +14,7 @@ import { planTurn, REDUCED, SPEED_NAMES, SPEEDS, stepDuration, visibleAt, type S
 import { clearActiveTable, newTableGameId, readSpeed, saveActiveTable, saveSpeed, type ActiveTable } from '../switch/activeTable';
 import { CardImage, CardShower, rank, suit, suitNames, suitSymbols } from '../ui';
 import RealCards from './RealCards';
+import { sortHand } from '../switch/sortHand';
 
 import { COMPUTER_NAMES } from '../switch/presentation';
 export { COMPUTER_NAMES };
@@ -208,7 +209,7 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
     if (!staged.length || busy.current) return;
     if (rank(staged[0]) === 'A') { setAceChoice(staged); return; }
     if (!isLegalTablePlay(game, { type: 'play', cards: staged })) {
-      refuse([...staged], staged.length === hand.length && rank(staged[staged.length - 1]) === '7' ? 'You cannot finish on a seven. Keep a card back.' : staged.length === hand.length && rank(staged[staged.length - 1]) === 'J' && seats === 2 ? 'You cannot finish on a jack in a two-player game.' : 'Those cards cannot be played in that order. Try a different order, or play fewer cards.');
+      refuse([...staged], staged.length === hand.length && rank(staged[staged.length - 1]) === '7' ? 'You cannot finish on a seven. Keep a card back.' : staged.length === hand.length && rank(staged[staged.length - 1]) === 'J' && seats === 2 ? 'You cannot finish on a jack in a two-player game.' : staged.length === hand.length && rank(staged[staged.length - 1]) === 'J' && staged.length % 2 === 0 ? 'Two or four jacks mean play again, so they cannot be your last cards. Keep a card back.' : 'Those cards cannot be played in that order. Try a different order, or play fewer cards.');
       return;
     }
     commit(staged);
@@ -321,7 +322,7 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
       {awaitingLastCard && !showing
         ? <div className="last-card-call"><HandPalm size={27} /><strong>One card remaining</strong><p>Say "Last Card" now. Forgetting costs two cards.</p><button className="primary" onClick={() => answerLastCard(true)}>Say "Last Card"</button><button className="text-link" onClick={() => answerLastCard(false)}>Continue without saying it</button></div>
         : <>
-          {staged.length === 0 && <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!canAct}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={cycleSpeed} aria-label={`Computer pace: ${SPEED_NAMES[speed]}. Tap to change`}><Timer size={16} />{SPEED_NAMES[speed]}</button><span>{hand.length} in hand</span></div>}
+          {staged.length === 0 && <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!canAct}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={cycleSpeed} aria-label={`Computer pace: ${SPEED_NAMES[speed]}. Tap to change`}><Timer size={16} />{SPEED_NAMES[speed]}</button><button className="pace-button sort-button" onClick={() => setGame((current) => ({ ...current, hands: current.hands.map((cards, seat) => (seat === 0 ? sortHand(cards) : cards)) }))}><SortAscending size={16} />Sort</button><span>{hand.length} in hand</span></div>}
           {hint && yourMove && <p className="game-hint"><Lightbulb size={17} />{hintText}</p>}
           <div className={'player-hand' + (hand.length > 10 ? ' dense' : '') + (hand.length > 8 ? ' two-rows' : '')} style={{ '--n': hand.length, '--per': Math.ceil(hand.length / 2) } as CSSProperties} aria-label="Your hand">
             {hand.map((card, index) => <button key={card} style={{ '--i': 0, zIndex: index + 1 } as CSSProperties} data-card={card} onClick={() => chooseCard(card)} className={(hint && yourMove && canPlay(card) ? 'playable ' : '') + (staged.includes(card) ? 'selected ' : '') + (flash.includes(card) ? 'illegal' : '')} disabled={!canAct} aria-label={staged.includes(card) ? `Deselect ${cardIdLabel(card)}` : `Select ${cardIdLabel(card)}${canPlay(card) ? ', legal move' : ', not currently playable'}`}><CardImage code={card} />{staged.includes(card) && <i className="order-badge" aria-hidden="true">{staged.indexOf(card) + 1}</i>}</button>)}

@@ -2,18 +2,21 @@ import type { CupState } from "./cup";
 import type { KnockoutState } from "./knockout";
 import { rankLeague, type League } from "./leagues";
 import { isGameMatch, scoreWinnerId, type ScoreSession } from "./scoring";
+import type { SwitchNightRecord } from "./history";
 
 export interface NightSnapshot {
   readonly title: string;
   readonly format: string;
   readonly status: string;
   readonly lines: readonly { label: string; value: string; lead?: boolean }[];
+  /** Everyone playing, so a friend who joins can say which one they are. */
+  readonly players?: readonly string[];
 }
 
 export interface SharedNightKeys { readonly code: string; readonly token: string }
 
 /** Turns whatever night is being scored into a small read-only scoreboard that friends can watch. */
-export function buildSnapshot(input: { club?: string; session: ScoreSession | null; knockout: KnockoutState | null; cup: CupState | null; leagues: readonly League[] }): NightSnapshot | null {
+function buildBoard(input: { club?: string; session: ScoreSession | null; knockout: KnockoutState | null; cup: CupState | null; leagues: readonly League[] }): NightSnapshot | null {
   const title = input.club ? `${input.club} night` : "Switch night";
   const { session, knockout, cup, leagues } = input;
   if (session) {
@@ -47,6 +50,13 @@ export function buildSnapshot(input: { club?: string; session: ScoreSession | nu
   return null;
 }
 
+export function buildSnapshot(input: Parameters<typeof buildBoard>[0]): NightSnapshot | null {
+  const board = buildBoard(input);
+  if (!board) return null;
+  const players = input.session?.players ?? input.knockout?.players ?? input.cup?.players ?? input.leagues.flatMap((league) => league.results.map((result) => result.player));
+  return { ...board, players: players.map((player) => player.name) };
+}
+
 const KEY = "switchSharedNight";
 export function loadKeys(): SharedNightKeys | null {
   try { const raw = JSON.parse(localStorage.getItem(KEY) || "null"); return raw && typeof raw.code === "string" && typeof raw.token === "string" ? raw : null; } catch { return null; }
@@ -61,13 +71,44 @@ export async function createShare(snapshot: NightSnapshot): Promise<SharedNightK
   if (!response.ok) throw new Error(body.error || "Sharing is unavailable right now.");
   return { code: body.code, token: body.token };
 }
-export async function pushShare(keys: SharedNightKeys, snapshot: NightSnapshot): Promise<void> {
-  await fetch(`/api/night?code=${keys.code}`, { method: "PUT", headers: { "content-type": "application/json", "x-night-token": keys.token }, body: JSON.stringify({ snapshot }) });
+export async function pushShare(keys: SharedNightKeys, snapshot: NightSnapshot, result?: SwitchNightRecord): Promise<void> {
+  const response = await fetch(`/api/night?code=${keys.code}`, { method: "PUT", headers: { "content-type": "application/json", "x-night-token": keys.token }, body: JSON.stringify(result ? { snapshot, result } : { snapshot }) });
+  if (!response.ok) throw new Error("The shared night could not be updated.");
 }
-export async function fetchShare(code: string): Promise<{ snapshot: NightSnapshot; updatedAt: number }> {
+export async function fetchShare(code: string): Promise<{ snapshot: NightSnapshot; results: SwitchNightRecord[]; updatedAt: number }> {
   const response = await fetch(`/api/night?code=${encodeURIComponent(code.trim().toUpperCase())}`, { cache: "no-store" });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body.error || "Could not load that night.");
-  return { snapshot: body.snapshot, updatedAt: body.updatedAt };
+  return { snapshot: body.snapshot, results: Array.isArray(body.results) ? body.results : [], updatedAt: body.updatedAt };
 }
 export const shareLink = (code: string) => `${window.location.origin}/?night=${code}`;
+
+/* ── Host: saved nights wait here until they have reached the shared code, so a dropped signal never loses a result. ── */
+const OUTBOX = "switchShareOutbox";
+interface Pending { readonly keys: SharedNightKeys; readonly snapshot: NightSnapshot; readonly result: SwitchNightRecord }
+function readOutbox(): Pending[] {
+  try { const raw = JSON.parse(localStorage.getItem(OUTBOX) || "[]"); return Array.isArray(raw) ? raw.filter((item) => item?.keys?.code && item?.keys?.token && item?.result?.id && item?.snapshot) : []; } catch { return []; }
+}
+function writeOutbox(items: readonly Pending[]) {
+  try { if (items.length) localStorage.setItem(OUTBOX, JSON.stringify(items.slice(-20))); else localStorage.removeItem(OUTBOX); } catch { /* storage unavailable */ }
+}
+let flushing = false;
+/** Sends every waiting result. Anything that fails stays in the queue for the next try. */
+export async function flushSharedResults(): Promise<void> {
+  if (flushing) return;
+  flushing = true;
+  try {
+    for (const item of readOutbox()) {
+      try { await pushShare(item.keys, item.snapshot, item.result); } catch { continue; }
+      writeOutbox(readOutbox().filter((entry) => entry.result.id !== item.result.id));
+    }
+  } finally { flushing = false; }
+}
+/** Called when the host saves a night while a code is live: every phone that joined gets the result. Returns false when nothing is being shared. */
+export function publishResult(snapshot: NightSnapshot | null, result: SwitchNightRecord): boolean {
+  const keys = loadKeys();
+  if (!keys || !snapshot) return false;
+  writeOutbox([...readOutbox().filter((entry) => entry.result.id !== result.id), { keys, snapshot, result }]);
+  void flushSharedResults();
+  return true;
+}

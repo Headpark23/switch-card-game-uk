@@ -32,6 +32,8 @@ Badges, passport stamps, trophies and stats are **derived** from these records o
 | `switchPuzzles` | Puzzle progress |
 | `switchInstallDismissed` | Install banner dismissed at |
 | `switchSharedNight` | Live-share code and token for a hosted night |
+| `switchShareOutbox` | Saved nights waiting to reach the shared code, so a dropped signal never loses a result | Emptied as each result is sent. |
+| `switchJoinedNights` | Shared codes this phone has joined, and which player its owner is | Results saved under those codes are added to this phone's history. Kept for three weeks. |
 | `switchAccount` | Google sign-in session for cloud backup |
 
 ## Added in Switch 2.0

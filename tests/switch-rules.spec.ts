@@ -211,7 +211,8 @@ test("power cards stack, pass turns and cannot finish illegally", async ({ page 
   expect(result.acceptedEight).toEqual({ pending: null, turn: "computer" });
   expect(result.sevenTurn).toBe("player");
   expect(result.jackTurn).toBe("player");
-  expect(result.twoJacksTurn).toBe("computer");
+  // Ruling 18: two jacks mean play again.
+  expect(result.twoJacksTurn).toBe("player");
   expect(result.finalSeven).not.toContainEqual({ type: "play", cards: ["7H"] });
   expect(result.finalJack).not.toContainEqual({ type: "play", cards: ["JH"] });
   expect(result.penaltyMoves).toContainEqual({ type: "play", cards: ["2H"] });

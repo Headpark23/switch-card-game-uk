@@ -74,7 +74,9 @@ export function effectText(before: TableState, after: TableState, cards: readonl
   }
   if (rank === "8" && pending?.kind === "miss-turn") return `Eight: ${names[after.turn]} misses a turn unless they hold an eight`;
   if (rank === "7") return `Seven: ${names[actor]} play${actor === 0 ? "" : "s"} again`;
-  if (rank === "J" && cards.length % 2 === 1) {
+  // Ruling 18: two or four jacks never reverse; the same player plays again.
+  if (rank === "J" && cards.length % 2 === 0) return `${cards.length === 4 ? "Four" : "Two"} jacks: ${names[actor]} play${actor === 0 ? "" : "s"} again`;
+  if (rank === "J") {
     if (before.hands.length === 2) return `Jack: back to ${names[actor]}`;
     return `Jack: play reverses, now ${after.direction === 1 ? "clockwise" : "anticlockwise"}`;
   }

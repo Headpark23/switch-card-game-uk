@@ -819,3 +819,48 @@
 .switch-app .scorekeeper-head>.back-link{display:none}
 .score-shortcuts{margin:18px 0 6px;padding-top:12px;border-top:1px solid var(--line)}
 .switch-app .table-game .player-hand button:disabled{opacity:1;cursor:default;filter:saturate(.9) brightness(.98)}
+
+/* ── Tap a badge or trophy for its description ── */
+.award-tap{border:0;background:none;padding:0;margin:0;color:inherit;font:inherit;text-align:inherit;width:100%;border-radius:12px}
+.badge-wall .award-tap{display:grid;justify-items:center;align-content:start;gap:3px;text-align:center}
+.next-badges li{padding:0}.next-badges .award-tap,.trophy-list .award-tap{display:flex;align-items:center;gap:10px;padding:6px 10px;text-align:left}
+.trophy-list li{padding:0}
+.chip-row .award-tap{width:auto;border-radius:50%}
+.tier-ladder>button{display:grid;justify-items:center;gap:1px;border:0;background:none;padding:0;border-radius:10px}.tier-ladder>button.none{opacity:.35;filter:grayscale(1)}
+.award-sheet{display:grid;justify-items:center;gap:10px;padding:4px 6px 24px;text-align:center;font-family:'DM Sans',sans-serif;color:#092e23}
+.award-sheet p{margin:0;font-size:15px;line-height:1.5}
+.award-kind{font-weight:700;color:#ac7b26;font-size:13px!important}
+.award-how{color:#153c2c}
+.award-status{color:#59605b;font-size:14px!important}.award-status.done{color:#053527;font-weight:600}
+.award-bar{display:block;width:70%;height:6px;border-radius:3px;background:#e8e0cc;overflow:hidden}.award-bar b{display:block;height:100%;background:#053527}
+.award-note{font-size:13px!important;color:#59605b;border-top:1px solid #ded7c7;padding-top:10px;width:100%}
+.bottom-sheet:has(.award-sheet){--cream:#fbf8f0;--green:#053527;--ink:#092e23;--gold:#ac7b26;--muted:#59605b;--line:#ded7c7;color:#092e23}
+.next-badges .chip{flex:none;display:inline-grid}.next-badges .chip-face{display:grid;flex:none}
+
+/* ── Me history: tap a game for the full record ── */
+.me-history li{padding:0}
+.me-history-row{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:8px 10px;text-align:left;border-radius:12px}
+.me-history-row>span:nth-child(2){display:grid;flex:1;min-width:0}
+.me-result{display:grid;justify-items:end;gap:1px;flex:none}.me-result b{font-size:12px;font-weight:700}.me-result b.win{color:var(--green)}.me-result b.loss{color:#a43620}.me-result em{font-style:normal;font-size:11px;color:var(--muted)}
+.night-detail{display:grid;gap:12px;padding:2px 6px 28px;font-family:'DM Sans',sans-serif;color:#092e23}
+.night-result{margin:0;font-family:'DM Serif Display',Georgia,serif;font-size:26px;line-height:1.1}.night-result.win{color:#053527}.night-result.loss{color:#a43620}
+.night-facts{list-style:none;margin:0;padding:0;display:grid;gap:8px}.night-facts li{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.4}.night-facts svg{color:#ac7b26;flex:none;margin-top:2px}
+.night-section{border-top:1px solid #ded7c7;padding-top:10px}.night-section h4{margin:0 0 6px;font-family:'DM Serif Display',Georgia,serif;font-weight:400;font-size:17px}
+.night-section ol{list-style:none;margin:0;padding:0;display:grid;gap:4px}.night-section li{font-size:14px;line-height:1.4;color:#153c2c}
+.night-detail .dash-note{margin:0;font-size:13px;color:#59605b}
+.bottom-sheet:has(.night-detail),.bottom-sheet:has(.save-sheet),.bottom-sheet:has(.watch-results){--cream:#fbf8f0;--green:#053527;--ink:#092e23;--gold:#ac7b26;--muted:#59605b;--line:#ded7c7;color:#092e23;font-family:'DM Sans',sans-serif}
+
+/* ── Saving the night is the obvious next step ── */
+.save-now{display:grid;gap:8px;margin:14px 0;padding:16px;border-radius:16px;background:var(--green);color:#fff;text-align:center}
+.save-now strong{font-family:'DM Serif Display',Georgia,serif;font-weight:400;font-size:24px;line-height:1.1}.save-now span{font-size:13px;line-height:1.45;color:#d8e5dc}
+.save-now .primary{background:#f1d899;color:#053527!important}.save-now .primary svg{color:#053527}
+.saved-banner{margin:14px 0}
+.save-sheet{display:grid;gap:12px;padding:2px 6px 28px;margin:0;border:0;background:none}
+.save-sheet .primary{background:#053527}.save-sheet-note{margin:0;font-size:13px;line-height:1.45;color:#59605b;text-align:center}.save-sheet .text-link{justify-self:center;font-size:13px}
+
+/* ── Joining a shared night ── */
+.watch-who{display:grid;gap:8px;margin:12px 0;padding:14px;border:1px solid #d8c99f;background:#fffaf0;border-radius:14px}
+.watch-who strong{font-family:'DM Serif Display',Georgia,serif;font-weight:400;font-size:21px}.watch-who span{font-size:13px;line-height:1.45;color:var(--muted)}
+.watch-as{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0!important;font-size:13px;line-height:1.4}.watch-as svg{color:var(--green);flex:none}.watch-as span{flex:1;min-width:160px}.watch-as .text-link{font-size:13px;padding:2px 0}
+.watch-results{list-style:none;margin:10px 0;padding:0;display:grid;gap:6px}.watch-results li{display:grid;gap:2px;border:1px solid #d8c99f;background:#fffaf0;border-radius:12px;padding:8px 12px}.watch-results strong{font-size:14px}.watch-results span{font-size:12px;color:#59605b}
+.save-sheet-outcome{margin:0;font-family:'DM Serif Display',Georgia,serif;font-size:24px;line-height:1.15;color:#053527;text-align:center}
