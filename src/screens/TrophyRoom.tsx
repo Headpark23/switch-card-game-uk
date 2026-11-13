@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { BottomSheet } from '../mobile';
 import SampleDataBar from './SampleDataBar';
 import { BadgeWall, PassportBook } from './Badges';
 import { derivePassport } from '../switch/badges';
 import { getComputerGames } from '../switch/computerLog';
 import { getHistory } from '../switch/history';
 import { getProfiles } from '../switch/profiles';
-import { TROPHY_TIERS, deriveTrophyRoom, type TrophyTier } from '../switch/trophies';
+import { TROPHY_TIERS, deriveTrophyRoom, type Trophy, type TrophyTier } from '../switch/trophies';
 
 type Extensions = Record<string, unknown>;
 
@@ -35,25 +36,58 @@ export function TrophyArt({ tier, size = 64 }: { tier: TrophyTier; size?: number
   </svg>;
 }
 
+/** How each cup is won. Tournaments (Knock Out, Switch Cup, Group Play) count as two extra players, as in trophyTier. */
+const TIER_HOW: Record<TrophyTier, string> = {
+  bronze: 'Win a night with two players, such as a One v One.',
+  silver: 'Win a night with 3 or 4 players, or a two-player tournament.',
+  gold: 'Win a night with 5 players, or a three-player tournament.',
+  platinum: 'Win a night with 6 players, or a four-player tournament.',
+  grand: 'Win a night with 7 or more players, or a tournament of 5 or more. The grandest cup on the shelf.',
+};
+const TOURNAMENT_NOTE = 'The bigger the table, the fancier the cup. Knock Out, Switch Cup and Group Play count as two extra players.';
+
+type TrophyPick = { kind: 'tier'; tier: TrophyTier; count: number } | { kind: 'won'; trophy: Trophy };
+
+/** Tap a cup and this says what it is and how it is won. */
+function TrophySheet({ pick, onClose }: { pick: TrophyPick | null; onClose: () => void }) {
+  const [shown, setShown] = useState(pick);
+  if (pick && pick !== shown) setShown(pick);
+  const tier = shown ? (shown.kind === 'tier' ? shown.tier : shown.trophy.tier) : 'bronze';
+  const name = TROPHY_TIERS.find((entry) => entry.tier === tier)?.name ?? 'Cup';
+  return <BottomSheet open={!!pick} onOpenChange={(next) => { if (!next) onClose(); }} title={shown?.kind === 'won' ? shown.trophy.title : name} snap={0.5}>
+    {shown && <div className="award-sheet">
+      <TrophyArt tier={tier} size={96} />
+      {shown.kind === 'won'
+        ? <><p className="award-kind">{name} · {shown.trophy.formatLabel}</p>
+          <p className="award-status done">Won with {shown.trophy.players} players on {new Date(shown.trophy.wonAt).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.</p></>
+        : <p className="award-kind">{shown.count ? `You have ${shown.count} on the shelf` : 'None on the shelf yet'}</p>}
+      <p className="award-how"><strong>How to win it:</strong> {TIER_HOW[tier]}</p>
+      <p className="award-note">{TOURNAMENT_NOTE}</p>
+    </div>}
+  </BottomSheet>;
+}
+
 /** One player's cabinet, badges and passport. Used for everyone in the Club and for you on the Me page. */
 export function PlayerCabinet({ extensions, profileId }: { extensions: Extensions; profileId: string }) {
   const allProfiles = getProfiles(extensions);
   const profile = allProfiles.find((entry) => entry.id === profileId);
+  const [pick, setPick] = useState<TrophyPick | null>(null);
   if (!profile) return null;
   const nights = getHistory(extensions);
   const room = deriveTrophyRoom(profile, nights, allProfiles, getComputerGames(extensions));
   const stamps = derivePassport(profile, nights, allProfiles);
   const mine = nights.filter((night) => night.place && night.players.some((player) => player.id === profile.id || player.name.toLowerCase() === profile.name.toLowerCase()));
   return <div className="cabinet">
+    <TrophySheet pick={pick} onClose={() => setPick(null)} />
     <h3>Trophy cabinet</h3>
+    <div className="tier-ladder" aria-label="Trophies by tier">{TROPHY_TIERS.map(({ tier, name }) => <button type="button" key={tier} className={room.tierCounts[tier] ? 'has' : 'none'} aria-label={`${name}: ${room.tierCounts[tier]} won. Show details`} onClick={() => setPick({ kind: 'tier', tier, count: room.tierCounts[tier] })}><TrophyArt tier={tier} size={48} /><b>{room.tierCounts[tier]}</b><small>{name}</small></button>)}</div>
     {room.trophies.length === 0
-      ? <p className="history-empty">No trophies yet. Win a saved night to put the first one on the shelf.</p>
+      ? <p className="history-empty">No trophies yet. Win a saved night to put the first one on the shelf. Tap a cup to see how it is won.</p>
       : <>
-        <div className="tier-ladder" aria-label="Trophies by tier">{TROPHY_TIERS.map(({ tier, name }) => <div key={tier} className={room.tierCounts[tier] ? 'has' : 'none'}><TrophyArt tier={tier} size={48} /><b>{room.tierCounts[tier]}</b><small>{name}</small></div>)}</div>
-        <ul className="trophy-list" aria-label="Trophies won">{room.trophies.slice(0, 8).map((trophy) => <li key={trophy.nightId}>
+        <ul className="trophy-list" aria-label="Trophies won">{room.trophies.slice(0, 8).map((trophy) => <li key={trophy.nightId}><button type="button" className="award-tap" aria-label={`${trophy.tierName}, ${trophy.title}. Show details`} onClick={() => setPick({ kind: 'won', trophy })}>
           <TrophyArt tier={trophy.tier} size={40} />
           <span><strong>{trophy.tierName}</strong><small>{trophy.formatLabel} · {trophy.players} players · {new Date(trophy.wonAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</small></span>
-        </li>)}</ul>
+        </button></li>)}</ul>
         {room.trophies.length > 8 && <p className="dash-note">and {room.trophies.length - 8} more on the shelf.</p>}
       </>}
     <h3>Badges · {room.earnedCount} of {room.badges.length}</h3>

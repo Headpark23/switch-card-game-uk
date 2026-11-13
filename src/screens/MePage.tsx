@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { ArrowRight, Fire, Pencil, Robot } from '@phosphor-icons/react';
 import { FeltHeader } from '../ui';
 import { KeyboardInput, useKeyboard } from '../mobile';
-import { BadgeChip, BadgeWall, PassportBook } from './Badges';
+import { BadgeButton, BadgeSheet, BadgeWall, PassportBook } from './Badges';
 import { PlayerCabinet } from './TrophyRoom';
-import { derivePassport, deriveBadges } from '../switch/badges';
+import { derivePassport, deriveBadges, type BadgeProgress } from '../switch/badges';
 import { ensureMe, getComputerGames, getMeId, putMeId, summariseComputerGames } from '../switch/computerLog';
 import { derivePlayerStats } from '../switch/analytics';
 import { getHistory } from '../switch/history';
@@ -34,6 +34,7 @@ export default function MePage({ onPlay, onClub }: { onPlay: () => void; onClub:
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState('');
+  const [openBadge, setOpenBadge] = useState<BadgeProgress | null>(null);
   const apply = (change: (current: Record<string, unknown>) => Record<string, unknown>) => setExtensions(updateClub(change));
 
   const profiles = getProfiles(extensions).filter((profile) => !profile.archived);
@@ -91,8 +92,9 @@ export default function MePage({ onPlay, onClub }: { onPlay: () => void; onClub:
       </div>
       {summary.form.length > 0 && <div className="me-form" aria-label="Recent games against the computer"><span>Lately v computer</span>{summary.form.map((result, index) => <i key={index} className={result === 'W' ? 'win' : 'loss'}>{result}</i>)}</div>}
       <button className="primary" onClick={onPlay}><Robot size={19} weight="bold" />Practise against the computer</button>
-      {nextUp.length > 0 && <><h3>Next badges</h3><ul className="next-badges">{nextUp.map((badge) => <li key={badge.id}><BadgeChip badge={badge} size={46} /><span><strong>{badge.label}</strong><small>{badge.hint}</small></span><em>{badge.have}/{badge.need}</em></li>)}</ul></>}
-      {earned.length > 0 && <><h3>Latest badges</h3><div className="chip-row" aria-label="Badges earned">{earned.slice(-6).reverse().map((badge) => <BadgeChip key={badge.id} badge={badge} size={46} />)}</div></>}
+      {nextUp.length > 0 && <><h3>Next badges</h3><ul className="next-badges">{nextUp.map((badge) => <li key={badge.id}><BadgeButton badge={badge} size={46} onOpen={setOpenBadge}><span><strong>{badge.label}</strong><small>{badge.hint}</small></span><em>{badge.have}/{badge.need}</em></BadgeButton></li>)}</ul></>}
+      {earned.length > 0 && <><h3>Latest badges</h3><div className="chip-row" aria-label="Badges earned">{earned.slice(-6).reverse().map((badge) => <BadgeButton key={badge.id} badge={badge} size={46} onOpen={setOpenBadge} />)}</div></>}
+      <BadgeSheet badge={openBadge} onClose={() => setOpenBadge(null)} />
       <div className="me-name">
         {editing
           ? <><label><span>Your name</span><KeyboardInput aria-label="Your name" value={draft} onChange={(event) => setDraft(event.target.value)} /></label>{error && <p className="score-error" role="alert">{error}</p>}<button className="secondary" onClick={rename}>Save name</button><button className="text-link" onClick={() => { setEditing(false); setError(''); }}>Cancel</button></>
