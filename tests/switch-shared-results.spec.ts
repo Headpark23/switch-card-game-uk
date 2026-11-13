@@ -142,8 +142,8 @@ test("saving a night while a code is live sends the result to everyone who joine
   for (let i = 0; i < await names.count(); i += 1) await names.nth(i).fill("Player " + (i + 1));
   await page.getByLabel("Games to win").fill("2");
   await page.getByRole("button", { name: "Start One v One" }).click();
-  await page.getByRole("button", { name: "Share live scores" }).click();
-  await expect(page.getByText("ABC234")).toBeVisible();
+  await page.getByRole("button", { name: /^Send to Player/ }).first().click();
+  await expect(page.getByText("ABC234").first()).toBeVisible();
   await page.getByRole("button", { name: "Win game" }).first().click();
   await page.getByRole("button", { name: "Win game" }).last().click();
   await page.getByRole("button", { name: "Win game" }).last().click();

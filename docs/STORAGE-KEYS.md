@@ -34,6 +34,7 @@ Badges, passport stamps, trophies and stats are **derived** from these records o
 | `switchSharedNight` | Live-share code and token for a hosted night |
 | `switchShareOutbox` | Saved nights waiting to reach the shared code, so a dropped signal never loses a result | Emptied as each result is sent. |
 | `switchJoinedNights` | Shared codes this phone has joined, and which player its owner is | Results saved under those codes are added to this phone's history. Kept for three weeks. |
+| `switchShareInvites` | Who the host sent a live game to, and when, so the host can always see what has gone out | Shown beside "Joined" once that friend opens the link. Overwritten by sending again. |
 | `switchAccount` | Google sign-in session for cloud backup |
 
 ## Added in Switch 2.0

@@ -86,6 +86,7 @@ function Loading() {
 
 export default function Prototype() {
   const urlNight = (() => { try { return (new URLSearchParams(window.location.search).get('night') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); } catch { return ''; } })();
+  const urlAs = (() => { try { return (new URLSearchParams(window.location.search).get('as') || '').trim().slice(0, 40); } catch { return ''; } })();
   const urlClub = (() => { try { return new URLSearchParams(window.location.search).get('club') ? true : false; } catch { return false; } })();
   const [page, setPage] = useState<Page>(urlNight ? 'Watch' : urlClub ? 'Club' : 'Learn');
   const [query, setQuery] = useState('');
@@ -250,7 +251,7 @@ export default function Prototype() {
             {page === 'Me' && <MePage key={meSection} initialSection={meSection} onPlay={() => go('Play')} onClub={() => openClub('stats')} onPrivacy={() => go('Privacy')} />}
             {page === 'Tutorial' && <GuidedGame onExit={() => go('Rules')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onOpenPuzzles={() => go('Puzzles')} onPlayForReal={() => go('Play')} onStatusChange={onGameStatus} />}
             {page === 'Quick' && <QuickNight onBack={() => openScore('score')} onHistory={() => openClub('history')} />}
-            {page === 'Watch' && <WatchNight initialCode={urlNight} onBack={() => go('Learn')} />}
+            {page === 'Watch' && <WatchNight initialCode={urlNight} initialAs={urlAs} onBack={() => go('Learn')} />}
             {page === 'Puzzles' && <Puzzles onBack={() => go(learnBack)} onTutorial={startGuidedGame} />}
             {page === 'Privacy' && <Privacy onBack={() => openMe('overview')} />}
           </Suspense>

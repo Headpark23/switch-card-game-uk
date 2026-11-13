@@ -41,13 +41,20 @@ for (const scenario of [
   await names.nth(0).fill("Mark"); await names.nth(1).fill("Rebecca");
   await host.getByLabel("Games to win").fill("2");
   await host.getByRole("button", { name: "Start One v One" }).click();
-  await host.getByRole("button", { name: "Share live scores" }).click();
+  // One tap sends the game to Rebecca. The phone's share sheet (WhatsApp, Messages) is stood in for by a recorder.
+  await host.evaluate(() => { (navigator as unknown as { share: (data: { text: string }) => Promise<void> }).share = async (data) => { (window as unknown as { sent: string }).sent = data.text; }; });
+  await host.getByRole("button", { name: "Send to Rebecca" }).click();
   const code = (await host.getByText(/^[A-Z2-9]{6}$/).first().textContent())!.trim();
+  const link = (await host.evaluate(() => (window as unknown as { sent: string }).sent)).match(/https?:\/\/\S+/)![0];
+  expect(link).toContain(`night=${code}`);
+  await expect(host.getByText(/Sent at .* waiting for them to open it/)).toBeVisible();
 
-  await friend.goto(`/?night=${code}`);
-  await expect(friend.getByText("Which one are you?")).toBeVisible();
-  await friend.getByRole("button", { name: "Rebecca", exact: true }).click();
+  // Opening the link is all Rebecca does: she is in as herself, with no question to answer.
+  await friend.goto(link.replace(/^https?:\/\/[^/]+/, ""));
   await expect(friend.getByText(/Playing as/)).toBeVisible();
+  await expect(friend.getByText("Which one are you?")).toHaveCount(0);
+  // And the host's screen shows she arrived.
+  await expect(host.getByText("Joined", { exact: true })).toBeVisible({ timeout: 20_000 });
 
   if (scenario.leave) await friend.getByRole("navigation").getByRole("button", { name: "Home", exact: true }).click();
   // The host plays and Rebecca wins, then the host saves.

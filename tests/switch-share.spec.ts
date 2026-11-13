@@ -16,8 +16,8 @@ test("a host shares live scores and updates reach the shared code", async ({ pag
   await page.getByLabel("Target score").fill("250");
   await page.getByRole("button", { name: "Start Domino" }).click();
   await expect(page.getByLabel("Score for Player 1")).toBeVisible();
-  await page.getByRole("button", { name: "Share live scores" }).click();
-  await expect(page.getByText("ABC234")).toBeVisible();
+  await page.getByRole("button", { name: /^Send (to Player 1|the link)$/ }).click();
+  await expect(page.getByText("ABC234").first()).toBeVisible();
   await page.getByLabel("Score for Player 1").fill("40");
   await page.getByRole("button", { name: "Add" }).first().click();
   await expect.poll(() => puts.length).toBeGreaterThan(0);
@@ -25,7 +25,7 @@ test("a host shares live scores and updates reach the shared code", async ({ pag
   expect(last.token).toBe("secret");
   expect(last.body.snapshot.lines[0]).toMatchObject({ label: "Player 1", value: "40 points" });
   await page.getByRole("button", { name: "Stop sharing" }).click();
-  await expect(page.getByRole("button", { name: "Share live scores" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Send (to Player 1|the link)$/ })).toBeVisible();
 });
 
 test("a friend opens a night link and sees the scoreboard", async ({ page }) => {

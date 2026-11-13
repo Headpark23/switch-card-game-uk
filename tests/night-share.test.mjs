@@ -62,3 +62,21 @@ test("a saved night travels with the code so every phone that joined can add it 
   assert.equal((await handleNight(req("PUT", `?code=${code}`, { snapshot: snap, result: { id: "x" } }, { "x-night-token": token }), store, 7)).status, 400);
   assert.equal(cleanResult({ ...night, format: "poker" }), null);
 });
+
+test("a friend says who they are, the host can read it back, and only names on the scoreboard are accepted", async () => {
+  const store = memory();
+  const { code, token } = await (await handleNight(req("POST", "", { snapshot: { ...snap, players: ["Alex", "Blair"] } }), store, 1)).json();
+  assert.deepEqual((await (await handleNight(req("GET", `?code=${code}`), store, 2)).json()).joined, []);
+  const said = await handleNight(req("PATCH", `?code=${code}`, { joined: "  blair " }), store, 3);
+  assert.equal(said.status, 200);
+  assert.equal((await said.json()).joined[0].name, "Blair");
+  // Saying it twice does not list them twice, and a stranger's name is refused.
+  await handleNight(req("PATCH", `?code=${code}`, { joined: "Blair" }), store, 4);
+  assert.equal((await handleNight(req("PATCH", `?code=${code}`, { joined: "Mallory" }), store, 5)).status, 400);
+  assert.equal((await handleNight(req("PATCH", `?code=${code}`, { joined: "" }), store, 5)).status, 400);
+  assert.equal((await handleNight(req("PATCH", "?code=ZZZZZZ", { joined: "Blair" }), store, 5)).status, 404);
+  // A scoreboard update from the host keeps who has joined.
+  assert.equal((await handleNight(req("PUT", `?code=${code}`, { snapshot: { ...snap, players: ["Alex", "Blair"] } }, { "x-night-token": token }), store, 6)).status, 200);
+  const read = await (await handleNight(req("GET", `?code=${code}`), store, 7)).json();
+  assert.deepEqual(read.joined.map((entry) => entry.name), ["Blair"]);
+});

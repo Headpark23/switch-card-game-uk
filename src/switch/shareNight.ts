@@ -75,13 +75,34 @@ export async function pushShare(keys: SharedNightKeys, snapshot: NightSnapshot, 
   const response = await fetch(`/api/night?code=${keys.code}`, { method: "PUT", headers: { "content-type": "application/json", "x-night-token": keys.token }, body: JSON.stringify(result ? { snapshot, result } : { snapshot }) });
   if (!response.ok) throw new Error("The shared night could not be updated.");
 }
-export async function fetchShare(code: string): Promise<{ snapshot: NightSnapshot; results: SwitchNightRecord[]; updatedAt: number }> {
+export interface JoinedPlayer { readonly name: string; readonly at: number }
+export async function fetchShare(code: string): Promise<{ snapshot: NightSnapshot; results: SwitchNightRecord[]; joined: JoinedPlayer[]; updatedAt: number }> {
   const response = await fetch(`/api/night?code=${encodeURIComponent(code.trim().toUpperCase())}`, { cache: "no-store" });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body.error || "Could not load that night.");
-  return { snapshot: body.snapshot, results: Array.isArray(body.results) ? body.results : [], updatedAt: body.updatedAt };
+  return { snapshot: body.snapshot, results: Array.isArray(body.results) ? body.results : [], joined: Array.isArray(body.joined) ? body.joined : [], updatedAt: body.updatedAt };
 }
-export const shareLink = (code: string) => `${window.location.origin}/?night=${code}`;
+/** Friend side: tells the host "I am Martin", so the host can see the invitation worked. Safe to repeat. */
+export async function reportJoined(code: string, name: string): Promise<void> {
+  const response = await fetch(`/api/night?code=${encodeURIComponent(code.trim().toUpperCase())}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ joined: name }) });
+  if (!response.ok) throw new Error("The host could not be told yet.");
+}
+/** The night's link. With a name, opening it joins as that player straight away, with no question to answer. */
+export const shareLink = (code: string, as?: string) => `${window.location.origin}/?night=${code}${as ? `&as=${encodeURIComponent(as)}` : ""}`;
+
+/* ── Host: who each link was sent to, so the host can always see what has gone out and who has arrived. ── */
+const INVITES = "switchShareInvites";
+export interface SentInvite { readonly code: string; readonly name: string; readonly sentAt: number }
+export function loadInvites(code: string): SentInvite[] {
+  try { const raw = JSON.parse(localStorage.getItem(INVITES) || "[]"); return Array.isArray(raw) ? raw.filter((item) => item?.code === code && typeof item?.name === "string" && typeof item?.sentAt === "number") : []; } catch { return []; }
+}
+export function rememberInvite(code: string, name: string): void {
+  try {
+    const raw = JSON.parse(localStorage.getItem(INVITES) || "[]");
+    const rest = (Array.isArray(raw) ? raw : []).filter((item) => !(item?.code === code && String(item?.name).toLowerCase() === name.toLowerCase()));
+    localStorage.setItem(INVITES, JSON.stringify([{ code, name, sentAt: Date.now() }, ...rest].slice(0, 30)));
+  } catch { /* storage unavailable */ }
+}
 
 /* ── Host: saved nights wait here until they have reached the shared code, so a dropped signal never loses a result. ── */
 const OUTBOX = "switchShareOutbox";
