@@ -818,3 +818,4 @@
 @media (max-height:700px){.home-hub.v2 .home-tiles.v2 .home-tile{min-height:64px;padding-top:8px;padding-bottom:8px}}
 .switch-app .scorekeeper-head>.back-link{display:none}
 .score-shortcuts{margin:18px 0 6px;padding-top:12px;border-top:1px solid var(--line)}
+.switch-app .table-game .player-hand button:disabled{opacity:1;cursor:default;filter:saturate(.9) brightness(.98)}
