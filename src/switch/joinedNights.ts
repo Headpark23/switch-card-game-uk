@@ -43,6 +43,39 @@ export function myName(extensions: Extensions): string | null {
   return getProfiles(extensions).find((profile) => profile.id === id)?.name ?? null;
 }
 
+const ALIAS_KEY = "switchNightAliases";
+const isPlaceholder = (name: string) => same(name, "you");
+
+function loadAliases(): string[] {
+  try { const raw = JSON.parse(localStorage.getItem(ALIAS_KEY) || "[]"); return Array.isArray(raw) ? raw.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : []; } catch { return []; }
+}
+
+/** Every name the person holding this phone goes by: their saved name, then any other name they picked on a host's scoreboard. */
+export function myNames(extensions: Extensions): string[] {
+  const mine = myName(extensions);
+  return [...(mine && !isPlaceholder(mine) ? [mine] : []), ...loadAliases()];
+}
+
+/**
+ * Called when someone says which player they are on a shared night. A phone that does not yet know its owner learns it
+ * straight away (so the next night or club needs no question), and a different spelling is remembered as another name for them.
+ */
+export function rememberWho(name: string): void {
+  const clean = name.trim();
+  if (!clean) return;
+  updateClub((current) => {
+    const mine = myName(current);
+    if (mine && !isPlaceholder(mine)) {
+      if (!same(mine, clean) && !loadAliases().some((alias) => same(alias, clean))) {
+        try { localStorage.setItem(ALIAS_KEY, JSON.stringify([clean, ...loadAliases()].slice(0, 8))); } catch { /* storage unavailable */ }
+      }
+      return current;
+    }
+    const ensured = ensureProfiles(current, [clean]);
+    return claimMe(ensured.extensions, ensured.players[0].id);
+  });
+}
+
 /**
  * Adds a night the host saved to this phone's own history. The player they said they are becomes "me",
  * and everyone else is matched to (or added as) a saved player, so wins, losses, streaks and badges all count here too.

@@ -2,7 +2,7 @@ import { CaretLeft, CheckCircle } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { KeyboardInput, useKeyboard } from '../mobile';
 import { fetchShare, type NightSnapshot } from '../switch/shareNight';
-import { collectResults, forgetJoin, loadJoined, myName, rememberJoin } from '../switch/joinedNights';
+import { collectResults, forgetJoin, loadJoined, myNames, rememberJoin, rememberWho } from '../switch/joinedNights';
 import { readClub } from '../switch/clubStore';
 import type { SwitchNightRecord } from '../switch/history';
 import { CardShower } from '../ui';
@@ -21,7 +21,7 @@ export default function WatchNight({ initialCode, onBack }: { initialCode: strin
   const [as, setAs] = useState<string | null | undefined>(() => loadJoined().find((item) => item.code === initialCode.trim().toUpperCase())?.as);
   const [results, setResults] = useState<SwitchNightRecord[]>([]);
   const [justSaved, setJustSaved] = useState<string | null>(null);
-  const choose = (name: string | null) => { rememberJoin(code, name); setAs(name); };
+  const choose = (name: string | null) => { rememberJoin(code, name); if (name) rememberWho(name); setAs(name); };
 
   useEffect(() => {
     if (!code) return;
@@ -32,11 +32,11 @@ export default function WatchNight({ initialCode, onBack }: { initialCode: strin
     return () => { alive = false; window.clearInterval(timer); };
   }, [code]);
 
-  // If this phone's owner is already on the scoreboard by name, there is nothing to ask.
+  // If this phone's owner is already on the scoreboard by name (or by a name they have used before), there is nothing to ask.
   useEffect(() => {
     if (!snapshot || as !== undefined) return;
-    const mine = myName(readClub());
-    const match = mine ? (snapshot.players ?? []).find((name) => same(name, mine)) : undefined;
+    const mine = myNames(readClub());
+    const match = (snapshot.players ?? []).find((name) => mine.some((known) => same(name, known)));
     if (match) { rememberJoin(code, match); setAs(match); }
   }, [snapshot, as, code]);
 

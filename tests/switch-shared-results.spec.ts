@@ -80,6 +80,35 @@ test("a friend who joins a code gets the saved night in their own history, once,
   expect(loser).toEqual({ added: 1, played: true, won: false });
 });
 
+test("a linked player is remembered: later nights, even under another spelling, never ask who they are again", async ({ page }) => {
+  const scoreboard = (players: string[]) => ({ code: "X", updatedAt: Date.now(), results: [], snapshot: { title: "Night", format: "head-to-head", status: "Playing", players, lines: players.map((label) => ({ label, value: "0 games" })) } });
+  await page.route("**/api/night**", (route) => {
+    const code = new URL(route.request().url()).searchParams.get("code");
+    const players = code === "THIRD3" ? ["Mark", "Becky"] : ["Mark", "Rebecca"];
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(scoreboard(players)) });
+  });
+  await page.goto("/?night=FIRST2");
+  await expect(page.getByText("Which one are you?")).toBeVisible();
+  await page.getByRole("button", { name: "Rebecca", exact: true }).click();
+  await expect(page.getByText(/Playing as/)).toBeVisible();
+  // No result has arrived yet, but the phone already knows its owner.
+  expect(await page.evaluate(async () => { const club = await import("/src/switch/clubStore.ts"); const joined = await import("/src/switch/joinedNights.ts"); return joined.myName(club.readClub()); })).toBe("Rebecca");
+
+  // A different night with the same name: nothing to ask.
+  await page.goto("/?night=SECOND2");
+  await expect(page.getByText("Playing as")).toBeVisible();
+  await expect(page.getByText("Which one are you?")).toBeHidden();
+
+  // The host writes her as Becky. She says so once, and that is remembered too.
+  await page.goto("/?night=THIRD3");
+  await expect(page.getByText("Which one are you?")).toBeVisible();
+  await page.getByRole("button", { name: "Becky", exact: true }).click();
+  await page.route("**/api/night**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(scoreboard(["Mark", "Becky"])) }));
+  await page.goto("/?night=FIFTH5");
+  await expect(page.getByText("Playing as")).toBeVisible();
+  await expect(page.getByText("Which one are you?")).toBeHidden();
+});
+
 test("my history opens the full record of a night: date, venue and every score", async ({ page }) => {
   await page.route("**/api/night**", (route) => route.fulfill({ status: 404, contentType: "application/json", body: "{}" }));
   await page.goto("/");

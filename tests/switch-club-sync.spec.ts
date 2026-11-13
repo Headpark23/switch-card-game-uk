@@ -99,6 +99,30 @@ test("a club link opens straight to 'Which one are you?'", async ({ browser }) =
   await hostContext.close(); await friendContext.close();
 });
 
+test("a player who has already said who they are is never asked again when they rejoin a club", async ({ browser }) => {
+  const rows = new Map<string, unknown>();
+  const hostContext = await browser.newContext({ viewport: { width: 1000, height: 1100 } });
+  const friendContext = await browser.newContext({ viewport: { width: 1000, height: 1100 } });
+  await serve(hostContext, rows); await serve(friendContext, rows);
+  const host = await hostContext.newPage(); const friend = await friendContext.newPage();
+  await host.goto("/");
+  await playNight(host, "Mark", "Rebecca", "second");
+  await host.getByRole("navigation").getByRole("button", { name: "Club", exact: true }).click();
+  await host.getByRole("button", { name: "Share this club" }).click();
+  const code = (await host.locator(".club-code-small").textContent())!.trim();
+  await friend.goto(`/?club=${code}`);
+  await friend.getByRole("button", { name: "Rebecca", exact: true }).click();
+  await expect(friend.getByText("You're in!")).toBeVisible();
+  await friend.getByRole("button", { name: "Got it" }).click();
+  // She leaves, then opens the same link again: straight back in, no question.
+  await friend.getByRole("button", { name: "Leave club" }).click();
+  await friend.getByRole("button", { name: "Leave club" }).last().click();
+  await friend.goto(`/?club=${code}`);
+  await expect(friend.getByText("You're in!")).toBeVisible();
+  await expect(friend.getByText("Which one are you?")).toBeHidden();
+  await hostContext.close(); await friendContext.close();
+});
+
 test("sharing is easy to find: Home offers it, and the saved-night screen offers it right after saving", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("Playing with friends? Share your club")).toBeVisible();

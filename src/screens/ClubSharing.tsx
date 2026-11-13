@@ -4,6 +4,7 @@ import { useConfirm } from '../Confirm';
 import { KeyboardInput, useKeyboard } from '../mobile';
 import { getClubName } from '../switch/club';
 import { readClub } from '../switch/clubStore';
+import { myNames } from '../switch/joinedNights';
 import { cleanClubCode, clearJoined, createClub, justJoined, inIosBrowserTab, inviteMessage, joinClub, leaveClub, loadLink, previewClub, syncClub, takeJoinRequest, type ClubLink } from '../switch/clubSync';
 
 const ago = (time?: number) => {
@@ -32,13 +33,21 @@ export default function ClubSharing() {
 
   async function look(value = code) {
     keyboard.hide(); setError(''); setBusy(true);
-    try { setFound(await previewClub(value)); } catch (reason) { setFound(null); setError(reason instanceof Error ? reason.message : 'Could not find that club.'); }
+    try {
+      const preview = await previewClub(value);
+      // This phone already knows who holds it: if they are on the club's list there is nothing to ask.
+      const known = myNames(readClub());
+      const match = preview.players.find((name) => known.some((mine) => mine.trim().toLowerCase() === name.trim().toLowerCase()));
+      if (match) { await join(match, value); return; }
+      if (known[0]) setNewName(known[0]);
+      setFound(preview);
+    } catch (reason) { setFound(null); setError(reason instanceof Error ? reason.message : 'Could not find that club.'); }
     setBusy(false);
   }
-  async function join(as: string) {
+  async function join(as: string, value = code) {
     if (!as.trim()) { setError('Pick your name, or type it if you are not on the list.'); return; }
     keyboard.hide(); setBusy(true); setError('');
-    try { await joinClub(code, as); setLink(loadLink()); setJoining(false); setFound(null); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not join that club.'); }
+    try { await joinClub(value, as); setLink(loadLink()); setJoining(false); setFound(null); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not join that club.'); }
     setBusy(false);
   }
   async function start() {

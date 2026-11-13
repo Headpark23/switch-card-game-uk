@@ -52,6 +52,7 @@ From Switch 2.0, guided practice (Learn the Rules) writes nothing to `switchComp
 | Key | Purpose | Notes |
 |---|---|---|
 | `switchClubLink` | The shared club this phone belongs to: `{ code, joinedAt, lastSyncAt }` | Absent when the phone is not in a shared club. Leaving removes only this key; every player and night stays on the phone. |
+| `switchNightAliases` | Other names this phone's owner has picked on a host's scoreboard (e.g. "Becky" for Rebecca), newest first, up to 8 | Lets later nights and clubs recognise them without asking "Which one are you?". Picking a name on a night also sets the owner's saved player straight away if the phone did not know them yet. |
 | `switchRemovedNights` (inside the club document) | Ids of nights deleted on this phone | Sent to the shared club so a deleted night does not come back from another phone. |
 
 Profiles gain an optional `updatedAt`, and `switchClub` an `updatedAt`, so two phones can tell which rename or archive is newer. Older records without them still load.
