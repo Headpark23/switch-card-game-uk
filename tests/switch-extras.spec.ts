@@ -46,8 +46,7 @@ test("plan a night opens from the home screen", async ({ page }) => {
 
 test("the domino hand counter totals the cards left in a hand", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Play", exact: true }).click();
-  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Keep every score straight." })).toBeVisible();
   const names = page.getByPlaceholder("Enter name");
   for (let i = 0; i < await names.count(); i += 1) await names.nth(i).fill("Player " + (i + 1));
@@ -63,7 +62,8 @@ test("the domino hand counter totals the cards left in a hand", async ({ page })
 
 test("the computer level can be changed from the coach sheet and is remembered", async ({ page }) => {
   await page.goto("/?testDeck=1");
-  await page.getByRole("button", { name: "Play against the computer" }).click();
+  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: /Guided practice game/ }).click();
   await page.getByRole("button", { name: /Why & tactics: / }).click();
   await page.getByRole("button", { name: /Computer: Standard/ }).click();
   await expect(page.getByRole("button", { name: /Computer: Sharp/ })).toBeVisible();

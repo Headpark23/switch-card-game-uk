@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("sample club fills stats, charts and a league, and removes cleanly", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Stats", exact: true }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Club", exact: true }).click();
   await expect(page.getByText("Stats appear after your first saved night.")).toBeVisible();
   await page.getByRole("button", { name: "Load sample club" }).click();
   await expect(page.getByText("Showing sample data. It is not your real record.")).toBeVisible();
@@ -23,10 +23,10 @@ test("sample club fills stats, charts and a league, and removes cleanly", async 
   await expect(page.getByText("Stats appear after your first saved night.")).toBeVisible();
 });
 
-test("the bottom bar has six tabs and Club opens stats, leagues and history", async ({ page }) => {
+test("the bottom bar has five tabs and Club opens stats, leagues and history", async ({ page }) => {
   await page.goto("/");
   const nav = page.getByRole("navigation", { name: "Main navigation" });
-  await expect(nav.getByRole("button")).toHaveCount(6);
+  await expect(nav.getByRole("button")).toHaveCount(5);
   await nav.getByRole("button", { name: "Club" }).click();
   await expect(nav.getByRole("button", { name: "Club" })).toHaveAttribute("aria-current", "page");
   await page.getByRole("button", { name: "Seasons", exact: true }).click();
@@ -53,6 +53,7 @@ test("every card face is a real image of the same shape", async ({ page }) => {
 
 test("History offers to remove sample data and shows the real, empty state afterwards", async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("navigation").getByRole("button", { name: "Club", exact: true }).click();
   await page.getByRole("button", { name: "History", exact: true }).click();
   await page.getByRole("button", { name: "Load sample club" }).click();
   await expect(page.getByText("Showing sample data. It is not your real record.")).toBeVisible();

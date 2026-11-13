@@ -4,7 +4,8 @@ test.describe.configure({ timeout: 60_000 });
 
 test("the shuffled pack contains all 52 unique card faces", async ({ page, request }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Play against the computer" }).click();
+  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: /Guided practice game/ }).click();
   await expect(page.getByRole("region", { name: "52-card game with 52 unique cards" })).toBeVisible();
 
   const cards = ["S", "H", "D", "C"].flatMap((suit) =>
@@ -16,7 +17,8 @@ test("the shuffled pack contains all 52 unique card faces", async ({ page, reque
 
 async function startGame(page: Page) {
   await page.goto("/?testDeck=1");
-  await page.getByRole("button", { name: "Play against the computer" }).click();
+  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: /Guided practice game/ }).click();
   await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible();
   await expect(page.getByRole("region", { name: "52-card game with 52 unique cards" })).toBeVisible();
 }
@@ -61,7 +63,8 @@ test("an off-suit ace is playable on an ordinary card and changes suit", async (
 
 test("black kings stack and the computer picks up the full penalty", async ({ page }) => {
   await page.goto("/?testDeck=blackKingChain");
-  await page.getByRole("button", { name: "Play against the computer" }).click();
+  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: /Guided practice game/ }).click();
 
   await play(page, "AS");
   await page.getByRole("dialog", { name: "Choose a suit" }).getByRole("button", { name: /clubs/i }).click();
@@ -76,7 +79,8 @@ test("black kings stack and the computer picks up the full penalty", async ({ pa
 
 test("one red king leaves five cards from a ten-card black-king stack", async ({ page }) => {
   await page.goto("/?testDeck=partialKing");
-  await page.getByRole("button", { name: "Play against the computer" }).click();
+  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: /Guided practice game/ }).click();
 
   await play(page, "KS");
   await waitForPlayer(page);
@@ -92,7 +96,7 @@ test("leaving during a computer turn cannot move a replacement game", async ({ p
   await play(page, "9H");
   await expect(page.getByText("GUIDED GAME · COMPUTER TURN")).toBeVisible();
   await page.getByRole("button", { name: "Exit game" }).click();
-  await page.getByRole("button", { name: /Deal me in/ }).click();
+  await page.getByRole("button", { name: /Guided practice game/ }).click();
 
   await page.waitForTimeout(900);
   await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible();
@@ -128,8 +132,8 @@ test("a player without an eight can clearly accept the missed turn", async ({ pa
 
 test("the main rules story teaches the complete game in five interactive steps", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Know the rules. Own the table." })).toBeVisible();
-  await page.getByRole("button", { name: "Learn the rules" }).click();
+  await expect(page.getByRole("heading", { name: /^Good (morning|afternoon|evening)/ })).toBeVisible();
+  await page.getByRole("button", { name: "Learn rules" }).click();
   await expect(page.getByRole("heading", { name: "Deal everyone in." })).toBeVisible();
   await expect(page.getByText(/When the deck runs out/)).toBeVisible();
 
@@ -200,7 +204,8 @@ for (const device of ["iPhone", "Pixel 10"]) {
       await page.getByRole("button", { name: /Preview device/ }).click();
       await page.getByText("Pixel 10").click();
     }
-    await page.getByRole("button", { name: "Play against the computer" }).click();
+    await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: /Guided practice game/ }).click();
     await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible();
     await expect(page.locator(".turn-banner.you")).toBeVisible();
     await expect(page.getByRole("button", { name: /Why & tactics: / })).toBeVisible();

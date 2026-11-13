@@ -41,15 +41,15 @@ test("games against the computer are summarised and earn badges and the passport
   expect(out.earnedSome).toBe(true);
 });
 
-test("Play deals straight into a table game, the tab bar has six tabs, and a finished game can be logged", async ({ page }) => {
+test("Play deals straight into a table game, the tab bar has five tabs, and a finished game can be logged", async ({ page }) => {
   await page.goto("/");
   const tabs = page.getByRole("navigation", { name: "Main navigation" }).getByRole("button");
-  await expect(tabs).toHaveCount(6);
-  await tabs.nth(2).click();
+  await expect(tabs).toHaveCount(5);
+  await tabs.nth(1).click();
   await expect(page.getByRole("heading", { name: "Take a seat." })).toBeVisible();
   await page.getByRole("button", { name: /^3\s*opponents/ }).click();
   await page.getByRole("button", { name: /Deal me in/ }).click();
-  await expect(page.getByText(/YOUR TURN|'S TURN/).first()).toBeVisible();
+  await expect(page.getByTestId("turn-status")).toHaveText(/YOUR MOVE|IS CHOOSING|TO PLAY/);
   await expect(page.locator(".dealer-chip").first()).toBeVisible();
   const logged = await page.evaluate(async () => {
     const log = await import("/src/switch/logGame.ts");

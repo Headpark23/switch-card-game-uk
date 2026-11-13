@@ -11,10 +11,15 @@ import { getHistory } from '../switch/history';
 import { ensureProfiles, getProfiles, renameProfile, resolveHistoryPlayerId } from '../switch/profiles';
 import { countryName } from '../switch/places';
 import { readClub, updateClub } from '../switch/clubStore';
+import { readSpeed, saveSpeed } from '../switch/activeTable';
+import { SPEED_NAMES, type Speed } from '../switch/presentation';
+import { feedbackEnabled, setFeedbackEnabled } from '../feedback';
+import { AccountPanel } from '../AccountPanel';
+import InstallButton from '../InstallButton';
 
-type Section = 'overview' | 'history' | 'computer' | 'badges' | 'passport' | 'trophies';
+type Section = 'overview' | 'history' | 'computer' | 'badges' | 'passport' | 'trophies' | 'settings';
 const SECTIONS: readonly { id: Section; label: string }[] = [
-  { id: 'overview', label: 'Me' }, { id: 'history', label: 'History' }, { id: 'computer', label: 'Computer' }, { id: 'badges', label: 'Badges' }, { id: 'passport', label: 'Passport' }, { id: 'trophies', label: 'Trophies' },
+  { id: 'overview', label: 'Me' }, { id: 'history', label: 'History' }, { id: 'computer', label: 'Computer' }, { id: 'badges', label: 'Badges' }, { id: 'passport', label: 'Passport' }, { id: 'trophies', label: 'Trophies' }, { id: 'settings', label: 'Settings' },
 ];
 const LEVEL_NAMES: Record<string, string> = { relaxed: 'Relaxed', standard: 'Standard', sharp: 'Sharp' };
 const FORMAT_NAMES: Record<string, string> = { 'head-to-head': 'One v One', domino: 'Domino', darts: 'Darts', league: 'Group Play', knockout: 'Knock Out', cup: 'Switch Cup' };
@@ -26,10 +31,12 @@ function Bar({ label, value, total }: { label: string; value: number; total: num
 function percent(rate: number) { return `${Math.round(rate * 100)}%`; }
 
 /** Your own corner: who you are, every night and computer game you have played, your badges and passport. */
-export default function MePage({ onPlay, onClub }: { onPlay: () => void; onClub: () => void }) {
+export default function MePage({ onPlay, onClub, onPrivacy, initialSection = 'overview' }: { onPlay: () => void; onClub: () => void; onPrivacy?: () => void; initialSection?: Section }) {
   const keyboard = useKeyboard();
   const [extensions, setExtensions] = useState(readClub);
-  const [section, setSection] = useState<Section>('overview');
+  const [section, setSection] = useState<Section>(initialSection);
+  const [soundOn, setSoundOn] = useState(feedbackEnabled);
+  const [speed, setSpeed] = useState<Speed>(readSpeed);
   const [filter, setFilter] = useState<'all' | 'nights' | 'computer'>('all');
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState(false);
@@ -50,6 +57,7 @@ export default function MePage({ onPlay, onClub }: { onPlay: () => void; onClub:
         try { apply((current) => { const ensured = ensureProfiles(current, [draft]); return putMeId(ensured.extensions, ensured.players[0].id); }); keyboard.hide(); setError(''); } catch (reason) { setError(reason instanceof Error ? reason.message : 'That name could not be saved.'); }
       }}>This is me <ArrowRight size={18} /></button>
       <button className="text-link" onClick={() => apply((current) => ensureMe(current).extensions)}>Skip and call me “You”</button>
+      {onPrivacy && <button className="text-link" onClick={onPrivacy}>Privacy: what stays on your phone <ArrowRight size={16} /></button>}
     </section>;
   }
 
@@ -90,7 +98,7 @@ export default function MePage({ onPlay, onClub }: { onPlay: () => void; onClub:
         <div><b>{stamps.length}</b><span>Countries</span></div>
       </div>
       {summary.form.length > 0 && <div className="me-form" aria-label="Recent games against the computer"><span>Lately v computer</span>{summary.form.map((result, index) => <i key={index} className={result === 'W' ? 'win' : 'loss'}>{result}</i>)}</div>}
-      <button className="primary" onClick={onPlay}><Robot size={19} weight="bold" />Practise against the computer</button>
+      <button className="primary" onClick={onPlay}><Robot size={19} weight="bold" />Play the computer</button>
       {nextUp.length > 0 && <><h3>Next badges</h3><ul className="next-badges">{nextUp.map((badge) => <li key={badge.id}><BadgeChip badge={badge} size={46} /><span><strong>{badge.label}</strong><small>{badge.hint}</small></span><em>{badge.have}/{badge.need}</em></li>)}</ul></>}
       {earned.length > 0 && <><h3>Latest badges</h3><div className="chip-row" aria-label="Badges earned">{earned.slice(-6).reverse().map((badge) => <BadgeChip key={badge.id} badge={badge} size={46} />)}</div></>}
       <div className="me-name">
@@ -110,7 +118,7 @@ export default function MePage({ onPlay, onClub }: { onPlay: () => void; onClub:
 
     {section === 'computer' && <>
       {summary.games === 0
-        ? <><p className="history-empty">No games against the computer yet. The computer is a good player: ideal practice. Every game is logged here.</p><button className="primary" onClick={onPlay}>Play the computer <ArrowRight size={18} /></button></>
+        ? <><p className="history-empty">No games against the computer yet. Every finished game in Play is logged here. Guided practice games are not counted.</p><button className="primary" onClick={onPlay}>Play the computer <ArrowRight size={18} /></button></>
         : <>
           <div className="me-tiles" aria-label="Record against the computer">
             <div><b>{summary.games}</b><span>Played</span></div><div><b>{summary.wins}</b><span>Won</span></div><div><b>{percent(summary.winRate)}</b><span>Win rate</span></div>
@@ -127,5 +135,16 @@ export default function MePage({ onPlay, onClub }: { onPlay: () => void; onClub:
     {section === 'badges' && <BadgeWall badges={badges} />}
     {section === 'passport' && <PassportBook stamps={stamps} nights={myNights} name={me.name} />}
     {section === 'trophies' && <PlayerCabinet extensions={extensions} profileId={me.id} />}
+    {section === 'settings' && <div className="me-settings">
+      <h3>Profile</h3>
+      <p className="lobby-note">You play as <strong>{me.name}</strong>. Change your name on the Me tab. Everything stays on this phone unless you back it up.</p>
+      <AccountPanel />
+      <h3>Playing the computer</h3>
+      <div className="seg three compact" role="group" aria-label="Computer pace">{(['quick', 'natural', 'relaxed'] as const).map((id) => <button key={id} aria-pressed={speed === id} className={speed === id ? 'active' : ''} onClick={() => { setSpeed(id); saveSpeed(id); }}><b>{SPEED_NAMES[id]}</b></button>)}</div>
+      <button className="secondary" onClick={() => { const next = !soundOn; setFeedbackEnabled(next); setSoundOn(next); }}>{soundOn ? 'Mute sounds and vibration' : 'Turn on sounds and vibration'}</button>
+      <h3>This app</h3>
+      <InstallButton />
+      {onPrivacy && <button className="text-link" onClick={onPrivacy}>Privacy: what stays on your phone <ArrowRight size={16} /></button>}
+    </div>}
   </section>;
 }

@@ -684,3 +684,138 @@
 
 /* The taller playing-card nav leaves less room: the busiest guided-game moment stays on one screen. */
 .game-tutorial .miss-turn-action{padding:8px 12px}.game-tutorial .miss-turn-action p{margin:2px 0 6px!important}.game-tutorial .miss-turn-action .primary{min-height:34px;padding:5px 12px}
+
+/* ══ Switch 2.0: the table shows each turn in order ══ */
+.table-game{--glow:#d4483b}
+.table-game .turn-banner{transition:background .2s,color .2s}
+.table-game .turn-status{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.table-game .turn-banner.you{background:#7e1d17;color:#fff7ea;box-shadow:0 0 0 1px #d4483b66,0 0 14px #d4483b40}
+.table-game .turn-banner.you .turn-dot{background:#ffb4a0;box-shadow:0 0 0 4px #ffb4a033}
+/* Opponents sit round the far side of the table: the outer seats a little lower, like an arc. */
+.table-game .seat-row{align-items:flex-start;padding:2px 2px 6px;gap:6px}
+.table-game .seat{position:relative;max-width:92px;border:2px solid #c7a66c55;transition:border-color .2s,box-shadow .2s,transform .2s;transform:none}
+.table-game .seat-row.seats-3 .seat:nth-child(1),.table-game .seat-row.seats-3 .seat:nth-child(3){margin-top:12px}
+.table-game .seat-row.seats-4 .seat:nth-child(1),.table-game .seat-row.seats-4 .seat:nth-child(4){margin-top:14px}
+.table-game .seat-row.seats-1 .seat{max-width:132px}
+.table-game .seat.turn,.table-game .your-seat.turn{border-color:var(--glow);box-shadow:0 0 0 2px #d4483b40,0 0 16px #d4483b88;transform:none}
+.table-game .seat.turn{animation:seat-glow 1.8s ease-in-out infinite}
+@keyframes seat-glow{0%,100%{box-shadow:0 0 0 2px #d4483b40,0 0 12px #d4483b70}50%{box-shadow:0 0 0 3px #d4483b55,0 0 20px #d4483baa}}
+.table-game .seat strong{font-size:11px;font-weight:600;color:#fff}
+.table-game .seat-name{font-size:12px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seat-state{display:flex;align-items:center;gap:4px;min-height:14px;font-size:9.5px;letter-spacing:.4px;text-transform:uppercase;color:#ffcfc4;font-weight:700}
+.think-dots{display:inline-flex;gap:2px}.think-dots b{width:4px;height:4px;border-radius:50%;background:currentColor;animation:think-dot 1s ease-in-out infinite}
+.think-dots b:nth-child(2){animation-delay:.15s}.think-dots b:nth-child(3){animation-delay:.3s}
+@keyframes think-dot{0%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-2px)}}
+/* The pile keeps the last cards visible underneath, so the order they landed in can be read. */
+.table-game .pile-wrap{position:relative;width:62px;height:88px;display:block}
+.table-game .pile-wrap .pile-card{position:absolute;inset:0;display:grid;place-items:center;animation:none}
+.table-game .pile-wrap .pile-card .playing-card{width:58px}
+.table-game .pile-card.depth-0{transform:rotate(-2deg);z-index:3}
+.table-game .pile-card.depth-1{transform:translate(-9px,3px) rotate(-11deg);z-index:2;filter:brightness(.93)}
+.table-game .pile-card.depth-2{transform:translate(9px,4px) rotate(8deg);z-index:1;filter:brightness(.86)}
+.table-game .pile-card.flying{z-index:10}
+.table-game .discard-pile .pile-card .playing-card{filter:drop-shadow(0 6px 8px #02150f99)}
+.table-game .discard-pile .pile-card.depth-0 .playing-card{filter:drop-shadow(0 0 8px #ffe19a77) drop-shadow(0 6px 8px #02150f99)}
+.table-announce{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);z-index:12;pointer-events:none;max-width:calc(100% - 20px);padding:6px 12px;border-radius:999px;background:#fbf6e9;color:var(--green);border:1px solid var(--gold);font-size:12px;font-weight:700;text-align:center;box-shadow:0 6px 16px #02150f55;animation:announce-in .2s ease-out}
+.table-announce.last{background:#7e1d17;color:#fff7ea;border-color:#ffb4a0}
+@keyframes announce-in{from{opacity:0;transform:translate(-50%,6px)}to{opacity:1;transform:translate(-50%,0)}}
+/* Your own seat: the hand. Lit red with "Your move" when it is your turn. */
+.your-seat{position:relative;border:2px solid transparent;border-radius:16px;padding:6px 4px 4px;margin-top:4px;transition:border-color .2s,box-shadow .2s}
+.your-move-tag{position:absolute;top:-11px;left:50%;transform:translateX(-50%);z-index:5;background:#7e1d17;color:#fff7ea;font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:3px 10px;border-radius:999px;box-shadow:0 2px 8px #7e1d1755;white-space:nowrap}
+.table-game .game-actions{display:flex;align-items:center;gap:8px}
+.table-game .game-actions span{margin-left:auto;font-size:11px;color:var(--muted)}
+.pace-button{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:0 10px;border-radius:999px;border:1px solid #d8c99f;background:#fffaf0;font-size:12px!important;font-weight:600!important;color:var(--green)}
+.table-game .game-notice{min-height:34px}
+@media(prefers-reduced-motion:reduce){.table-game .seat.turn{animation:none}.think-dots b{animation:none;opacity:.8}}
+
+/* ══ Switch 2.0: HOME, compact and personal, on the photographic card table ══ */
+.home-hub.v2{padding:54px 18px 16px;background:url('/images/hero.webp') center top/cover no-repeat;position:relative}
+.home-hub.v2::after{content:'';position:absolute;inset:auto 0 0 0;height:40px;background:linear-gradient(180deg,transparent,var(--cream));pointer-events:none}
+.home-hub.v2>*{position:relative;z-index:1}
+.home-brand{display:flex;align-items:baseline;gap:10px}
+.home-mark{display:inline-flex;align-items:center;gap:5px;font-family:'DM Serif Display',Georgia,serif;font-size:23px;letter-spacing:-.5px;color:var(--green)}
+.home-mark svg{width:15px;height:15px;color:var(--gold)}
+.home-tagline{font-size:9.5px;letter-spacing:1.6px;text-transform:uppercase;font-weight:600;color:#6b5a35}
+.home-hub.v2 h1{font-size:29px;line-height:1.05;letter-spacing:-.6px;margin:14px 0 4px;max-width:270px}
+.home-hub.v2 .home-sub{font-size:13px;line-height:1.4;color:#38453e;margin:0 0 12px!important;max-width:260px}
+.resume-stack{display:grid;gap:7px;margin-bottom:10px}
+.resume-card{display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:1px solid #0b5239;border-radius:14px;background:var(--green);color:#fbf6e9;padding:10px 13px;box-shadow:0 8px 18px #05352730}
+.resume-card>span:nth-child(2){flex:1;min-width:0}
+.resume-card strong{display:block;font-size:14px;font-weight:600}
+.resume-card small{display:block;font-size:11.5px;color:#d9e3d4;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.resume-card svg{color:var(--gold)}
+.resume-dot{width:9px;height:9px;border-radius:50%;background:#e8c46a;box-shadow:0 0 0 4px #e8c46a33;flex:none}
+.resume-card.night{background:#fffdf7f0;color:var(--green);border-color:#d8c99f}
+.resume-card.night small{color:var(--muted)}
+.home-tiles.v2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.home-tiles.v2 .home-tile{position:relative;min-height:78px;padding:11px 12px 10px 34px;border-radius:12px;gap:2px;justify-content:center;background:#fffdf7f2;border:1px solid #ddd2bd;box-shadow:0 6px 16px #173a2b12}
+.home-tiles.v2 .home-tile strong{font-size:17px}
+.home-tiles.v2 .home-tile small{font-size:11px;line-height:1.3}
+.home-tiles.v2 .tile-index{position:absolute;left:9px;top:9px}
+.home-lower{padding:4px 18px 0;display:grid;gap:14px}
+.home-welcome,.home-daily.v2{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid #ddd2bd;border-radius:14px;background:linear-gradient(180deg,#fffdf7,#f6efdc);padding:10px 14px;color:var(--green);margin:0;min-height:0;max-height:none}
+.home-welcome .card-fan,.home-daily.v2 .card-fan{width:78px;height:56px;flex:none}
+.home-welcome .card-fan .playing-card,.home-daily.v2 .card-fan .playing-card{width:34px}
+.home-welcome>span,.home-daily.v2>span{flex:1;display:flex;flex-direction:column;gap:2px}
+.home-welcome strong,.home-daily.v2 strong{font-family:'DM Serif Display',Georgia,serif;font-weight:400;font-size:19px}
+.home-welcome em,.home-daily.v2 em{font-style:normal;font-size:12px;color:var(--muted);line-height:1.35}
+.home-welcome svg,.home-daily.v2>svg{color:var(--gold);flex:none}
+.home-section-head{display:flex;align-items:center;justify-content:space-between}
+.home-section-head h2{font-size:21px!important;letter-spacing:-.3px}
+.home-section-head .text-link{font-size:12px;gap:5px;padding:4px 0}
+.home-recent ul{list-style:none;padding:0;margin:6px 0 0;border-top:1px solid var(--line)}
+.home-recent li button{display:flex;align-items:center;gap:11px;width:100%;border:0;border-bottom:1px solid var(--line);background:none;padding:9px 2px;text-align:left;color:var(--green);min-height:48px}
+.home-recent li i{display:grid;place-items:center;width:28px;height:36px;border-radius:5px;background:#fffdf7;border:1px solid #ddd2bd;font-style:normal;font-size:15px;color:#20302a;flex:none}
+.home-recent li i.won{color:#b1342b}
+.home-recent li span{flex:1;min-width:0}
+.home-recent li strong{display:block;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.home-recent li small{display:block;font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.home-recent li em{font-style:normal;font-size:11px;color:var(--muted);flex:none}
+.home-discover{display:flex;flex-wrap:wrap;gap:7px}
+.home-discover button{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 12px;border-radius:999px;border:1px solid #d8c99f;background:#fffaf0;color:var(--green);font-size:12.5px!important;font-weight:600!important}
+.home-discover svg{color:#9e711e}
+.switch-content.home .home-daily{flex:none}
+.switch-content.home .app-footer{margin-top:18px}
+@media (max-height:700px){.home-hub.v2{padding-top:44px}.home-hub.v2 h1{font-size:25px;margin-top:8px}.home-tiles.v2 .home-tile{min-height:66px}}
+
+/* ══ Switch 2.0: five-tab navigation, compact and even ══ */
+.switch-app .bottom-tabs.v2 button{flex:1 1 0}
+.switch-app .bottom-tabs.v2 .tab-card{width:26px;height:32px;transform:translateY(1px) rotate(0deg)}
+.switch-app .bottom-tabs.v2 .active .tab-card{transform:translateY(-3px) rotate(0deg)}
+.switch-app .bottom-tabs.v2 .tab-card svg{margin-top:6px}
+.switch-app .bottom-tabs.v2 .tab-label{font-size:11px;letter-spacing:.3px}
+.switch-app .bottom-tabs.v2 button:active .tab-card{transform:translateY(-1px)}
+
+/* ══ Switch 2.0: learning hub, PLAY lobby, SCORE shortcuts, ME settings ══ */
+.rules-page .rule-narrative{border-top:0;padding-top:12px}
+.rules-page .rules-back{margin:50px 18px 0}
+.learn-links{display:grid;margin-top:14px;border-top:1px solid var(--line)}
+.learn-links button{display:flex;align-items:center;gap:11px;width:100%;border:0;border-bottom:1px solid var(--line);background:none;padding:12px 2px;text-align:left;color:var(--green)}
+.learn-links button>svg:first-child{color:var(--gold);flex:none}
+.learn-links span{flex:1}.learn-links strong{display:block;font-size:14px}.learn-links small{display:block;font-size:11.5px;color:var(--muted);margin-top:1px}
+.back-link{font-size:13px;gap:4px;margin-bottom:8px}
+.play-lobby .resume-card{margin:10px 0 2px}
+.seg.compact button{min-height:40px;padding:6px 4px}
+.lobby-note.center{text-align:center;margin-top:-4px!important}
+.learn-aside{display:flex;align-items:center;gap:10px;width:100%;margin-top:14px;padding:12px;border:1px dashed #cdbd93;border-radius:12px;background:#fbf6e9;text-align:left;color:var(--green)}
+.learn-aside span{flex:1}.learn-aside strong{display:block;font-size:13.5px}.learn-aside small{display:block;font-size:11.5px;color:var(--muted)}
+.learn-aside svg{color:#9e711e;flex:none}
+.score-shortcuts{display:flex;flex-wrap:wrap;gap:4px 16px;margin:4px 0 6px}
+.score-shortcuts .text-link{font-size:13px;gap:5px}
+.me-settings{display:grid;gap:10px}
+.me-settings h3{margin:10px 0 0}
+.practice-note{font-size:13px;color:var(--muted);margin:-6px 0 14px!important}
+.real-challenge{display:grid;gap:8px;margin:0 0 12px;padding:14px;border-radius:14px;background:var(--green);color:#fbf6e9}
+.real-challenge strong{font-family:'DM Serif Display',Georgia,serif;font-weight:400;font-size:21px}
+.real-challenge .primary{background:#fbf6e9;color:var(--green)!important}
+.real-challenge .primary svg{color:#9e711e}
+.home-hub.v2 .home-tiles.v2{gap:9px;padding:0}
+.home-hub.v2 .home-tiles.v2 .home-tile{transform:none;align-items:flex-start;text-align:left;min-height:76px;padding:11px 10px 10px 36px;border-radius:12px;background:#fffdf7f4;box-shadow:0 1px 0 #fff inset,0 8px 18px -10px #173a2b55}
+.home-hub.v2 .home-tiles.v2 .home-tile:hover{transform:translateY(-1px)}
+.home-hub.v2 .home-tiles.v2 .home-tile:active{transform:scale(.98)}
+.home-hub.v2 .home-tiles.v2 .home-tile strong{font-size:17.5px}
+.home-hub.v2 .home-tiles.v2 .home-tile small{font-size:11px}
+@media (max-height:700px){.home-hub.v2 .home-tiles.v2 .home-tile{min-height:64px;padding-top:8px;padding-bottom:8px}}
+.switch-app .scorekeeper-head>.back-link{display:none}
+.score-shortcuts{margin:18px 0 6px;padding-top:12px;border-top:1px solid var(--line)}
+.switch-app .table-game .player-hand button:disabled{opacity:1;cursor:default;filter:saturate(.9) brightness(.98)}
