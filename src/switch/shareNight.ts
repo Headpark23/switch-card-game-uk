@@ -93,13 +93,24 @@ function writeOutbox(items: readonly Pending[]) {
   try { if (items.length) localStorage.setItem(OUTBOX, JSON.stringify(items.slice(-20))); else localStorage.removeItem(OUTBOX); } catch { /* storage unavailable */ }
 }
 let flushing = false;
-/** Sends every waiting result. Anything that fails stays in the queue for the next try. */
+const SETTLE_MS = 2500;
+const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+/**
+ * Sends every waiting result, then reads the code back to be sure it is really there. The server saves a night by
+ * reading and rewriting it, so a scoreboard update landing at the same moment can wipe a result that "succeeded".
+ * A result only leaves the queue once it has been seen on the server after things settled; otherwise it is sent again.
+ */
 export async function flushSharedResults(): Promise<void> {
   if (flushing) return;
   flushing = true;
   try {
     for (const item of readOutbox()) {
-      try { await pushShare(item.keys, item.snapshot, item.result); } catch { continue; }
+      try {
+        await pushShare(item.keys, item.snapshot, item.result);
+        await wait(SETTLE_MS);
+        const stored = await fetchShare(item.keys.code);
+        if (!stored.results.some((entry) => entry.id === item.result.id)) continue;
+      } catch { continue; }
       writeOutbox(readOutbox().filter((entry) => entry.result.id !== item.result.id));
     }
   } finally { flushing = false; }

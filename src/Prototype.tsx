@@ -107,9 +107,11 @@ export default function Prototype() {
     const check = () => { void flushSharedResults(); syncJoinedNights().then((added) => { if (added.length) setArrived((current) => [...added, ...current]); }).catch(() => {}); };
     const onVisible = () => { if (document.visibilityState === 'visible') check(); };
     check();
+    // Also look every so often while the app is open and showing, so a result is never waiting for a restart.
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') check(); }, 15000);
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('online', check);
-    return () => { document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('online', check); };
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('online', check); };
   }, []);
 
   const resetDeviceScroll = () => {
