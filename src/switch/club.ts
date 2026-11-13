@@ -17,8 +17,23 @@ export function getClubName(extensions: Extensions): string {
 export function putClubName(extensions: Extensions, name: string): Record<string, unknown> {
   const next = { ...extensions };
   const clean = name.trim().replace(/\s+/g, " ").slice(0, MAX_CLUB_NAME);
-  if (clean) next[CLUB_KEY] = { version: 1, name: clean };
+  if (clean) next[CLUB_KEY] = { version: 1, name: clean, updatedAt: Date.now() };
   else delete next[CLUB_KEY];
+  return next;
+}
+
+/** When the club was last renamed, so a shared club can tell whose name is newest. */
+export function getClubNameStamp(extensions: Extensions): number {
+  const value = extensions[CLUB_KEY];
+  const at = value && typeof value === "object" ? (value as { updatedAt?: unknown }).updatedAt : null;
+  return typeof at === "number" ? at : 0;
+}
+
+/** Applies a name that arrived from a shared club, keeping its own timestamp. */
+export function putSharedClubName(extensions: Extensions, name: string, updatedAt: number): Record<string, unknown> {
+  const next = { ...extensions };
+  const clean = name.trim().replace(/\s+/g, " ").slice(0, MAX_CLUB_NAME);
+  if (clean) next[CLUB_KEY] = { version: 1, name: clean, updatedAt };
   return next;
 }
 

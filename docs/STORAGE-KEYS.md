@@ -46,3 +46,13 @@ Badges, passport stamps, trophies and stats are **derived** from these records o
 ## Practice is unranked
 
 From Switch 2.0, guided practice (Learn the Rules) writes nothing to `switchComputerGames`. Games logged by guided practice **before** this change cannot be told apart from competitive ones (the record has no flag) and have been left exactly as they were.
+
+## Shared clubs (13 Nov 2026)
+
+| Key | Purpose | Notes |
+|---|---|---|
+| `switchClubLink` | The shared club this phone belongs to: `{ code, joinedAt, lastSyncAt }` | Absent when the phone is not in a shared club. Leaving removes only this key; every player and night stays on the phone. |
+| `switchRemovedNights` (inside the club document) | Ids of nights deleted on this phone | Sent to the shared club so a deleted night does not come back from another phone. |
+
+Profiles gain an optional `updatedAt`, and `switchClub` an `updatedAt`, so two phones can tell which rename or archive is newer. Older records without them still load.
+

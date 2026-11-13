@@ -47,7 +47,7 @@ export default function WatchNight({ initialCode, onBack }: { initialCode: strin
     if (added.length) setJustSaved(added[added.length - 1].id);
   }, [as, results]);
 
-  function join() { keyboard.hide(); const next = input.trim().toUpperCase(); setSnapshot(null); setResults([]); setError(''); setAs(loadJoined().find((item) => item.code === next)?.as); setCode(next); }
+  function join() { keyboard.hide(); const next = input.trim().toUpperCase(); if (next.length === 8) { window.location.assign(`/?club=${next}`); return; } setSnapshot(null); setResults([]); setError(''); setAs(loadJoined().find((item) => item.code === next)?.as); setCode(next); }
   // Nights shared by an older version of the app carry no player list, so fall back to the scoreboard names.
   const players = snapshot?.players?.length ? snapshot.players : (snapshot?.lines ?? []).map((line) => line.label.replace(/^\d+\.\s*/, ''));
   const latest = results[0];
@@ -58,8 +58,8 @@ export default function WatchNight({ initialCode, onBack }: { initialCode: strin
     
     <h1 id="watch-title">{snapshot ? snapshot.title : 'Join a night'}</h1>
     {!snapshot && <form className="join-form" onSubmit={(event) => { event.preventDefault(); join(); }}>
-      <label><span>Night code</span><KeyboardInput aria-label="Night code" autoCapitalize="characters" maxLength={6} placeholder="e.g. K7M2QX" value={input} onChange={(event) => setInput(event.target.value.toUpperCase())} /></label>
-      <button className="primary" type="submit" disabled={input.trim().length < 6}>Watch</button>
+      <label><span>Night code</span><KeyboardInput aria-label="Night code" autoCapitalize="characters" maxLength={8} placeholder="Night code or club code" value={input} onChange={(event) => setInput(event.target.value.toUpperCase())} /></label>
+      <button className="primary" type="submit" disabled={input.trim().length < 6 || input.trim().length === 7}>{input.trim().length === 8 ? 'Join club' : 'Watch'}</button>
     </form>}
     {error && <p className="score-error" role="alert">{error}</p>}
     {snapshot && <>

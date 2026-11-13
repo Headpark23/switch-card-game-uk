@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { CLUB_REFRESH } from '../switch/clubSync';
 import { ArrowRight, Fire, Pencil, Robot } from '@phosphor-icons/react';
 import { FeltHeader } from '../ui';
 import { KeyboardInput, useKeyboard } from '../mobile';
@@ -38,6 +39,8 @@ function percent(rate: number) { return `${Math.round(rate * 100)}%`; }
 export default function MePage({ onPlay, onClub, onPrivacy, initialSection = 'overview' }: { onPlay: () => void; onClub: () => void; onPrivacy?: () => void; initialSection?: Section }) {
   const keyboard = useKeyboard();
   const [extensions, setExtensions] = useState(readClub);
+  // A shared club changed under this screen: show the new players and nights without losing the tab you are on.
+  useEffect(() => { const refresh = () => setExtensions(readClub()); window.addEventListener(CLUB_REFRESH, refresh); return () => window.removeEventListener(CLUB_REFRESH, refresh); }, []);
   const [section, setSection] = useState<Section>(initialSection);
   const [soundOn, setSoundOn] = useState(feedbackEnabled);
   const [speed, setSpeed] = useState<Speed>(readSpeed);

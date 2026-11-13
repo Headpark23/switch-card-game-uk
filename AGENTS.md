@@ -113,3 +113,9 @@ Darts: first to three legs wins a set. Knock Out: whoever finishes last in a rou
 - A shared night code is how results travel: a friend who joins says which player they are, and every night the host saves under that code is added to the friend's own history and stats, even if their app was closed (`src/switch/joinedNights.ts`, results kept by `api/_night.js`). Saved results queue on the host's phone until they reach the server.
 - When a night is won the scorekeeper asks to save it straight away, in a sheet. Saving is never something the host has to scroll to find.
 - Jacks (ruling 18): one or three reverse; two or four never reverse and mean play again, so they cannot be a last play.
+
+## Shared clubs (owner decision, 13 Nov 2026)
+- Clubs, players, nights and leagues must sync between phones automatically; this is a core feature, not an extra. A club is shared under an 8-character code (`api/club.js`, `src/switch/clubSync.ts`). Every phone keeps its own copy and exchanges it with the shared one by id, so nothing is ever dropped (`api/_clubMerge.js` holds the merge rules for server and phones). Games against the computer stay private.
+- Sharing must be obvious: Home offers "Share my club" and "Join a club", saving a night lands on a screen with the invitation, a club link (`/?club=CODE`) goes straight to "Which one are you?", and once joined everything syncs with no further steps.
+- `tests/switch-club-sync.spec.ts` and `tests/switch-two-phones.spec.ts` run two real browser phones against one server; keep them passing.
+

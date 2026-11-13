@@ -21,6 +21,7 @@ import { applyScoreCommand, scoreWinnerId, createSession, ScoreValidationError, 
 import { loadScorekeeper, saveScorekeeper, SCOREKEEPER_STORAGE_KEY, type ScorekeeperState } from '../switch/storage';
 import type { Player } from '../switch/types';
 import { getClubName } from '../switch/club';
+import { announceClubWritten } from '../switch/clubStore';
 import { useConfirm } from '../Confirm';
 import { clearActiveNight, getActiveNight, putActiveNight, type ActiveNight } from '../switch/activeNight';
 import DealerBar from './DealerBar';
@@ -119,6 +120,7 @@ export default function SwitchScorekeeper({onBack,backLabel='Home',initialView='
     const nextExtensions=Object.keys(dealersRef.current).length?putDealers(merged,dealersRef.current):clearDealers(merged);
     const state:ScorekeeperState={schemaVersion:1,selectedFormat:format,players:nextPlayers,scores,target:Number(target)||100,extensions:nextExtensions};
     const raw=saveScorekeeper(savedRaw,state,{replaceExtensions});window.localStorage.setItem(SCOREKEEPER_STORAGE_KEY,raw);setSavedRaw(raw);
+    announceClubWritten();
     setStoredExtensions(nextExtensions);
   }
   function start(){

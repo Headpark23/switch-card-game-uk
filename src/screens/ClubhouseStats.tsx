@@ -1,4 +1,5 @@
 import SampleDataBar from './SampleDataBar';
+import ClubSharing from './ClubSharing';
 import { useState } from 'react';
 import { useConfirm } from '../Confirm';
 import { Crown, Fire } from '@phosphor-icons/react';
@@ -48,8 +49,8 @@ export default function ClubhouseStats({ extensions, onChange }: Props) {
 
   if (!profiles.length || !nights.length) {
     return <section className="club-panel" aria-labelledby="stats-title">
-      
-      <h2 id="stats-title">Stats appear after your first saved night.</h2>
+      <ClubSharing />
+<h2 id="stats-title">Stats appear after your first saved night.</h2>
       <p className="history-empty">Start a score session with your regular players, finish it and save the night. Every number here comes from real saved results, never made-up ones.</p>
       <SampleDataBar offer extensions={extensions} onChange={onChange} />
     </section>;
@@ -77,6 +78,7 @@ export default function ClubhouseStats({ extensions, onChange }: Props) {
 
   return <section className="club-panel" aria-labelledby="stats-title">
     <SampleDataBar extensions={extensions} onChange={onChange} />
+    <ClubSharing />
     
     <section className="dashboard" aria-label="Club dashboard">
       <div className="dash-tiles">

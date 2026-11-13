@@ -37,7 +37,7 @@ export function mergeProfiles(extensions: Extensions, fromId: string, intoId: st
       return { ...season, profileIds: ids.includes(intoId) ? ids.filter((id) => id !== fromId) : ids.map((id) => (id === fromId ? intoId : id)) };
     });
   }
-  const merged = putProfiles(next, profiles.map((profile) => (profile.id === fromId ? { ...profile, archived: true } : profile)));
+  const merged = putProfiles(next, profiles.map((profile) => (profile.id === fromId ? { ...profile, archived: true, updatedAt: Date.now() } : profile)));
   return getMeId(extensions) === fromId ? putMeId(merged, intoId) : merged;
 }
 

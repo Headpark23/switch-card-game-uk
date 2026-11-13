@@ -864,3 +864,10 @@
 .watch-as{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0!important;font-size:13px;line-height:1.4}.watch-as svg{color:var(--green);flex:none}.watch-as span{flex:1;min-width:160px}.watch-as .text-link{font-size:13px;padding:2px 0}
 .watch-results{list-style:none;margin:10px 0;padding:0;display:grid;gap:6px}.watch-results li{display:grid;gap:2px;border:1px solid #d8c99f;background:#fffaf0;border-radius:12px;padding:8px 12px}.watch-results strong{font-size:14px}.watch-results span{font-size:12px;color:#59605b}
 .save-sheet-outcome{margin:0;font-family:'DM Serif Display',Georgia,serif;font-size:24px;line-height:1.15;color:#053527;text-align:center}
+
+.club-sharing{display:grid;gap:10px;margin:12px 0 18px;padding:14px;border:1px solid #d8c99f;background:#fffaf0;border-radius:14px}.club-sharing.live{background:#eef5ec;border-color:#b9d3b4}
+.club-sharing-head{display:flex;gap:12px;align-items:flex-start}.club-sharing-head>svg{flex:none;margin-top:2px;color:var(--forest,#1f5a3c)}.club-sharing-head strong{display:block;font-family:'DM Serif Display',Georgia,serif;font-weight:400;font-size:21px}.club-sharing-head span{display:block;font-size:13px;line-height:1.45;color:var(--muted)}
+.club-code{margin:0;font:700 26px/1 ui-monospace,Menlo,monospace;letter-spacing:.18em;text-align:center;padding:12px 0;background:#fff;border-radius:10px}.club-sync-line{margin:0;font-size:12px;color:var(--muted)}
+.club-sharing .manage-actions{flex-wrap:wrap}
+
+.home-club-card{display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;padding:14px;border:1px solid #d8c99f;background:#fffaf0;border-radius:14px;color:var(--green)}.home-club-card.linked{background:#eef5ec;border-color:#b9d3b4;align-items:center}.home-club-card>svg:first-child{flex:none;margin-top:2px}.home-club-card>span{display:grid;gap:4px;flex:1}.home-club-card strong{font-family:'DM Serif Display',Georgia,serif;font-weight:400;font-size:19px}.home-club-card em{font-style:normal;font-size:13px;line-height:1.4;color:var(--muted)}.home-club-actions{display:flex!important;flex-wrap:wrap;gap:8px;margin-top:6px}

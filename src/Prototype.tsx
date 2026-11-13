@@ -5,6 +5,7 @@ import { readClub, updateClub } from './switch/clubStore';
 import { recoverMyGames } from './switch/identity';
 import { syncJoinedNights } from './switch/joinedNights';
 import { flushSharedResults } from './switch/shareNight';
+import { startClubSync } from './switch/clubSync';
 import type { SwitchNightRecord } from './switch/history';
 import type { ComputerLevel } from './switch/ai';
 import WatchNight from './screens/WatchNight';
@@ -85,7 +86,8 @@ function Loading() {
 
 export default function Prototype() {
   const urlNight = (() => { try { return (new URLSearchParams(window.location.search).get('night') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); } catch { return ''; } })();
-  const [page, setPage] = useState<Page>(urlNight ? 'Watch' : 'Learn');
+  const urlClub = (() => { try { return new URLSearchParams(window.location.search).get('club') ? true : false; } catch { return false; } })();
+  const [page, setPage] = useState<Page>(urlNight ? 'Watch' : urlClub ? 'Club' : 'Learn');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<(typeof powers)[number] | null>(null);
   const [ruleStep, setRuleStep] = useState(0);
@@ -113,6 +115,13 @@ export default function Prototype() {
     window.addEventListener('online', check);
     return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('online', check); };
   }, []);
+
+  // Shared club: players, nights and seasons added on any member's phone arrive here, and ours reach them.
+  const [clubTick, setClubTick] = useState(0);
+  const [shownClubTick, setShownClubTick] = useState(0);
+  useEffect(() => startClubSync(() => setClubTick((tick) => tick + 1)), []);
+  // A screen reloads when the club changes under it, except the scorekeeper, which never refreshes mid-score.
+  useEffect(() => { if (page !== 'Score') setShownClubTick(clubTick); }, [page, clubTick]);
 
   const resetDeviceScroll = () => {
     const screen = document.querySelector<HTMLElement>('[data-testid="device-screen"]');
@@ -165,7 +174,7 @@ export default function Prototype() {
     <MobileScroll key={page} className="switch-scroll">
       <main className={'switch-content ' + (page === 'Learn' ? 'home' : 'interior') + (page === 'Tutorial' || page === 'Table' ? ' tutorial-page' : '') + (page === 'Cards' ? ' cards-page' : '') + (page === 'Rules' ? ' rules-page' : '')}>
         {page === 'Learn' && <>
-          <HomeHub onPlay={() => go('Play')} onResumeTable={resumeTable} onScore={() => openScore('score')} onClub={() => openClub('stats')} onAchievements={() => openMe('badges')} onRules={openRules} onPuzzles={() => go('Puzzles')} onQuestions={() => go('Questions')} onPlan={() => setPlanOpen(true)} onJoin={() => go('Watch')} onHistory={() => openClub('history')} onPower={setSelected} />
+          <HomeHub key={shownClubTick} onPlay={() => go('Play')} onResumeTable={resumeTable} onScore={() => openScore('score')} onClub={() => openClub('stats')} onAchievements={() => openMe('badges')} onRules={openRules} onPuzzles={() => go('Puzzles')} onQuestions={() => go('Questions')} onPlan={() => setPlanOpen(true)} onJoin={() => go('Watch')} onJoinClub={() => openClub('stats')} onHistory={() => openClub('history')} onPower={setSelected} />
           <AccountPanel home />
         </>}
         {page === 'Rules' && <>
@@ -235,7 +244,7 @@ export default function Prototype() {
           </>}
           <Suspense fallback={<Loading />}>
             {page === 'Score' && <SwitchScorekeeper section="score" onBack={() => go('Learn')} backLabel="Home" initialView={scoreView} onView={setScoreView} onQuick={() => go('Quick')} onModes={() => go('Modes')} />}
-            {page === 'Club' && <SwitchScorekeeper section="club" onBack={() => go('Learn')} backLabel="Home" initialView={clubView} onView={setClubView} />}
+            {page === 'Club' && <SwitchScorekeeper key={shownClubTick} section="club" onBack={() => go('Learn')} backLabel="Home" initialView={clubView} onView={setClubView} />}
             {page === 'Play' && <PlayLobby onDeal={dealMeIn} onResume={resumeTable} onMe={() => openMe('overview')} onLearn={openRules} />}
             {page === 'Table' && <TableGame key={table.deal} opponents={table.opponents} level={table.level} resume={table.resume ? readActiveTable() : null} onExit={() => go('Play')} onChange={() => go('Play')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} />}
             {page === 'Me' && <MePage key={meSection} initialSection={meSection} onPlay={() => go('Play')} onClub={() => openClub('stats')} onPrivacy={() => go('Privacy')} />}

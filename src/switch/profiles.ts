@@ -9,6 +9,8 @@ export interface LocalProfile {
   readonly colour: ProfileColour;
   readonly createdAt: string;
   readonly archived: boolean;
+  /** When this player was last renamed, archived or brought back. Lets two phones agree which change is newer. */
+  readonly updatedAt?: number;
 }
 
 interface EnsureOptions {
@@ -78,7 +80,7 @@ export function ensureProfiles(
     let profile = matches[0];
     if (profile) {
       if (profile.archived) {
-        profile = { ...profile, archived: false };
+        profile = { ...profile, archived: false, updatedAt: Date.now() };
         profiles.splice(profiles.findIndex((entry) => entry.id === profile.id), 1, profile);
       }
     } else {
@@ -99,13 +101,13 @@ export function renameProfile(extensions: Readonly<Record<string, unknown>>, pro
   if (profiles.some((entry) => entry.id !== profileId && !entry.archived && normalise(entry.name) === normalise(clean))) {
     throw new Error(`A player called ${clean} already exists.`);
   }
-  return putProfiles(extensions, profiles.map((entry) => entry.id === profileId ? { ...entry, name: clean } : entry));
+  return putProfiles(extensions, profiles.map((entry) => entry.id === profileId ? { ...entry, name: clean, updatedAt: Date.now() } : entry));
 }
 
 export function archiveProfile(extensions: Readonly<Record<string, unknown>>, profileId: string): Record<string, unknown> {
   const profiles = getProfiles(extensions);
   if (!profiles.some((entry) => entry.id === profileId)) throw new Error("That saved player no longer exists.");
-  return putProfiles(extensions, profiles.map((entry) => entry.id === profileId ? { ...entry, archived: true } : entry));
+  return putProfiles(extensions, profiles.map((entry) => entry.id === profileId ? { ...entry, archived: true, updatedAt: Date.now() } : entry));
 }
 
 export function resolveHistoryPlayerId(player: Player, profiles: readonly LocalProfile[]): string | null {

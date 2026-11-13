@@ -1,4 +1,5 @@
-import { ArrowRight, Broadcast, CalendarPlus, ClockCounterClockwise, Club, GraduationCap, PuzzlePiece, Question } from '@phosphor-icons/react';
+import { ArrowRight, Broadcast, CalendarPlus, ClockCounterClockwise, Club, GraduationCap, PuzzlePiece, Question, UsersThree } from '@phosphor-icons/react';
+import { loadLink, wantJoinForm } from '../switch/clubSync';
 import { readClub } from '../switch/clubStore';
 import { getActiveNight } from '../switch/activeNight';
 import { readActiveTable } from '../switch/activeTable';
@@ -41,6 +42,7 @@ type Props = {
   onQuestions: () => void;
   onPlan: () => void;
   onJoin: () => void;
+  onJoinClub: () => void;
   onHistory: () => void;
   onPower: (power: (typeof powers)[number]) => void;
 };
@@ -97,6 +99,9 @@ export default function HomeHub(props: Props) {
           <ul>{recent.map((row) => <li key={row.key}><button onClick={row.open}><i className={row.won ? 'won' : ''} aria-hidden="true">{row.won ? '♥' : '♣'}</i><span><strong>{row.title}</strong><small>{row.detail}</small></span><em>{when(row.at)}</em></button></li>)}</ul>
         </div>}
 
+      {loadLink()
+        ? <button className="home-club-card linked" onClick={props.onClub}><UsersThree size={24} weight="fill" /><span><strong>Your club is shared</strong><em>Scores, players and leagues sync automatically. Tap to invite a friend.</em></span><ArrowRight size={15} /></button>
+        : <div className="home-club-card"><UsersThree size={24} weight="fill" /><span><strong>Playing with friends? Share your club</strong><em>Everyone's scores, leagues and stats in one place, updating by themselves.</em><span className="home-club-actions"><button className="primary" onClick={props.onClub}>Share my club</button><button className="secondary" onClick={() => { wantJoinForm(); props.onJoinClub(); }}>Join a club</button></span></span></div>}
       <nav className="home-discover" aria-label="Discover">
         <button onClick={props.onRules}><GraduationCap size={18} weight="bold" />Learn rules</button>
         <button onClick={props.onPuzzles}><PuzzlePiece size={18} weight="bold" />Puzzles</button>

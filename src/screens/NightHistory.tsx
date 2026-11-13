@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { DownloadSimple } from '@phosphor-icons/react';
 import SampleDataBar from './SampleDataBar';
+import ClubSharing from './ClubSharing';
 import { SIGN_IN_AVAILABLE } from '../auth';
 import { ShareButton } from '../ShareButton';
 import { getClubName, nightShareCard } from '../switch/club';
@@ -58,6 +59,7 @@ export default function NightHistory({ extensions, onChange }: Props) {
   }
 
   return <section className="night-history" aria-labelledby="night-history-title">
+    <ClubSharing />
     <div className="history-heading">
       <div><h2 id="night-history-title">Switch Night history</h2></div>
       {nights.length > 0 && <button className="secondary" onClick={downloadHistory}><DownloadSimple size={16} />Export history</button>}

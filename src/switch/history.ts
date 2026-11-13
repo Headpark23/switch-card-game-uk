@@ -261,8 +261,12 @@ export function addNight(extensions: HistorySource, night: SwitchNightRecord): R
   return { ...extensions, [HISTORY_KEY]: [clone(night), ...history] };
 }
 
+/** Nights deleted on this phone. A shared club uses the list so a deleted night does not come back from another phone. */
+export const REMOVED_NIGHTS_KEY = "switchRemovedNights";
+
 export function deleteNight(extensions: HistorySource, nightId: string): Record<string, unknown> {
-  return { ...extensions, [HISTORY_KEY]: getHistory(extensions).filter((entry) => entry.id !== nightId) };
+  const removed = Array.isArray(extensions[REMOVED_NIGHTS_KEY]) ? (extensions[REMOVED_NIGHTS_KEY] as string[]) : [];
+  return { ...extensions, [HISTORY_KEY]: getHistory(extensions).filter((entry) => entry.id !== nightId), [REMOVED_NIGHTS_KEY]: [...new Set([...removed, nightId])].slice(-400) };
 }
 
 export function exportHistory(nights: readonly SwitchNightRecord[], exportedAt = new Date().toISOString()): string {
