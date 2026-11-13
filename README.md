@@ -1,44 +1,69 @@
 # Switch Card Game
 
-A companion app for a physical Switch card night: score tracker, league tracker and stats tracker, plus an interactive rules guide and a guided tutorial game against the computer. The game itself is played with real cards.
+**Switch: your game-night club.** A mobile web app for the card game Switch, built around four equal experiences:
 
-## Source and release status
+1. **Play** Switch against 1 to 4 computer opponents.
+2. **Score** real game nights played with real cards.
+3. **Club** leagues, competitions, trophies and shared history.
+4. **Me** personal stats, badges, trophies and the Switch Passport.
 
-The `codex/switch-solo-hardening` branch is the focused development line for making the standalone Switch app dependable before any wider game-night product is considered. The public site is [switchcardgame.co.uk](https://switchcardgame.co.uk), but work on this branch does not deploy automatically and must not be treated as production until a separate release and rollback checklist is approved.
+Learning the rules stays complete, under Home → Learn rules. Guided practice there never counts towards your stats.
 
-The multi-game Card Companion experiment remains outside this branch. Do not copy its seeded people, scores, matches, leagues, premium previews, or broader game catalogue into Switch.
+Live site: [switchcardgame.co.uk](https://switchcardgame.co.uk). Production deploys automatically from `main` on Vercel; see `docs/release/` for the release and rollback checklists.
 
-## Current features
+## Navigation
 
-**Game-night companion**
-- Score a night in several formats (head to head, domino, darts, league, knockout, cup)
-- Reusable local player profiles, with honest stats derived only from saved nights: win rate, streaks, monthly wins, form, milestones, rivalries
-- League seasons (3 points for a win, 1 for taking part) built from the nights you choose to count
-- Club leaderboard with a crown, a nameable club, and one-tap shareable pictures (PNG) of a night, a league table or the leaderboard
-- Night history, export, and a full backup file you can restore on a new phone
-- Quick night: names, tap each round's winner, finish; saved to the same history and stats
-- Everything stays on the device; there are no accounts
-- Works offline after one visit (service worker in `public/sw.js`, production builds only)
+Five permanent tabs: **Home | Play | Score | Club | Me**. The lit tab always matches the section on screen.
 
-**Learn the game**
+| Tab | What it holds |
+|---|---|
+| **Home** | Greeting, resume cards for an unfinished game or scorecard, four launch tiles, recent activity, and links to Learn rules, Puzzles, Questions, Plan a night and Join a night |
+| **Play** | Competitive games against 1 to 4 computers at Relaxed, Standard or Sharp; pace setting; resume; your record |
+| **Score** | The scorecard for every format, Quick night, Ways to play, and saved nights |
+| **Club** | Stats, Seasons, Trophies and History for the whole club |
+| **Me** | Your record, history, record against the computer, badges, Passport, trophies and Settings |
+
+## Features
+
+**Playing the computer**
+- 1 to 4 opponents, three difficulty levels; jacks reverse play at bigger tables
+- Every move is shown in order: the computer pauses, each card travels from the seat that played it and lands one at a time, then the power card's effect is announced (`src/switch/presentation.ts`)
+- Red glow on the active seat with readable labels (YOUR MOVE, MAX IS CHOOSING)
+- Pace: Quick, Natural or Relaxed; reduced-motion supported
+- Unfinished games can be resumed; each finished game is logged exactly once
+
+**Scoring real nights**
+- One v One, Domino, Darts, Group Play (leagues with championship and plate playoffs), Knock Out and Switch Cup, with undo and in-app confirmations
+- Quick night: names, tap each round's winner, finish
+- Dealer tracker, venue and country, live sharing so friends can follow a night by code
+
+**Club and achievements**
+- Reusable local player profiles and honest stats derived only from saved nights: win rate, streaks, form, milestones, rivalries
+- Seasons across nights, leaderboard with a crown, a nameable club, shareable pictures of a night, a league table or the leaderboard
+- Badges, trophies and a Switch Passport of countries played in
+- Full backup file you can restore on a new phone; optional Google sign-in for cloud backup when configured
+
+**Learning (unranked)**
 - Interactive five-step rules guide, power-card reference and searchable questions
-- Guided tutorial game against the computer with optional legal-move hints
-- A coach that explains what each move meant and lists your options on every turn (`src/switch/coach.ts`, `CoachPanel` in `src/ui.tsx`); it only reads game state, so it can be reused for other games
-- Games open on an ordinary card; matching sets can be played in any order; twos, eights, black kings, red-king counters, wild aces and the Last Card call are all enforced
-- Tutorial finish leads to a real-cards setup checklist and straight into logging the night
-- Twelve rules puzzles whose answers come from the real rules engine, with a streak and badge ladder (Rookie to Rules master)
-- Rules help: quick-pick topic chips on the Questions tab; first-run welcome card; sounds and vibration (mutable)
-- Add to phone button, web manifest and icons; privacy page at `/privacy.html`
-- Reuse for other games: `src/kit` and `docs/REUSE-GUIDE.md`; store steps in `docs/store/PUBLISHING.md`
+- Guided practice game with optional hints and a coach that explains every move (`src/switch/coach.ts`, `CoachPanel` in `src/ui.tsx`); it ends with an invitation to play the computer for real
+- Twelve rules puzzles whose answers come from the real rules engine
 
 **Shell**
-- Responsive iPhone and Pixel preview frames
-- Demonstration advertising placements and an ad-free upgrade preview (development builds only)
+- Installable web app that works offline after one visit (`public/sw.js`, production builds only)
+- Everything is stored on the device; see `docs/STORAGE-KEYS.md` for every storage key
+- Responsive iPhone and Pixel 10 preview frames
+
+## Rules
+
+The rules are fixed by the owner's rulings in `docs/RULES-RULINGS.md`. The engine (`src/switch/rules.ts`, `src/switch/table.ts`) is checked against an independent simulator written from the rules text (`scripts/table-sim.mjs`).
 
 ## Run locally
 
 ```bash
 npm install
+```
+
+```bash
 npm run dev
 ```
 
@@ -46,10 +71,26 @@ npm run dev
 
 ```bash
 npm run check:runtime
+```
+
+```bash
 npm run build
+```
+
+```bash
 npm run test:sites
+```
+
+```bash
+npm run test:rules
+```
+
+```bash
 npm run test:runtime
+```
+
+```bash
 npm run test:offline
 ```
 
-![Switch rules-first design](rules-first-home.png)
+Reuse the coach and lessons for other games: `src/kit` and `docs/REUSE-GUIDE.md`. App-store steps: `docs/store/PUBLISHING.md`.
