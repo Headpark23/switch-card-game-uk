@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { ArrowClockwise, ArrowCounterClockwise, ArrowRight, CheckCircle, HandPalm, Lightbulb } from '@phosphor-icons/react';
+import { ArrowClockwise, ArrowCounterClockwise, ArrowRight, CheckCircle, HandPalm, Lightbulb, SortAscending } from '@phosphor-icons/react';
 import type { ComputerLevel } from '../switch/ai';
 import { cardIdLabel } from '../switch/cards';
 import { explainUnplayable } from '../switch/coach';
@@ -12,8 +12,9 @@ import { getComputerGames, getMeId, summariseComputerGames } from '../switch/com
 import { readClub } from '../switch/clubStore';
 import { CardImage, CardShower, rank, suit, suitNames, suitSymbols } from '../ui';
 import RealCards from './RealCards';
+import { sortHand } from '../switch/sortHand';
 
-const NAMES = ['Ruby', 'Max', 'Ivy', 'Otto'];
+const NAMES = ['John', 'Paul', 'George', 'Ringo'];
 const ordinal = (place: number) => `${place}${['st', 'nd', 'rd'][place - 1] ?? 'th'}`;
 
 /** The deal passes clockwise game after game, so nobody has to remember whose turn it is to deal. */
@@ -224,7 +225,7 @@ export default function TableGame({ opponents, level, onExit, onOpenCards, onSta
     {awaitingLastCard
       ? <div className="last-card-call"><HandPalm size={27} /><strong>One card remaining</strong><p>Say "Last Card" now. Forgetting costs two cards.</p><button className="primary" onClick={() => answerLastCard(true)}>Say "Last Card"</button><button className="text-link" onClick={() => answerLastCard(false)}>Continue without saying it</button></div>
       : <>
-        {staged.length === 0 && <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!yourTurn}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><span>{hand.length} cards in your hand · you play {game.hands.length > 2 ? `after ${names[(game.direction === 1 ? game.hands.length - 1 : 1)]}` : 'next'}</span></div>}
+        {staged.length === 0 && <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!yourTurn}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="hint-button sort-button" onClick={() => setGame((current) => ({ ...current, hands: current.hands.map((cards, seat) => (seat === 0 ? sortHand(cards) : cards)) }))}><SortAscending size={17} />Sort</button><span>{hand.length} cards in your hand · you play {game.hands.length > 2 ? `after ${names[(game.direction === 1 ? game.hands.length - 1 : 1)]}` : 'next'}</span></div>}
         {hint && <p className="game-hint"><Lightbulb size={17} />{hintText}</p>}
         <div className={'player-hand' + (hand.length > 10 ? ' dense' : '') + (hand.length > 8 ? ' two-rows' : '')} style={{ '--n': hand.length, '--per': Math.ceil(hand.length / 2) } as CSSProperties} aria-label="Your hand">
           {hand.map((card, index) => <button key={card} style={{ '--i': 0, zIndex: index + 1 } as CSSProperties} data-card={card} onClick={() => chooseCard(card)} className={(hint && yourTurn && canPlay(card) ? 'playable ' : '') + (staged.includes(card) ? 'selected ' : '') + (flash.includes(card) ? 'illegal' : '')} disabled={!yourTurn} aria-label={staged.includes(card) ? `Deselect ${cardIdLabel(card)}` : `Select ${cardIdLabel(card)}${canPlay(card) ? ', legal move' : ', not currently playable'}`}><CardImage code={card} />{staged.includes(card) && <i className="order-badge" aria-hidden="true">{staged.indexOf(card) + 1}</i>}</button>)}

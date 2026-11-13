@@ -35,7 +35,7 @@ export default function PlayLobby({ onDeal, onScore, onQuick, onModes, onMe }: {
     <FeltHeader compact id="play-title" title="Take a seat." intro="The computer is a good player. Every game is logged." cards={['AS', 'KH']} />
 
     <div className="lobby-table" aria-label="Your table">
-      <div className="lobby-seats" aria-hidden="true">{Array.from({ length: choice.opponents }, (_, index) => <span key={index} className="lobby-seat"><CardImage code="back" /><i>{['Ruby', 'Max', 'Ivy', 'Otto'][index]}</i></span>)}</div>
+      <div className="lobby-seats" aria-hidden="true">{Array.from({ length: choice.opponents }, (_, index) => <span key={index} className="lobby-seat"><CardImage code="back" /><i>{['John', 'Paul', 'George', 'Ringo'][index]}</i></span>)}</div>
       <div className="lobby-you" aria-hidden="true"><span>You</span></div>
     </div>
 
