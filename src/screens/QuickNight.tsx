@@ -8,6 +8,10 @@ import { getClubName, nightShareCard } from '../switch/club';
 import { ensureProfiles, getProfiles } from '../switch/profiles';
 import { loadScorekeeper, saveScorekeeper, SCOREKEEPER_STORAGE_KEY } from '../switch/storage';
 import type { Player } from '../switch/types';
+import DealerBar from './DealerBar';
+import VenueFields from './VenueFields';
+import { passDeal, pickDealer, setDealer, undoDeal, type DealerState } from '../switch/dealer';
+import { cleanPlace, getLastPlace, guessCountry, putLastPlace } from '../switch/places';
 
 /** The one-minute path: names, tap who won each round, finish. Saves to the same history as every other format. */
 export default function QuickNight({ onBack, onHistory }: { onBack: () => void; onHistory: () => void }) {
@@ -20,6 +24,9 @@ export default function QuickNight({ onBack, onHistory }: { onBack: () => void; 
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const [savedNight, setSavedNight] = useState<SwitchNightRecord | null>(null);
+  const [dealer, setDealerState] = useState<DealerState | null>(null);
+  const [placeName, setPlaceName] = useState(() => getLastPlace(loaded.state.extensions)?.name ?? '');
+  const [placeCountry, setPlaceCountry] = useState(() => getLastPlace(loaded.state.extensions)?.country ?? guessCountry());
 
   const wins = (id: string) => rounds.filter((winner) => winner === id).length;
   const leader = players ? [...players].sort((a, b) => wins(b.id) - wins(a.id))[0] : null;
@@ -36,6 +43,7 @@ export default function QuickNight({ onBack, onHistory }: { onBack: () => void; 
     try {
       const ensured = ensureProfiles(loaded.state.extensions, typed);
       setPlayers([...ensured.players]);
+      setDealerState(pickDealer(ensured.players.map((player) => player.id)));
       persist(ensured.extensions, ensured.players);
       keyboard.hide(); setError(''); cue('good');
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not start.'); }
@@ -59,8 +67,10 @@ export default function QuickNight({ onBack, onHistory }: { onBack: () => void; 
     };
     const raw = window.localStorage.getItem(SCOREKEEPER_STORAGE_KEY);
     const current = loadScorekeeper(raw).state.extensions;
-    const night = createNightRecord(`Quick night · ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`, completion);
-    persist(addNight(current, night), players);
+    const place = cleanPlace(placeName, placeCountry);
+    const night = createNightRecord(`Quick night · ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`, completion, undefined, undefined, place);
+    const added = addNight(current, night);
+    persist(place ? putLastPlace(added, place) : added, players);
     setSavedNight(night);
     setDone(true); cue('win');
   }
@@ -83,11 +93,13 @@ export default function QuickNight({ onBack, onHistory }: { onBack: () => void; 
       <div className="player-fields">{names.map((name, index) => <label key={index}><span>Player {index + 1}</span><KeyboardInput value={name} placeholder="Enter name" onChange={(event) => setNames((current) => current.map((entry, i) => (i === index ? event.target.value : entry)))} /></label>)}</div>
       <div className="quick-count"><button aria-label="Remove a player" disabled={names.length <= 2} onClick={() => setNames((current) => current.slice(0, -1))}><Minus size={18} /></button><span>{names.length} players</span><button aria-label="Add a player" disabled={names.length >= 6} onClick={() => setNames((current) => [...current, ''])}><Plus size={18} /></button></div>
       {error && <p className="score-error" role="alert">{error}</p>}
+      <VenueFields name={placeName} country={placeCountry} onName={setPlaceName} onCountry={setPlaceCountry} />
       <button className="primary quick-start" onClick={begin}>Deal the cards <ArrowRight size={18} /></button>
     </> : <>
+      {dealer && <DealerBar dealer={dealer} nameOf={(id) => players.find((player) => player.id === id)?.name ?? 'Player'} onPass={() => setDealerState(passDeal(dealer))} onPick={(id) => setDealerState(setDealer(dealer, id))} />}
       <p className="quick-round">Round {rounds.length + 1}. Tap the winner as soon as someone plays their last card.</p>
-      <div className="quick-board">{players.map((player) => <button key={player.id} aria-label={`${player.name} won the round`} onClick={() => { setRounds((current) => [...current, player.id]); cue('good'); }}><strong>{player.name}</strong><em>{wins(player.id)}</em><small>Won the round</small></button>)}</div>
-      <div className="quick-actions"><button className="secondary" disabled={!rounds.length} onClick={() => setRounds((current) => current.slice(0, -1))}>Undo last round</button><button className="primary" disabled={!rounds.length} onClick={finish}>Finish the night</button></div>
+      <div className="quick-board">{players.map((player) => <button key={player.id} aria-label={`${player.name} won the round`} onClick={() => { setRounds((current) => [...current, player.id]); setDealerState((current) => (current ? passDeal(current) : current)); cue('good'); }}><strong>{player.name}</strong><em>{wins(player.id)}</em><small>Won the round</small></button>)}</div>
+      <div className="quick-actions"><button className="secondary" disabled={!rounds.length} onClick={() => { setRounds((current) => current.slice(0, -1)); setDealerState((current) => (current ? undoDeal(current) : current)); }}>Undo last round</button><button className="primary" disabled={!rounds.length} onClick={finish}>Finish the night</button></div>
     </>}
   </section>;
 }

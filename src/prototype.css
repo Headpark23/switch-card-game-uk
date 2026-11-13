@@ -395,7 +395,7 @@
 .switch-scroll{container:screen/size}
 .tutorial-page .game-tutorial{display:flex;flex-direction:column;min-height:calc(100cqh - 50px - var(--mobile-safe-area-height) - 100px)}
 .tutorial-page .game-tutorial .game-table{flex:1 0 auto}
-@container screen (min-height:840px){.game-tutorial .game-table .playing-card{width:64px}.game-tutorial .discard-pile .playing-card{width:68px}}
+@container screen (min-height:840px){.game-tutorial .game-table .playing-card{width:64px}.game-tutorial .discard-pile .playing-card{width:58px}}
 /* A card flying to the pile passes behind the "Current suit" label rather than hiding it. */
 .game-tutorial .discard-pile>span:not(.pile-wrap){position:relative;z-index:3}
 
@@ -534,3 +534,153 @@
 .felt-header.has-fan:not(.compact) .felt-header-text{padding-right:0}
 .felt-header:not(.compact) .felt-header-fan{top:-26px;width:104px;height:118px}
 .felt-header:not(.compact) .felt-header-fan span{width:50px}
+
+/* ── Bottom navigation: a hand of cards on the felt. The lit tab lifts and straightens; Play is the red card dealt forward. ── */
+.switch-app .bottom-tabs{background:radial-gradient(ellipse 80% 120% at 50% 0%,#16724f 0%,#0b5239 55%,#053527 100%);border-top:2px solid var(--gold);box-shadow:0 -14px 30px #05352730,inset 0 1px 0 #ffe9a866;padding:0 4px 4px;min-height:56px;gap:0;align-items:flex-end;justify-content:space-between;overflow:visible}
+.switch-app .bottom-tabs::after{background:#053527}
+.switch-app .bottom-tabs button{flex:1 1 0;min-width:0;display:grid;justify-items:center;align-content:end;gap:2px;padding:4px 0 0;font-size:10.5px;font-weight:600;letter-spacing:.2px;color:#bcd2c3;transition:color .2s,transform .12s;position:relative}
+.switch-app .bottom-tabs button.tab-play{flex:1.28 1 0}
+.switch-app .bottom-tabs .tab-card{position:relative;display:grid;place-items:center;width:28px;height:34px;border-radius:6px;background:linear-gradient(180deg,#fffdf7,#f1e9d3);color:var(--green);box-shadow:0 2px 0 #0000002e,0 7px 10px -5px #000a;transform:translateY(2px) rotate(var(--tilt,-4deg));transition:transform .26s cubic-bezier(.2,.9,.3,1.35),box-shadow .2s}
+.switch-app .bottom-tabs button:nth-child(2n) .tab-card{--tilt:3deg}
+.switch-app .bottom-tabs button:nth-child(3n) .tab-card{--tilt:-1.5deg}
+.switch-app .bottom-tabs .tab-card svg{margin-top:6px;color:var(--green)}
+.switch-app .bottom-tabs .pip{position:absolute;top:2px;left:4px;font-style:normal;font-size:9px;line-height:1;color:#20302a;font-weight:700}
+.switch-app .bottom-tabs .pip.red{color:#b1342b}
+.switch-app .bottom-tabs .active{color:#f6dd9c;font-weight:700}
+.switch-app .bottom-tabs .active .tab-card{transform:translateY(-9px) rotate(0deg);box-shadow:0 0 0 2px #e6c97f,0 11px 16px -5px #000b,0 0 20px #e6c97f55;background:linear-gradient(180deg,#fffef9,#f7efd9)}
+.switch-app .bottom-tabs .active .tab-card svg{color:#0b5239}
+.switch-app .bottom-tabs button.tab-play .tab-card{width:44px;height:54px;border-radius:9px;background:linear-gradient(165deg,#e5574a,#a52920);color:#fff;transform:translateY(-14px) rotate(-2deg);box-shadow:0 0 0 2px #e6c97f,0 12px 18px -6px #000b}
+.switch-app .bottom-tabs button.tab-play .tab-card svg{color:#fff;margin-top:8px}
+.switch-app .bottom-tabs button.tab-play .pip{color:#ffe9a8;font-size:10px;top:4px;left:5px}
+.switch-app .bottom-tabs button.tab-play.active .tab-card{transform:translateY(-18px) rotate(0deg);box-shadow:0 0 0 2px #ffe9a8,0 14px 20px -6px #000c,0 0 24px #ffd36a66}
+.switch-app .bottom-tabs button.tab-play .tab-label{margin-top:-6px}
+.switch-app .bottom-tabs button:active .tab-card{transform:translateY(-3px) rotate(0)}
+@media(prefers-reduced-motion:reduce){.switch-app .bottom-tabs .tab-card{transition:none}}
+.switch-app .bottom-tabs button:focus-visible{outline-color:#f1d899}
+
+/* ── Cards page: every power card on one phone screen ── */
+.hidden-brand{display:none}
+.switch-content.cards-page{padding-top:50px;padding-bottom:calc(var(--mobile-safe-area-height) + 96px)}
+.cards-page .felt-header.compact{margin-top:0}
+.power-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.power-grid button{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px;text-align:left;border:1px solid #d8c99f;border-radius:14px;padding:8px 10px;background:linear-gradient(180deg,#fffdf7,#f8f1de);box-shadow:0 1px 0 #fff inset,0 4px 10px -6px #05352740;min-height:100px}
+.power-grid button:last-child{grid-column:1/-1}
+.power-grid .card-fan{display:flex}
+.power-grid .playing-card{width:40px;margin-left:-18px;border-radius:4px;box-shadow:0 2px 5px #0003}
+.power-grid .playing-card:first-child{margin-left:0}
+.power-grid span{display:grid;gap:1px;min-width:0}
+.power-grid strong{font-size:15px;line-height:1.15}
+.power-grid small{font-size:11px;line-height:1.2;color:var(--muted)}
+.power-grid button:active{transform:scale(.97)}
+
+/* ── Play lobby ── */
+.play-lobby{display:grid;gap:12px}
+.lobby-table{position:relative;height:132px;border-radius:60px / 50px;background:radial-gradient(ellipse at 50% 35%,#1b7a55,#0b5239 60%,#053527);border:2px solid var(--gold);box-shadow:inset 0 0 0 3px #053527,inset 0 8px 22px #02150f88;display:grid;place-items:center;overflow:hidden}
+.lobby-seats{display:flex;gap:12px;justify-content:center;margin-top:-18px}
+.lobby-seat{display:grid;justify-items:center;gap:1px;animation:seat-in .35s cubic-bezier(.2,.9,.3,1.3) both}
+.lobby-seat .playing-card{width:34px;border-radius:4px;box-shadow:0 3px 6px #0006}
+.lobby-seat i{font-style:normal;font-size:10px;color:#f1d899;font-weight:600}
+.lobby-you{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:#fbf8f0;color:var(--green);border-radius:999px;padding:2px 14px;font-weight:700;font-size:12px;box-shadow:0 2px 6px #0005}
+@keyframes seat-in{from{transform:translateY(-10px) scale(.8);opacity:0}}
+@media(prefers-reduced-motion:reduce){.lobby-seat{animation:none}}
+.lobby-group h2,.lobby-sub{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;letter-spacing:.3px;margin:0 0 6px;color:var(--ink)}
+.lobby-sub{margin-top:10px}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.seg.three{grid-template-columns:repeat(3,1fr)}
+.seg button{display:grid;gap:0;justify-items:center;border:1.5px solid #d8c99f;border-radius:12px;background:#fffaf0;padding:7px 2px;min-height:52px;line-height:1.15}
+.seg button b{font-size:18px;font-family:'DM Serif Display',Georgia,serif;font-weight:400}.seg.three button b{font-size:14px;font-family:'DM Sans',sans-serif;font-weight:700}
+.seg button small{font-size:10px;color:var(--muted)}
+.seg button.active{background:linear-gradient(180deg,#0d4a37,#053527);border-color:#e6c97f;color:#fff;box-shadow:0 5px 12px -5px #05352788}.seg button.active small{color:#d7e3d6}
+.lobby-note{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+.deal-button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:56px;font-size:18px;background:linear-gradient(180deg,#d84a3a,#a82a21)!important;border:2px solid #e6c97f!important;box-shadow:0 10px 20px -10px #a82a21}
+.record-strip{display:flex;align-items:center;gap:10px;border:1px solid #d8c99f;background:#fffaf0;border-radius:14px;padding:8px 12px;text-align:left;color:var(--green)}
+.record-strip span{display:grid;flex:1}.record-strip small{color:var(--muted);font-size:12px}
+.lobby-actions{display:grid;gap:8px}.lobby-actions .primary,.lobby-actions .secondary{display:flex;align-items:center;justify-content:center;gap:8px}
+.lobby-actions .text-link{display:flex;align-items:center;gap:6px;justify-content:center}
+
+/* ── Table game: seats, dealer, direction ── */
+.dealer-chip{margin-left:auto;font-style:normal;font-size:10px;letter-spacing:.3px;background:#fbf8f0;color:var(--green);border-radius:999px;padding:2px 8px;font-weight:700;white-space:nowrap}
+.turn-banner .dealer-chip + button{margin-left:6px}
+.seat-row{display:flex;gap:6px;justify-content:center}
+.seat{flex:1 1 0;max-width:96px;display:grid;justify-items:center;gap:1px;padding:5px 4px;border-radius:12px;background:linear-gradient(180deg,#0b5239,#053527);color:#f1d899;border:2px solid transparent;transition:border-color .2s,transform .2s}
+.seat.turn{border-color:#ffe08a;transform:translateY(-2px);box-shadow:0 0 14px #ffe08a66}
+.seat-name{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700}
+.dealer-pip{font-style:normal;display:grid;place-items:center;width:15px;height:15px;border-radius:50%;background:#fbf8f0;color:var(--green);font-size:9px;font-weight:800}
+.seat-fan{display:flex;height:34px;align-items:center}
+.seat-fan .playing-card{width:24px;margin-left:-14px;border-radius:3px}.seat-fan .playing-card:first-child{margin-left:0}
+.seat strong{font-size:13px;color:#fff}.seat strong.last{color:#ffb4a8}
+.direction{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)}
+.move-log{list-style:none;margin:0;padding:0;display:grid;gap:1px;font-size:11.5px;color:var(--muted)}
+.move-log li{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.place-list{list-style:none;margin:8px 0;padding:0;display:grid;gap:4px;width:100%;max-width:320px}
+.place-list li{display:grid;grid-template-columns:36px 1fr auto;align-items:center;gap:8px;border:1px solid #d8c99f;background:#fffaf0;border-radius:10px;padding:6px 10px;text-align:left}
+.place-list li.me{border-color:var(--green);background:#e9f0e1;font-weight:700}.place-list b{font-family:'DM Serif Display',Georgia,serif;font-size:17px;font-weight:400}.place-list em{font-style:normal;font-size:12px;color:var(--muted)}
+.record-line{font-size:13px;color:var(--green);font-weight:600;margin:4px 0}
+
+/* ── Badges: poker chips ── */
+.chip{position:relative;display:inline-grid;place-items:center;flex:none;border-radius:50%;--edge:#a8672c;--face:#0b5239;--hi:#2f9068;filter:drop-shadow(0 3px 3px #0000002e)}
+.chip.bronze{--edge:#a8672c}.chip.silver{--edge:#8793a0}.chip.gold{--edge:#c8961c}.chip.platinum{--edge:#4f93ab}
+.chip.cat-nights{--face:#0b5239;--hi:#34966c}.chip.cat-wins{--face:#a82a21;--hi:#e4695a}.chip.cat-formats{--face:#243b6b;--hi:#6286cc}
+.chip.cat-computer{--face:#5a3d8f;--hi:#a082dc}.chip.cat-travel{--face:#0f6b73;--hi:#4bb8c2}.chip.cat-social{--face:#b5611b;--hi:#ecaa66}
+.chip-ring{position:absolute;inset:0;width:100%;height:100%}
+.chip-edge{fill:var(--edge)}
+.chip-milling{fill:none;stroke:#fff;stroke-opacity:.88;stroke-width:3.6;stroke-dasharray:4.6 4.2}
+.chip-face{position:relative;width:72%;height:72%;border-radius:50%;display:grid;place-items:center;color:#fff;background:radial-gradient(circle at 32% 26%,var(--hi),var(--face) 70%);box-shadow:inset 0 0 0 2px #ffffff5c,inset 0 -4px 7px #0004,0 1px 2px #0006}
+.chip.on:after{content:'';position:absolute;inset:6% 18% 56% 18%;border-radius:50%;background:linear-gradient(180deg,#ffffff66,#ffffff00);pointer-events:none}
+.chip.off{filter:none}
+.chip.off .chip-edge{fill:#d4cdb9}.chip.off .chip-milling{stroke:#f3eee0;stroke-opacity:1}
+.chip.off .chip-face{background:radial-gradient(circle at 35% 30%,#e2dccb,#c2bba6);color:#8d8670;box-shadow:inset 0 0 0 2px #ffffff80,inset 0 -3px 5px #0002}
+.chip-track{fill:none;stroke:#00000022;stroke-width:3}.chip-progress{fill:none;stroke:var(--face);stroke-width:3;stroke-linecap:round}
+.badge-wall{display:grid;gap:14px;margin-top:6px}
+.badge-category header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:4px}
+.badge-category h4{margin:0;font-size:15px;font-family:'DM Serif Display',Georgia,serif;font-weight:400}.badge-category header span{font-size:12px;color:var(--muted);font-weight:600}
+.badge-category>p{margin:4px 0 0;font-size:12px;color:var(--muted)}
+.chip-grid{list-style:none;padding:0;margin:10px 0 0;display:grid;grid-template-columns:repeat(4,1fr);gap:12px 4px}
+.badge-wall .badge{display:grid;justify-items:center;align-content:start;gap:3px;text-align:center;border:0;background:none;padding:0}
+.badge-wall .badge strong{font-size:11px;line-height:1.15}.badge-wall .badge small{font-size:10px;color:var(--muted);line-height:1.15}
+.badge-wall .badge.locked strong{color:#6b7169}
+.chip-row{display:flex;gap:8px;flex-wrap:wrap}
+.next-badges{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.next-badges li{display:flex;align-items:center;gap:10px;border:1px solid #d8c99f;background:#fffaf0;border-radius:12px;padding:6px 10px}.next-badges span{display:grid;flex:1}.next-badges small{font-size:11px;color:var(--muted)}.next-badges em{font-style:normal;font-weight:700;color:var(--green);font-size:13px}
+
+/* ── Passport ── */
+.passport{display:grid;gap:0;border-radius:16px;overflow:hidden;border:2px solid #0b3a2b;box-shadow:0 10px 22px -14px #05352799}
+.passport-cover{display:flex;align-items:center;gap:10px;padding:12px 14px;background:linear-gradient(160deg,#0f5a40,#053527);color:#e6c97f}
+.passport-cover span{display:grid;flex:1;line-height:1.15}.passport-cover b{letter-spacing:2px;font-size:12px}.passport-cover i{font-style:normal;font-family:'DM Serif Display',Georgia,serif;font-size:18px;color:#fbf8f0}.passport-cover em{font-style:normal;font-size:12px;color:#d7e3d6}
+.passport-page{padding:14px 10px;background:repeating-linear-gradient(135deg,#fbf6e6 0 6px,#f6efd8 6px 7px)}
+.passport-empty{font-size:13px;color:var(--muted);margin:0;text-align:center}
+.stamp-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:14px 6px}
+.stamp-grid li{display:grid;justify-items:center;text-align:center;gap:1px;transform:rotate(var(--tilt))}
+.stamp{display:grid;place-items:center;align-content:center;width:70px;height:70px;border-radius:50%;border:3px double var(--ink-stamp,#1f3b8a);color:var(--ink-stamp,#1f3b8a);box-shadow:inset 0 0 0 2px #fbf6e6,inset 0 0 0 3px var(--ink-stamp,#1f3b8a);opacity:.9;line-height:1}
+.stamp b{font-family:'DM Serif Display',Georgia,serif;font-size:23px;font-weight:400;letter-spacing:1px}.stamp i{font-style:normal;font-size:8.5px;letter-spacing:.6px;text-transform:uppercase;margin-top:2px}
+.stamp-grid li:nth-child(3n+2) .stamp{--ink-stamp:#a82a21}.stamp-grid li:nth-child(3n) .stamp{--ink-stamp:#0b5239}
+.stamp-grid strong{font-size:11px;line-height:1.15;margin-top:3px}.stamp-grid small{font-size:10px;color:var(--muted);line-height:1.15}
+.passport-venues-title{margin:12px 0 4px}
+.venue-list{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.venue-list li{display:flex;align-items:center;gap:8px;border:1px solid #d8c99f;background:#fffaf0;border-radius:10px;padding:6px 10px}.venue-list span{display:grid;flex:1}.venue-list small{font-size:11px;color:var(--muted)}.venue-list svg{color:var(--gold)}.venue-list b{font-size:13px;color:var(--green)}
+
+/* ── Me page ── */
+.me-page{display:grid;gap:12px}
+.me-page h3{margin:6px 0 0;font-size:15px;font-family:'DM Serif Display',Georgia,serif;font-weight:400}
+.me-tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}.me-tabs button{flex:1 0 auto;padding-inline:9px}
+.me-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.me-tiles div{display:grid;justify-items:center;border:1px solid #d8c99f;background:linear-gradient(180deg,#fffdf7,#f8f1de);border-radius:14px;padding:9px 4px;line-height:1.1}
+.me-tiles b{font-family:'DM Serif Display',Georgia,serif;font-size:26px;font-weight:400;color:var(--green)}.me-tiles span{font-size:10.5px;color:var(--muted);text-align:center}
+.me-form{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:12px;color:var(--muted)}.me-form span{margin-right:4px}
+.me-form i{font-style:normal;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff}.me-form .win{background:var(--green)}.me-form .loss{background:#b1342b}
+.me-bar{display:grid;grid-template-columns:120px 1fr 44px;align-items:center;gap:8px;font-size:12.5px}.me-bar i{display:block;height:9px;border-radius:5px;background:#e8e0cc;overflow:hidden}.me-bar b{display:block;height:100%;background:linear-gradient(90deg,#0d4a37,#2f9068)}.me-bar em{font-style:normal;text-align:right;color:var(--muted);font-size:12px}
+.me-history{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.me-history li{display:flex;align-items:center;gap:10px;border:1px solid #e3d8bd;background:#fffaf0;border-radius:12px;padding:8px 10px}.me-history li.won{border-color:#9cc3a8;background:#eef5e9}
+.me-history span:nth-child(2){display:grid;flex:1;min-width:0}.me-history small{font-size:11.5px;color:var(--muted)}.me-history em{font-style:normal;font-size:11px;color:var(--muted)}
+.me-dot{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--green);color:#e6c97f;flex:none}.me-dot.computer{background:#5a3d8f;color:#fff}
+.me-name{display:grid;gap:6px;justify-items:start}.me-name details{font-size:13px}.me-name .player-tokens{margin-top:6px}
+
+/* ── Dealer bar (scorekeeper) and venue fields ── */
+.dealer-bar{display:flex;align-items:center;gap:10px;border:2px solid var(--gold);background:radial-gradient(ellipse at 20% 0%,#1b7a55,#0b5239 60%,#053527);color:#fbf8f0;border-radius:16px;padding:8px 10px;margin:0 0 8px}
+.dealer-card{display:grid;place-items:center;width:34px;height:44px;border-radius:6px;background:#fbf8f0;color:#b1342b;font-family:'DM Serif Display',Georgia,serif;font-size:22px;transform:rotate(-5deg);box-shadow:0 3px 8px #0006;flex:none}
+.dealer-bar>div{display:grid;flex:1;line-height:1.2;min-width:0}.dealer-bar small{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:#d7e3d6}.dealer-bar strong{font-size:17px;color:#f6dd9c}.dealer-bar em{font-style:normal;font-size:12px;color:#d7e3d6}
+.dealer-bar button{border:1px solid #e6c97f;background:#fbf8f0;color:var(--green);border-radius:999px;padding:6px 12px;font-weight:700;font-size:12px;min-height:36px}
+.dealer-bar .dealer-pick{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}.dealer-bar .dealer-pick button{padding:3px 9px;min-height:30px;font-size:11.5px;background:transparent;color:#fbf8f0;border-color:#ffffff55}.dealer-bar .dealer-pick button.on{background:#fbf8f0;color:var(--green)}
+.venue-fields{display:grid;gap:6px;margin:6px 0}.venue-fields label{display:grid;gap:2px;font-size:12px;font-weight:600}.venue-fields select{font:inherit;min-height:44px;border:1px solid var(--line);border-radius:10px;background:#fffaf0;padding:0 10px;color:var(--ink)}
+
+/* The taller playing-card nav leaves less room: the busiest guided-game moment stays on one screen. */
+.game-tutorial .miss-turn-action{padding:8px 12px}.game-tutorial .miss-turn-action p{margin:2px 0 6px!important}.game-tutorial .miss-turn-action .primary{min-height:34px;padding:5px 12px}

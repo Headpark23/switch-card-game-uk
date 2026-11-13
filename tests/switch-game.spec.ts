@@ -92,7 +92,7 @@ test("leaving during a computer turn cannot move a replacement game", async ({ p
   await play(page, "9H");
   await expect(page.getByText("GUIDED GAME · COMPUTER TURN")).toBeVisible();
   await page.getByRole("button", { name: "Exit game" }).click();
-  await page.getByRole("button", { name: "Play against the computer" }).click();
+  await page.getByRole("button", { name: /Deal me in/ }).click();
 
   await page.waitForTimeout(900);
   await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible();

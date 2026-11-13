@@ -515,7 +515,7 @@ test("the back link and the lit bottom tab follow where the scorekeeper was open
 
   await nav.getByRole("button", { name: "Play" }).click();
   await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
-  await page.getByRole("button", { name: "Back to Ways to play" }).click();
+  await page.getByRole("button", { name: "Back to Play" }).click();
   await expect(page.getByRole("button", { name: "Open the Switch scorekeeper" })).toBeVisible();
 
   await nav.getByRole("button", { name: "Club" }).click();

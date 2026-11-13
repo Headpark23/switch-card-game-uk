@@ -17,8 +17,9 @@ test("the trophy room fills from the sample club and shows badges", async ({ pag
   await page.getByRole("button", { name: "Load sample club" }).click();
   await expect(page.getByRole("heading", { name: /trophy room$/ })).toBeVisible();
   await expect(page.getByRole("list", { name: "Trophies won" })).toBeVisible();
-  await expect(page.getByRole("list", { name: "Badges earned" }).locator("li").first()).toBeVisible();
-  await expect(page.getByRole("list", { name: "Badges still to earn" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Game nights badges" }).locator("li").first()).toBeVisible();
+  await expect(page.locator(".badge.earned").first()).toBeVisible();
+  await expect(page.locator(".badge.locked").first()).toBeVisible();
   await page.getByRole("button", { name: "Remove sample" }).click();
   await expect(page.getByRole("heading", { name: "Win a night to start your collection." })).toBeVisible();
 });

@@ -10,7 +10,8 @@ let lastComputerPlay: CardId[] = [];
 
 const LEVELS: ComputerLevel[] = ['relaxed', 'standard', 'sharp'];
 const LEVEL_NOTE: Record<ComputerLevel, string> = { relaxed: 'makes friendly mistakes', standard: 'plays sensibly', sharp: 'plays to beat you' };
-let computerLevel: ComputerLevel = (() => { try { const v = localStorage.getItem('switchComputerLevel'); return LEVELS.includes(v as ComputerLevel) ? v as ComputerLevel : 'standard'; } catch { return 'standard'; } })();
+function readLevel(): ComputerLevel { try { const v = localStorage.getItem('switchComputerLevel'); return LEVELS.includes(v as ComputerLevel) ? v as ComputerLevel : 'standard'; } catch { return 'standard'; } }
+let computerLevel: ComputerLevel = readLevel();
 import { cardIdLabel } from '../switch/cards';
 import { applyAction, createInitialGame, drawCards, legalMoves, isLegalPlay } from '../switch/rules';
 import type { CardId, GameState, Suit } from '../switch/types';
@@ -23,6 +24,9 @@ import { ShareButton } from '../ShareButton';
 import { challengeShareCard } from '../switch/club';
 import { CardImage, CardShower, CoachPanel, isRedKing, rank, suit, suitNames, suitSymbols } from '../ui';
 import { testDeckRequested, testGameFromUrl } from './devDecks';
+import { logComputerGame } from '../switch/logGame';
+import { getComputerGames, getMeId, summariseComputerGames } from '../switch/computerLog';
+import { readClub } from '../switch/clubStore';
 
 const YOUR_TURN_NOTICE = 'Your turn. Play a legal card, or pick up one to save your cards for later.';
 
@@ -36,7 +40,12 @@ type View = {
   hint: boolean;
   /** You are down to one card and have not yet said (or skipped) "Last Card". */
   awaitingLastCard: boolean;
+  /** Who dealt this game. The other player goes first. */
+  dealer: 'you' | 'computer';
 };
+
+/** The deal alternates game after game, so nobody has to remember whose turn it is to deal. */
+let lastDealer: 'you' | 'computer' | null = null;
 
 const GUIDE_KEY = 'switchGuidance';
 
@@ -49,10 +58,13 @@ function guidanceDefault(): boolean {
 
 function openingView(): View {
   const fixed = import.meta.env.DEV ? testGameFromUrl() : null;
-  const engine = fixed ?? createInitialGame(Math.random, Math.random() < 0.5 ? 'player' : 'computer');
+  const dealer: 'you' | 'computer' = fixed ? (fixed.turn === 'player' ? 'computer' : 'you') : lastDealer ? (lastDealer === 'you' ? 'computer' : 'you') : Math.random() < 0.5 ? 'you' : 'computer';
+  lastDealer = dealer;
+  const engine = fixed ?? createInitialGame(Math.random, dealer === 'you' ? 'computer' : 'player');
   return {
     engine,
-    notice: engine.turn === 'player' ? YOUR_TURN_NOTICE : 'The computer goes first.',
+    dealer,
+    notice: (dealer === 'you' ? 'You dealt. ' : 'The computer dealt. ') + (engine.turn === 'player' ? YOUR_TURN_NOTICE : 'The computer goes first.'),
     meaning: null,
     lesson: explainStart(engine, engine.turn === 'player' ? 'you' : 'computer'),
     hint: false,
@@ -122,7 +134,7 @@ type Props = {
 
 export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPuzzles, onStatusChange }: Props) {
   const [soundOn, setSoundOn] = useState(feedbackEnabled);
-  const [level, setLevel] = useState<ComputerLevel>(computerLevel);
+  const [level, setLevel] = useState<ComputerLevel>(() => { computerLevel = readLevel(); return computerLevel; });
   const [view, setView] = useState<View>(openingView);
   const [aceChoice, setAceChoice] = useState<CardId[] | null>(null);
   const [staged, setStaged] = useState<CardId[]>([]);
@@ -158,6 +170,13 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
   const pendingDraw = penaltyCards(engine);
 
   useEffect(() => onStatusChange(outcome), [outcome, onStatusChange]);
+  // Every finished game goes in the log, so practice shows up in stats, streaks and badges.
+  const logged = useRef(false);
+  useEffect(() => {
+    if (outcome === 'playing' || logged.current) return;
+    logged.current = true;
+    logComputerGame({ opponents: 1, level, won: outcome === 'won', place: outcome === 'won' ? 1 : 2, moves: engine.move });
+  }, [outcome, level, engine.move]);
   useEffect(() => { if (outcome === 'won') cue('win'); else if (outcome === 'lost') cue('bad'); }, [outcome]);
 
   useLayoutEffect(() => {
@@ -365,7 +384,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
     });
   }
 
-  const restart = () => { shown.current = null; setSheetOpen(false); setView(openingView()); setAceChoice(null); setStaged([]); };
+  const restart = () => { logged.current = false; shown.current = null; setSheetOpen(false); setView(openingView()); setAceChoice(null); setStaged([]); };
 
   const gameHint = pending?.kind === 'draw-two'
     ? `Play another two to pass on ${pendingDraw + 2}, or pick up ${pendingDraw}.`
@@ -383,9 +402,9 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
   const missTurn = pending?.kind === 'miss-turn';
 
   return <section className="tutorial game-tutorial" aria-label={deckDescription}><CardShower trigger={outcome === 'won' ? `won-${engine.move}` : null} />{outcome !== 'playing'
-    ? <div className="completion"><CheckCircle size={60} weight="light" /><h1>{outcome === 'won' ? <>You beat the<br />computer.</> : <>The computer<br />won this one.</>}</h1><p>{view.notice}</p><button className="primary" onClick={restart}><ArrowCounterClockwise size={18} />Play another guided game</button>{outcome === 'won' && <ShareButton label="Challenge a friend" build={challengeShareCard} />}<RealCards onStartNight={onStartNight} /><button className="secondary" onClick={onOpenPuzzles}>Try the rules puzzles <ArrowRight size={18} /></button><button className="secondary" onClick={onOpenCards}>Open card guide <ArrowRight size={18} /></button></div>
+    ? <div className="completion"><CheckCircle size={60} weight="light" /><h1>{outcome === 'won' ? <>You beat the<br />computer.</> : <>The computer<br />won this one.</>}</h1><p>{view.notice}</p>{(() => { const mine = getComputerGames(readClub()).filter((game) => game.playerId === getMeId(readClub())); const record = summariseComputerGames(mine); return record.games ? <p className="record-line" role="status">Logged. Against the computer you have won {record.wins} of {record.games} ({Math.round(record.winRate * 100)}%).</p> : null; })()}<button className="primary" onClick={restart}><ArrowCounterClockwise size={18} />Play another guided game</button>{outcome === 'won' && <ShareButton label="Challenge a friend" build={challengeShareCard} />}<RealCards onStartNight={onStartNight} /><button className="secondary" onClick={onOpenPuzzles}>Try the rules puzzles <ArrowRight size={18} /></button><button className="secondary" onClick={onOpenCards}>Open card guide <ArrowRight size={18} /></button></div>
     : <>
-      <div className={'turn-banner ' + (yourTurn ? 'you' : 'computer')} aria-live="polite"><span className="turn-dot" aria-hidden="true" /><span>GUIDED GAME · {yourTurn ? 'YOUR TURN' : 'COMPUTER TURN'}</span><button onClick={onExit}>Exit game</button></div>
+      <div className={'turn-banner ' + (yourTurn ? 'you' : 'computer')} aria-live="polite"><span className="turn-dot" aria-hidden="true" /><span>GUIDED GAME · {yourTurn ? 'YOUR TURN' : 'COMPUTER TURN'}</span><em className="dealer-chip" aria-label={`Dealer: ${view.dealer === 'you' ? 'you' : 'the computer'}`}>Dealer · {view.dealer === 'you' ? 'You' : 'Computer'}</em><button onClick={onExit}>Exit game</button></div>
       <div className="opponent" aria-label={`Computer has ${engine.computerHand.length} cards`}><span>COMPUTER</span><div key={engine.computerHand.length} ref={fanRef} className="opp-fan">{engine.computerHand.slice(0, 5).map((_, i) => <CardImage code="back" key={i} />)}</div><strong>{engine.computerHand.length} card{engine.computerHand.length === 1 ? '' : 's'}</strong></div>
       <div className="game-table"><button className={'draw-pile' + (pickShown && advice && !advice.cards.length ? ' coach-pick' : '')} onClick={drawOrResolve} disabled={!yourTurn || awaitingLastCard || !!staged.length || missTurn} aria-label={missTurn ? 'Draw pile unavailable while resolving the eight' : pendingDraw ? `Pick up ${pendingDraw} cards` : legalCards.length ? 'Pick up one card instead of playing' : 'Draw a card'}><CardImage code="back" /><span>{missTurn ? 'Eight played' : pendingDraw ? `Pick up ${pendingDraw}` : legalCards.length ? 'Pick up instead' : 'Draw'}</span></button><div className="discard-pile"><span className="pile-wrap"><span key={`${engine.move}-${topCard}`} ref={pileRef} className={'pile-card from-' + mover}><CardImage code={topCard} /></span><span key={`layer-${engine.move}`} ref={layerRef} className="flight-layer" aria-hidden="true">{flight.current && !flight.current.consumed && Date.now() - flight.current.at < 4000 && flight.current.cards[flight.current.cards.length - 1] === topCard ? flight.current.cards.slice(0, -1).map((code) => <span className="flying-card" key={code}><CardImage code={code} /></span>) : null}</span></span><span>Current suit <b className={(engine.currentSuit === 'H' || engine.currentSuit === 'D') ? 'red' : ''}>{suitSymbols[engine.currentSuit]} {suitNames[engine.currentSuit]}</b></span></div></div>
       <p className={'game-notice' + (warn && yourTurn ? ' warn' : '')} aria-live="polite" role={warn ? 'alert' : undefined}>{!yourTurn ? 'Computer is choosing a card…' : warn || view.notice}</p>

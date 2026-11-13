@@ -8,7 +8,9 @@
  */
 type Extensions = Record<string, unknown>;
 
-const LIST_KEYS = ["switchProfiles", "switchSeasons", "switchNightHistory"] as const;
+const LIST_KEYS = ["switchProfiles", "switchSeasons", "switchNightHistory", "switchComputerGames"] as const;
+/** Single values where this phone wins, and a second phone fills the gap. */
+const VALUE_KEYS = ["switchClub", "switchMe", "switchLastPlace"] as const;
 
 export interface SyncDocument {
   readonly schemaVersion: 1;
@@ -46,8 +48,10 @@ export function mergeDocuments(local: SyncDocument, remote: SyncDocument): SyncD
     const merged = mergeById(local.extensions[key], remote.extensions[key]);
     if (merged.length) extensions[key] = merged;
   }
-  extensions.switchClub = local.extensions.switchClub ?? remote.extensions.switchClub;
-  if (extensions.switchClub === undefined) delete extensions.switchClub;
+  for (const key of VALUE_KEYS) {
+    extensions[key] = local.extensions[key] ?? remote.extensions[key];
+    if (extensions[key] === undefined) delete extensions[key];
+  }
   return { ...local, extensions };
 }
 
@@ -61,7 +65,7 @@ export function sameClub(a: SyncDocument, b: SyncDocument): boolean {
     const left = asList(a.extensions[key]).map((item) => item.id).sort().join("|");
     const right = asList(b.extensions[key]).map((item) => item.id).sort().join("|");
     return left === right;
-  }) && JSON.stringify(a.extensions.switchClub ?? null) === JSON.stringify(b.extensions.switchClub ?? null);
+  }) && VALUE_KEYS.every((key) => JSON.stringify(a.extensions[key] ?? null) === JSON.stringify(b.extensions[key] ?? null));
 }
 
 export function isSyncDocument(value: unknown): value is SyncDocument {
