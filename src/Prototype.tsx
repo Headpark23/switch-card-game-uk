@@ -1,4 +1,9 @@
-import { lazy, Suspense, useCallback, useLayoutEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { readClub, updateClub } from './switch/clubStore';
+import { recoverMyGames } from './switch/identity';
+import { syncJoinedNights } from './switch/joinedNights';
+import { flushSharedResults } from './switch/shareNight';
+import type { SwitchNightRecord } from './switch/history';
 import { ArrowRight, House, ChartBar, ClockCounterClockwise, PuzzlePiece, CalendarPlus, Broadcast, Cards, Trophy, Question, Club, MagnifyingGlass, X, DownloadSimple, CheckCircle, Lightbulb, IdentificationBadge, Play } from '@phosphor-icons/react';
 import type { ComputerLevel } from './switch/ai';
 import WatchNight from './screens/WatchNight';
@@ -84,6 +89,18 @@ export default function Prototype() {
   const [welcome, setWelcome] = useState(() => { try { return window.localStorage.getItem('switchWelcome') !== 'done'; } catch { return false; } });
   const keyboard = useKeyboard();
   const { bottomInset, isKeyboardVisible } = useKeyboardInsets();
+  // One-off repair: games left on the automatic "You" player rejoin the owner's real name.
+  useState(() => { try { if (recoverMyGames(readClub())) updateClub((current) => recoverMyGames(current) ?? current); } catch { /* leave saved data alone */ } return 0; });
+  // Results from nights this phone joined arrive here, even when they were saved while the app was closed.
+  const [arrived, setArrived] = useState<SwitchNightRecord[]>([]);
+  useEffect(() => {
+    const check = () => { void flushSharedResults(); syncJoinedNights().then((added) => { if (added.length) setArrived((current) => [...added, ...current]); }).catch(() => {}); };
+    const onVisible = () => { if (document.visibilityState === 'visible') check(); };
+    check();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', check);
+    return () => { document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('online', check); };
+  }, []);
 
   const resetDeviceScroll = () => {
     const screen = document.querySelector<HTMLElement>('[data-testid="device-screen"]');
@@ -228,6 +245,9 @@ export default function Prototype() {
     </nav>}
     {page === 'Learn' && !rulesOpen && <InstallBanner bottom={bottomInset + 92} />}
     <NightReminder open={planOpen} onOpenChange={setPlanOpen} />
+    <BottomSheet open={arrived.length > 0 && page !== 'Watch'} onOpenChange={(open) => { if (!open) setArrived([]); }} title={arrived.length === 1 ? 'A result has come in' : `${arrived.length} results have come in`} description="From a night you joined with a code. Added to your history and stats." snap={0.5}>
+      {arrived.length > 0 && <div className="confirm-sheet"><ul className="watch-results">{arrived.slice(0, 6).map((night) => <li key={night.id}><strong>{night.title}: {night.outcome}</strong><span>{night.formatLabel} · {new Date(night.completedAt).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span></li>)}</ul><button className="primary" onClick={() => { setArrived([]); go('Me'); }}>See my history</button><button className="secondary" onClick={() => setArrived([])}>Close</button></div>}
+    </BottomSheet>
     <BottomSheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }} title={selected?.name || 'Card rule'}>
       {selected && <div className="rule-sheet"><Fan codes={selected.cards} /><p className="rule-lead">{selected.short}</p><p>{selected.text}</p><div className="exception"><strong>At the table</strong><p>{selected.extra}</p></div><button className="primary" onClick={() => setSelected(null)}>Got it <CheckCircle size={19} /></button></div>}
     </BottomSheet>

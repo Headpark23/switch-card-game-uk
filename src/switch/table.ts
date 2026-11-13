@@ -153,7 +153,10 @@ export function applyTableAction(state: TableState, action: GameAction): TableSt
   let turn: number;
   if (playedRank === "7") {
     turn = actor;
-  } else if (playedRank === "J" && played.length % 2 === 1) {
+  } else if (playedRank === "J" && played.length % 2 === 0) {
+    // Ruling 18: two or four jacks never reverse. The same player plays again.
+    turn = actor;
+  } else if (playedRank === "J") {
     // One or three jacks reverse. With two players that brings play straight back.
     if (seats === 2) turn = actor;
     else {

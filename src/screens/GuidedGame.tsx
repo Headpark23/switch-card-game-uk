@@ -86,7 +86,7 @@ function describePlay(before: GameState, after: GameState, cards: readonly CardI
   } else if (wasKing && cards.some(isRedKing)) notice += ' The red king cancels the penalty.';
   else if (cardRank === '8') notice += ' An eight can pass the skipped turn.';
   else if (cardRank === '7') notice += ' A seven means play again.';
-  else if (cardRank === 'J') notice += cards.length % 2 ? ' The reverse sends play back to the same player.' : ' The even number of reverses keeps play moving.';
+  else if (cardRank === 'J') notice += cards.length % 2 ? ' The reverse sends play back to the same player.' : ' Two or four jacks mean the same player plays again.';
   else if (cardRank === 'A') notice += ` The suit is now ${suitNames[aceSuit || suit(cards[cards.length - 1])]}.`;
   return notice;
 }

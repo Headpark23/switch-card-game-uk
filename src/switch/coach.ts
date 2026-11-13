@@ -58,7 +58,7 @@ export function explainEffect(before: GameState, after: GameState, cards: readon
   if (rank === "J") {
     return cards.length % 2
       ? `Jack: play reverses, which in a two-player game means ${side === "you" ? "you play" : "the computer plays"} again.`
-      : "Two jacks cancel each other out, so play moves on as normal.";
+      : `${cards.length === 4 ? "Four" : "Two"} jacks: no reverse, ${side === "you" ? "you play" : "the computer plays"} again.`;
   }
   if (rank === "A") return `Ace: wild. The suit is now ${SUIT_NAMES[aceSuit ?? suitOf(cards[cards.length - 1])]}, so ${next === "you" ? "you need" : "the computer needs"} that suit or another ace.`;
   const top = after.discardPile[after.discardPile.length - 1];

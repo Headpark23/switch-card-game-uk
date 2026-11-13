@@ -42,7 +42,8 @@ const playable = (g, c) => {
   if (g.penalty.kind === "king") return r === "K";
   return r === "8";
 };
-const cannotFinish = (g, rank) => rank === "7" || (rank === "J" && g.n === 2);
+// Ruling 18: two or four jacks mean play again, so like a seven they cannot be the last play at any table size.
+const cannotFinish = (g, rank, count = 1) => rank === "7" || (rank === "J" && (g.n === 2 || count % 2 === 0));
 
 const perms = (a) => (a.length <= 1 ? [a] : a.flatMap((x, i) => perms([...a.slice(0, i), ...a.slice(i + 1)]).map((r) => [x, ...r])));
 
@@ -53,7 +54,7 @@ export function legalPlays(g, p = g.cur) {
     const same = hand.filter((c) => rankOf(c) === rank);
     for (let mask = 1; mask < 1 << same.length; mask++) {
       const set = same.filter((_, i) => mask & (1 << i));
-      if (cannotFinish(g, rank) && set.length === hand.length) continue;
+      if (cannotFinish(g, rank, set.length) && set.length === hand.length) continue;
       if (!set.some((c) => playable(g, c))) continue;
       if (rank === "K") {
         for (const order of perms(set)) if (playable(g, order[0])) out.push({ cards: order, suit: suitOf(order.at(-1)) });
@@ -122,10 +123,12 @@ export function step(g, decision) {
   } else g.penalty = null;
   let next;
   if (rank === "7") { next = p; note = " and plays again"; }
-  else if (rank === "J" && k % 2 === 1) {
+  else if (rank === "J" && k % 2 === 0) { next = p; note = " and plays again (two or four jacks never reverse)"; }
+  else if (rank === "J") {
     if (g.n === 2) { next = p; note = " (two players: play comes straight back)"; }
     else { g.dir *= -1; next = mod(p + g.dir, g.n); note = " and reverses direction"; }
   } else next = mod(p + g.dir, g.n);
+  g.lastCount = k;
   if (!g.hands[p].length) g.winner = p;
   g.cur = next;
   return `${name} plays ${cards.map(pretty).join(" ")}${rank === "A" ? ` and calls ${SYM[suit]}` : ""}${note}`;
@@ -178,7 +181,7 @@ export function playGame({ n, seed, styles, cap = 4000, story = false }) {
     const line = step(g, decision);
     if (story) log.push(`${String(g.moves).padStart(3)}. ${line}  [${g.hands.map((h) => h.length).join("/")}] top ${pretty(g.discard.at(-1))}${g.penalty ? ` ⚠ ${g.penalty.kind}${g.penalty.cards ? " " + g.penalty.cards : ""}` : ""}`);
     problems.push(...check(g, `move ${g.moves}`));
-    if (g.winner !== null && cannotFinish(g, rankOf(g.discard.at(-1)))) problems.push(`P${g.winner + 1} won on a ${rankOf(g.discard.at(-1))} which the rules forbid`);
+    if (g.winner !== null && cannotFinish(g, rankOf(g.discard.at(-1)), g.lastCount)) problems.push(`P${g.winner + 1} won on a ${rankOf(g.discard.at(-1))} which the rules forbid`);
     const size = g.hands.reduce((s, h) => s + h.length, 0);
     stalls = size === lastSize && decision.kind === "pickup" ? stalls + 1 : 0;
     lastSize = size;

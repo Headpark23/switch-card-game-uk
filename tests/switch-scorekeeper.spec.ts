@@ -230,6 +230,10 @@ test("One v One is played to a number of games: first to N wins", async ({ page 
   await page.getByRole("button", { name: "Win game" }).first().click();
   await expect(page.getByText("Player 1 wins the match!")).toBeVisible();
   await expect(page.getByText("4 games", { exact: true })).toBeVisible();
+  // The moment someone wins, the app asks to save the night. "Not yet" leaves the result on screen with a save banner.
+  await expect(page.getByRole("button", { name: "Save completed night" })).toBeVisible();
+  await page.getByRole("button", { name: "Not yet, I need to correct a score" }).click();
+  await expect(page.getByRole("button", { name: "Save the night" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Win game" }).first()).toBeDisabled();
 });
 
@@ -452,6 +456,7 @@ test("the Cup lets you change a result, labels the final and can take back the c
   await page.locator(".cup-fixture").first().getByRole("button").first().click();
   await page.getByRole("button", { name: "Crown the champion" }).click();
   await expect(page.getByText(/is champion/)).toBeVisible();
+  await page.getByRole("button", { name: "Not yet, I need to correct a score" }).click();
   await page.getByRole("button", { name: "Undo crowning the champion" }).click();
   await expect(page.getByRole("button", { name: "Crown the champion" })).toBeVisible();
 });

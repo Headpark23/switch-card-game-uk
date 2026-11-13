@@ -43,7 +43,7 @@ function describe(before: TableState, after: TableState, who: string, action: { 
   if (after.pendingPenalty?.kind === 'draw-two' || after.pendingPenalty?.kind === 'black-king') text += `: ${after.pendingPenalty.cards} cards at stake`;
   else if (r === '8') text += ': next player misses a turn';
   else if (r === '7') text += ': play again';
-  else if (r === 'J') text += cards.length % 2 && before.hands.length > 2 ? `: play now goes ${after.direction === 1 ? 'clockwise' : 'anticlockwise'}` : '';
+  else if (r === 'J') text += cards.length % 2 === 0 || before.hands.length === 2 ? ': play again' : `: play now goes ${after.direction === 1 ? 'clockwise' : 'anticlockwise'}`;
   else if (r === 'A') text += `: the suit is ${suitNames[action.chosenSuit ?? suit(cards[cards.length - 1])]}`;
   return text + '.';
 }
@@ -144,7 +144,7 @@ export default function TableGame({ opponents, level, onExit, onOpenCards, onSta
     if (!staged.length) return;
     if (rank(staged[0]) === 'A') { setAceChoice(staged); return; }
     if (!isLegalTablePlay(game, { type: 'play', cards: staged })) {
-      refuse([...staged], staged.length === hand.length && rank(staged[staged.length - 1]) === '7' ? 'You cannot finish on a seven. Keep a card back.' : staged.length === hand.length && rank(staged[staged.length - 1]) === 'J' && seats === 2 ? 'You cannot finish on a jack in a two-player game.' : 'Those cards cannot be played in that order. Try a different order, or play fewer cards.');
+      refuse([...staged], staged.length === hand.length && rank(staged[staged.length - 1]) === '7' ? 'You cannot finish on a seven. Keep a card back.' : staged.length === hand.length && rank(staged[staged.length - 1]) === 'J' && seats === 2 ? 'You cannot finish on a jack in a two-player game.' : staged.length === hand.length && rank(staged[staged.length - 1]) === 'J' && staged.length % 2 === 0 ? 'Two or four jacks mean play again, so they cannot be your last cards. Keep a card back.' : 'Those cards cannot be played in that order. Try a different order, or play fewer cards.');
       return;
     }
     commit(staged);

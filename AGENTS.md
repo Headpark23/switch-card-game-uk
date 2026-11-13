@@ -99,3 +99,10 @@ Darts: first to three legs wins a set. Knock Out: whoever finishes last in a rou
 - Real playing cards are the icon language: home actions are four aces dealt onto the table, and game types and modes use `MiniFan` hands instead of numbers or generic icons. Other icons come from Phosphor in one weight; no emoji or text glyphs as icons.
 - No small-caps label above a heading, and no thick coloured side stripes on cards or callouts.
 - Wins are celebrated with `CardShower` (a match, Knock Out, Cup, league championship, beating the computer); it never blocks taps and is skipped under reduced motion.
+
+## Nobody loses a score (owner decisions, 13 Nov 2026)
+- Every game played is a stat: wins and losses, on nights and against the computer, all count and all show in Me > History. Tapping a row opens the full record (date, night name, venue, every score).
+- A phone's games follow its owner. Games played before they chose a name sit under the automatic "You" player and are merged into the name they pick (`src/switch/identity.ts`); never repoint "me" without `claimMe`.
+- A shared night code is how results travel: a friend who joins says which player they are, and every night the host saves under that code is added to the friend's own history and stats, even if their app was closed (`src/switch/joinedNights.ts`, results kept by `api/_night.js`). Saved results queue on the host's phone until they reach the server.
+- When a night is won the scorekeeper asks to save it straight away, in a sheet. Saving is never something the host has to scroll to find.
+- Jacks (ruling 18): one or three reverse; two or four never reverse and mean play again, so they cannot be a last play.
