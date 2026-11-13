@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ArrowsClockwise, CheckCircle, UsersThree } from '@phosphor-icons/react';
 import { useConfirm } from '../Confirm';
 import { KeyboardInput, useKeyboard } from '../mobile';
-import { cleanClubCode, clubLink, createClub, joinClub, leaveClub, loadLink, previewClub, syncClub, takeJoinRequest, type ClubLink } from '../switch/clubSync';
+import { cleanClubCode, createClub, inIosBrowserTab, inviteMessage, joinClub, leaveClub, loadLink, previewClub, syncClub, takeJoinRequest, type ClubLink } from '../switch/clubSync';
 
 const ago = (time?: number) => {
   if (!time) return 'not yet';
@@ -13,6 +13,7 @@ const ago = (time?: number) => {
 /** Share this club with friends, or join theirs: one shared club, the same players, nights, leagues and stats on every phone. */
 export default function ClubSharing() {
   const keyboard = useKeyboard();
+  const iosTab = inIosBrowserTab();
   const [confirm, confirmSheet] = useConfirm();
   const [link, setLink] = useState<ClubLink | null>(loadLink);
   const urlCode = (() => { try { return cleanClubCode(new URLSearchParams(window.location.search).get('club') || ''); } catch { return ''; } })();
@@ -50,7 +51,7 @@ export default function ClubSharing() {
   }
   async function send() {
     if (!link) return;
-    const message = `Join our Switch club: ${clubLink(link.code)} (club code ${link.code})`;
+    const message = inviteMessage(link.code);
     try { if (navigator.share) await navigator.share({ title: 'Switch club', text: message }); else { await navigator.clipboard.writeText(message); setNote('Link copied.'); } } catch { /* cancelled */ }
   }
   async function leave() {
@@ -61,6 +62,7 @@ export default function ClubSharing() {
   if (link) return <section className="club-sharing live" aria-label="Shared club">
     <div className="club-sharing-head"><CheckCircle size={22} weight="fill" /><div><strong>Shared club</strong><span>Everyone with the code sees the same players, nights, leagues and stats.</span></div></div>
     <p className="club-code" aria-label="Club code">{link.code}</p>
+    {iosTab && <p className="club-ios-note" role="note"><strong>You are in a browser tab.</strong> If you play in the Switch app on your Home Screen, open it, tap Join a club on Home and enter <b>{link.code}</b>, so your scores show there too.</p>}
     <p className="club-sync-line" role="status">Last in step {ago(link.lastSyncAt)}{note ? ` · ${note}` : ''}</p>
     {error && <p className="score-error" role="alert">{error}</p>}
     <div className="manage-actions"><button className="primary" onClick={send}>Invite a friend</button><button className="secondary" disabled={busy} onClick={now}><ArrowsClockwise size={16} />Sync now</button><button className="text-link" onClick={leave}>Leave</button></div>
@@ -69,6 +71,7 @@ export default function ClubSharing() {
 
   if (joining) return <section className="club-sharing" aria-label="Join a club">
     <div className="club-sharing-head"><UsersThree size={22} weight="fill" /><div><strong>Join a club</strong><span>Enter the club code a friend gave you.</span></div></div>
+    {iosTab && <p className="club-ios-note" role="note"><strong>Using the Switch app on your iPhone?</strong> Open the app instead, tap Join a club on Home and enter this code{code ? <> <b>{code}</b></> : ''}. A browser tab and the app keep their own scores, so join where you play.</p>}
     {!found && <form className="join-form" onSubmit={(event) => { event.preventDefault(); void look(); }}>
       <label><span>Club code</span><KeyboardInput aria-label="Club code" autoCapitalize="characters" maxLength={8} placeholder="e.g. K7M2QXH4" value={code} onChange={(event) => setCode(cleanClubCode(event.target.value))} /></label>
       <button className="primary" type="submit" disabled={busy || code.length < 8}>{busy ? 'Looking…' : 'Find club'}</button>

@@ -26,6 +26,16 @@ function saveLink(link: ClubLink | null) {
   try { if (link) localStorage.setItem(LINK_KEY, JSON.stringify(link)); else localStorage.removeItem(LINK_KEY); } catch { /* storage unavailable */ }
 }
 export const clubLink = (code: string) => `${window.location.origin}/?club=${code}`;
+/** The invitation text. It carries the code too, because on an iPhone a link opens in Safari, which does not share storage with the Home Screen app. */
+export const inviteMessage = (code: string) => `Join our Switch club. If you use the Switch app, open it, tap "Join a club" on Home and enter the code ${code}. Or open ${clubLink(code)}`;
+/** True in a browser tab on an iPhone or iPad. Such a tab keeps its own saved data, separate from the app on the Home Screen. */
+export function inIosBrowserTab(): boolean {
+  try {
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const installed = (navigator as unknown as { standalone?: boolean }).standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+    return ios && !installed;
+  } catch { return false; }
+}
 export const cleanClubCode = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
 
 /** This phone's club in the shape the shared copy uses. Demo data and the automatic "You" player stay on the phone. */

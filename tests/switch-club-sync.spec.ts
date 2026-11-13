@@ -110,3 +110,12 @@ test("the join-a-night screen also takes a club code", async ({ page }) => {
   await page.getByLabel("Night code").fill("K7M2QXH4");
   await expect(page.getByRole("button", { name: "Join club" })).toBeEnabled();
 });
+
+test("on an iPhone browser tab, joining says to join in the Home Screen app instead, with the code", async ({ browser }) => {
+  const context = await browser.newContext({ userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1", viewport: { width: 1000, height: 1100 } });
+  const page = await context.newPage();
+  await page.goto("/?club=K7M2QXH4");
+  await expect(page.getByText("Using the Switch app on your iPhone?")).toBeVisible();
+  await expect(page.getByRole("note")).toContainText("K7M2QXH4");
+  await context.close();
+});
