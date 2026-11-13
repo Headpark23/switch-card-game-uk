@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { ArrowsClockwise, CheckCircle, UsersThree } from '@phosphor-icons/react';
 import { useConfirm } from '../Confirm';
 import { KeyboardInput, useKeyboard } from '../mobile';
-import { cleanClubCode, createClub, inIosBrowserTab, inviteMessage, joinClub, leaveClub, loadLink, previewClub, syncClub, takeJoinRequest, type ClubLink } from '../switch/clubSync';
+import { getClubName } from '../switch/club';
+import { readClub } from '../switch/clubStore';
+import { cleanClubCode, clearJoined, createClub, justJoined, inIosBrowserTab, inviteMessage, joinClub, leaveClub, loadLink, previewClub, syncClub, takeJoinRequest, type ClubLink } from '../switch/clubSync';
 
 const ago = (time?: number) => {
   if (!time) return 'not yet';
@@ -59,15 +61,24 @@ export default function ClubSharing() {
     leaveClub(); setLink(null); setNote('');
   }
 
-  if (link) return <section className="club-sharing live" aria-label="Shared club">
-    <div className="club-sharing-head"><CheckCircle size={22} weight="fill" /><div><strong>Shared club</strong><span>Everyone with the code sees the same players, nights, leagues and stats.</span></div></div>
-    <p className="club-code" aria-label="Club code">{link.code}</p>
-    {iosTab && <p className="club-ios-note" role="note"><strong>You are in a browser tab.</strong> If you play in the Switch app on your Home Screen, open it, tap Join a club on Home and enter <b>{link.code}</b>, so your scores show there too.</p>}
-    <p className="club-sync-line" role="status">Last in step {ago(link.lastSyncAt)}{note ? ` · ${note}` : ''}</p>
-    {error && <p className="score-error" role="alert">{error}</p>}
-    <div className="manage-actions"><button className="primary" onClick={send}>Invite a friend</button><button className="secondary" disabled={busy} onClick={now}><ArrowsClockwise size={16} />Sync now</button><button className="text-link" onClick={leave}>Leave</button></div>
-    {confirmSheet}
-  </section>;
+  if (link) {
+    const welcome = justJoined();
+    const clubName = getClubName(readClub());
+    return <section className="club-sharing live" aria-label="Shared club">
+      {welcome && <div className="club-welcome" role="status">
+        <CheckCircle size={26} weight="fill" />
+        <div>{welcome.as
+            ? <><strong>You're in!</strong><span>You joined {welcome.club ? <b>{welcome.club}</b> : 'the club'} as <b>{welcome.as}</b>. Your scores, players and leagues now sync automatically. There is nothing more to do.</span></>
+            : <><strong>Your club is shared!</strong><span>Friends join with the code <b>{link.code}</b> (tap Invite a friend to send it). Every night and player any of you adds syncs automatically.</span></>}
+          {iosTab && <span className="club-ios-hint">Joined in a browser tab. If you play in the Switch app on your Home Screen, join there too with code {link.code}.</span>}
+          <button className="text-link" onClick={() => { clearJoined(); setNote(''); setLink(loadLink()); }}>Got it</button></div>
+      </div>}
+      <div className="club-sharing-head"><CheckCircle size={22} weight="fill" /><div><strong>{clubName || 'Your shared club'}</strong><span>Joined. Syncing automatically · last in step {ago(link.lastSyncAt)}{note ? ` · ${note}` : ''}</span></div></div>
+      {error && <p className="score-error" role="alert">{error}</p>}
+      <div className="manage-actions"><span className="club-code-small" aria-label="Club code">{link.code}</span><button className="secondary" onClick={send}>Invite a friend</button><button className="text-link" disabled={busy} onClick={now}>Sync now</button><button className="text-link" onClick={leave}>Leave club</button></div>
+      {confirmSheet}
+    </section>;
+  }
 
   if (joining) return <section className="club-sharing" aria-label="Join a club">
     <div className="club-sharing-head"><UsersThree size={22} weight="fill" /><div><strong>Join a club</strong><span>Enter the club code a friend gave you.</span></div></div>

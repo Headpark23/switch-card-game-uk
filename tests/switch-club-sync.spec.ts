@@ -42,7 +42,7 @@ test("a shared club: players, nights and stats reach every phone, in both direct
   await playNight(host, "Mark", "Rebecca", "second");
   await host.getByRole("navigation").getByRole("button", { name: "Club", exact: true }).click();
   await host.getByRole("button", { name: "Share this club" }).click();
-  const code = (await host.locator(".club-code").textContent())!.trim();
+  const code = (await host.locator(".club-code-small").textContent())!.trim();
   expect(code).toMatch(/^[A-Z2-9]{8}$/);
 
   // Rebecca has used the app before, opens the club on her own phone and says who she is.
@@ -54,7 +54,12 @@ test("a shared club: players, nights and stats reach every phone, in both direct
   await friend.getByRole("button", { name: "Find club" }).click();
   await expect(friend.getByText("Which one are you?")).toBeVisible();
   await friend.getByRole("button", { name: "Rebecca", exact: true }).click();
-  await expect(friend.getByText("Shared club")).toBeVisible();
+  await expect(friend.getByText("You're in!")).toBeVisible();
+  await expect(friend.getByText("Which one are you?")).toBeHidden();
+  // The welcome goes away when dismissed, leaving a calm status with the way out.
+  await friend.getByRole("button", { name: "Got it" }).click();
+  await expect(friend.getByText("You're in!")).toBeHidden();
+  await expect(friend.getByRole("button", { name: "Leave club" })).toBeVisible();
   expect(await playersOn(friend)).toEqual(["Mark", "Rebecca"]);
 
   // The night played before she joined is in her history, as a win.
@@ -85,11 +90,12 @@ test("a club link opens straight to 'Which one are you?'", async ({ browser }) =
   await playNight(host, "Mark", "Rebecca", "second");
   await host.getByRole("navigation").getByRole("button", { name: "Club", exact: true }).click();
   await host.getByRole("button", { name: "Share this club" }).click();
-  const code = (await host.locator(".club-code").textContent())!.trim();
+  const code = (await host.locator(".club-code-small").textContent())!.trim();
   await friend.goto(`/?club=${code}`);
   await expect(friend.getByText("Which one are you?")).toBeVisible();
   await friend.getByRole("button", { name: "Rebecca", exact: true }).click();
-  await expect(friend.getByText("Shared club")).toBeVisible();
+  await expect(friend.getByText("You're in!")).toBeVisible();
+  await expect(friend.getByText("Which one are you?")).toBeHidden();
   await hostContext.close(); await friendContext.close();
 });
 

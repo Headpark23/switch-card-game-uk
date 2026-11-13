@@ -142,6 +142,7 @@ export async function createClub(): Promise<string> {
   saveLink({ code: result.code, joinedAt: Date.now(), lastSyncAt: Date.now() });
   lastSent = ""; lastStamp = 0;
   if (result.doc) writeClub((current) => applyClub(current, result.doc as ClubDoc));
+  markJoined(result.doc?.name ?? "", "");
   return result.code;
 }
 
@@ -152,6 +153,9 @@ export async function joinClub(code: string, as: string): Promise<void> {
   saveLink({ code: clean, joinedAt: Date.now() });
   lastSent = ""; lastStamp = 0;
   writeClub((current) => claimByName(applyClub(current, result.doc as ClubDoc), as));
+  markJoined(result.doc?.name ?? "", as.trim());
+  // The invitation has done its job: take it out of the address so nothing offers to join again.
+  try { const url = new URL(window.location.href); if (url.searchParams.has("club")) { url.searchParams.delete("club"); window.history.replaceState(null, "", url.pathname + url.search + url.hash); } } catch { /* ignore */ }
   await syncClub();
 }
 
@@ -160,7 +164,15 @@ let joinWanted = false;
 export const wantJoinForm = () => { joinWanted = true; };
 export const takeJoinRequest = () => { const wanted = joinWanted; joinWanted = false; return wanted; };
 
-export function leaveClub() { saveLink(null); lastSent = ""; lastStamp = 0; }
+/** Remembered for a few minutes after joining so the "You are in" message survives screens reloading. */
+const JOINED_KEY = "switchJustJoined";
+export function markJoined(club: string, as: string) { try { sessionStorage.setItem(JOINED_KEY, JSON.stringify({ club, as, at: Date.now() })); } catch { /* private mode */ } }
+export function justJoined(): { club: string; as: string } | null {
+  try { const raw = JSON.parse(sessionStorage.getItem(JOINED_KEY) || "null"); return raw && Date.now() - raw.at < 5 * 60_000 ? { club: String(raw.club || ""), as: String(raw.as || "") } : null; } catch { return null; }
+}
+export function clearJoined() { try { sessionStorage.removeItem(JOINED_KEY); } catch { /* private mode */ } }
+
+export function leaveClub() { clearJoined(); saveLink(null); lastSent = ""; lastStamp = 0; }
 
 /**
  * Exchanges this phone's club with the shared one. Sends only when something here has changed, and otherwise just asks
