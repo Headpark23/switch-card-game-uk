@@ -52,7 +52,7 @@ test("the presentation plan lands cards one at a time from the seat that played 
   const result = await page.evaluate(async () => {
     const table = await import("/src/switch/table.ts");
     const show = await import("/src/switch/presentation.ts");
-    const names = ["You", "Ruby", "Max", "Ivy"];
+    const names = ["You", "John", "Paul", "George"];
     const base = { hands: [["3C", "4C"], ["5S", "5C", "9D"], ["QD", "QC"], ["6D", "6S"]], drawPile: ["8D", "9S"], discardPile: ["4D", "5H"], currentSuit: "H", turn: 1, direction: 1, dealer: 0, pendingPenalty: null, status: "playing", winner: null, move: 0 };
     const action = { type: "play", cards: ["5S", "5C"] };
     const after = table.applyTableAction(base as never, action as never);
@@ -76,7 +76,7 @@ test("the presentation plan lands cards one at a time from the seat that played 
       jackAnnounce: jackSteps.find((step) => step.kind === "announce")?.text,
     };
   });
-  // Ruby is left with one card, so the engine's result also brings a "Last Card" call.
+  // John is left with one card, so the engine's result also brings a "Last Card" call.
   expect(result.kinds).toEqual(["think", "card", "card", "announce"]);
   expect(result.seats).toEqual([1, 1, 1, 1]);
   // Thinking: old top. First card in the air: still old top. Second in the air: first card on top. Then the second card on top.
@@ -84,14 +84,14 @@ test("the presentation plan lands cards one at a time from the seat that played 
   expect(result.counts).toEqual([3, 2, 1, 1, 1]);
   expect(result.active).toEqual([1, 1, 1, 1, 2]);
   expect(result.jackFlights).toEqual([1, 1, 1]);
-  // Think, three jacks in the air, then the reversal (and Ruby's Last Card) once the last jack is down.
+  // Think, three jacks in the air, then the reversal (and John's Last Card) once the last jack is down.
   expect(result.jackDirections).toEqual([1, 1, 1, 1, -1, -1]);
   expect(result.jackAfterTurn).toBe(0);
   expect(result.jackAnnounce).toContain("anticlockwise");
 });
 
 test("a computer's multi-card play lands card by card, in order, and never reorders", async ({ page }) => {
-  // Ruby holds two fives and plays them both; the pile must show 5H, then her first five, then her second.
+  // John holds two fives and plays them both; the pile must show 5H, then his first five, then his second.
   await seedTable(page, { hands: [["3C", "4C", "6C"], ["5S", "5C", "9D"], ["QD", "QC", "4S"]], discard: ["4D", "5H"], suit: "H", turn: 1 });
   await resume(page);
   await watch(page);
@@ -105,8 +105,8 @@ test("a computer's multi-card play lands card by card, in order, and never reord
     const previous = orders[index - 1].split(" ");
     expect(orders[index].split(" ").slice(0, -1).join(" ")).toBe(previous.slice(-(orders[index].split(" ").length - 1)).join(" "));
   }
-  // The highlight sat on Ruby while she chose, then moved on.
-  expect(statuses).toContain("RUBY IS CHOOSING");
+  // The highlight sat on John while he chose, then moved on.
+  expect(statuses).toContain("JOHN IS CHOOSING");
   expect(statuses.at(-1)).toBe("YOUR MOVE");
 });
 
@@ -128,9 +128,9 @@ test("your own set lands in the order you tapped, and a double tap plays it once
   // One play only: three sixes left the hand and the nine stayed, so it is time to call "Last Card".
   await expect(page.getByText("One card remaining")).toBeVisible();
   await expect(page.getByTestId("turn-status")).toHaveText("YOUR CALL");
-  await expect(page.locator(".seat").first()).toHaveText(/Ruby3 cards/);
+  await expect(page.locator(".seat").first()).toHaveText(/John3 cards/);
   await page.getByRole("button", { name: 'Say "Last Card"' }).click();
-  await expect(page.getByTestId("turn-status")).toHaveText(/RUBY/);
+  await expect(page.getByTestId("turn-status")).toHaveText(/JOHN/);
 });
 
 test("an eight makes the next player miss a turn, and the highlight follows the engine", async ({ page }) => {
@@ -139,14 +139,14 @@ test("an eight makes the next player miss a turn, and the highlight follows the 
   await watch(page);
   await page.getByRole("button", { name: /Select Eight of hearts/ }).click();
   await page.getByRole("button", { name: "Play selected" }).click();
-  await expect(page.getByTestId("table-announce")).toContainText("Ruby misses a turn");
+  await expect(page.getByTestId("table-announce")).toContainText("John misses a turn");
   await expect.poll(async () => (await read(page)).statuses.at(-1), { timeout: 15_000 }).toBe("YOUR MOVE");
   const { statuses } = await read(page);
-  // Ruby misses: the move passes through her (accepting), then Max, then back to you.
-  const ruby = statuses.findIndex((s) => s.startsWith("RUBY"));
-  const max = statuses.findIndex((s) => s.startsWith("MAX"));
-  expect(ruby).toBeGreaterThan(-1);
-  expect(max).toBeGreaterThan(ruby);
+  // John misses: the move passes through him (accepting), then Paul, then back to you.
+  const john = statuses.findIndex((s) => s.startsWith("JOHN"));
+  const paul = statuses.findIndex((s) => s.startsWith("PAUL"));
+  expect(john).toBeGreaterThan(-1);
+  expect(paul).toBeGreaterThan(john);
 });
 
 test("a finished game is logged exactly once and the saved game is cleared", async ({ page }) => {
@@ -172,11 +172,11 @@ test("leaving mid-animation stops the timers, and the game resumes in a consiste
   await seedTable(page, { hands: [["3C", "4C", "6C"], ["5S", "5C", "9D"], ["QD", "QC", "4S"]], discard: ["4D", "5H"], suit: "H", turn: 1 }, { switchTableSpeed: "relaxed" });
   await page.addInitScript(() => localStorage.setItem("switchTableSpeed", "relaxed"));
   await resume(page);
-  await expect(page.getByTestId("turn-status")).toHaveText("RUBY IS CHOOSING");
+  await expect(page.getByTestId("turn-status")).toHaveText("JOHN IS CHOOSING");
   await page.getByRole("button", { name: "Exit" }).click();
   await page.waitForTimeout(2500);
   expect(errors).toEqual([]);
-  // The saved game already holds the engine's result: Ruby's move happened exactly once.
+  // The saved game already holds the engine's result: John's move happened exactly once.
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("switchTableGame") || "null"));
   expect(saved.game.hands[1].length).toBeLessThan(3);
   const discard = saved.game.discardPile as string[];
