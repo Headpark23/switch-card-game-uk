@@ -11,7 +11,7 @@ import { claimMe, mergeProfiles } from '../switch/identity';
 import { useConfirm } from '../Confirm';
 import { derivePlayerStats } from '../switch/analytics';
 import { getHistory } from '../switch/history';
-import { ensureProfiles, getProfiles, renameProfile, resolveHistoryPlayerId } from '../switch/profiles';
+import { ensureProfiles, getProfiles, isNameTaken, nameTakenMessage, renameProfile, resolveHistoryPlayerId } from '../switch/profiles';
 import { countryName } from '../switch/places';
 import { readClub, updateClub } from '../switch/clubStore';
 import NightDetail from './NightDetail';
@@ -66,7 +66,8 @@ export default function MePage({ onPlay, onClub, onPrivacy, initialSection = 'ov
       <label className="target-field"><span>Or type your name</span><KeyboardInput aria-label="Your name" value={draft} placeholder="Your name" onChange={(event) => setDraft(event.target.value)} /></label>
       {error && <p className="score-error" role="alert">{error}</p>}
       <button className="primary" disabled={!draft.trim()} onClick={() => {
-        try { apply((current) => { const ensured = ensureProfiles(current, [draft]); return claimMe(ensured.extensions, ensured.players[0].id); }); keyboard.hide(); setError(''); } catch (reason) { setError(reason instanceof Error ? reason.message : 'That name could not be saved.'); }
+        // Typing a registered player's name is not a way to become them: they pick their name from the list above instead.
+        try { apply((current) => { if (isNameTaken(current, draft)) throw new Error(nameTakenMessage(draft)); const ensured = ensureProfiles(current, [draft]); return claimMe(ensured.extensions, ensured.players[0].id); }); keyboard.hide(); setError(''); } catch (reason) { setError(reason instanceof Error ? reason.message : 'That name could not be saved.'); }
       }}>This is me <ArrowRight size={18} /></button>
       <button className="text-link" onClick={() => apply((current) => ensureMe(current).extensions)}>Skip and call me “You”</button>
       {onPrivacy && <button className="text-link" onClick={onPrivacy}>Privacy: what stays on your phone <ArrowRight size={16} /></button>}
@@ -96,13 +97,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, initialSection = 'ov
   const rename = async () => {
     keyboard.hide();
     const clean = draft.trim();
-    const existing = profiles.find((profile) => profile.id !== me.id && profile.name.toLowerCase() === clean.toLowerCase());
-    if (existing) {
-      // That name is already saved, usually from a game night. It is the same person, so combine the two records.
-      if (!await confirm({ title: `You are ${existing.name}?`, message: `${existing.name} is already a saved player. Your games against the computer, nights, badges and streaks from both will be combined under ${existing.name}.`, confirmLabel: `Yes, I am ${existing.name}` })) return;
-      try { apply((current) => claimMe(mergeProfiles(current, me.id, existing.id), existing.id)); setEditing(false); setError(''); } catch (reason) { setError(reason instanceof Error ? reason.message : 'That name could not be saved.'); }
-      return;
-    }
+    if (isNameTaken(extensions, clean, me.id)) { setError(nameTakenMessage(clean)); return; }
     try { apply((current) => renameProfile(current, me.id, draft)); setEditing(false); setError(''); } catch (reason) { setError(reason instanceof Error ? reason.message : 'That name could not be saved.'); }
   };
 

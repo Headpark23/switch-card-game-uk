@@ -108,7 +108,7 @@ test("profiles validate duplicates, archive safely and resolve only unambiguous 
   expect(result.renamed.future).toEqual({ retain: true });
   expect(result.renamed.switchProfiles.find((profile: { id: string }) => profile.id === "blair").name).toBe("Blair James");
   expect(result.archived.switchProfiles.find((profile: { id: string }) => profile.id === "alex").archived).toBe(true);
-  expect(result.duplicateError).toContain("already exists");
+  expect(result.duplicateError).toBe("alex is taken. Pick another name.");
   expect(result.uniqueResolution).toBe("alex");
   expect(result.ambiguousResolution).toBeNull();
 });

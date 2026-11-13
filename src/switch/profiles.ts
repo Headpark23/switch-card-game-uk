@@ -96,14 +96,22 @@ export function ensureProfiles(
   return { extensions: putProfiles(extensions, profiles), profiles: clone(profiles), players };
 }
 
+/** True when a registered (visible) player already has this name. The automatic "You" player never counts. */
+export function isNameTaken(extensions: Readonly<Record<string, unknown>>, name: string, exceptId?: string): boolean {
+  const wanted = normalise(name);
+  if (!wanted || wanted === "you") return false;
+  return getProfiles(extensions).some((profile) => !profile.archived && profile.id !== exceptId && normalise(profile.name) === wanted);
+}
+
+/** What anyone is told when they try to name themselves after a registered player. */
+export const nameTakenMessage = (name: string) => `${name.trim()} is taken. Pick another name.`;
+
 export function renameProfile(extensions: Readonly<Record<string, unknown>>, profileId: string, name: string): Record<string, unknown> {
   const profiles = getProfiles(extensions);
   const profile = profiles.find((entry) => entry.id === profileId);
   if (!profile) throw new Error("That saved player no longer exists.");
   const clean = cleanName(name);
-  if (profiles.some((entry) => entry.id !== profileId && !entry.archived && normalise(entry.name) === normalise(clean))) {
-    throw new Error(`A player called ${clean} already exists.`);
-  }
+  if (isNameTaken(extensions, clean, profileId)) throw new Error(nameTakenMessage(clean));
   return putProfiles(extensions, profiles.map((entry) => entry.id === profileId ? { ...entry, name: clean, updatedAt: Date.now() } : entry));
 }
 

@@ -101,7 +101,11 @@ export default function ClubSharing() {
       <span>{found.nights} saved night{found.nights === 1 ? '' : 's'} will join your history. Pick your name so your wins and losses count as yours.</span>
       <div className="player-tokens">{found.players.map((name) => <button key={name} disabled={busy} onClick={() => join(name)}>{name}</button>)}</div>
       <label><span>Not on the list? Type your name</span><KeyboardInput aria-label="Your name" value={newName} placeholder="Your name" onChange={(event) => setNewName(event.target.value)} /></label>
-      <button className="secondary" disabled={busy || !newName.trim()} onClick={() => join(newName)}>Add me and join</button>
+      <button className="secondary" disabled={busy || !newName.trim()} onClick={() => {
+        // A name already on the club's list belongs to someone: they tap it above, nobody else can type it.
+        if (found.players.some((name) => name.trim().toLowerCase() === newName.trim().toLowerCase())) { setError(`${newName.trim()} is taken. Pick another name. (If that is you, tap your name in the list above.)`); return; }
+        void join(newName);
+      }}>Add me and join</button>
     </div>}
     {error && <p className="score-error" role="alert">{error}</p>}
     <button className="text-link" onClick={() => { setJoining(false); setFound(null); setError(''); }}>Cancel</button>
