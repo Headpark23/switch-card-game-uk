@@ -50,6 +50,33 @@ test("a hidden same-name twin never blocks starting a match, and converge folds 
   expect(result.after[0].id).toBe("martin-old");
 });
 
+test("names stick: starting games, merging twins and syncing never drop or rename a player", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const profiles = await import("/src/switch/profiles.ts");
+    const sync = await import("/src/switch/clubSync.ts");
+    const mk = (id: string, name: string, createdAt: string, archived = false) => ({ version: 1, id, name, colour: "forest", createdAt, archived });
+    let ext: Record<string, unknown> = {
+      switchProfiles: [mk("rebecca", "Rebecca", "2026-11-01T10:00:00.000Z"), mk("martin-a", "Martin", "2026-11-01T10:00:00.000Z", true), mk("martin-b", "Martin", "2026-11-02T10:00:00.000Z")],
+      switchMe: { id: "rebecca" },
+    };
+    const names = () => profiles.getProfiles(ext).filter((p: { archived: boolean }) => !p.archived).map((p: { name: string }) => p.name).sort();
+    const before = names();
+    // Start several games in a row, with the club merge running each time, exactly as the Score screen does.
+    for (let game = 0; game < 3; game += 1) {
+      const ensured = profiles.ensureProfiles(sync.converge(ext), ["Rebecca", "Martin"]);
+      ext = ensured.extensions;
+    }
+    const all = profiles.getProfiles(ext);
+    return { before, after: names(), total: all.length, ids: profiles.resolveHistoryPlayerId({ id: "old", name: "martin" }, all) };
+  });
+  expect(result.before).toEqual(["Martin", "Rebecca"]);
+  expect(result.after).toEqual(["Martin", "Rebecca"]);
+  // Nothing is ever deleted: every saved player (and so every game under them) is still there.
+  expect(result.total).toBe(3);
+  expect(result.ids).not.toBeNull();
+});
+
 test("profiles validate duplicates, archive safely and resolve only unambiguous history", async ({ page }) => {
   await page.goto("/");
   const result = await page.evaluate(async () => {

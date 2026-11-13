@@ -116,5 +116,8 @@ export function archiveProfile(extensions: Readonly<Record<string, unknown>>, pr
 export function resolveHistoryPlayerId(player: Player, profiles: readonly LocalProfile[]): string | null {
   if (profiles.some((profile) => profile.id === player.id)) return player.id;
   const matches = profiles.filter((profile) => normalise(profile.name) === normalise(player.name));
-  return matches.length === 1 ? matches[0].id : null;
+  if (matches.length === 1) return matches[0].id;
+  // A hidden (archived) twin never makes a name ambiguous: one active player with the name is the person.
+  const active = matches.filter((profile) => !profile.archived);
+  return active.length === 1 ? active[0].id : null;
 }
