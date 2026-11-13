@@ -2,14 +2,12 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function openScorekeeper(page: Page) {
   await page.goto("/?typedDraw=1");
-  await page.getByRole("button", { name: "Play", exact: true }).click();
-  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
 }
 
 async function reopenScorekeeper(page: Page) {
   await page.reload();
-  await page.getByRole("button", { name: "Play", exact: true }).click();
-  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
 }
 
 async function fillNames(page: Page) {
@@ -51,8 +49,7 @@ test("an unfinished Domino match resumes after refresh with undo history", async
     extensions: {},
   })));
   await page.reload();
-  await page.getByRole("button", { name: "Play", exact: true }).click();
-  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
   await page.getByLabel("Target score").fill("250");
   await page.getByRole("button", { name: "Start Domino" }).click();
   await page.getByLabel("Score for Player 1").fill("37");

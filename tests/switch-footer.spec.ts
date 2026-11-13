@@ -37,7 +37,7 @@ test("a bug report builds an email to the owner, with details only if ticked", a
 test("privacy page: export, then erase everything on this device", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => { localStorage.setItem("switchScoreKeeper", JSON.stringify({ hello: "world" })); localStorage.setItem("other", "keep"); });
-  await page.getByRole("button", { name: "Questions", exact: true }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Me", exact: true }).click();
   await page.getByRole("button", { name: /Privacy: what stays on your phone/ }).click();
   await expect(page.getByRole("heading", { name: /Your club is/ })).toBeVisible();
   const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download my data" }).click()]);
@@ -45,7 +45,7 @@ test("privacy page: export, then erase everything on this device", async ({ page
   await page.getByRole("button", { name: "Delete data on this device" }).click();
   await page.getByRole("button", { name: "Yes, delete" }).click();
   await page.waitForURL("**/", { timeout: 5000 });
-  await expect(page.getByRole("heading", { name: /Know the rules/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Good (morning|afternoon|evening)/ })).toBeVisible();
   expect(await page.evaluate(() => [localStorage.getItem("switchScoreKeeper"), localStorage.getItem("other")])).toEqual([null, "keep"]);
 });
 
@@ -71,6 +71,7 @@ test("the footer has a share button that uses the share sheet, or copies the lin
 
 test("History no longer shows a second Google sign-in", async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("navigation").getByRole("button", { name: "Club", exact: true }).click();
   await page.getByRole("button", { name: "History", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Back up your club" })).toBeVisible();
   await expect(page.getByText(/Switch member|Cloud backup/)).toHaveCount(0);
@@ -78,8 +79,7 @@ test("History no longer shows a second Google sign-in", async ({ page }) => {
 
 test("the scorekeeper has no sign-in prompt of its own", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Play", exact: true }).click();
-  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Keep every score straight." })).toBeVisible();
   await expect(page.getByText(/Optional Google sign-in|Continue with Google/)).toHaveCount(0);
 });

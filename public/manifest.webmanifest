@@ -1,7 +1,7 @@
 {
-  "name": "Switch — A better game night",
+  "name": "Switch — Your game-night club",
   "short_name": "Switch",
-  "description": "Learn Switch, settle rules and keep score on card night.",
+  "description": "Play Switch, keep score on card night, and track your club, leagues and badges.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

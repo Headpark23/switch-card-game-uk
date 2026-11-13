@@ -2,12 +2,12 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function openClubhouse(page: Page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "Play", exact: true }).click();
-  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Club", exact: true }).click();
 }
 
 test("score setup creates and reuses stable local profiles", async ({ page }) => {
-  await openClubhouse(page);
+  await page.goto("/");
+  await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
   const names = page.getByPlaceholder("Enter name");
   await names.nth(0).fill("Alex");
   await names.nth(1).fill("Blair");
@@ -83,8 +83,7 @@ test("a backup file can be downloaded and restored, and a wrong file changes not
     localStorage.setItem("switchScoreKeeper", JSON.stringify({ schemaVersion: 1, selectedFormat: "domino", players: [], scores: {}, target: 100, extensions: { switchProfiles: profiles } }));
   });
   await page.reload();
-  await page.getByRole("button", { name: "Play", exact: true }).click();
-  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
   await page.getByRole("button", { name: "History", exact: true }).click();
 
   const download = page.waitForEvent("download");

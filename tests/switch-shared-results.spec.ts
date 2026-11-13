@@ -89,7 +89,7 @@ test("my history opens the full record of a night: date, venue and every score",
     joined.collectResults("Mark", [record as never]);
   }, night);
   await page.reload();
-  await page.getByRole("button", { name: "Me", exact: true }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Me", exact: true }).click();
   await page.getByRole("button", { name: "History", exact: true }).click();
   await expect(page.getByText("1 game · 0 won · 1 lost. Tap any game for the full score.")).toBeVisible();
   await page.getByRole("button", { name: /Friday, lost/ }).click();
@@ -107,8 +107,7 @@ test("saving a night while a code is live sends the result to everyone who joine
     return route.fulfill({ status: 404, contentType: "application/json", body: "{}" });
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "Play", exact: true }).click();
-  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
   await page.getByRole("button", { name: "One v One" }).click();
   const names = page.getByPlaceholder("Enter name");
   for (let i = 0; i < await names.count(); i += 1) await names.nth(i).fill("Player " + (i + 1));

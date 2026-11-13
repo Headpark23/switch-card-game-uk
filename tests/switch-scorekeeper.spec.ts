@@ -2,8 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function openScorekeeper(page: Page) {
   await page.goto("/?typedDraw=1");
-  await page.getByRole("button", { name: "Play", exact: true }).click();
-  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Keep every score straight." })).toBeVisible();
 }
 
@@ -26,8 +25,7 @@ test("named domino scores persist, validate and undo", async ({ page }) => {
   await expect(page.getByText("0 points").first()).toBeVisible();
 
   await page.reload();
-  await page.getByRole("button", { name: "Play", exact: true }).click();
-  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
   await expect(page.getByText("0 points").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Undo last score" })).toBeDisabled();
 });
@@ -36,8 +34,7 @@ test("unreadable saved scores stay untouched until explicit setup", async ({ pag
   await page.goto("/");
   await page.evaluate(() => localStorage.setItem("switchScoreKeeper", "{broken"));
   await page.reload();
-  await page.getByRole("button", { name: "Play", exact: true }).click();
-  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("have not been overwritten");
   expect(await page.evaluate(() => localStorage.getItem("switchScoreKeeper"))).toBe("{broken");
 });
@@ -94,7 +91,7 @@ test("a completed night is named, saved once and restored with its result", asyn
   await openScorekeeper(page);
   await page.getByRole("button", { name: "History", exact: true }).click();
   await expect(page.getByText("No completed nights saved yet.")).toBeVisible();
-  await page.getByRole("button", { name: "Score", exact: true }).click();
+  await page.getByRole("button", { name: "Scorecard", exact: true }).click();
   await fillVisibleNames(page);
   await page.getByLabel("Target score").fill("10");
   await page.getByRole("button", { name: "Start Domino" }).click();
@@ -110,8 +107,7 @@ test("a completed night is named, saved once and restored with its result", asyn
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("switchScoreKeeper") ?? "{}").extensions.switchNightHistory)).toHaveLength(1);
 
   await page.reload();
-  await page.getByRole("button", { name: "Play", exact: true }).click();
-  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
   await page.getByRole("button", { name: "History", exact: true }).click();
   await page.getByText("Friday Final", { exact: true }).click();
   await expect(page.getByText("Player 1 — 10 points", { exact: true })).toBeVisible();
@@ -142,8 +138,7 @@ test("history exports and deletes only after confirmation", async ({ page }) => 
     },
   })));
   await page.reload();
-  await page.getByRole("button", { name: "Play", exact: true }).click();
-  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
 
   await page.getByRole("button", { name: "History", exact: true }).click();
   const downloadPromise = page.waitForEvent("download");
@@ -170,8 +165,7 @@ for (const device of ["iPhone", "Pixel 10"]) {
       await page.getByRole("button", { name: /Preview device/ }).click();
       await page.getByText("Pixel 10").click();
     }
-    await page.getByRole("button", { name: "Play", exact: true }).click();
-    await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+    await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
     await expect(page.locator(".score-start")).toBeVisible();
     const fit = await page.evaluate(() => {
       const start = document.querySelector(".score-start")!.getBoundingClientRect();
@@ -327,8 +321,7 @@ test("One v One can also be played as best of an odd number of games", async ({ 
 
 async function reopenScorekeeper(page: Page) {
   await page.reload();
-  await page.getByRole("button", { name: "Play", exact: true }).click();
-  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Keep every score straight." })).toBeVisible();
 }
 
@@ -481,8 +474,7 @@ test("a single league finishes with a final and a plate, and can be saved", asyn
 test("starting Group Play without tapping Draw still draws the leagues", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => { let seed = 42; Math.random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }; });
-  await page.getByRole("button", { name: "Play", exact: true }).click();
-  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
   await page.getByRole("button", { name: "Group Play", exact: true }).click();
   await fillVisibleNames(page);
   // The draw comes after the names, and nothing is ranked before a round is played.
@@ -507,24 +499,22 @@ test("ending a game asks in an in-app sheet, and Cancel keeps the game", async (
   await expect(page.getByLabel("Score for Player 1")).toBeVisible();
 });
 
-test("the back link and the lit bottom tab follow where the scorekeeper was opened from", async ({ page }) => {
+test("Score and Club each keep their own tab lit while you move between their sections", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /Start a game night/ }).click();
   const nav = page.getByRole("navigation", { name: "Main navigation" });
-  await expect(nav.getByRole("button", { name: "Play" })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("button", { name: /Keep score/ }).click();
+  await expect(nav.getByRole("button", { name: "Score", exact: true })).toHaveAttribute("aria-current", "page");
   await page.getByRole("button", { name: "History", exact: true }).click();
-  // Switching sections inside the scorekeeper does not move the bottom tab.
-  await expect(nav.getByRole("button", { name: "Play" })).toHaveAttribute("aria-current", "page");
-  await page.getByRole("button", { name: "Back to Home" }).click();
-  await expect(page.getByRole("button", { name: /Learn the rules/ })).toBeVisible();
+  await expect(nav.getByRole("button", { name: "Score", exact: true })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("button", { name: "Scorecard", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Keep every score straight." })).toBeVisible();
 
-  await nav.getByRole("button", { name: "Play" }).click();
-  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
-  await page.getByRole("button", { name: "Back to Play" }).click();
-  await expect(page.getByRole("button", { name: "Open the Switch scorekeeper" })).toBeVisible();
-
-  await nav.getByRole("button", { name: "Club" }).click();
-  await expect(nav.getByRole("button", { name: "Club" })).toHaveAttribute("aria-current", "page");
-  await page.getByRole("button", { name: "Score", exact: true }).click();
-  await expect(nav.getByRole("button", { name: "Club" })).toHaveAttribute("aria-current", "page");
+  await nav.getByRole("button", { name: "Club", exact: true }).click();
+  await expect(nav.getByRole("button", { name: "Club", exact: true })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("button", { name: "Seasons", exact: true }).click();
+  await expect(nav.getByRole("button", { name: "Club", exact: true })).toHaveAttribute("aria-current", "page");
+  // Club remembers the section you were in.
+  await nav.getByRole("button", { name: "Home", exact: true }).click();
+  await nav.getByRole("button", { name: "Club", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Seasons", exact: true })).toHaveAttribute("aria-pressed", "true");
 });

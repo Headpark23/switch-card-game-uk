@@ -6,10 +6,11 @@
 
 - Preserve the current warm cream, forest-green, and gold visual system, editorial typography, generated card-table hero, and simple four-tab information architecture.
 - Continue through controlled, incremental improvements. Do not restart the project, replace the chosen design direction, or rebuild working features without a demonstrated technical need.
-- Keep Switch primarily instructional: quick rule answers, power-card reference, game modes, and a guided tutorial take priority over extra product features.
+- Switch 2.0 (owner decision, 13 Nov 2026): Switch is "your game-night club" with four equal experiences: playing Switch against the computer, scoring real game nights, clubs and competitions, and personal achievements. It replaces the earlier "primarily instructional" positioning; learning stays complete but sits under Home ("Learn rules").
 - Treat the complete game rules as the app's main attraction. Lead with an attractive, interactive teaching narrative derived from the original app's Rules and Game Flow sections, then connect it directly to practice in the guided game.
 - Keep “Learn to play” as a complete guided game against the computer. Offer optional legal-move hints, explain invalid moves, enforce the app's Switch rules, and continue play until either side wins.
-- Switch is a companion for physical card nights (scores, leagues, stats); on-phone play exists only as a tutorial. The tutorial must be fabulous and encourage physical play: every move explains what was played, the rule, why it matters, what you could play and a tip, and the flow leads from practice to real cards to logging the night. Build the coach and lessons game-agnostic so the pattern can be reused in other physical card and board game apps.
+- Competitive play against 1 to 4 computers lives in PLAY and counts towards your record. Guided practice lives in Learn the Rules, never counts towards stats, streaks or badges, and ends with "Ready for the real challenge? Play against the computer."
+- The tutorial remains a companion for physical card nights. The tutorial must be fabulous and encourage physical play: every move explains what was played, the rule, why it matters, what you could play and a tip, and the flow leads from practice to real cards to logging the night. Build the coach and lessons game-agnostic so the pattern can be reused in other physical card and board game apps.
 - Test existing interactions before changing them, then verify iPhone and Pixel layouts after each meaningful change.
 
 In ChatGPT Work Mode, run `sites-preview start "$PWD"`, open `http://terminal.local:4173/` in the cloud browser, and verify the rendered app and its primary interactions. Keep that preview open and tell the user to inspect it in the cloud browser; do not present the local URL as a user-facing chat link. In Codex Desktop, run the local server yourself, open the preview in the in-app browser, and provide the clickable local URL. Do not deploy to Sites unless the user explicitly asks to share, publish, or deploy. Do not give the user server-start instructions when you can run it.
@@ -99,6 +100,12 @@ Darts: first to three legs wins a set. Knock Out: whoever finishes last in a rou
 - Real playing cards are the icon language: home actions are four aces dealt onto the table, and game types and modes use `MiniFan` hands instead of numbers or generic icons. Other icons come from Phosphor in one weight; no emoji or text glyphs as icons.
 - No small-caps label above a heading, and no thick coloured side stripes on cards or callouts.
 - Wins are celebrated with `CardShower` (a match, Knock Out, Cup, league championship, beating the computer); it never blocks taps and is skipped under reduced motion.
+
+## Switch 2.0 decisions (13 Nov 2026)
+- Five permanent bottom tabs: Home | Play | Score | Club | Me. The lit tab follows the section on screen (`SECTION` map in `Prototype.tsx`); no oversized hero tab.
+- Home is a compact dashboard on the photographic `hero.webp` background: greeting, resume cards, four launch tiles (Play cards, Keep score, My club, Achievements), recent activity, discovery chips (Learn rules, Puzzles, Questions, Plan a night, Join a night).
+- The table game is presented through `src/switch/presentation.ts`: the engine decides a move once, the screen walks its steps (pause, each card landing in order from the right seat, effect) and only then shows the next player. Never render the engine's final pile early. Active seat: red glow plus readable text (YOUR MOVE / NAME IS CHOOSING).
+- Storage inventory: `docs/STORAGE-KEYS.md`. Never reset or rename keys; new data gets new keys.
 
 ## Nobody loses a score (owner decisions, 13 Nov 2026)
 - Every game played is a stat: wins and losses, on nights and against the computer, all count and all show in Me > History. Tapping a row opens the full record (date, night name, venue, every score).

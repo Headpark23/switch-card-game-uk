@@ -48,7 +48,7 @@ export default function NightDetail({ night, game, meId, profiles, onClose }: {
           <li><Robot size={17} weight="bold" /><span>{record.opponents === 1 ? 'One computer player' : `${record.opponents} computer players`} · {LEVEL_NAMES[record.level]}</span></li>
           <li><Trophy size={17} weight="bold" /><span>Finished {ordinal(record.place)} of {record.opponents + 1} · {record.moves} moves</span></li>
         </ul>
-        <p className="dash-note">Practice games count towards your record, streaks and badges.</p>
+        <p className="dash-note">Games against the computer count towards your record, streaks and badges.</p>
       </div>;
     })()}
   </BottomSheet>;

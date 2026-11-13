@@ -9,8 +9,7 @@ test("a host shares live scores and updates reach the shared code", async ({ pag
     return route.fulfill({ status: 404, body: "{}" });
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "Play", exact: true }).click();
-  await page.getByRole("button", { name: "Open the Switch scorekeeper" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Keep every score straight." })).toBeVisible();
   const names = page.getByPlaceholder("Enter name");
   for (let i = 0; i < await names.count(); i += 1) await names.nth(i).fill("Player " + (i + 1));
