@@ -79,6 +79,7 @@ test("without a Google client ID the sign-in panel stays hidden", async ({ page 
   await page.goto("/");
   await expect(page.getByText("Advertisement", { exact: true })).toHaveCount(0);
   await expect(page.getByText("More time at the table")).toHaveCount(0);
+  await page.getByRole("navigation").getByRole("button", { name: "Club", exact: true }).click();
   await page.getByRole("button", { name: "History", exact: true }).first().click();
   await expect(page.getByText("Back up your club")).toBeVisible();
   await expect(page.getByText("Cloud backup")).toHaveCount(0);

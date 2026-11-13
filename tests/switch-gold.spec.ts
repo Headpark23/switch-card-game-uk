@@ -28,7 +28,8 @@ test("puzzles score a right answer, explain a wrong one and track the streak", a
 
 test("quick night: names, tap round winners, finish, and it lands in history", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Quick night", exact: true }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
+  await page.getByRole("button", { name: /Quick night/ }).click();
   const names = page.getByPlaceholder("Enter name");
   await names.nth(0).fill("Ann"); await names.nth(1).fill("Ben");
   await page.getByRole("button", { name: "Deal the cards" }).click();
@@ -48,11 +49,14 @@ test("dispute chips filter the rule answers", async ({ page }) => {
   await expect(page.getByText(/matching answer/)).toBeVisible();
 });
 
-test("the welcome card appears once and remembers the choice", async ({ page }) => {
+test("a new player is welcomed towards the rules, and the welcome makes way once they have played", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("New here? Start with the five moves.")).toBeVisible();
-  await page.getByRole("button", { name: /Learn the rules/ }).click();
+  await expect(page.getByText("New to Switch?")).toBeVisible();
+  await page.getByRole("button", { name: /New to Switch/ }).click();
+  await expect(page.getByRole("heading", { name: /Learn Switch/ })).toBeVisible();
   await page.locator(".rules-back").click();
+  await page.evaluate(async () => { const log = await import("/src/switch/logGame.ts"); log.logComputerGame({ id: "cpu-welcome", opponents: 1, level: "standard", won: true, place: 1, moves: 20 }); });
   await page.reload();
-  await expect(page.getByText("New here? Start with the five moves.")).toHaveCount(0);
+  await expect(page.getByText("New to Switch?")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Recent" })).toBeVisible();
 });
