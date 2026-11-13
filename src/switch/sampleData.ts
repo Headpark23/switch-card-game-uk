@@ -3,6 +3,14 @@ import { addNight, getHistory } from "./history";
 import { getProfiles, putProfiles, type LocalProfile, type ProfileColour } from "./profiles";
 import { addNightToSeason, createSeason, getSeasons, putSeasons } from "./seasons";
 import type { Player } from "./types";
+import type { Place } from "./places";
+
+/** The demo club moves around a little, so the passport and venue badges have something to show. */
+const SAMPLE_PLACES: readonly Place[] = [
+  { name: "Alex's kitchen", country: "GB" }, { name: "Alex's kitchen", country: "GB" }, { name: "The Crown", country: "GB" }, { name: "Alex's kitchen", country: "GB" },
+  { name: "Casa Blair", country: "ES" }, { name: "Alex's kitchen", country: "GB" }, { name: "Chalet des Neiges", country: "FR" }, { name: "The Crown", country: "GB" },
+  { name: "Alex's kitchen", country: "GB" }, { name: "Villa Dana", country: "PT" },
+];
 
 /** Everything the demo creates carries this id prefix, so it can be removed without touching real data. */
 export const SAMPLE_PREFIX = "demo-";
@@ -75,6 +83,7 @@ function buildNights(now: Date): SwitchNightRecord[] {
       winnerIds: [idOf(winner)],
       outcome,
       details: [{ heading: "Sample night", lines: [outcome, "Demo data, not a real result."] }],
+      place: SAMPLE_PLACES[index % SAMPLE_PLACES.length],
     });
   });
   return nights;

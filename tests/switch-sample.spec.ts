@@ -23,10 +23,10 @@ test("sample club fills stats, charts and a league, and removes cleanly", async 
   await expect(page.getByText("Stats appear after your first saved night.")).toBeVisible();
 });
 
-test("the bottom bar has five tabs and Club opens stats, leagues and history", async ({ page }) => {
+test("the bottom bar has six tabs and Club opens stats, leagues and history", async ({ page }) => {
   await page.goto("/");
   const nav = page.getByRole("navigation", { name: "Main navigation" });
-  await expect(nav.getByRole("button")).toHaveCount(5);
+  await expect(nav.getByRole("button")).toHaveCount(6);
   await nav.getByRole("button", { name: "Club" }).click();
   await expect(nav.getByRole("button", { name: "Club" })).toHaveAttribute("aria-current", "page");
   await page.getByRole("button", { name: "Seasons", exact: true }).click();

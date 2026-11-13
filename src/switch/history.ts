@@ -4,6 +4,7 @@ import { rankLeague } from "./leagues";
 import type { KnockoutState } from "./knockout";
 import { isGameMatch, type ScoreFormat, type ScoreSession } from "./scoring";
 import type { Player } from "./types";
+import type { Place } from "./places";
 
 export interface HistorySection {
   readonly heading: string;
@@ -24,6 +25,8 @@ export interface SwitchNightRecord extends NightCompletion {
   readonly id: string;
   readonly completedAt: string;
   readonly title: string;
+  /** Where the night was played, when the host said. */
+  readonly place?: Place;
 }
 
 export type HistorySource = Readonly<Record<string, unknown>>;
@@ -216,10 +219,11 @@ export function createNightRecord(
   completion: NightCompletion,
   completedAt = new Date().toISOString(),
   id = `night-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  place?: Place,
 ): SwitchNightRecord {
   const cleanTitle = title.trim();
   if (!cleanTitle) throw new Error("Give this Switch Night a name.");
-  return clone({ ...completion, version: 1 as const, id, completedAt, title: cleanTitle });
+  return clone({ ...completion, version: 1 as const, id, completedAt, title: cleanTitle, ...(place ? { place } : {}) });
 }
 
 export function getHistory(extensions: HistorySource): SwitchNightRecord[] {
