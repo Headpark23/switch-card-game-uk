@@ -8,6 +8,7 @@ import { clearPicks, emptyLeagueProgress, recordFinisher, settleTie, undoLastRou
 import { createKnockout, createPlayoffKnockout, markLost, undoKnockout, type KnockoutState } from '../switch/knockout';
 import { addNight, completionFromCup, completionFromKnockout, completionFromLeagues, completionFromSession, createNightRecord } from '../switch/history';
 import { ensureProfiles, getProfiles } from '../switch/profiles';
+import { converge } from '../switch/clubSync';
 import ClubhouseLeagues from './ClubhouseLeagues';
 import ShareNight from './ShareNight';
 import { buildSnapshot, loadKeys, publishResult } from '../switch/shareNight';
@@ -130,7 +131,8 @@ export default function SwitchScorekeeper({onBack,backLabel='Home',initialView='
     if(format==='league'&&!drawn){const hat=keepTypedOrder?typed.map(player=>player.name):shuffled(typed.map(player=>player.name));typed=typed.map((player,index)=>({...player,name:hat[index]}));}
     try{
       // Names resolve to stable local profiles, so every night builds on the same people.
-      const ensured=ensureProfiles(storedExtensions,typed.map(player=>player.name));
+      // Same-name players (e.g. a hidden archived twin) are folded into the oldest, with their history, first.
+      const ensured=ensureProfiles(converge(storedExtensions),typed.map(player=>player.name));
       const named=[...ensured.players];const profileExt=ensured.extensions;
       setPlayers(current=>current.map((player,index)=>index<named.length?named[index]:player));
       const freshDealers:Record<string,DealerState>=format==='league'?Object.fromEntries(sizes.map((size,index)=>[`league-${index+1}`,pickDealer(named.slice(leagueOffsets[index],leagueOffsets[index]+size).map(player=>player.id))])):format==='cup'?{}:{main:pickDealer(named.map(player=>player.id))};

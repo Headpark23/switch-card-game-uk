@@ -75,8 +75,11 @@ export function ensureProfiles(
 
   for (const rawName of names) {
     const name = cleanName(rawName);
-    const matches = profiles.filter((profile) => normalise(profile.name) === normalise(name));
-    if (matches.length > 1) throw new Error(`More than one saved profile matches ${name}. Rename one before continuing.`);
+    // Two saved players can share a name (an archived one hides from the chips). Never block a night over it:
+    // use the active one, else the oldest, the same rule the club merge settles on.
+    const matches = profiles
+      .filter((profile) => normalise(profile.name) === normalise(name))
+      .sort((a, b) => Number(a.archived) - Number(b.archived) || Date.parse(a.createdAt) - Date.parse(b.createdAt) || a.id.localeCompare(b.id));
     let profile = matches[0];
     if (profile) {
       if (profile.archived) {

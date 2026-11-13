@@ -6,6 +6,7 @@ import { addNight, createNightRecord, type NightCompletion, type SwitchNightReco
 import { ShareButton } from '../ShareButton';
 import { getClubName, nightShareCard } from '../switch/club';
 import { ensureProfiles, getProfiles } from '../switch/profiles';
+import { converge } from '../switch/clubSync';
 import { loadScorekeeper, saveScorekeeper, SCOREKEEPER_STORAGE_KEY } from '../switch/storage';
 import type { Player } from '../switch/types';
 import DealerBar from './DealerBar';
@@ -41,7 +42,7 @@ export default function QuickNight({ onBack, onHistory }: { onBack: () => void; 
     const typed = names.map((entry) => entry.trim());
     if (typed.some((entry) => !entry)) { setError('Add a name for every player.'); return; }
     try {
-      const ensured = ensureProfiles(loaded.state.extensions, typed);
+      const ensured = ensureProfiles(converge(loaded.state.extensions), typed);
       setPlayers([...ensured.players]);
       setDealerState(pickDealer(ensured.players.map((player) => player.id)));
       persist(ensured.extensions, ensured.players);

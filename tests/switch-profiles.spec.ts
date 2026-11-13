@@ -26,6 +26,30 @@ test("profiles reuse normalised names and keep stable identities", async ({ page
   expect(result.second.extensions.keepMe).toBe(true);
 });
 
+test("a hidden same-name twin never blocks starting a match, and converge folds it away", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const profiles = await import("/src/switch/profiles.ts");
+    const sync = await import("/src/switch/clubSync.ts");
+    const source = {
+      switchProfiles: [
+        { version: 1, id: "martin-old", name: "Martin", colour: "forest", createdAt: "2026-11-01T10:00:00.000Z", archived: true },
+        { version: 1, id: "martin-new", name: "martin ", colour: "gold", createdAt: "2026-11-05T10:00:00.000Z", archived: false },
+      ],
+    };
+    const direct = profiles.ensureProfiles(source, ["Martin", "Sam"], { createId: () => "sam" });
+    const folded = sync.converge(source);
+    const after = profiles.ensureProfiles(folded, ["MARTIN"]);
+    return { direct: direct.players, activeProfiles: profiles.getProfiles(folded).filter((p: { archived: boolean }) => !p.archived).map((p: { id: string }) => p.id), after: after.players };
+  });
+  // Active twin wins when nothing was merged; after converge the oldest is kept, and only one is active.
+  expect(result.direct[0].id).toBe("martin-new");
+  expect(result.direct[1].id).toBe("sam");
+  expect(result.activeProfiles).toEqual(["martin-old"]);
+  expect(result.after).toHaveLength(1);
+  expect(result.after[0].id).toBe("martin-old");
+});
+
 test("profiles validate duplicates, archive safely and resolve only unambiguous history", async ({ page }) => {
   await page.goto("/");
   const result = await page.evaluate(async () => {
