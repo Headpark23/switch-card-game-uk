@@ -94,3 +94,114 @@ test("a table code that does not exist says so", async ({ browser }) => {
   await expect(page.getByRole("alert")).toContainText(/No table found/);
   await expect(page.getByRole("button", { name: "Take a seat" })).toBeDisabled();
 });
+
+// ── Tournaments online ──
+// @ts-expect-error plain JavaScript module shared with the Vercel function
+import { chooseTableAction } from "../api/_engine.js";
+
+function seeded(seed: number) {
+  let state = seed >>> 0;
+  return () => { state = (state + 0x6d2b79f5) >>> 0; let t = state; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+
+/** The server's clock can be moved on, so computer turns and the gap between games pass without waiting. */
+function server(seed: number) {
+  const store = memoryStore();
+  const clock = { offset: 0, random: seeded(seed), now: () => Date.now() + clock.offset };
+  const handle = (request: Request) => handleRoom(request, store, clock.now(), clock.random) as Promise<Response>;
+  const attach = (context: BrowserContext) => context.route("**/api/room**", async (route) => {
+    const req = route.request();
+    const response = await handle(new Request(req.url(), { method: req.method(), headers: req.headers(), body: ["GET", "HEAD"].includes(req.method()) ? undefined : (req.postData() ?? undefined) }));
+    await route.fulfill({ status: response.status, contentType: "application/json", body: await response.text() });
+  });
+  const api = async (code: string, token: string, op?: string, body?: unknown) => {
+    const response = await handle(new Request(`https://example.test/api/room?code=${code}${op ? `&op=${op}` : ""}`, { method: op ? "POST" : "GET", headers: { "content-type": "application/json", "x-seat-token": token }, body: op ? JSON.stringify(body ?? {}) : undefined }));
+    return response.json();
+  };
+  /** Plays the current game to its end: people's moves are sent for them, and time passes for the computers. */
+  const finishGame = async (code: string, tokens: Record<string, string>) => {
+    for (let step = 0; step < 3000; step += 1) {
+      const room = store.rows.get(code);
+      if (room.status !== "playing") return;
+      const seat = room.seats[room.table[room.game.turn]];
+      if (seat.kind === "human") await api(code, tokens[seat.name], "move", { action: chooseTableAction(room.game, clock.random, "standard"), lastCard: true });
+      else { clock.offset += 2_100; await api(code, Object.values(tokens)[0]); }
+    }
+    throw new Error("the game did not end");
+  };
+  return { store, clock, attach, api, finishGame };
+}
+
+async function seat(page: Page): Promise<{ code: string; token: string }> {
+  return page.evaluate(() => JSON.parse(localStorage.getItem("switchOnlineTable")!));
+}
+
+async function setUp(browser: Parameters<Parameters<typeof test>[1]>[0]["browser"], srv: ReturnType<typeof server>, mode: string, seats: number) {
+  const hostContext = await browser.newContext({ viewport: phone });
+  const friendContext = await browser.newContext({ viewport: phone });
+  await srv.attach(hostContext); await srv.attach(friendContext);
+  const host = await hostContext.newPage(); const friend = await friendContext.newPage();
+  await host.goto("/");
+  await openFriends(host);
+  await host.getByRole("button", { name: /Start a table/ }).click();
+  await host.getByLabel("Your name at the table").fill("Mark");
+  await host.getByRole("group", { name: "Way to play" }).getByRole("button", { name: mode }).click();
+  await host.getByRole("button", { name: `${seats} seats` }).click();
+  await host.getByRole("button", { name: /Set up the table/ }).click();
+  await expect(host.getByTestId("table-mode")).toContainText(mode);
+  const code = (await host.getByTestId("table-code").textContent())!.trim();
+  await friend.goto(`/?table=${code}`);
+  await friend.getByLabel("Your name at the table").fill("Rebecca");
+  await friend.getByRole("button", { name: "Take a seat" }).click();
+  await expect(friend.getByTestId("table-mode")).toContainText(mode);
+  await expect(host.getByText("Rebecca")).toBeVisible({ timeout: 10_000 });
+  await host.getByTestId("start-online").click();
+  const tokens = { Mark: (await seat(host)).token, Rebecca: (await seat(friend)).token };
+  return { host, friend, code, tokens };
+}
+
+test("online Darts: both play, the standings show between games, and the host deals the next one", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const srv = server(7);
+  const { host, friend, code, tokens } = await setUp(browser, srv, "Darts scoring", 3);
+  for (const page of [host, friend]) await expect(page.getByTestId("series-strip")).toContainText("Darts scoring · Game 1", { timeout: 10_000 });
+  await srv.finishGame(code, tokens);
+  for (const page of [host, friend]) {
+    await expect(page.getByTestId("online-standings")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId("online-standings")).toContainText("First to 3 sets");
+    await expect(page.getByTestId("next-game")).toContainText("Game 2");
+  }
+  await expect(friend.getByText(/Waiting for Mark to deal/)).toBeVisible();
+  await host.getByTestId("deal-next").click();
+  for (const page of [host, friend]) await expect(page.getByTestId("series-strip")).toContainText("Game 2", { timeout: 10_000 });
+  await expect(host.getByLabel("Your hand")).toBeVisible();
+  // The game each person played is saved in their history as part of the match.
+  const logged = await friend.evaluate(() => localStorage.getItem("switchScoreKeeper") ?? "");
+  expect(logged).toContain(`${code}-1`);
+});
+
+test("online Cup: someone not in the match being played watches it with every hand face down", async ({ browser }) => {
+  test.setTimeout(90_000);
+  // A draw where Mark and Rebecca are in different first-round matches (found by trying seeds against the real server code).
+  let chosen = 0;
+  for (let seed = 1; seed < 200 && !chosen; seed += 1) {
+    const trial = server(seed);
+    const made = await (await handleRoom(new Request("https://example.test/api/room", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: "Mark", seats: 4, mode: "cup", level: "standard" }) }), trial.store, Date.now(), trial.clock.random)).json();
+    await handleRoom(new Request(`https://example.test/api/room?code=${made.code}&op=join`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: "Rebecca" }) }), trial.store, Date.now(), trial.clock.random);
+    await trial.api(made.code, made.token, "start");
+    const room = trial.store.rows.get(made.code);
+    if (room.table.filter((index: number) => room.seats[index].kind === "human").length === 1) chosen = seed;
+  }
+  expect(chosen).toBeGreaterThan(0);
+  const srv = server(chosen);
+  const { host, friend } = await setUp(browser, srv, "Switch Cup", 4);
+  await expect(host.getByTestId("series-strip")).toContainText("Switch Cup", { timeout: 10_000 });
+  await expect(friend.getByTestId("series-strip")).toContainText("Switch Cup", { timeout: 10_000 });
+  const watcher = (await host.getByTestId("watching").count()) ? host : friend;
+  const player = watcher === host ? friend : host;
+  await expect(watcher.getByTestId("watching")).toBeVisible();
+  await expect(watcher.getByLabel("Your hand")).toHaveCount(0);
+  await expect(watcher.locator(".seat-row .seat")).toHaveCount(2);
+  await expect(player.getByLabel("Your hand")).toBeVisible();
+  await expect(player.getByTestId("watching")).toHaveCount(0);
+});

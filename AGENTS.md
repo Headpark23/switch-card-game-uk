@@ -136,6 +136,9 @@ Darts: first to three legs wins a set. Knock Out: whoever finishes last in a rou
 - Absent players get a visible countdown. No move for 30 seconds: they are told the computer will play their move in 10 seconds. At 40 seconds the computer plays it (ruling 23).
 - The server owns the game and sends each seat a masked view. Nobody but the server may see another seat's hand or the draw pile order.
 
+- Every way to play is offered online (ruling 30). Knock Out with friends is "last one out leaves" (ruling 11), not the 1 v 1 rounds used against the computer. Tournament games are played one at a time; anyone not in the current game watches it live with every hand face down. Owner decision, 14 Nov 2026.
+- Last Card online: you always get the full 5 seconds; the server allows one extra second for the call to travel, whoever is looking.
+
 ## Computer players: levels, tactics, personalities (owner decisions, 14 Nov 2026)
 - Levels are called Easy, Medium and Hard (ids relaxed, standard, sharp). Easy: no tactics. Medium: tempo, shield, aces. Hard: all seven. Each computer (John, Paul, George, Ringo, Ziggy, Marley, Bowie) has a personality that weights the tactics its level allows; the Play lobby shows them. Ruling 29, `src/switch/computerTactics.ts`.
 - A computer playing for an absent human uses no tactics (`api/_room.js`). A computer with one legal move makes it quickly; only moves with a choice take the 5 second think time (`FORCED_THINK_MS`).

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ComputerLevel } from "./ai";
 import type { TableState } from "./table";
+import type { PlayMode, SeriesOutcome, SeriesState } from "./series";
 import type { CardId, Suit } from "./types";
 
 /**
@@ -47,23 +48,48 @@ export interface RoomResult {
   readonly seats: readonly { readonly name: string; readonly kind: "human" | "computer"; readonly place: number; readonly cardsLeft: number; readonly autoMoves: number }[];
 }
 
+/** What the host chose: the way to play and its settings (Darts sets, Dominoes number). */
+export interface RoomSetup { readonly mode: PlayMode; readonly setsToWin?: number; readonly limit?: number }
+
+/** A tournament or match at the table. Player ids are "p0", "p1"…; `me` is yours. */
+export interface RoomSeries {
+  readonly setup: RoomSetup;
+  readonly state: SeriesState;
+  /** The game being played now, or just finished. */
+  readonly title: string | null;
+  readonly over: boolean;
+  readonly outcome: SeriesOutcome | null;
+  /** Between games: when the next one is dealt if the host does not deal it sooner. */
+  readonly nextAt: number | null;
+  readonly log: readonly string[];
+  readonly me: string;
+}
+
 export interface RoomView {
   readonly code: string;
   readonly rev: number;
   readonly status: "lobby" | "playing" | "finished";
   readonly level: ComputerLevel;
+  readonly mode: PlayMode;
+  readonly setup: RoomSetup;
   readonly capacity: number;
   readonly gameNo: number;
   readonly seq: number;
   readonly serverNow: number;
+  /** The players in the game being played, turned so you are first if you are in it. Before the first deal, everyone. */
   readonly seats: readonly RoomSeat[];
-  readonly you: { readonly seat: 0; readonly host: boolean };
+  /** Everyone at the table, whether or not they are in this game. */
+  readonly players: readonly { readonly name: string; readonly kind: "human" | "computer"; readonly you: boolean; readonly host: boolean; readonly playing: boolean }[];
+  readonly series: RoomSeries | null;
+  /** `watching`: you are not in this game of the tournament, so you see every hand face down. */
+  readonly you: { readonly seat: 0 | null; readonly host: boolean; readonly watching: boolean; readonly id: string };
   readonly canStart?: boolean;
   /** Your own cards are real; every other hand and the draw pile are backs of the right length. */
   readonly game?: TableState;
   readonly clock?: RoomClock | null;
   readonly moves?: readonly RoomMove[];
-  readonly reactions?: readonly { readonly n: number; readonly seat: number; readonly id: string; readonly at: number }[];
+  /** `seat` is where the sender sits in this game, or null if they are watching. */
+  readonly reactions?: readonly { readonly n: number; readonly seat: number | null; readonly name: string; readonly id: string; readonly at: number }[];
   readonly result?: RoomResult | null;
 }
 
@@ -73,6 +99,7 @@ export interface RoomSummary {
   readonly status: "lobby" | "playing" | "finished";
   readonly capacity: number;
   readonly level: ComputerLevel;
+  readonly mode: PlayMode;
   readonly seats: readonly { readonly name: string; readonly kind: "human" | "computer" }[];
   readonly open: boolean;
 }
@@ -126,12 +153,27 @@ export function clearSeat(): void {
   try { window.localStorage.removeItem(SEAT_KEY); } catch { /* storage unavailable */ }
 }
 
+/** Each way to play is shown by its own little hand of cards, as in the Play lobby. */
+export const ONLINE_MODE_CARDS: Record<PlayMode, string[]> = { single: ["AS", "KH"], knockout: ["KS", "KC"], group: ["QH", "QD", "JS"], cup: ["10H", "10S"], darts: ["7S", "7H"], dominoes: ["6C", "6D", "6S"] };
+
+/** What each way to play means at a table of friends. Knock Out here is the game-night version (ruling 11). */
+export function onlineModeBlurb(mode: PlayMode): string {
+  switch (mode) {
+    case "single": return "One game of Switch. First out wins.";
+    case "knockout": return "Everyone plays each game. Whoever is left holding cards at the end is out, until one player is left.";
+    case "cup": return "Head-to-head matches, drawn at random. Win yours to go through. While others play, you watch.";
+    case "group": return "Two leagues, then the championship and plate play-offs. Needs six to eight players.";
+    case "darts": return "Each game is a leg. Three legs win a set; first to the sets wins the match.";
+    case "dominoes": return "Cards left in hand add up after every game. First to the number loses.";
+  }
+}
+
 export const cleanTableCode = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
 export const tableLink = (code: string) => `${window.location.origin}/?table=${code}`;
-export const tableInvite = (code: string, host: string) => `${host} has set up a game of Switch. Open the Switch app, tap Play, then "Join with a code" and enter ${code}. Or open ${tableLink(code)}`;
+export const tableInvite = (code: string, host: string, what = "a game of Switch") => `${host} has set up ${what}. Open the Switch app, tap Play, then "Join with a code" and enter ${code}. Or open ${tableLink(code)}`;
 
-export async function createTable(name: string, seats: number, level: ComputerLevel): Promise<{ code: string; token: string; view: RoomView }> {
-  return request("POST", {}, null, { name, seats, level });
+export async function createTable(name: string, seats: number, level: ComputerLevel, setup: RoomSetup = { mode: "single" }): Promise<{ code: string; token: string; view: RoomView }> {
+  return request("POST", {}, null, { name, seats, level, ...setup });
 }
 export async function lookupTable(code: string): Promise<RoomSummary> {
   return request("GET", { code }, null);

@@ -860,4 +860,616 @@ function chooseTableAction(state, random, level = "standard", options = {}) {
 	return bestOrdering(state, best[Math.min(best.length - 1, Math.floor(Math.max(0, random()) * best.length))].action);
 }
 //#endregion
-export { MAX_SEATS, applyTableAction, chooseTableAction, createTable, dealTo, isLegalTablePlay, penaliseMissedLastCard, rankOf, tableLegalMoves, tablePlaces };
+//#region src/switch/cup.ts
+function shuffle(ids, random) {
+	const result = [...ids];
+	for (let index = result.length - 1; index > 0; index -= 1) {
+		const other = Math.floor(Math.max(0, Math.min(.999999, random())) * (index + 1));
+		[result[index], result[other]] = [result[other], result[index]];
+	}
+	return result;
+}
+function createRound(ids, number, random) {
+	const drawn = shuffle(ids, random);
+	const byePlayerId = drawn.length % 2 === 1 ? drawn.shift() ?? null : null;
+	const fixtures = [];
+	for (let index = 0; index < drawn.length; index += 2) fixtures.push({
+		id: `round-${number}-match-${fixtures.length + 1}`,
+		playerIds: [drawn[index], drawn[index + 1]],
+		winnerId: null
+	});
+	return {
+		number,
+		fixtures,
+		byePlayerId
+	};
+}
+function createCup(players, random) {
+	if (players.length < 2 || players.length > 10) throw new Error("Switch Cup supports two to ten players.");
+	return {
+		players: [...players],
+		rounds: [createRound(players.map((player) => player.id), 1, random)],
+		championId: null
+	};
+}
+function selectCupWinner(state, fixtureId, playerId) {
+	if (state.championId) throw new Error("This Cup already has a champion.");
+	const roundIndex = state.rounds.length - 1;
+	const round = state.rounds[roundIndex];
+	const fixture = round.fixtures.find((entry) => entry.id === fixtureId);
+	if (!fixture) throw new Error("That fixture is not in the current round.");
+	if (!fixture.playerIds.includes(playerId)) throw new Error("Only a player in this fixture can win it.");
+	const fixtures = round.fixtures.map((entry) => entry.id === fixtureId ? {
+		...entry,
+		winnerId: playerId
+	} : entry);
+	const rounds = state.rounds.map((entry, index) => index === roundIndex ? {
+		...round,
+		fixtures
+	} : entry);
+	return {
+		...state,
+		rounds
+	};
+}
+function drawNextCupRound(state, random) {
+	const round = state.rounds.at(-1);
+	if (round.fixtures.some((fixture) => !fixture.winnerId)) throw new Error("Complete all fixtures before drawing the next round.");
+	const advancing = [...round.fixtures.map((fixture) => fixture.winnerId), ...round.byePlayerId ? [round.byePlayerId] : []];
+	if (advancing.length === 1) return {
+		...state,
+		championId: advancing[0]
+	};
+	return {
+		...state,
+		rounds: [...state.rounds, createRound(advancing, round.number + 1, random)]
+	};
+}
+//#endregion
+//#region src/switch/leagues.ts
+/** Same points and same round wins: only a deciding game can separate these players. */
+const sameRecord = (a, b) => a.points === b.points && (a.wins ?? 0) === (b.wins ?? 0);
+/**
+* Groups of players still level after points and round wins whose deciding game has not been
+* recorded. A group is settled only when every member has a place from the deciding game, so a
+* three- or four-way tie is never split by one head-to-head result.
+*/
+function unresolvedGroups(results, playoffOrder) {
+	const groups = [];
+	for (const result of results) {
+		const group = groups.find((entry) => sameRecord(entry[0], result));
+		if (group) group.push(result);
+		else groups.push([result]);
+	}
+	return groups.filter((group) => group.length > 1 && group.some((result) => !playoffOrder.includes(result.player.id)));
+}
+function rankLeague(results, playoffOrder = []) {
+	const order = (id) => {
+		const at = playoffOrder.indexOf(id);
+		return at < 0 ? Number.POSITIVE_INFINITY : at;
+	};
+	const open = new Set(unresolvedGroups(results, playoffOrder).flat().map((result) => result.player.id));
+	const deciding = (id) => open.has(id) ? Number.POSITIVE_INFINITY : order(id);
+	return results.map((result, index) => ({
+		result,
+		index
+	})).sort((left, right) => right.result.points - left.result.points || (right.result.wins ?? 0) - (left.result.wins ?? 0) || deciding(left.result.player.id) - deciding(right.result.player.id) || left.index - right.index).map(({ result }, index) => ({
+		...result,
+		rank: index + 1,
+		tied: open.has(result.player.id)
+	}));
+}
+/** Each group of players who need a deciding game, in table order. */
+function tiedGroups(league) {
+	const ranked = rankLeague(league.results, league.playoffOrder);
+	return unresolvedGroups(league.results, league.playoffOrder ?? []).map((group) => ranked.filter((entry) => group.some((member) => member.player.id === entry.player.id)).map((entry) => entry.player));
+}
+//#endregion
+//#region src/switch/series.ts
+const COMPUTER_NAMES_IN_ORDER = [
+	"John",
+	"Paul",
+	"George",
+	"Ringo",
+	"Ziggy",
+	"Marley",
+	"Bowie"
+];
+const MODES = [
+	{
+		id: "single",
+		name: "Single game",
+		short: "Single",
+		blurb: "One game of Switch. First out wins.",
+		minPlayers: 2,
+		maxPlayers: 8
+	},
+	{
+		id: "knockout",
+		name: "Knock Out",
+		short: "Knock Out",
+		blurb: "1 v 1 games. Win yours to go through to the next round, until one is left.",
+		minPlayers: 3,
+		maxPlayers: 8
+	},
+	{
+		id: "group",
+		name: "Group Play",
+		short: "Group Play",
+		blurb: "Two leagues, then the championship and plate knockouts.",
+		minPlayers: 6,
+		maxPlayers: 8
+	},
+	{
+		id: "cup",
+		name: "Switch Cup",
+		short: "Switch Cup",
+		blurb: "Head-to-head knockout rounds. Win your match to go through.",
+		minPlayers: 2,
+		maxPlayers: 8
+	},
+	{
+		id: "darts",
+		name: "Darts scoring",
+		short: "Darts",
+		blurb: "Each game is a leg. Three legs win a set; win the sets to win the match.",
+		minPlayers: 2,
+		maxPlayers: 8
+	},
+	{
+		id: "dominoes",
+		name: "Dominoes scoring",
+		short: "Dominoes",
+		blurb: "Cards left in hand add up. First to your number loses.",
+		minPlayers: 2,
+		maxPlayers: 8
+	}
+];
+const modeInfo = (mode) => MODES.find((entry) => entry.id === mode);
+function validateSetup(setup) {
+	const info = modeInfo(setup.mode);
+	const players = setup.opponents + 1;
+	if (!Number.isInteger(setup.opponents) || setup.opponents < 1 || setup.opponents > 7) return "Choose 1 to 7 computers.";
+	if (players < info.minPlayers) return `${info.name} needs at least ${info.minPlayers} players, so at least ${info.minPlayers - 1} computers.`;
+	if (setup.mode === "darts" && setup.setsToWin !== 3 && setup.setsToWin !== 5) return "Play to 3 or 5 sets.";
+	if (setup.mode === "dominoes" && !(Number.isInteger(setup.limit) && setup.limit >= 10 && setup.limit <= 999)) return "Choose a number from 10 to 999.";
+	return null;
+}
+function seriesPlayers(opponents) {
+	return [{
+		id: "me",
+		name: "You"
+	}, ...COMPUTER_NAMES_IN_ORDER.slice(0, opponents).map((name) => ({
+		id: `cpu-${name.toLowerCase()}`,
+		name
+	}))];
+}
+/** The value of a card left in hand when a game ends: ace 1 up to king 13 (ruling 22). */
+function cardValue(card) {
+	const rank = rankOf(card);
+	if (rank === "A") return 1;
+	if (rank === "J") return 11;
+	if (rank === "Q") return 12;
+	if (rank === "K") return 13;
+	return Number(rank);
+}
+/** Turns a finished table into a result. `ids[seat]` is the series player sitting in that seat. */
+function resultOf(table, ids) {
+	const points = {};
+	const cards = {};
+	table.hands.forEach((hand, seat) => {
+		points[ids[seat]] = hand.reduce((sum, card) => sum + cardValue(card), 0);
+		cards[ids[seat]] = hand.length;
+	});
+	const winnerId = ids[table.winner ?? 0];
+	return {
+		order: table.playOn ? finishingOrder(table).map((seat) => ids[seat]) : [...ids].sort((a, b) => (a === winnerId ? -1 : b === winnerId ? 1 : 0) || cards[a] - cards[b] || points[a] - points[b] || ids.indexOf(a) - ids.indexOf(b)),
+		winnerId,
+		points,
+		moves: table.move
+	};
+}
+/** Plays a whole game between computers, instantly. Used for every game you are not in. */
+function simulateGame(ids, level, random, playOn = false) {
+	let table = createTable(ids.length, random, Math.floor(random() * ids.length), { playOn });
+	let guard = 0;
+	while (table.status === "playing" && guard < 3e3) {
+		table = applyTableAction(table, chooseTableAction(table, random, level));
+		guard += 1;
+	}
+	if (table.status === "playing") {
+		const sizes = table.hands.map((hand) => hand.length);
+		if (table.playOn) {
+			const out = [...table.out ?? []];
+			for (const seat of sizes.map((size, index) => ({
+				size,
+				index
+			})).filter((entry) => !out.includes(entry.index)).sort((a, b) => a.size - b.size || a.index - b.index).map((entry) => entry.index)) out.push(seat);
+			table = {
+				...table,
+				out,
+				status: "won",
+				winner: out[0]
+			};
+		} else table = {
+			...table,
+			status: "won",
+			winner: sizes.indexOf(Math.min(...sizes))
+		};
+	}
+	return resultOf(table, ids);
+}
+function shuffled(items, random) {
+	const result = [...items];
+	for (let index = result.length - 1; index > 0; index -= 1) {
+		const other = Math.floor(random() * (index + 1));
+		[result[index], result[other]] = [result[other], result[index]];
+	}
+	return result;
+}
+/** League sizes for a group of `players`: 6 is 3 and 3, 7 is 4 and 3, 8 is 4 and 4 (ruling 16). */
+function leagueSizes(players) {
+	const second = Math.floor(players / 2);
+	return [players - second, second];
+}
+/**
+* `players` defaults to you and the computers. An online table passes its own players (no "me" among them), and then
+* everyone, the host included, is drawn into the leagues at random.
+*/
+function startSeries(setup, random, id = `series-${Date.now()}-${Math.floor(random() * 1e6).toString(36)}`, given) {
+	const problem = validateSetup(setup);
+	if (problem) throw new Error(problem);
+	const players = given ? [...given] : seriesPlayers(setup.opponents);
+	if (players.length !== setup.opponents + 1) throw new Error("The players do not match the table.");
+	const ids = players.map((player) => player.id);
+	const base = {
+		id,
+		setup,
+		players,
+		games: 0,
+		yourGames: 0,
+		yourWins: 0
+	};
+	switch (setup.mode) {
+		case "knockout": return setup.knockout === "last-out" ? {
+			kind: "lastout",
+			base,
+			part: {
+				remaining: ids,
+				out: [],
+				championId: null
+			}
+		} : {
+			kind: "knockout",
+			base,
+			cup: createCup(players, random)
+		};
+		case "cup": return {
+			kind: "cup",
+			base,
+			cup: createCup(players, random)
+		};
+		case "darts": return {
+			kind: "darts",
+			base,
+			legs: Object.fromEntries(ids.map((entry) => [entry, 0])),
+			sets: Object.fromEntries(ids.map((entry) => [entry, 0])),
+			setsToWin: setup.setsToWin,
+			winnerId: null
+		};
+		case "dominoes": return {
+			kind: "dominoes",
+			base,
+			totals: Object.fromEntries(ids.map((entry) => [entry, 0])),
+			limit: setup.limit,
+			loserId: null,
+			last: {}
+		};
+		default: {
+			const [firstSize] = leagueSizes(players.length);
+			const mine = ids[0] === "me";
+			const rest = shuffled(mine ? ids.slice(1) : ids, random);
+			const first = mine ? ["me", ...rest.slice(0, firstSize - 1)] : rest.slice(0, firstSize);
+			const second = mine ? rest.slice(firstSize - 1) : rest.slice(firstSize);
+			const slot = (leagueId, name, members) => ({
+				id: leagueId,
+				name,
+				ids: members,
+				played: 0,
+				points: Object.fromEntries(members.map((entry) => [entry, 0])),
+				wins: Object.fromEntries(members.map((entry) => [entry, 0])),
+				playoffOrder: [],
+				deciders: []
+			});
+			return {
+				kind: "group",
+				base,
+				leagues: [slot("A", "League A", first), slot("B", "League B", second)],
+				phase: "league",
+				championship: null,
+				plate: null
+			};
+		}
+	}
+}
+const koFinished = (part) => !part || part.championId !== null;
+/**
+* The next game of a play-off knockout (ruling 28). Everyone still in plays one game together and it is played on
+* until only one player is left holding cards: that player is out. Four become three, three become two, and the
+* last two play a 1 v 1 final for the title.
+*/
+function koPending(part, key, label) {
+	if (!part || part.championId !== null || part.remaining.length < 2) return [];
+	const left = part.remaining.length;
+	const title = left === 2 ? `${label} final · 1 v 1` : `${label} knock out · ${left} players`;
+	return [{
+		key: `${key}-${part.out.length + 1}`,
+		title,
+		playerIds: part.remaining,
+		playOn: left > 2
+	}];
+}
+function koApply(part, result) {
+	const loser = [...result.order].reverse().find((id) => part.remaining.includes(id));
+	const remaining = part.remaining.filter((id) => id !== loser);
+	return {
+		remaining,
+		out: [...part.out, loser],
+		championId: remaining.length === 1 ? remaining[0] : null
+	};
+}
+/** Everyone in a knockout part from the winner down: champion, then the last one out, and so on. */
+function koOrder(part) {
+	return [...part.remaining, ...[...part.out].reverse()];
+}
+function pendingGames(state) {
+	switch (state.kind) {
+		case "darts": return state.winnerId ? [] : [{
+			key: `darts-${state.base.games + 1}`,
+			title: `Game ${state.base.games + 1}`,
+			playerIds: state.base.players.map((player) => player.id)
+		}];
+		case "dominoes": return state.loserId ? [] : [{
+			key: `dominoes-${state.base.games + 1}`,
+			title: `Game ${state.base.games + 1}`,
+			playerIds: state.base.players.map((player) => player.id)
+		}];
+		case "lastout": return koPending(state.part, "ko", "Knock Out").map((game) => ({
+			...game,
+			title: state.part.remaining.length === 2 ? "Final · 1 v 1" : `Round ${state.part.out.length + 1} · ${state.part.remaining.length} players`
+		}));
+		case "knockout":
+		case "cup": {
+			if (state.cup.championId) return [];
+			const round = state.cup.rounds.at(-1);
+			return (round?.fixtures ?? []).filter((fixture) => !fixture.winnerId).map((fixture) => ({
+				key: fixture.id,
+				title: `Round ${round?.number} match`,
+				playerIds: [...fixture.playerIds]
+			}));
+		}
+		case "group":
+			if (state.phase === "league") return state.leagues.filter((league) => league.played < league.ids.length).map((league) => ({
+				key: `${league.id}-game-${league.played + 1}`,
+				title: `${league.name} · game ${league.played + 1} of ${league.ids.length}`,
+				playerIds: league.ids,
+				playOn: true
+			}));
+			if (state.phase === "decider") return state.leagues.flatMap((league) => tiedGroups(leagueOf(league)).map((group) => ({
+				key: `${league.id}-decider-${group.map((player) => player.id).join("+")}`,
+				title: `${league.name} deciding game`,
+				playerIds: group.map((player) => player.id),
+				playOn: true
+			})));
+			return [...koPending(state.championship, "championship", "Championship"), ...koPending(state.plate, "plate", "Plate")];
+	}
+}
+function leagueOf(slot) {
+	const named = (id) => ({
+		id,
+		name: id
+	});
+	return {
+		id: slot.id,
+		name: slot.name,
+		results: slot.ids.map((id) => ({
+			player: named(id),
+			points: slot.points[id],
+			wins: slot.wins[id]
+		})),
+		playoffOrder: slot.playoffOrder
+	};
+}
+function withGame(state, result, ids) {
+	const mine = ids.includes("me");
+	return {
+		...state.base,
+		games: state.base.games + 1,
+		yourGames: state.base.yourGames + (mine ? 1 : 0),
+		yourWins: state.base.yourWins + (mine && result.winnerId === "me" ? 1 : 0)
+	};
+}
+/** Records the result of one waiting game and moves the series on. */
+function submitGame(state, key, result) {
+	const pending = pendingGames(state).find((game) => game.key === key);
+	if (!pending) throw new Error("That game is not waiting to be played.");
+	const base = withGame(state, result, pending.playerIds);
+	switch (state.kind) {
+		case "darts": {
+			const legs = {
+				...state.legs,
+				[result.winnerId]: state.legs[result.winnerId] + 1
+			};
+			const sets = { ...state.sets };
+			if (legs[result.winnerId] >= 3) {
+				sets[result.winnerId] += 1;
+				for (const id of Object.keys(legs)) legs[id] = 0;
+			}
+			return {
+				...state,
+				base,
+				legs,
+				sets,
+				winnerId: sets[result.winnerId] >= state.setsToWin ? result.winnerId : null
+			};
+		}
+		case "dominoes": {
+			const totals = Object.fromEntries(Object.entries(state.totals).map(([id, total]) => [id, total + (result.points[id] ?? 0)]));
+			const over = Object.entries(totals).filter(([, total]) => total >= state.limit);
+			const loserId = over.length ? over.sort((a, b) => b[1] - a[1] || (result.points[b[0]] ?? 0) - (result.points[a[0]] ?? 0) || state.base.players.findIndex((p) => p.id === b[0]) - state.base.players.findIndex((p) => p.id === a[0]))[0][0] : null;
+			return {
+				...state,
+				base,
+				totals,
+				loserId,
+				last: result.points
+			};
+		}
+		case "lastout": return {
+			...state,
+			base,
+			part: koApply(state.part, result)
+		};
+		case "knockout":
+		case "cup": {
+			let cup = selectCupWinner(state.cup, key, result.winnerId);
+			const round = cup.rounds.at(-1);
+			if (round && round.fixtures.every((fixture) => fixture.winnerId)) cup = drawNextCupRound(cup, Math.random);
+			return {
+				...state,
+				base,
+				cup
+			};
+		}
+		case "group": return submitGroup({
+			...state,
+			base
+		}, key, result, pending.playerIds);
+	}
+}
+function submitGroup(state, key, result, ids) {
+	if (state.phase === "league") {
+		const leagues = state.leagues.map((league) => {
+			if (!key.startsWith(`${league.id}-game-`)) return league;
+			const points = { ...league.points };
+			const wins = { ...league.wins };
+			result.order.forEach((id, index) => {
+				points[id] += league.ids.length - index;
+			});
+			wins[result.winnerId] += 1;
+			return {
+				...league,
+				played: league.played + 1,
+				points,
+				wins
+			};
+		});
+		const done = leagues.every((league) => league.played >= league.ids.length);
+		return settle({
+			...state,
+			leagues,
+			phase: done ? "decider" : "league"
+		});
+	}
+	if (state.phase === "decider") {
+		const leagues = state.leagues.map((league) => {
+			if (!league.ids.includes(ids[0])) return league;
+			const rest = league.playoffOrder.filter((id) => !ids.includes(id));
+			return {
+				...league,
+				playoffOrder: [...rest, ...result.order]
+			};
+		});
+		return settle({
+			...state,
+			leagues
+		});
+	}
+	const isChampionship = key.startsWith("championship");
+	return {
+		...state,
+		championship: isChampionship && state.championship ? koApply(state.championship, result) : state.championship,
+		plate: !isChampionship && state.plate ? koApply(state.plate, result) : state.plate
+	};
+}
+/** Once the leagues are finished and no one is level, the playoffs are drawn: top two of each league v everyone else. */
+function settle(state) {
+	if (state.phase !== "decider") return state;
+	if (state.leagues.some((league) => tiedGroups(leagueOf(league)).length > 0)) return state;
+	const ranked = state.leagues.map((league) => rankLeague(leagueOf(league).results, league.playoffOrder).map((entry) => entry.player.id));
+	const championshipIds = [...ranked.map((list) => list[0]), ...ranked.map((list) => list[1])].filter(Boolean);
+	const plateIds = ranked.flatMap((list) => list.slice(2));
+	return {
+		...state,
+		phase: "playoffs",
+		championship: {
+			remaining: championshipIds,
+			out: [],
+			championId: championshipIds.length === 1 ? championshipIds[0] : null
+		},
+		plate: plateIds.length === 0 ? null : {
+			remaining: plateIds,
+			out: [],
+			championId: plateIds.length === 1 ? plateIds[0] : null
+		}
+	};
+}
+function isSeriesOver(state) {
+	switch (state.kind) {
+		case "lastout": return koFinished(state.part);
+		case "knockout":
+		case "cup": return state.cup.championId !== null;
+		case "darts": return state.winnerId !== null;
+		case "dominoes": return state.loserId !== null;
+		case "group": return state.phase === "playoffs" && koFinished(state.championship) && koFinished(state.plate);
+	}
+}
+function seriesOutcome(state) {
+	if (!isSeriesOver(state)) return null;
+	const ids = state.base.players.map((player) => player.id);
+	switch (state.kind) {
+		case "lastout": return {
+			winnerId: state.part.championId,
+			order: koOrder(state.part)
+		};
+		case "knockout":
+		case "cup": {
+			const champion = state.cup.championId;
+			const exitRound = (id) => {
+				let last = 0;
+				for (const round of state.cup.rounds) if (round.fixtures.some((f) => f.playerIds.includes(id)) || round.byePlayerId === id) last = round.number;
+				return last;
+			};
+			return {
+				winnerId: champion,
+				order: [champion, ...ids.filter((id) => id !== champion).sort((a, b) => exitRound(b) - exitRound(a) || ids.indexOf(a) - ids.indexOf(b))]
+			};
+		}
+		case "darts": {
+			const winnerId = state.winnerId;
+			return {
+				winnerId,
+				order: [...ids].sort((a, b) => (a === winnerId ? -1 : b === winnerId ? 1 : 0) || state.sets[b] - state.sets[a] || state.legs[b] - state.legs[a] || ids.indexOf(a) - ids.indexOf(b))
+			};
+		}
+		case "dominoes": {
+			const order = [...ids].sort((a, b) => state.totals[a] - state.totals[b] || (state.last[a] ?? 0) - (state.last[b] ?? 0) || ids.indexOf(a) - ids.indexOf(b));
+			const loserId = state.loserId;
+			const fixed = [...order.filter((id) => id !== loserId), loserId];
+			return {
+				winnerId: fixed[0],
+				order: fixed,
+				loserId
+			};
+		}
+		case "group": {
+			const order = [...koOrder(state.championship), ...state.plate ? koOrder(state.plate) : []];
+			return {
+				winnerId: order[0],
+				order
+			};
+		}
+	}
+}
+//#endregion
+export { MAX_SEATS, applyTableAction, chooseTableAction, createTable, dealTo, isLegalTablePlay, isSeriesOver, penaliseMissedLastCard, pendingGames, rankOf, resultOf, seriesOutcome, simulateGame, startSeries, submitGame, tableLegalMoves, tablePlaces, validateSetup };

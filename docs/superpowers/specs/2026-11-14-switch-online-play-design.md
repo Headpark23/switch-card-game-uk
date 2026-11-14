@@ -145,3 +145,13 @@ Done and tested, not deployed and with no screens yet.
 - `tests/switch-online-play.spec.ts` runs two real browser phones against the real server code: set up, join by link, deal, each sees only their own cards, a move reaches the other phone, a reaction appears.
 - Found by that test and fixed: the answer to "start" was cut for the host's seat number from before the seats were shuffled, so the host could briefly be shown another seat's view. Now cut for wherever the token sits after the shuffle (regression test in `tests/room.test.mjs`).
 - Still to do: a Vercel preview to try the Redis store for real; privacy wording (Privacy screen, `public/privacy.html`, store listing) to say tables are kept for a day.
+
+## Built so far: ways to play online (14 Nov 2026)
+
+- Owner decisions: all five ways to play online; Knock Out is "last one out leaves" (ruling 11); anyone sitting out watches live. Recorded as ruling 30.
+- Server: `room.seats` is everyone at the table and `room.table` lists who is in the current game. A tournament (`room.series`) is the app's own `src/switch/series.ts`, bundled into `api/_engine.js`; it moves on after each game, plays computer-only games instantly, and deals the next game with a person in it 20 seconds later (`TIMING.betweenMs`) or when the host taps Deal. Views now carry `players`, `series` (standings state, title, outcome, next deal time) and `you.watching`.
+- Screens: a way-to-play picker on Start a table (seat minimum per mode, Darts sets, Dominoes number); the way to play on the waiting room and the invitation; a strip naming the game being played; a watching panel instead of a hand; between games, this game's places, the standings, other results and "Next: … You are in it / You will watch" with the countdown; at the end, the final places and Play another.
+- Stats: each game you play is saved with its mode and tournament id; when the tournament ends its result is written onto your last game in it, so trophies and badges count it.
+- Fixed on the way: Last Card's 5 seconds could be cut short by another phone checking in at exactly 5 seconds; the table now allows a second for the call to travel, whoever is looking.
+- Tests: `tests/room.test.mjs` plays a whole tournament of each type with two people and computers, checking nobody ever sees another hand and a watcher cannot move; `tests/switch-online-play.spec.ts` runs Darts across two games and a Cup game with one person watching on two real browser phones.
+- Simplification to know about: games of a tournament are played one at a time, never side by side, so in a big Cup or Group Play people may watch for a while.

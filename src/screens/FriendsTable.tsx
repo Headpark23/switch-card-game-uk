@@ -6,7 +6,9 @@ import { cleanTableCode, clearSeat, createTable, joinTable, loadSeat, lookupTabl
 import { readClub } from '../switch/clubStore';
 import { getMeId } from '../switch/computerLog';
 import { getProfiles } from '../switch/profiles';
-import { FeltHeader } from '../ui';
+import { FeltHeader, MiniFan } from '../ui';
+import { MODES, modeInfo, type PlayMode } from '../switch/series';
+import { onlineModeBlurb, ONLINE_MODE_CARDS } from '../switch/onlineRoom';
 
 const LEVELS: readonly ComputerLevel[] = ['relaxed', 'standard', 'sharp'];
 const NAME_KEY = 'switchOnlineName';
@@ -37,6 +39,11 @@ export default function FriendsTable({ initialCode = '', onBack, onSeated }: Pro
   const [name, setName] = useState(rememberedName);
   const [seats, setSeats] = useState(4);
   const [level, setLevel] = useState<ComputerLevel>('standard');
+  const [mode, setMode] = useState<PlayMode>('single');
+  const [setsToWin, setSetsToWin] = useState<3 | 5>(3);
+  const [limit, setLimit] = useState(100);
+  const fewest = modeInfo(mode).minPlayers;
+  const pickMode = (next: PlayMode) => { setMode(next); setSeats((current) => Math.max(current, modeInfo(next).minPlayers)); };
   const [code, setCode] = useState(cleanTableCode(initialCode));
   const [found, setFound] = useState<RoomSummary | null>(null);
   const [busy, setBusy] = useState(false);
@@ -60,7 +67,7 @@ export default function FriendsTable({ initialCode = '', onBack, onSeated }: Pro
     if (!cleanName || busy) return;
     keyboard.hide(); setBusy(true); setProblem(''); remember();
     try {
-      const made = await createTable(cleanName, seats, level);
+      const made = await createTable(cleanName, seats, level, { mode, ...(mode === 'darts' ? { setsToWin } : {}), ...(mode === 'dominoes' ? { limit } : {}) });
       saveSeat({ code: made.code, token: made.token, name: cleanName });
       onSeated();
     } catch (reason) { setProblem(reason instanceof Error ? reason.message : 'Could not start the table.'); }
@@ -94,10 +101,24 @@ export default function FriendsTable({ initialCode = '', onBack, onSeated }: Pro
 
     {view === 'create' && <div className="friends-form">
       {nameField}
+      <div className="lobby-group" role="group" aria-label="Way to play">
+        <h2>What are we playing?</h2>
+        <div className="mode-grid">{MODES.map((entry) => <button key={entry.id} aria-pressed={mode === entry.id} className={mode === entry.id ? 'active' : ''} onClick={() => pickMode(entry.id)}><MiniFan codes={ONLINE_MODE_CARDS[entry.id]} /><b>{entry.name}</b></button>)}</div>
+        <p className="lobby-note" data-testid="online-mode-note">{onlineModeBlurb(mode)}</p>
+      </div>
+      {mode === 'darts' && <div className="lobby-group" role="group" aria-label="Sets to win">
+        <h2>Sets to win the match</h2>
+        <div className="seg three compact">{([3, 5] as const).map((sets) => <button key={sets} aria-pressed={setsToWin === sets} className={setsToWin === sets ? 'active' : ''} onClick={() => setSetsToWin(sets)}><b>First to {sets}</b></button>)}</div>
+      </div>}
+      {mode === 'dominoes' && <div className="lobby-group" role="group" aria-label="Losing number">
+        <h2>Pick your number</h2>
+        <div className="seg four compact">{[50, 100, 150, 200].map((value) => <button key={value} aria-pressed={limit === value} className={limit === value ? 'active' : ''} onClick={() => setLimit(value)}><b>{value}</b></button>)}</div>
+        <p className="lobby-note">Cards left in hand add up after every game, ace 1 to king 13. The first to {limit} loses.</p>
+      </div>}
       <div className="lobby-group" role="group" aria-label="Seats at the table">
         <h2>How many seats?</h2>
-        <div className="seg seven">{[2, 3, 4, 5, 6, 7, 8].map((count) => <button key={count} aria-pressed={seats === count} className={seats === count ? 'active' : ''} onClick={() => setSeats(count)} aria-label={`${count} seats`}><b>{count}</b></button>)}</div>
-        <p className="lobby-note">Your guests take seats as they join. Any seat still empty when you start is played by a computer.{seats >= 7 ? ' Seven or eight players use two decks.' : ''}</p>
+        <div className="seg seven">{[2, 3, 4, 5, 6, 7, 8].map((count) => <button key={count} aria-pressed={seats === count} className={seats === count ? 'active' : ''} disabled={count < fewest} onClick={() => setSeats(count)} aria-label={`${count} seats`}><b>{count}</b></button>)}</div>
+        <p className="lobby-note">{fewest > 2 ? `${modeInfo(mode).name} needs at least ${fewest} seats. ` : ''}Your guests take seats as they join. Any seat still empty when you start is played by a computer.{seats >= 7 ? ' Seven or eight players use two decks.' : ''}</p>
       </div>
       <div className="lobby-group" role="group" aria-label="Computer level">
         <h2>How good are the computers?</h2>

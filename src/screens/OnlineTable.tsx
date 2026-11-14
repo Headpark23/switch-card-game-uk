@@ -1,38 +1,71 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { ArrowClockwise, ArrowCounterClockwise, ArrowRight, CheckCircle, HandPalm, Lightbulb, ShareNetwork, Smiley, SortAscending } from '@phosphor-icons/react';
+import { ArrowClockwise, ArrowCounterClockwise, ArrowRight, CheckCircle, Eye, HandPalm, Lightbulb, ShareNetwork, Smiley, SortAscending, Trophy } from '@phosphor-icons/react';
 import { BottomSheet } from '../mobile';
 import { cardIdLabel } from '../switch/cards';
 import { explainUnplayable } from '../switch/coach';
 import { isLegalTablePlay, tableLegalMoves, tablePlaces, type TableState } from '../switch/table';
 import type { CardId, GameAction, GameState, Suit } from '../switch/types';
 import { cue } from '../feedback';
-import { logComputerGame } from '../switch/logGame';
+import { logComputerGame, logSeriesResult } from '../switch/logGame';
+import { getComputerGames } from '../switch/computerLog';
+import { readClub } from '../switch/clubStore';
 import { drawTiming, planTurn, REDUCED, SPEEDS, stepDuration, visibleAt, type Step } from '../switch/presentation';
 import { readSpeed } from '../switch/activeTable';
-import { clearSeat, loadSeat, REACTIONS, reactionOf, tableInvite, useRoom, type RoomView } from '../switch/onlineRoom';
+import { modeInfo, pendingGames, seriesPlayerName, standings } from '../switch/series';
+import { clearSeat, loadSeat, onlineModeBlurb, REACTIONS, reactionOf, tableInvite, useRoom, type RoomView } from '../switch/onlineRoom';
 import { sortHand } from '../switch/sortHand';
-import { CardImage, CardShower, rank, suitNames, suitSymbols } from '../ui';
+import { CardImage, CardShower, FeltHeader, rank, suitNames, suitSymbols } from '../ui';
 import { describe, ordinal } from './TableGame';
 import RealCards from './RealCards';
-import { FeltHeader } from '../ui';
 
 type Showing = { id: number; before: TableState; after: TableState; action: GameAction; steps: Step[]; at: number; line: string };
 
 const reduced = () => { try { return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false; } catch { return false; } };
 const pickups = (state: TableState) => (state.pendingPenalty && state.pendingPenalty.kind !== 'miss-turn' ? state.pendingPenalty.cards : 0);
+const modeName = (view: RoomView) => modeInfo(view.mode).name;
 
 type Props = { onLeave: () => void; onOpenCards: () => void; onStartNight: () => void };
 
-/** A private table with friends and family: the waiting room, the game, and the result. The server owns the game; this screen shows it. */
+/** A private table with friends and family: the waiting room, the games, and the results. The server owns the game; this screen shows it. */
 export default function OnlineTable({ onLeave, onOpenCards, onStartNight }: Props) {
   const [seat] = useState(loadSeat);
   const room = useRoom(seat);
   const { view, gone } = room;
+  useOnlineRecord(view);
   if (!seat) return <Gone message="You are not sitting at a table." onLeave={onLeave} />;
   if (gone) return <Gone message="This table has ended, or your seat there is no longer valid." onLeave={() => { clearSeat(); onLeave(); }} />;
   if (!view) return <section className="friends-table" role="status"><FeltHeader compact title="Taking your seat." intro={`Table ${seat.code}…`} cards={['AS', 'KH']} /></section>;
   if (view.status === 'lobby' || !view.game) return <WaitingRoom view={view} room={room} onLeave={() => { clearSeat(); onLeave(); }} />;
   return <Game key={view.gameNo} view={view} room={room} onExit={onLeave} onLeave={() => { clearSeat(); onLeave(); }} onOpenCards={onOpenCards} onStartNight={onStartNight} />;
+}
+
+/**
+ * Every game you play online is a stat, saved once under the table's own game id. A game you only watched is not
+ * yours, so it is not saved. When a tournament ends, how it ended for you is written onto your last game in it.
+ */
+function useOnlineRecord(view: RoomView | null) {
+  const series = useRef<string | null>(null);
+  const result = view?.result ?? null;
+  useEffect(() => {
+    if (!view || !result || view.you.watching) return;
+    const humans = result.seats.filter((entry) => entry.kind === 'human').map((entry) => entry.name);
+    logComputerGame({
+      id: result.gameId, opponents: result.seats.length - 1, level: view.level, won: result.winner === 0, place: result.seats[0].place, moves: view.game?.move ?? 0,
+      rivals: result.seats.slice(1).map((entry) => ({ name: entry.name, place: entry.place, ...(entry.kind === 'human' ? { human: true } : {}) })),
+      online: { code: view.code, humans, autoMoves: result.seats[0].autoMoves },
+      ...(view.series ? { mode: view.mode, seriesId: view.series.state.base.id } : {}),
+    });
+  }, [result?.gameId]);
+  useEffect(() => {
+    const run = view?.series;
+    if (!run?.over || !run.outcome) return;
+    const id = run.state.base.id;
+    if (series.current === id) return;
+    const mine = getComputerGames(readClub()).filter((game) => game.seriesId === id).sort((a, b) => a.playedAt.localeCompare(b.playedAt)).at(-1);
+    if (!mine) return;
+    series.current = id;
+    logSeriesResult(mine.id, { won: run.outcome.winnerId === run.me, place: run.outcome.order.indexOf(run.me) + 1, players: run.state.base.players.length, games: run.state.base.games });
+  }, [view?.series?.over, view?.series?.state.base.id, result?.gameId]);
 }
 
 function Gone({ message, onLeave }: { message: string; onLeave: () => void }) {
@@ -47,7 +80,8 @@ function WaitingRoom({ view, room, onLeave }: { view: RoomView; room: Room; onLe
   const host = view.seats.find((entry) => entry.host)?.name ?? 'Someone';
   const people = view.seats.filter((entry) => entry.kind === 'human');
   const free = view.capacity - view.seats.length;
-  const invite = tableInvite(view.code, host);
+  const what = view.mode === 'single' ? 'a game of Switch' : `a game of Switch: ${modeName(view)}`;
+  const invite = tableInvite(view.code, host, what);
 
   async function share() {
     try {
@@ -65,10 +99,11 @@ function WaitingRoom({ view, room, onLeave }: { view: RoomView; room: Room; onLe
   return <section className="friends-table waiting-room" aria-labelledby="waiting-title">
     <FeltHeader compact id="waiting-title" title={view.you.host ? 'Your table is ready.' : `You are at ${host}’s table.`} intro="Share the code. When everyone is here, the host deals." cards={['QH', 'KS']} />
     <div className="table-code" aria-label={`Table code ${view.code.split('').join(' ')}`}><small>Table code</small><b data-testid="table-code">{view.code}</b></div>
+    <p className="table-mode" data-testid="table-mode"><strong>{modeName(view)}</strong>{view.setup.setsToWin ? ` · first to ${view.setup.setsToWin} sets` : ''}{view.setup.limit ? ` · first to ${view.setup.limit} loses` : ''}<span>{onlineModeBlurb(view.mode)}</span></p>
     <button className="secondary share-button" onClick={share}><ShareNetwork size={18} weight="bold" />Invite friends</button>
     <ul className="waiting-seats" aria-label="Who is here">
       {people.map((entry, index) => <li key={index} className={entry.you ? 'me' : ''}><strong>{entry.you ? `${entry.name} (you)` : entry.name}</strong>{entry.host && <em>Host</em>}</li>)}
-      {Array.from({ length: Math.max(0, free) }, (_, index) => <li key={`free-${index}`} className="free"><span>{view.seats.length + index < view.capacity ? 'Open seat' : ''}</span></li>)}
+      {Array.from({ length: Math.max(0, free) }, (_, index) => <li key={`free-${index}`} className="free"><span>Open seat</span></li>)}
     </ul>
     <p className="lobby-note center">{view.capacity} seats. Any seat still empty when the game starts is played by a computer ({view.level === 'relaxed' ? 'Easy' : view.level === 'sharp' ? 'Hard' : 'Medium'}).</p>
     {room.error && <p className="lobby-note center" role="status">{room.error}</p>}
@@ -83,9 +118,9 @@ function WaitingRoom({ view, room, onLeave }: { view: RoomView; room: Room; onLe
 type GameProps = { view: RoomView; room: Room; onExit: () => void; onLeave: () => void; onOpenCards: () => void; onStartNight: () => void };
 
 function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GameProps) {
-  const names = useMemo(() => view.seats.map((entry) => (entry.you ? 'You' : entry.name)), [view.seats.map((entry) => entry.name).join('|')]);
+  const watching = view.you.watching;
+  const names = useMemo(() => view.seats.map((entry) => (entry.you ? 'You' : entry.name)), [view.seats.map((entry) => `${entry.name}${entry.you ? '*' : ''}`).join('|')]);
   const seats = view.seats.length;
-  const opponents = seats - 1;
   const [game, setGame] = useState<TableState>(view.game!);
   const [showing, setShowing] = useState<Showing | null>(null);
   const [recent, setRecent] = useState<string[]>([]);
@@ -107,16 +142,16 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
   const seenReaction = useRef(Math.max(0, ...(view.reactions ?? []).map((entry) => entry.n)));
   const calledRef = useRef(false);
   const calledBeforeFinal = useRef(false);
-  const logged = useRef<string | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const flyRef = useRef<HTMLSpanElement>(null);
   const setCalled = (value: boolean) => { calledRef.current = value; setCalledState(value); };
   const push = (line: string) => setRecent((current) => [...current.slice(-3), line]);
+  /** Who has really said "Last Card": the table announces it only for them (computers always say it). */
+  const saidLast = view.seats.map((entry) => entry.lastCardCalled);
 
-  const shown = showing ? visibleAt(showing.before, showing.after, showing.steps, showing.at) : visibleAt(game, game, [], 0);
-  const visible = shown;
-  const yourMove = !showing && game.status === 'playing' && game.turn === 0;
-  const hand = showing && showing.before.turn === 0 && showing.action.type === 'draw' ? showing.before.hands[0] : game.hands[0];
+  const visible = showing ? visibleAt(showing.before, showing.after, showing.steps, showing.at) : visibleAt(game, game, [], 0);
+  const yourMove = !watching && !showing && game.status === 'playing' && game.turn === 0;
+  const hand = watching ? [] : showing && showing.before.turn === 0 && showing.action.type === 'draw' ? showing.before.hands[0] : game.hands[0];
   const pending = game.pendingPenalty;
   const missTurn = pending?.kind === 'miss-turn';
   const pendingDraw = pickups(game);
@@ -124,16 +159,18 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
   const canPlay = (card: CardId) => legal.some((action) => action.type === 'play' && action.cards.length === 1 && action.cards[0] === card);
   const legalCards = hand.filter(canPlay);
   const finished = game.status === 'won' && !showing;
-  const youWon = game.winner === 0;
-  const lastCalled = called || view.seats[0].lastCardCalled;
+  const youWon = !watching && game.winner === 0;
+  const lastCalled = called || (!watching && view.seats[0].lastCardCalled);
+  const outList = (showing ? showing.before : game).out ?? [];
+  const youOutAt = !watching && game.playOn && game.status === 'playing' ? (game.out ?? []).indexOf(0) + 1 : 0;
 
   /** Shows one turn from the server: the cards land in order, then the effect, exactly as at the computer table. */
   function show(before: TableState, action: GameAction, after: TableState, missedCall: boolean, auto: boolean) {
     showId.current += 1;
-    const steps = planTurn(before, action, after, names, { think: false, missedCall });
+    const steps = planTurn(before, action, after, names, { think: false, missedCall, called: saidLast });
     let line = describe(before, after, names[before.turn], action);
-    if (before.turn !== 0 && after.status === 'playing' && after.hands[before.turn].length === 1) line += ` ${names[before.turn]} says "Last Card".`;
-    if (missedCall) line += `${before.turn === 0 ? ' You had' : ` ${names[before.turn]} had`} not said "Last Card", so two cards are picked up.`;
+    if (names[before.turn] !== 'You' && saidLast[before.turn] && after.status === 'playing' && after.hands[before.turn].length === 1) line += ` ${names[before.turn]} says "Last Card".`;
+    if (missedCall) line += `${names[before.turn] === 'You' ? ' You had' : ` ${names[before.turn]} had`} not said "Last Card", so two cards are picked up.`;
     if (auto) line += ' The computer played this move for them.';
     setGame(after);
     setShowing({ id: showId.current, before, after, action, steps, at: 0, line });
@@ -151,12 +188,12 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
       const action: GameAction = move.type === 'play' ? { type: 'play', cards: [...move.cards], ...(move.chosenSuit ? { chosenSuit: move.chosenSuit } : {}) } : move.type === 'draw' ? { type: 'draw' } : { type: 'accept-missed-turn' };
       show(before, action, view.game, move.missedLastCard, move.auto);
     } else {
-      if (fresh.length === 1 && move.type === 'spot') { cue('penalty'); push(`${names[move.seat]} did not say "Last Card" in time, so ${move.seat === 0 ? 'you pick' : 'they pick'} up two cards.`); }
+      if (fresh.length === 1 && move.type === 'spot') { cue('penalty'); push(`${names[move.seat]} did not say "Last Card" in time, so ${names[move.seat] === 'You' ? 'you pick' : 'they pick'} up two cards.`); }
       else push(`${fresh.length} moves were played.`);
       busy.current = false;
       setGame(view.game);
     }
-    if (move.seat === 0) setCalled(false);
+    if (move.seat === 0 && !watching) setCalled(false);
   }, [view, showing]);
 
   // Walks through the steps of the turn being shown.
@@ -169,7 +206,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
       return;
     }
     const step = showing.steps[showing.at];
-    if (step.kind === 'card' && step.seat !== 0) cue('play');
+    if (step.kind === 'card' && names[step.seat] !== 'You') cue('play');
     const timer = window.setTimeout(() => setShowing((current) => (current && current.id === showing.id ? { ...current, at: current.at + 1 } : current)), stepDuration(step, timings));
     return () => window.clearTimeout(timer);
   }, [showing, timings]);
@@ -186,9 +223,10 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
     const scale = to.width / (el.offsetWidth || 1) || 1;
     const dx = (from.left + from.width / 2 - (to.left + to.width / 2)) / scale;
     const dy = (from.top + from.height / 2 - (to.top + to.height / 2)) / scale;
-    const spin = (flying.seat === 0 ? -10 : 12) + (flying.index % 2 ? 5 : -5);
+    const mine = flying.seat === 0 && !watching;
+    const spin = (mine ? -10 : 12) + (flying.index % 2 ? 5 : -5);
     const animation = el.animate([
-      { transform: `translate(${dx}px, ${dy}px) rotate(${spin}deg) scale(${flying.seat === 0 ? 0.85 : 0.5})`, opacity: 0.9 },
+      { transform: `translate(${dx}px, ${dy}px) rotate(${spin}deg) scale(${mine ? 0.85 : 0.5})`, opacity: 0.9 },
       { transform: `rotate(${(flying.index % 3) * 3 - 3}deg) scale(1)`, opacity: 1 },
     ], { duration: timings.flight, easing: 'cubic-bezier(.22,.7,.3,1)', fill: 'both' });
     return () => animation.cancel();
@@ -200,7 +238,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
     if (!step || timings.flight <= 0) return;
     const section = sectionRef.current;
     const pile = section?.querySelector<HTMLElement>('.draw-pile');
-    const target = step.seat === 0 ? section?.querySelector<HTMLElement>('.player-hand') : section?.querySelector<HTMLElement>(`[data-seat="${step.seat}"]`);
+    const target = step.seat === 0 && !watching ? section?.querySelector<HTMLElement>('.player-hand') : section?.querySelector<HTMLElement>(`[data-seat="${step.seat}"]`);
     const back = pile?.querySelector('img');
     if (!pile || !target || !back) return;
     const { trip, stagger, shown: count } = drawTiming(step.count, step.penalty === true, timings);
@@ -227,36 +265,27 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
     return () => { animations.forEach((animation) => animation.cancel()); fliers.forEach((flier) => flier.remove()); };
   }, [showing?.id, showing?.at, timings]);
 
-  // Reactions from around the table appear beside the sender for a few seconds.
+  // Reactions appear beside the sender for a few seconds. Someone watching has no seat, so theirs is said in words.
   useEffect(() => {
     const fresh = (view.reactions ?? []).filter((entry) => entry.n > seenReaction.current);
     if (!fresh.length) return;
     seenReaction.current = fresh[fresh.length - 1].n;
-    setBubbles((current) => { const next = { ...current }; fresh.forEach((entry) => { next[entry.seat] = { n: entry.n, id: entry.id }; }); return next; });
-    fresh.forEach((entry) => window.setTimeout(() => setBubbles((current) => (current[entry.seat]?.n === entry.n ? Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== entry.seat)) : current)), 3600));
+    fresh.filter((entry) => entry.seat === null).forEach((entry) => { const reaction = reactionOf(entry.id); if (reaction) push(`${entry.name} (watching): ${reaction.emoji ? `${reaction.emoji} ` : ''}${reaction.text}`); });
+    const seated = fresh.filter((entry): entry is typeof entry & { seat: number } => entry.seat !== null);
+    if (!seated.length) return;
+    setBubbles((current) => { const next = { ...current }; seated.forEach((entry) => { next[entry.seat] = { n: entry.n, id: entry.id }; }); return next; });
+    seated.forEach((entry) => window.setTimeout(() => setBubbles((current) => (current[entry.seat]?.n === entry.n ? Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== entry.seat)) : current)), 3600));
   }, [view]);
 
-  // The countdown is the server's clock, shown once a second.
+  // The countdowns (a slow player, the next game of a tournament) are the server's clock, shown twice a second.
   useEffect(() => {
-    if (!view.clock || view.status !== 'playing') return;
+    const ticking = (view.clock && view.status === 'playing') || (view.series?.nextAt && view.status === 'finished');
+    if (!ticking) return;
     const timer = window.setInterval(() => setTick((tick) => tick + 1), 500);
     return () => window.clearInterval(timer);
-  }, [view.clock?.seat, view.status]);
+  }, [view.clock?.seat, view.status, view.series?.nextAt]);
 
-  // A finished game is logged once, under the table's own game id, so it is a stat like every other game.
-  useEffect(() => {
-    const result = view.result;
-    if (!result || logged.current === result.gameId) return;
-    logged.current = result.gameId;
-    const humans = result.seats.filter((entry) => entry.kind === 'human').map((entry) => entry.name);
-    logComputerGame({
-      id: result.gameId, opponents, level: view.level, won: result.winner === 0, place: result.seats[0].place, moves: gameRef.current.move,
-      rivals: result.seats.slice(1).map((entry) => ({ name: entry.name, place: entry.place, ...(entry.kind === 'human' ? { human: true } : {}) })),
-      online: { code: view.code, humans, autoMoves: result.seats[0].autoMoves },
-    });
-  }, [view.result]);
-
-  useEffect(() => { if (finished) cue(youWon ? 'win' : 'bad'); }, [finished, youWon]);
+  useEffect(() => { if (finished && !watching) cue(youWon ? 'win' : 'bad'); }, [finished, youWon]);
 
   function refuse(cards: CardId[], reason: string) {
     cue('bad');
@@ -303,7 +332,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
 
   function commit(cards: CardId[], chosenSuit?: Suit) {
     const before = gameRef.current;
-    if (busy.current || before.status !== 'playing' || before.turn !== 0) return;
+    if (busy.current || before.status !== 'playing' || before.turn !== 0 || watching) return;
     const action: GameAction = { type: 'play', cards, ...(chosenSuit ? { chosenSuit } : {}) };
     if (!isLegalTablePlay(before, action)) return;
     cue('play');
@@ -326,7 +355,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
   }
 
   function callLastCard() {
-    if (game.status !== 'playing' || lastCalled) return;
+    if (watching || game.status !== 'playing' || lastCalled) return;
     cue('good');
     setCalled(true);
     // Said after choosing the final card it is too late (ruling 26): the table is only told when it still counts.
@@ -344,38 +373,15 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
     : missTurn ? 'Play another eight to pass the missed turn, or accept it.'
     : legalCards.length ? `You can play ${legalCards.map(cardIdLabel).join(', ')}. You may also pick up one card instead.` : 'You have no legal card. Pick up one card.';
 
-  const host = view.seats.find((entry) => entry.host);
   const bubbleFor = (index: number) => {
     const bubble = bubbles[index];
     const reaction = bubble ? reactionOf(bubble.id) : null;
     return bubble && reaction ? <span key={bubble.n} className="reaction-bubble" role="status" data-testid="reaction-bubble">{reaction.emoji ?? reaction.text}<i className="sr-only">{names[index]}: {reaction.text}</i></span> : null;
   };
 
-  if (finished) {
-    const result = view.result;
-    const places = tablePlaces(game);
-    const order = [...game.hands.keys()].sort((a, b) => places[a] - places[b] || a - b);
-    return <section className="tutorial game-tutorial table-game" aria-label="Game over">
-      <CardShower trigger={youWon ? `won-${view.code}-${view.gameNo}` : null} />
-      <div className="completion">
-        <CheckCircle size={60} weight="light" />
-        <h1>{youWon ? <>You won the<br />table.</> : <>{names[game.winner ?? 0]} won<br />this one.</>}</h1>
-        <p>{youWon ? 'You beat everyone at the table.' : `You finished ${ordinal(places[0])} of ${seats} with ${game.hands[0].length} card${game.hands[0].length === 1 ? '' : 's'} left.`}</p>
-        <ol className="place-list" aria-label="Final places">{order.map((seatIndex) => <li key={seatIndex} className={seatIndex === 0 ? 'me' : ''}><b>{ordinal(places[seatIndex])}</b><span>{names[seatIndex]}</span><em>{game.hands[seatIndex].length === 0 ? 'Out' : `${game.hands[seatIndex].length} left`}</em></li>)}</ol>
-        {result && result.seats[0].autoMoves > 0 && <p className="record-line">The computer played {result.seats[0].autoMoves} {result.seats[0].autoMoves === 1 ? 'move' : 'moves'} for you while you were away.</p>}
-        <p className="record-line" role="status">Logged in your history, like every game.</p>
-        {view.you.host
-          ? <button className="primary" onClick={() => { room.send('again').catch((reason: Error) => setWarn(reason.message)); }}><ArrowCounterClockwise size={18} />Deal again</button>
-          : <p className="lobby-note center" role="status">Waiting for {host?.name ?? 'the host'} to deal again…</p>}
-        {warn && <p className="lobby-note center" role="alert">{warn}</p>}
-        <button className="secondary" onClick={() => setReactOpen(true)}><Smiley size={18} />Say something</button>
-        <button className="secondary" onClick={onLeave}>Leave the table</button>
-        <RealCards onStartNight={onStartNight} />
-        <button className="secondary" onClick={onOpenCards}>Open card guide <ArrowRight size={18} /></button>
-      </div>
-      <ReactionSheet open={reactOpen} onOpenChange={setReactOpen} onPick={react} />
-    </section>;
-  }
+  if (finished) return <Finished view={view} room={room} game={game} names={names} watching={watching} youWon={youWon} warn={warn} setWarn={setWarn} onReact={() => setReactOpen(true)} onLeave={onLeave} onOpenCards={onOpenCards} onStartNight={onStartNight}>
+    <ReactionSheet open={reactOpen} onOpenChange={setReactOpen} onPick={react} />
+  </Finished>;
 
   const clock = view.clock;
   const now = room.serverNow();
@@ -383,12 +389,12 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
   if (clock && !clock.computer && game.status === 'playing' && !showing) {
     const secs = clock.autoAt !== undefined ? Math.max(0, Math.ceil((clock.autoAt - now) / 1000)) : 0;
     const quiet = clock.nudgeAt !== undefined && now >= clock.nudgeAt;
-    if (clock.seat === 0) clockNote = clock.away ? 'You have been away, so the computer is playing your moves. Make a move to take over again.' : quiet ? `Your turn is taking a while. The computer will play your move in ${secs} seconds.` : '';
+    if (names[clock.seat] === 'You') clockNote = clock.away ? 'You have been away, so the computer is playing your moves. Make a move to take over again.' : quiet ? `Your turn is taking a while. The computer will play your move in ${secs} seconds.` : '';
     else clockNote = clock.away ? `${names[clock.seat]} is away. The computer is playing their moves.` : quiet ? `${names[clock.seat]} has gone quiet. The computer will play their move in ${secs} seconds.` : '';
   }
 
   const activeName = names[visible.active];
-  const status = yourMove ? 'YOUR MOVE' : visible.active === 0 ? 'YOU PLAY' : `${activeName.toUpperCase()} TO PLAY`;
+  const status = yourMove ? 'YOUR MOVE' : activeName === 'You' ? 'YOU PLAY' : `${activeName.toUpperCase()} TO PLAY`;
   const pile = visible.discardPile.slice(-3);
   const drawingNow = visible.drawing;
   const drawingTiming = drawTiming(drawingNow?.count ?? 0, drawingNow?.penalty === true, timings);
@@ -398,33 +404,36 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
     : visible.flying ? `${activeName === 'You' ? 'You play' : `${activeName} plays`} ${cardIdLabel(visible.flying.card)}${visible.flying.count > 1 ? ` (${visible.flying.index + 1} of ${visible.flying.count})` : ''}.`
     : visible.drawing ? `${activeName === 'You' ? 'You pick' : `${activeName} picks`} up ${visible.drawing.count} card${visible.drawing.count === 1 ? '' : 's'}.`
     : yourMove ? (recent.length === 0 ? `${names[game.dealer]} dealt. It is your move.` : recent[recent.length - 1]) : recent[recent.length - 1] ?? `${names[game.dealer]} dealt.`);
+  // Watching, every seat is someone else's, so all of them sit along the top.
+  const others = watching ? names.map((name, seatIndex) => ({ name, seatIndex })) : names.slice(1).map((name, index) => ({ name, seatIndex: index + 1 }));
 
-  return <section ref={sectionRef} className="tutorial game-tutorial table-game online-game" aria-label={`Online table ${view.code}`} data-active-seat={visible.active} data-showing={showing ? 'yes' : 'no'}>
-    <div className={'turn-banner ' + (visible.active === 0 ? 'you' : 'computer')}>
+  return <section ref={sectionRef} className={'tutorial game-tutorial table-game online-game' + (watching ? ' watching' : '')} aria-label={`Online table ${view.code}`} data-active-seat={visible.active} data-showing={showing ? 'yes' : 'no'}>
+    <div className={'turn-banner ' + (yourMove || activeName === 'You' ? 'you' : 'computer')}>
       <span className="turn-dot" aria-hidden="true" />
       <span className="turn-status" aria-live="polite" data-testid="turn-status">{status}</span>
       <em className="dealer-chip" aria-label={`Dealer: ${names[game.dealer]}`}>Dealer · {names[game.dealer]}</em>
       <button onClick={onExit}>Exit</button>
     </div>
+    {view.series && <p className="series-strip" data-testid="series-strip">{modeName(view)} · {view.series.title}</p>}
     {room.error && <p className="clock-note" role="status">Lost touch with the table. Trying again…</p>}
     {clockNote && <p className="clock-note" role="status" data-testid="clock-note">{clockNote}</p>}
-    <div className={`seat-row seats-${opponents}${opponents > 4 ? ' many' : ''}`} role="list" aria-label="Players at the table">
-      {names.slice(1).map((name, index) => {
-        const seatIndex = index + 1;
+    <div className={`seat-row seats-${others.length}${others.length > 4 ? ' many' : ''}`} role="list" aria-label="Players at the table">
+      {others.map(({ name, seatIndex }) => {
         const count = visible.handCounts[seatIndex];
         const active = visible.active === seatIndex;
         const info = view.seats[seatIndex];
+        const out = outList.includes(seatIndex);
         return <div role="listitem" key={seatIndex} data-seat={seatIndex} className={'seat' + (active ? ' turn' : '') + (game.dealer === seatIndex ? ' dealer' : '') + (info.kind === 'human' ? ' person' : '')} aria-label={`${name} has ${count} card${count === 1 ? '' : 's'}${game.dealer === seatIndex ? ', dealer' : ''}${active ? ', playing now' : ''}`}>
           <span className="seat-name">{name}{game.dealer === seatIndex && <i className="dealer-pip" title="Dealer">D</i>}</span>
           <span className="seat-fan" aria-hidden="true">{Array.from({ length: Math.min(5, count) }, (_, i) => <CardImage code="back" key={i} />)}</span>
-          <strong className={count === 1 ? 'last' : ''}>{`${count} card${count === 1 ? '' : 's'}`}</strong>{ouchFor(seatIndex)}
-          <span className="seat-state" aria-hidden="true">{info.away ? 'Away' : active ? 'Playing' : count === 1 ? 'Last card' : info.kind === 'human' ? 'Friend' : ' '}</span>
+          <strong className={count === 1 ? 'last' : ''}>{out ? 'Out' : `${count} card${count === 1 ? '' : 's'}`}</strong>{ouchFor(seatIndex)}
+          <span className="seat-state" aria-hidden="true">{out ? `Out: ${ordinal(outList.indexOf(seatIndex) + 1)}` : info.away ? 'Away' : active ? 'Playing' : count === 1 ? 'Last card' : info.kind === 'human' ? 'Friend' : ' '}</span>
           {bubbleFor(seatIndex)}
         </div>;
       })}
     </div>
     <div className="game-table">
-      <button className="draw-pile" onClick={pickUp} disabled={!yourMove || !!staged.length || missTurn} aria-label={missTurn ? 'Draw pile unavailable while resolving the eight' : pendingDraw ? `Pick up ${pendingDraw} cards` : legalCards.length ? 'Pick up one card instead of playing' : 'Draw a card'}><CardImage code="back" />{drawingNow?.penalty && <span key={`count-${showing?.id}`} className="draw-count" aria-hidden="true" data-testid="draw-count" style={{ animationDuration: `${drawingTiming.total}ms` }}>+{drawingNow.count}</span>}<span>{!yourMove ? 'Deck' : missTurn ? 'Eight played' : pendingDraw ? `Pick up ${pendingDraw}` : legalCards.length ? 'Pick up instead' : 'Draw'}</span></button>
+      <button className="draw-pile" onClick={pickUp} disabled={!yourMove || !!staged.length || missTurn} aria-label={watching ? 'Deck' : missTurn ? 'Draw pile unavailable while resolving the eight' : pendingDraw ? `Pick up ${pendingDraw} cards` : legalCards.length ? 'Pick up one card instead of playing' : 'Draw a card'}><CardImage code="back" />{drawingNow?.penalty && <span key={`count-${showing?.id}`} className="draw-count" aria-hidden="true" data-testid="draw-count" style={{ animationDuration: `${drawingTiming.total}ms` }}>+{drawingNow.count}</span>}<span>{!yourMove ? 'Deck' : missTurn ? 'Eight played' : pendingDraw ? `Pick up ${pendingDraw}` : legalCards.length ? 'Pick up instead' : 'Draw'}</span></button>
       <div className="discard-pile">
         <span className="pile-wrap" data-testid="discard-pile" data-top={pile[pile.length - 1]} data-order={visible.discardPile.slice(-6).join(' ')}>
           {pile.map((card, index) => <span key={card + index} className={'pile-card depth-' + (pile.length - 1 - index)}><CardImage code={card} /></span>)}
@@ -437,21 +446,111 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
     </div>
     <p className={'game-notice' + (warn && yourMove ? ' warn' : '')} aria-live="polite" role={warn ? 'alert' : undefined}>{notice}</p>
     {recent.length > 1 && <ul className="move-log" aria-label="Recent moves">{recent.slice(0, -1).map((line, index) => <li key={index}>{line}</li>)}</ul>}
-    <div className={'your-seat' + (visible.active === 0 ? ' turn' : '')} data-seat="0">
-      {ouchFor(0)}
-      {bubbleFor(0)}
-      {yourMove && <span className="your-move-tag" aria-hidden="true">Your move</span>}
-      {yourMove && missTurn && <div className="miss-turn-action"><strong>An eight was played</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you miss this turn.'}</p><button className="primary" onClick={pickUp}>Accept missed turn <ArrowRight size={18} /></button></div>}
-      {staged.length === 0 && <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!yourMove}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={() => setReactOpen(true)} aria-label="Send a reaction"><Smiley size={16} />React</button><button className="pace-button sort-button" onClick={() => setGame((current) => ({ ...current, hands: current.hands.map((cards, seatIndex) => (seatIndex === 0 ? sortHand(cards) : cards)) }))}><SortAscending size={16} />Sort</button></div>}
-      {hint && yourMove && <p className="game-hint"><Lightbulb size={17} />{hintText}</p>}
-      <div className="hand-row"><span>{hand.length} in hand</span><button className={'last-card-button' + (lastCalled ? ' called' : '')} onClick={callLastCard} aria-pressed={lastCalled} data-testid="last-card-button" aria-label={lastCalled ? 'Last Card called' : 'Call Last Card'}><HandPalm size={20} weight={lastCalled ? 'fill' : 'regular'} /><span>{lastCalled ? 'Called' : 'Last Card'}</span></button></div>
-      <div className={'player-hand' + (hand.length > 10 ? ' dense' : '') + (hand.length > 8 ? ' two-rows' : '')} style={{ '--n': hand.length, '--per': Math.ceil(hand.length / 2) } as CSSProperties} aria-label="Your hand">
-        {hand.map((card, index) => <button key={card} style={{ '--i': 0, zIndex: index + 1 } as CSSProperties} data-card={card} onClick={() => chooseCard(card)} className={(hint && yourMove && canPlay(card) ? 'playable ' : '') + (staged.includes(card) ? 'selected ' : '') + (flash.includes(card) ? 'illegal' : '')} disabled={!yourMove} aria-label={staged.includes(card) ? `Deselect ${cardIdLabel(card)}` : `Select ${cardIdLabel(card)}${canPlay(card) ? ', legal move' : ', not currently playable'}`}><CardImage code={card} />{staged.includes(card) && <i className="order-badge" aria-hidden="true">{staged.indexOf(card) + 1}</i>}</button>)}
+    {watching
+      ? <div className="watch-panel" data-testid="watching" role="status">
+        <Eye size={22} weight="bold" />
+        <span><strong>You are watching this game</strong><small>{isOut(view) ? 'You are out of this one. Every hand is face down while you watch.' : 'You are not in this game. Every hand is face down while you watch, and your next game is dealt when it comes.'}</small></span>
+        <button className="pace-button" onClick={() => setReactOpen(true)} aria-label="Send a reaction"><Smiley size={16} />React</button>
       </div>
-      {staged.length > 0 && <div className="multi-action"><p>{staged.length === 1 ? '1 card selected' : `${staged.length} cards selected. They land in the order you tapped them, and the last one sets the suit.`}</p><button className="primary" onClick={playStaged} disabled={!yourMove}>Play selected</button><button className="text-link" onClick={() => setStaged([])}>Clear selection</button></div>}
-    </div>
+      : <div className={'your-seat' + (visible.active === 0 ? ' turn' : '')} data-seat="0">
+        {ouchFor(0)}
+        {bubbleFor(0)}
+        {yourMove && <span className="your-move-tag" aria-hidden="true">Your move</span>}
+        {yourMove && missTurn && <div className="miss-turn-action"><strong>An eight was played</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you miss this turn.'}</p><button className="primary" onClick={pickUp}>Accept missed turn <ArrowRight size={18} /></button></div>}
+        {youOutAt > 0 && <div className="out-panel" role="status" data-testid="you-are-out"><strong>You are out: {ordinal(youOutAt)} place.</strong><p>The others play on for the places still to be decided.</p></div>}
+        {youOutAt === 0 && <>
+          {staged.length === 0 && <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!yourMove}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={() => setReactOpen(true)} aria-label="Send a reaction"><Smiley size={16} />React</button><button className="pace-button sort-button" onClick={() => setGame((current) => ({ ...current, hands: current.hands.map((cards, seatIndex) => (seatIndex === 0 ? sortHand(cards) : cards)) }))}><SortAscending size={16} />Sort</button></div>}
+          {hint && yourMove && <p className="game-hint"><Lightbulb size={17} />{hintText}</p>}
+          <div className="hand-row"><span>{hand.length} in hand</span><button className={'last-card-button' + (lastCalled ? ' called' : '')} onClick={callLastCard} aria-pressed={lastCalled} data-testid="last-card-button" aria-label={lastCalled ? 'Last Card called' : 'Call Last Card'}><HandPalm size={20} weight={lastCalled ? 'fill' : 'regular'} /><span>{lastCalled ? 'Called' : 'Last Card'}</span></button></div>
+          <div className={'player-hand' + (hand.length > 10 ? ' dense' : '') + (hand.length > 8 ? ' two-rows' : '')} style={{ '--n': hand.length, '--per': Math.ceil(hand.length / 2) } as CSSProperties} aria-label="Your hand">
+            {hand.map((card, index) => <button key={card} style={{ '--i': 0, zIndex: index + 1 } as CSSProperties} data-card={card} onClick={() => chooseCard(card)} className={(hint && yourMove && canPlay(card) ? 'playable ' : '') + (staged.includes(card) ? 'selected ' : '') + (flash.includes(card) ? 'illegal' : '')} disabled={!yourMove} aria-label={staged.includes(card) ? `Deselect ${cardIdLabel(card)}` : `Select ${cardIdLabel(card)}${canPlay(card) ? ', legal move' : ', not currently playable'}`}><CardImage code={card} />{staged.includes(card) && <i className="order-badge" aria-hidden="true">{staged.indexOf(card) + 1}</i>}</button>)}
+          </div>
+          {staged.length > 0 && <div className="multi-action"><p>{staged.length === 1 ? '1 card selected' : `${staged.length} cards selected. They land in the order you tapped them, and the last one sets the suit.`}</p><button className="primary" onClick={playStaged} disabled={!yourMove}>Play selected</button><button className="text-link" onClick={() => setStaged([])}>Clear selection</button></div>}
+        </>}
+      </div>}
     {aceChoice && <div className="suit-choice" role="dialog" aria-label="Choose a suit"><p>Choose the suit for your ace</p><div>{(['S', 'H', 'D', 'C'] as Suit[]).map((chosen) => <button key={chosen} className={chosen === 'H' || chosen === 'D' ? 'red' : ''} onClick={() => { const cards = aceChoice; setAceChoice(null); commit(cards, chosen); }}>{suitSymbols[chosen]}<span>{suitNames[chosen]}</span></button>)}</div><button className="text-link" onClick={() => setAceChoice(null)}>Cancel</button></div>}
     <ReactionSheet open={reactOpen} onOpenChange={setReactOpen} onPick={react} />
+  </section>;
+}
+
+/** Knocked out of the tournament: a Knock Out you have left, or a Cup or play-off you lost. */
+function isOut(view: RoomView): boolean {
+  const run = view.series;
+  if (!run) return false;
+  return !pendingGames(run.state).some((game) => game.playerIds.includes(run.me)) && !run.over;
+}
+
+type FinishedProps = { view: RoomView; room: Room; game: TableState; names: readonly string[]; watching: boolean; youWon: boolean; warn: string; setWarn: (text: string) => void; onReact: () => void; onLeave: () => void; onOpenCards: () => void; onStartNight: () => void; children: React.ReactNode };
+
+/** The end of a game: who won, and in a tournament where everyone stands and what comes next. */
+function Finished({ view, room, game, names, watching, youWon, warn, setWarn, onReact, onLeave, onOpenCards, onStartNight, children }: FinishedProps) {
+  const result = view.result;
+  const places = tablePlaces(game);
+  const order = [...game.hands.keys()].sort((a, b) => places[a] - places[b] || a - b);
+  const host = view.players.find((entry) => entry.host);
+  const run = view.series;
+  const deal = (label: string) => view.you.host
+    ? <button className="primary" data-testid="deal-next" onClick={() => { room.send('again').catch((reason: Error) => setWarn(reason.message)); }}><ArrowCounterClockwise size={18} />{label}</button>
+    : <p className="lobby-note center" role="status">Waiting for {host?.name ?? 'the host'} to deal…</p>;
+  const placeList = <ol className="place-list" aria-label="Places in this game">{order.map((seatIndex) => <li key={seatIndex} className={names[seatIndex] === 'You' ? 'me' : ''}><b>{ordinal(places[seatIndex])}</b><span>{names[seatIndex]}</span><em>{game.hands[seatIndex].length === 0 ? 'Out' : `${game.hands[seatIndex].length} left`}</em></li>)}</ol>;
+  const extras = <>
+    {warn && <p className="lobby-note center" role="alert">{warn}</p>}
+    <button className="secondary" onClick={onReact}><Smiley size={18} />Say something</button>
+    <button className="secondary" onClick={onLeave}>Leave the table</button>
+  </>;
+
+  if (!run) {
+    return <section className="tutorial game-tutorial table-game" aria-label="Game over">
+      <CardShower trigger={youWon ? `won-${view.code}-${view.gameNo}` : null} />
+      <div className="completion">
+        <CheckCircle size={60} weight="light" />
+        <h1>{youWon ? <>You won the<br />table.</> : <>{names[game.winner ?? 0]} won<br />this one.</>}</h1>
+        <p>{youWon ? 'You beat everyone at the table.' : `You finished ${ordinal(places[0])} of ${game.hands.length} with ${game.hands[0].length} card${game.hands[0].length === 1 ? '' : 's'} left.`}</p>
+        {placeList}
+        {result && result.seats[0].autoMoves > 0 && <p className="record-line">The computer played {result.seats[0].autoMoves} {result.seats[0].autoMoves === 1 ? 'move' : 'moves'} for you while you were away.</p>}
+        <p className="record-line" role="status">Logged in your history, like every game.</p>
+        {deal('Deal again')}
+        {extras}
+        <RealCards onStartNight={onStartNight} />
+        <button className="secondary" onClick={onOpenCards}>Open card guide <ArrowRight size={18} /></button>
+      </div>
+      {children}
+    </section>;
+  }
+
+  const name = (id: string) => (id === run.me ? 'You' : seriesPlayerName(run.state, id));
+  const tables = standings(run.state);
+  const board = <div className="series-tables online-standings" data-testid="online-standings">{tables.map((table) => <div key={table.heading} className="standings"><h2>{table.heading}</h2><ul>{table.rows.map((row) => <li key={row.id} className={(row.id === run.me ? 'me ' : '') + (row.out ? 'out' : '')}><span>{row.id === run.me ? 'You' : row.name}</span><b>{row.main}</b>{row.note && <small>{row.note}</small>}</li>)}</ul></div>)}</div>;
+
+  if (run.over && run.outcome) {
+    const wonIt = run.outcome.winnerId === run.me;
+    const myPlace = run.outcome.order.indexOf(run.me) + 1;
+    return <section className="series-board online-series-end" aria-labelledby="online-series-title">
+      <CardShower trigger={wonIt ? `series-${run.state.base.id}` : null} />
+      <FeltHeader compact id="online-series-title" title={wonIt ? 'You won it.' : `${name(run.outcome.winnerId)} won it.`}
+        intro={view.mode === 'dominoes' && run.outcome.loserId ? `${name(run.outcome.loserId)} reached ${view.setup.limit} first and ${run.outcome.loserId === run.me ? 'lose' : 'loses'}.` : `${modeName(view)} finished after ${run.state.base.games} games. You came ${ordinal(myPlace)} of ${run.state.base.players.length}.`} cards={['KH', 'AS']} />
+      <ol className="place-list" aria-label="Final places" data-testid="series-final">{run.outcome.order.map((id, index) => <li key={id} className={id === run.me ? 'me' : ''}><b>{ordinal(index + 1)}</b><span>{name(id)}</span>{index === 0 && <em><Trophy size={14} weight="fill" /></em>}</li>)}</ol>
+      {board}
+      <p className="record-line" role="status">Saved in your history and trophies.</p>
+      {deal(`Play another ${modeName(view)}`)}
+      {extras}
+      {children}
+    </section>;
+  }
+
+  const secs = run.nextAt ? Math.max(0, Math.ceil((run.nextAt - room.serverNow()) / 1000)) : 0;
+  const next = pendingGames(run.state).find((entry) => entry.playerIds.some((id) => view.players[Number(id.slice(1))]?.kind === 'human'));
+  const inNext = next?.playerIds.includes(run.me) ?? false;
+  return <section className="series-board online-between" aria-labelledby="online-between-title">
+    <CardShower trigger={youWon ? `won-${view.code}-${view.gameNo}` : null} />
+    <FeltHeader compact id="online-between-title" title={watching ? `${names[game.winner ?? 0]} won.` : youWon ? 'You won that one.' : `${names[game.winner ?? 0]} won that one.`} intro={`${modeName(view)} · ${run.title ?? 'Game'}`} cards={['QH', 'KS']} />
+    {!watching && placeList}
+    {board}
+    {run.log.length > 0 && <ul className="move-log series-log" aria-label="Other games">{run.log.slice(-4).map((line, index) => <li key={index}>{line}</li>)}</ul>}
+    {next && <p className="next-game" role="status" data-testid="next-game"><strong>Next: {next.title}</strong><span>{next.playerIds.map(name).join(', ')}.{inNext ? ' You are in it.' : ' You will watch.'}</span><em>Dealt in {secs} second{secs === 1 ? '' : 's'}</em></p>}
+    {deal('Deal the next game now')}
+    {extras}
+    {children}
   </section>;
 }
 

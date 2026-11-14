@@ -106,7 +106,7 @@ export function effectText(before: TableState, after: TableState, cards: readonl
   if (wentOut(after, actor)) return null;
   // Ruling 19: a seven or jacks as the very last cards cannot win. The player picks up one card and the turn passes.
   if ((rank === "7" || rank === "J") && cards.length === before.hands[actor].length) {
-    return `${rank === "7" ? "A seven" : "Jacks"} cannot win: ${names[actor]} pick${actor === 0 ? "" : "s"} up a card`;
+    return `${rank === "7" ? "A seven" : "Jacks"} cannot win: ${names[actor]} pick${names[actor] === "You" ? "" : "s"} up a card`;
   }
   const pending = after.pendingPenalty;
   if (rank === "2" && pending?.kind === "draw-two") return `Twos: ${names[after.turn]} faces ${plural(pending.cards, "card")}`;
@@ -116,9 +116,9 @@ export function effectText(before: TableState, after: TableState, cards: readonl
     return null;
   }
   if (rank === "8" && pending?.kind === "miss-turn") return `Eight: ${names[after.turn]} misses a turn unless they hold an eight`;
-  if (rank === "7") return `Seven: ${names[actor]} play${actor === 0 ? "" : "s"} again`;
+  if (rank === "7") return `Seven: ${names[actor]} play${names[actor] === "You" ? "" : "s"} again`;
   // Ruling 18: two or four jacks never reverse; the same player plays again.
-  if (rank === "J" && cards.length % 2 === 0) return `${cards.length === 4 ? "Four" : "Two"} jacks: ${names[actor]} play${actor === 0 ? "" : "s"} again`;
+  if (rank === "J" && cards.length % 2 === 0) return `${cards.length === 4 ? "Four" : "Two"} jacks: ${names[actor]} play${names[actor] === "You" ? "" : "s"} again`;
   if (rank === "J") {
     if (before.hands.length === 2) return `Jack: back to ${names[actor]}`;
     return `Jack: play reverses, now ${after.direction === 1 ? "clockwise" : "anticlockwise"}`;
@@ -131,12 +131,12 @@ export function effectText(before: TableState, after: TableState, cards: readonl
  * Lists the steps for one turn. `before` is the state the move was chosen in, `after` the engine's result.
  * The seat that moved is always `before.turn`, so a card can never fly from the wrong seat.
  */
-export function planTurn(before: TableState, action: GameAction, after: TableState, names: readonly string[], options: { think: boolean; missedCall?: boolean }): Step[] {
+export function planTurn(before: TableState, action: GameAction, after: TableState, names: readonly string[], options: { think: boolean; missedCall?: boolean; /** Online: who has really said "Last Card". Computers always do; missing means everyone. */ called?: readonly boolean[] }): Step[] {
   const seat = before.turn;
   const steps: Step[] = [];
   if (options.think) steps.push({ kind: "think", seat, forced: tableLegalMoves(before).length === 1 });
   if (action.type === "accept-missed-turn") {
-    steps.push({ kind: "announce", seat, text: `${names[seat]} miss${seat === 0 ? "" : "es"} a turn`, tone: "info" });
+    steps.push({ kind: "announce", seat, text: `${names[seat]} miss${names[seat] === "You" ? "" : "es"} a turn`, tone: "info" });
     return steps;
   }
   if (action.type === "draw") {
@@ -154,7 +154,7 @@ export function planTurn(before: TableState, action: GameAction, after: TableSta
   if (effect) steps.push({ kind: "announce", seat, text: effect, tone: "power" });
   // The last cards were a seven or jacks, which cannot win: one card is picked up from the deck.
   if (!wentOut(after, seat) && before.hands[seat].length === action.cards.length) {
-    if (options.missedCall) steps.push({ kind: "announce", seat, text: `No "Last Card" called: ${names[seat]} pick${seat === 0 ? "" : "s"} up two`, tone: "info" });
+    if (options.missedCall) steps.push({ kind: "announce", seat, text: `No "Last Card" called: ${names[seat]} pick${names[seat] === "You" ? "" : "s"} up two`, tone: "info" });
     steps.push({ kind: "draw", seat, count: after.hands[seat].length, ...(options.missedCall ? { penalty: true } : {}) });
     if (after.discardPile.length < before.discardPile.length + action.cards.length) {
       steps.push({ kind: "announce", seat, text: "Deck empty: the played pile is turned over to make a new deck", tone: "info" });
@@ -163,9 +163,9 @@ export function planTurn(before: TableState, action: GameAction, after: TableSta
   // A play-on game: this player is out with a place, and everyone else carries on.
   if (after.playOn && after.status === "playing" && wentOut(after, seat)) {
     const place = (after.out ?? []).indexOf(seat) + 1;
-    steps.push({ kind: "announce", seat, text: `${names[seat]} ${seat === 0 ? "are" : "is"} out: ${ORDINALS[place - 1] ?? `${place}th`} place`, tone: "power" });
+    steps.push({ kind: "announce", seat, text: `${names[seat]} ${names[seat] === "You" ? "are" : "is"} out: ${ORDINALS[place - 1] ?? `${place}th`} place`, tone: "power" });
   }
-  if (after.status === "playing" && seat !== 0 && after.hands[seat].length === 1) {
+  if (after.status === "playing" && names[seat] !== "You" && after.hands[seat].length === 1 && (options.called?.[seat] ?? true)) {
     steps.push({ kind: "announce", seat, text: `${names[seat]}: "Last Card!"`, tone: "last" });
   }
   return steps;

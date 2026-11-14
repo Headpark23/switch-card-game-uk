@@ -94,7 +94,7 @@ test("someone with the code but no seat sees who is at the table and nothing els
   const store = memoryStore();
   const made = await call(store, { body: { seats: 3, name: "Ana" } }, T0);
   const lobby = await call(store, { method: "GET", code: made.body.code }, T0);
-  assert.deepEqual(Object.keys(lobby.body).sort(), ["capacity", "code", "level", "open", "seats", "status"]);
+  assert.deepEqual(Object.keys(lobby.body).sort(), ["capacity", "code", "level", "mode", "open", "seats", "status"]);
   const wrong = await call(store, { method: "GET", code: made.body.code, token: "not-a-real-token" }, T0);
   assert.equal(wrong.body.seats[0].name, "Ana");
   assert.equal(wrong.body.game, undefined);
@@ -203,7 +203,7 @@ test("holding one card without saying Last Card is spotted after five seconds, a
   const other = 1 - quiet.who;
   await call(quiet.store, { method: "GET", code: quiet.code, token: quiet.tokens[other] }, T0 + 3_000);
   assert.equal(quiet.room().game.hands[quiet.seat].length, 1, "not yet");
-  await call(quiet.store, { method: "GET", code: quiet.code, token: quiet.tokens[other] }, T0 + 5_100);
+  await call(quiet.store, { method: "GET", code: quiet.code, token: quiet.tokens[other] }, T0 + 6_100);
   assert.equal(quiet.room().game.hands[quiet.seat].length, 3, "spotted: two cards");
   assert.equal(quiet.room().moves.some((move) => move.type === "spot"), true);
 
@@ -397,4 +397,96 @@ test("the answer to starting a game is cut for the person who started it, even t
     assert.equal(guest.body.seats[0].name, "Guest");
     assert.notDeepEqual(started.body.game.hands[0], guest.body.game.hands[0]);
   }
+});
+
+test("you get the full five seconds to say Last Card, even when other phones are checking in", async () => {
+  const late = await staged(["5H", "KD"], { others: 4 });
+  await call(late.store, { code: late.code, op: "move", token: late.tokens[late.who], body: { action: { type: "play", cards: ["5H"] } } }, T0 + 10);
+  const other = 1 - late.who;
+  // The other phone looks at 5.0 and 5.6 seconds; the call, pressed just inside five seconds on screen, arrives at 5.8.
+  for (const at of [T0 + 5_010, T0 + 5_600]) await call(late.store, { method: "GET", code: late.code, token: late.tokens[other] }, at);
+  assert.equal(late.room().game.hands[late.seat].length, 1, "not spotted while the call could still be on its way");
+  await call(late.store, { code: late.code, op: "call", token: late.tokens[late.who] }, T0 + 5_800);
+  await call(late.store, { method: "GET", code: late.code, token: late.tokens[other] }, T0 + 9_000);
+  assert.equal(late.room().game.hands[late.seat].length, 1, "called in time: no penalty");
+
+  const silent = await staged(["5H", "KD"], { others: 4 });
+  await call(silent.store, { code: silent.code, op: "move", token: silent.tokens[silent.who], body: { action: { type: "play", cards: ["5H"] } } }, T0 + 10);
+  await call(silent.store, { method: "GET", code: silent.code, token: silent.tokens[1 - silent.who] }, T0 + 6_100);
+  assert.equal(silent.room().game.hands[silent.seat].length, 3, "never called: two cards");
+});
+
+/** Plays a whole online tournament: people move when it is their turn, time passes for computers and between games. */
+async function playSeries(mode, capacity, extra = {}, seed = 5) {
+  const store = memoryStore();
+  const random = seeded(seed);
+  const made = await call(store, { body: { seats: capacity, level: "standard", name: "Ana", mode, ...extra } }, T0, random);
+  assert.equal(made.status, 201, JSON.stringify(made.body));
+  const code = made.body.code;
+  const joined = await call(store, { code, op: "join", body: { name: "Ben" } }, T0, random);
+  const tokens = [made.body.token, joined.body.token];
+  const started = await call(store, { code, op: "start", token: tokens[0] }, T0, random);
+  assert.equal(started.status, 200, JSON.stringify(started.body));
+  const room = () => store.rows.get(code);
+  let now = T0;
+  let games = 0;
+  let watched = 0;
+  let over = false;
+  for (let step = 0; step < 20000 && !over; step += 1) {
+    for (const token of tokens) {
+      const view = (await call(store, { method: "GET", code, token }, now, random)).body;
+      if (view.series?.over) over = true;
+      if (!view.game) continue;
+      const hidden = view.you.watching ? view.game.hands : view.game.hands.slice(1);
+      assert.ok(hidden.every((hand) => hand.every((card) => card === "back")), "only your own cards are ever shown");
+      if (view.you.watching) {
+        watched += 1;
+        assert.equal(view.seats.some((seat) => seat.you), false);
+        if (view.status === "playing") assert.equal((await call(store, { code, op: "move", token, body: { action: { type: "draw" } } }, now, random)).status, 409, "a watcher cannot move");
+      }
+    }
+    const r = room();
+    if (over) break;
+    if (r.status === "playing") {
+      const player = r.table[r.game.turn];
+      if (r.seats[player].kind === "human") {
+        const token = tokens[r.seats[player].name === "Ana" ? 0 : 1];
+        const action = chooseTableAction(r.game, random, "standard");
+        const moved = await call(store, { code, op: "move", token, body: { action, lastCard: true } }, now, random);
+        assert.equal(moved.status, 200, JSON.stringify(moved.body));
+        if (room().status === "finished") games += 1;
+        now += 50;
+      } else now += 2_100;
+    } else now += TIMING.betweenMs + 10;
+  }
+  return { room: room(), games, watched, view: async (who) => (await call(store, { method: "GET", code, token: tokens[who] }, now, random)).body };
+}
+
+for (const [mode, capacity, extra] of [["darts", 3, { setsToWin: 3 }], ["dominoes", 4, { limit: 30 }], ["knockout", 4, {}], ["cup", 4, {}], ["group", 6, {}]]) {
+  test(`online ${mode}: a whole tournament is played to the end, one game at a time, and nobody sees another hand`, async () => {
+    const played = await playSeries(mode, capacity, extra);
+    const final = await played.view(0);
+    assert.equal(final.status, "finished");
+    assert.equal(final.series.over, true, "the tournament reaches its end");
+    assert.ok(final.series.outcome.winnerId);
+    assert.equal(final.series.outcome.order.length, capacity);
+    assert.ok(final.series.state.base.games >= 1, "games were played");
+    if (mode === "knockout") assert.equal(played.room.series.kind, "lastout", "Knock Out with friends: last one out leaves");
+  });
+}
+
+test("online Knock Out: whoever is left holding cards is out, and the people who are out watch the rest", async () => {
+  const played = await playSeries("knockout", 5, {}, 9);
+  assert.ok(played.watched > 0 || played.room.series.part.out.slice(0, -1).every((id) => played.room.seats[Number(id.slice(1))].kind === "computer"), "a person knocked out early watches");
+  const order = played.room.series.part;
+  assert.equal(order.remaining.length, 1);
+  assert.equal(order.out.length, 4);
+});
+
+test("a tournament needs enough players: Group Play needs six, Knock Out three", async () => {
+  const store = memoryStore();
+  assert.equal((await call(store, { body: { seats: 5, name: "Ana", mode: "group" } }, T0)).status, 400);
+  assert.equal((await call(store, { body: { seats: 2, name: "Ana", mode: "knockout" } }, T0)).status, 400);
+  assert.equal((await call(store, { body: { seats: 6, name: "Ana", mode: "group" } }, T0)).status, 201);
+  assert.equal((await call(store, { body: { seats: 3, name: "Ana", mode: "chess" } }, T0)).status, 400);
 });
