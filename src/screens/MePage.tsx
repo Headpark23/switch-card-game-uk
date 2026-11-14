@@ -6,7 +6,7 @@ import { KeyboardInput, useKeyboard } from '../mobile';
 import { BadgeButton, BadgeSheet, BadgeWall, PassportBook } from './Badges';
 import { PlayerCabinet } from './TrophyRoom';
 import { derivePassport, deriveBadges, type BadgeProgress } from '../switch/badges';
-import { ensureMe, gameMode, getComputerGames, getMeId, summariseByMode, summariseComputerGames, type ComputerGame } from '../switch/computerLog';
+import { ensureMe, gameMode, getComputerGames, getMeId, summariseByMode, summariseComputerGames, summariseRivals, toughestRival, RIVAL_MIN_GAMES, type ComputerGame } from '../switch/computerLog';
 import { MODES, modeInfo } from '../switch/series';
 import { claimMe, mergeProfiles } from '../switch/identity';
 import { useConfirm } from '../Confirm';
@@ -27,7 +27,7 @@ type Section = 'overview' | 'history' | 'computer' | 'badges' | 'passport' | 'tr
 const SECTIONS: readonly { id: Section; label: string }[] = [
   { id: 'overview', label: 'Me' }, { id: 'history', label: 'History' }, { id: 'computer', label: 'Computer' }, { id: 'badges', label: 'Badges' }, { id: 'passport', label: 'Passport' }, { id: 'trophies', label: 'Trophies' }, { id: 'settings', label: 'Settings' },
 ];
-const LEVEL_NAMES: Record<string, string> = { relaxed: 'Relaxed', standard: 'Standard', sharp: 'Sharp' };
+const LEVEL_NAMES: Record<string, string> = { relaxed: 'Easy', standard: 'Medium', sharp: 'Hard' };
 const FORMAT_NAMES: Record<string, string> = { 'head-to-head': 'One v One', domino: 'Domino', darts: 'Darts', league: 'Group Play', knockout: 'Knock Out', cup: 'Switch Cup' };
 
 function Bar({ label, value, total }: { label: string; value: number; total: number }) {
@@ -81,6 +81,8 @@ export default function MePage({ onPlay, onClub, onPrivacy, initialSection = 'ov
   const games = computerAll.filter((game) => game.playerId === me.id);
   const summary = summariseComputerGames(games);
   const byMode = summariseByMode(games);
+  const rivals = summariseRivals(games);
+  const toughest = toughestRival(rivals);
   const stats = derivePlayerStats(me, nights, allProfiles);
   const badges = deriveBadges(me, nights, allProfiles, computerAll);
   const earned = badges.filter((badge) => badge.earned);
@@ -148,6 +150,23 @@ export default function MePage({ onPlay, onClub, onPrivacy, initialSection = 'ov
             <div><b>{summary.games}</b><span>Played</span></div><div><b>{summary.wins}</b><span>Won</span></div><div><b>{percent(summary.winRate)}</b><span>Win rate</span></div>
             <div><b>{summary.currentStreak}</b><span>Win streak</span></div><div><b>{summary.bestStreak}</b><span>Best streak</span></div><div><b>{summary.averageMoves}</b><span>Avg moves</span></div>
           </div>
+          <h3>Your rivals</h3>
+          {rivals.length === 0
+            ? <p className="dash-note">Rivals are tracked from your next game. After a few games with each computer you will see which one is hardest to beat.</p>
+            : <>
+              <p className="rival-verdict" data-testid="toughest-rival">{toughest
+                ? <><strong>{toughest.name}</strong> is your toughest rival: finished ahead of you in {toughest.ahead} of {toughest.games} games{toughest.wins > 0 ? `, and won ${toughest.wins} outright` : ''}.</>
+                : `Play ${RIVAL_MIN_GAMES} games with a computer at the table to crown your toughest rival.`}</p>
+              <ul className="rivals" aria-label="How each computer has played against you">{rivals.map((rival) => {
+                const share = Math.round(rival.edge * 100);
+                return <li key={rival.name} className={toughest?.name === rival.name ? 'toughest' : ''}>
+                  <span className="rival-top"><strong>{rival.name}</strong><em>{rival.games >= RIVAL_MIN_GAMES ? `${share}% ahead of you` : `${rival.games} game${rival.games === 1 ? '' : 's'} so far`}</em></span>
+                  <i aria-hidden="true"><b style={{ width: `${share}%` }} /></i>
+                  <small>Finished ahead {rival.ahead} · behind {rival.behind}{rival.level ? ` · level ${rival.level}` : ''} · won {rival.wins} · average place {rival.averagePlace.toFixed(1)}</small>
+                </li>;
+              })}</ul>
+              <p className="dash-note">All computers play at the level you pick, so the gap between them is the luck of the deal and their seat. Games played before this was tracked are not included.</p>
+            </>}
           <h3>By difficulty</h3>
           {(['relaxed', 'standard', 'sharp'] as const).map((level) => <Bar key={level} label={LEVEL_NAMES[level]} value={summary.byLevel[level]?.wins ?? 0} total={summary.byLevel[level]?.games ?? 0} />)}
           <h3>By game type</h3>

@@ -428,22 +428,356 @@ function tablePlaces(state) {
 	const counts = state.hands.map((hand) => hand.length);
 	return counts.map((count) => 1 + counts.filter((other) => other < count).length);
 }
+Object.freeze({
+	tempo: {
+		name: "Tempo",
+		line: "Plays one seven (or, heads up, one eight or jack) at a time. Several together count once, so playing them singly gets every turn."
+	},
+	shield: {
+		name: "Shield",
+		line: "Never throws both twos or both black kings in one go. Keeps one back to answer, and to trap the next player who stacks."
+	},
+	aces: {
+		name: "Ace in hand",
+		line: "Holds aces back. An ace plays on anything, so it is the easiest card to go out on."
+	},
+	patience: {
+		name: "Patience",
+		line: "Picks up a card instead of wasting a power card, when nobody is close to going out."
+	},
+	hunter: {
+		name: "Hunter",
+		line: "Saves attacks for the player nearest going out, and tries not to hand them a free turn."
+	},
+	counting: {
+		name: "Counting",
+		line: "Remembers which cards have gone and works out the odds that the next player holds a two or a king."
+	},
+	planner: {
+		name: "Planner",
+		line: "When a card lets it play again (a seven), it plans the whole run of cards it can play this turn."
+	}
+});
+const ALL = Object.freeze([
+	"tempo",
+	"shield",
+	"aces",
+	"patience",
+	"hunter",
+	"counting",
+	"planner"
+]);
+const BY_LEVEL = Object.freeze({
+	relaxed: [],
+	standard: [
+		"tempo",
+		"shield",
+		"aces"
+	],
+	sharp: ALL
+});
+const weights = (w) => Object.freeze({
+	tempo: 1,
+	shield: 1,
+	aces: 1,
+	patience: 1,
+	hunter: 1,
+	counting: 1,
+	planner: 1,
+	...w
+});
+/** Used for anyone who is not one of the named computers, and by default. Everything at ordinary strength. */
+const BALANCED = Object.freeze({
+	id: "balanced",
+	name: "Everyone",
+	title: "All-rounder",
+	blurb: "A bit of everything, nothing too much.",
+	weights: weights({})
+});
+const PERSONALITIES = Object.freeze([
+	{
+		id: "john",
+		name: "John",
+		title: "The Closer",
+		blurb: "Hits whoever is nearest going out, and keeps his black kings for the moment they hurt most.",
+		weights: weights({
+			hunter: 1.7,
+			planner: 1.1,
+			counting: .8,
+			shield: .7,
+			patience: .4
+		})
+	},
+	{
+		id: "paul",
+		name: "Paul",
+		title: "The Playmaker",
+		blurb: "Chains sevens and eights together to play several cards in one turn.",
+		weights: weights({
+			tempo: 1.7,
+			planner: 1.7,
+			aces: .9,
+			shield: .7,
+			hunter: .8,
+			patience: .4,
+			counting: .8
+		})
+	},
+	{
+		id: "george",
+		name: "George",
+		title: "The Counter",
+		blurb: "Counts every card that has gone and plays the odds, quietly.",
+		weights: weights({
+			counting: 1.7,
+			patience: 1.2,
+			hunter: .9,
+			planner: .8,
+			aces: .8
+		})
+	},
+	{
+		id: "ringo",
+		name: "Ringo",
+		title: "The Rock",
+		blurb: "Always has a two up his sleeve, and never throws his pairs together.",
+		weights: weights({
+			shield: 1.7,
+			patience: 1.1,
+			hunter: .6,
+			counting: .6,
+			planner: .6
+		})
+	},
+	{
+		id: "ziggy",
+		name: "Ziggy",
+		title: "The Ace Collector",
+		blurb: "Hoards aces and finishes with one, as if he planned it all along.",
+		weights: weights({
+			aces: 1.8,
+			patience: 1.3,
+			hunter: .8,
+			shield: .8,
+			counting: .7
+		})
+	},
+	{
+		id: "marley",
+		name: "Marley",
+		title: "The Patient One",
+		blurb: "In no hurry. Will happily pick up a card to keep his power cards for later.",
+		weights: weights({
+			patience: 1.8,
+			shield: 1.2,
+			aces: 1.1,
+			hunter: .6,
+			planner: .6,
+			tempo: .9
+		})
+	},
+	{
+		id: "bowie",
+		name: "Bowie",
+		title: "The Chameleon",
+		blurb: "Does a bit of everything and changes his game to suit the table.",
+		weights: weights({
+			tempo: 1.2,
+			shield: 1.2,
+			aces: 1.2,
+			patience: 1.2,
+			hunter: 1.2,
+			counting: 1.3,
+			planner: 1.2
+		})
+	}
+]);
+/** The personality for a computer's name (case does not matter). Anyone else gets the balanced one. */
+function personalityFor(name) {
+	const key = (name ?? "").trim().toLowerCase();
+	return PERSONALITIES.find((personality) => personality.id === key) ?? BALANCED;
+}
+const NO_TACTICS = Object.freeze(weights({
+	tempo: 0,
+	shield: 0,
+	aces: 0,
+	patience: 0,
+	hunter: 0,
+	counting: 0,
+	planner: 0
+}));
+/** The strength of each tactic for a computer of this level and personality. A tactic the level does not include is 0. */
+function tacticWeights(level, personality) {
+	const mine = personalityFor(personality).weights;
+	const allowed = BY_LEVEL[level] ?? [];
+	return Object.freeze(Object.fromEntries(ALL.map((tactic) => [tactic, allowed.includes(tactic) ? mine[tactic] : 0])));
+}
+const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
+const isTwo = (card) => rankOf(card) === "2";
+const isKing = (card) => rankOf(card) === "K";
+const isAce = (card) => rankOf(card) === "A";
+/** How many cards of a kind are still unseen: not in the computer's hand and not in the played pile. */
+function unseen(view, matches, perDeck) {
+	const seen = view.hand.filter(matches).length + view.discard.filter(matches).length;
+	return Math.max(0, perDeck * view.decks - seen);
+}
+/** The chance that someone holding `holding` cards, drawn from everything unseen, has at least one of the `wanted` unseen cards. */
+function chanceHolds(view, wanted, holding) {
+	const pool = view.decks * 52 - view.hand.length - view.discard.length;
+	if (wanted <= 0 || holding <= 0 || pool <= 0) return 0;
+	if (holding > pool - wanted) return 1;
+	let miss = 1;
+	for (let index = 0; index < holding; index += 1) miss *= (pool - wanted - index) / (pool - index);
+	return clamp(1 - miss, 0, 1);
+}
+/** How much the computer minds spending a play: aces most, ordinary cards not at all. */
+function holdValue(cards) {
+	const first = cards[0];
+	switch (rankOf(first)) {
+		case "A": return 1;
+		case "K": return isBlackKing(first) ? .9 : .4;
+		case "2": return .8;
+		case "8": return .6;
+		default: return 0;
+	}
+}
+/**
+* Picks up a card instead of playing, when every play on offer would spend a power card, nobody is close to going out,
+* and the hand is small enough that one more card does no harm. A computer that is hit by a penalty never gets here.
+*/
+function shouldPickUp(view, w, plays, random) {
+	if (w.patience <= 0 || view.pending || plays.length === 0) return false;
+	if (view.hand.length > (w.patience >= 1.3 ? 7 : 6) || view.drawLeft < 8) return false;
+	if (Math.min(...view.others) <= 3) return false;
+	if (plays.some((cards) => cards.length >= view.hand.length)) return false;
+	const cheapest = Math.min(...plays.map(holdValue));
+	if (cheapest < .9) return false;
+	return random() < Math.min(.8, w.patience * cheapest * .45);
+}
+/** Added to a play's score. Positive makes the computer like the play more. Zero when no tactic has anything to say. */
+function tacticScore(view, w, cards, out) {
+	if (out.goesOut) return 0;
+	const rank = rankOf(cards[0]);
+	const count = cards.length;
+	const headsUp = view.seats === 2;
+	const nextCards = view.others[0] ?? 99;
+	const answering = view.pending !== null;
+	let score = 0;
+	if (w.tempo > 0 && count >= 2 && (rank === "7" || headsUp && (rank === "8" || rank === "J"))) score -= w.tempo * ((count - 1) * 100 + 40);
+	if (w.shield > 0) {
+		const blackKings = cards.filter(isBlackKing).length;
+		if ((rank === "2" && count >= 2 || rank === "K" && blackKings >= 2 && blackKings === count) && nextCards > 2) {
+			let factor = headsUp ? 1 : .6;
+			if (w.counting > 0) {
+				const chance = chanceHolds(view, rank === "2" ? unseen(view, isTwo, 4) : unseen(view, isKing, 4), nextCards);
+				factor = chance < .1 ? 0 : factor * (.5 + chance);
+			}
+			score -= w.shield * factor * ((count - 1) * 100 + 30);
+		}
+		if (!answering && count === 1) {
+			if (isRedKing(cards[0]) && unseen(view, isBlackKing, 2) > 0 && view.hand.filter(isRedKing).length === 1) score -= 30 * w.shield;
+			if (rank === "2" && view.hand.filter(isTwo).length === 1) score -= 25 * w.shield;
+			if (rank === "8" && view.hand.filter((card) => rankOf(card) === "8").length === 1) score -= 15 * w.shield;
+		}
+	}
+	if (w.aces > 0) {
+		if (cards.some(isAce)) score += out.remaining.length >= 3 ? -170 * w.aces : 40 * w.aces;
+		else if (out.remaining.length === 1 && isAce(out.remaining[0])) score += 90 * w.aces;
+	}
+	if (w.hunter > 0) {
+		if (out.victimCards !== void 0) {
+			if (out.victimCards <= 2) score += 80 * w.hunter;
+			else if (out.victimCards >= 6 && !answering) score -= 45 * w.hunter;
+			if (out.victimCards === out.leaderCards && out.leaderCards <= 3) score += 60 * w.hunter;
+		} else if (out.leaderPlaysFree && out.leaderCards <= 2) score -= 50 * w.hunter;
+	}
+	if (w.planner > 0 && out.keepsTurn && out.chain) score += w.planner * (out.chain.extraCards * 70 + (out.chain.canGoOut ? 500 : 0));
+	return score;
+}
+function bestChain(state, adapter, depth = 2) {
+	if (depth <= 0 || !adapter.mine(state)) return {
+		extraCards: 0,
+		canGoOut: false
+	};
+	let best = {
+		extraCards: 0,
+		canGoOut: false
+	};
+	const options = [...adapter.plays(state)].sort((a, b) => b.cards.length - a.cards.length).slice(0, 10);
+	for (const action of options) {
+		const next = adapter.apply(state, action);
+		if (adapter.wentOut(next)) return {
+			extraCards: action.cards.length,
+			canGoOut: true
+		};
+		const rest = adapter.mine(next) ? bestChain(next, adapter, depth - 1) : {
+			extraCards: 0,
+			canGoOut: false
+		};
+		const total = {
+			extraCards: action.cards.length + rest.extraCards,
+			canGoOut: rest.canGoOut
+		};
+		if (total.canGoOut && !best.canGoOut || total.canGoOut === best.canGoOut && total.extraCards > best.extraCards) best = total;
+	}
+	return best;
+}
 //#endregion
 //#region src/switch/tableAi.ts
-/**
-* The computer players at a bigger table. Same three temperaments as the two-player opponent:
-* relaxed makes friendly mistakes, standard sheds cards, sharp watches who is about to go out.
-*/
-function score(state, action, level) {
+function viewFor(state, seat) {
+	const others = [];
+	let at = seat;
+	for (let step = 1; step < liveSeats(state); step += 1) {
+		at = nextSeat(state, at);
+		others.push(state.hands[at].length);
+	}
+	return {
+		seats: liveSeats(state),
+		decks: decksFor(state.hands.length),
+		hand: state.hands[seat],
+		others,
+		discard: state.discardPile,
+		drawLeft: state.drawPile.length,
+		pending: state.pendingPenalty,
+		currentSuit: state.currentSuit
+	};
+}
+function outcomeOf(next, seat, weights) {
+	const rivals = next.hands.map((hand, index) => ({
+		index,
+		cards: hand.length
+	})).filter((entry) => entry.index !== seat && !next.out?.includes(entry.index));
+	const leaderCards = rivals.length ? Math.min(...rivals.map((entry) => entry.cards)) : 99;
+	const keepsTurn = next.turn === seat && next.status === "playing";
+	const penaltyOnNext = next.pendingPenalty !== null && next.turn !== seat;
+	const chain = weights.planner > 0 && keepsTurn ? bestChain(next, {
+		plays: (s) => tableLegalMoves(s).filter((a) => a.type === "play"),
+		apply: applyTableAction,
+		wentOut: (s) => wentOut(s, seat),
+		mine: (s) => s.turn === seat && s.status === "playing"
+	}) : void 0;
+	return {
+		goesOut: wentOut(next, seat),
+		keepsTurn,
+		remaining: next.hands[seat],
+		victimCards: penaltyOnNext ? next.hands[next.turn].length : void 0,
+		leaderCards,
+		leaderPlaysFree: next.turn !== seat && next.pendingPenalty === null && next.hands[next.turn].length === leaderCards,
+		chain
+	};
+}
+function score(state, action, level, context) {
 	const seat = state.turn;
+	const { weights, view } = context;
 	if (action.type === "accept-missed-turn") return -50;
-	if (action.type === "draw") return state.pendingPenalty ? -400 : level === "sharp" ? -60 : 0;
+	if (action.type === "draw") return state.pendingPenalty ? -400 : level === "sharp" ? -60 : -5e3;
 	const next = applyTableAction(state, action);
 	if (wentOut(next, seat)) return 1e5;
 	const rank = rankOf(action.cards[0]);
 	const remaining = next.hands[seat];
 	let total = action.cards.length * 100;
 	if (state.pendingPenalty) total += 1e3;
+	const tactical = tacticScore(view, weights, action.cards, outcomeOf(next, seat, weights));
 	if (level !== "sharp") {
 		total += {
 			"2": 60,
@@ -454,7 +788,7 @@ function score(state, action, level) {
 			A: 20
 		}[rank] ?? 0;
 		if (rank === "A" && action.chosenSuit) total += remaining.filter((card) => suitOf(card) === action.chosenSuit).length * 10;
-		return total;
+		return total + tactical;
 	}
 	const urgency = next.hands[next.turn === seat ? nextSeat(next, seat) : next.turn].length <= 2 ? 2.5 : 1;
 	const penalty = next.pendingPenalty;
@@ -466,12 +800,12 @@ function score(state, action, level) {
 		total += followUps.length > 0 ? 130 : -50;
 	}
 	if (rank === "A") {
-		total += remaining.length <= 2 ? 80 : -170;
+		if (weights.aces <= 0) total += remaining.length <= 2 ? 80 : -170;
 		if (action.chosenSuit) total += remaining.filter((card) => suitOf(card) === action.chosenSuit).length * 25;
 	} else total += remaining.filter((card) => suitOf(card) === next.currentSuit).length * 12;
 	if (remaining.length === 1 && rankOf(remaining[0]) === "7") total -= 150;
-	if (remaining.length === 1 && rankOf(remaining[0]) === "A") total += 60;
-	return total;
+	if (remaining.length === 1 && rankOf(remaining[0]) === "A" && weights.aces <= 0) total += 60;
+	return total + tactical;
 }
 /** Among equal orderings of a set, finish on the suit the rest of the hand holds most. */
 function bestOrdering(state, action) {
@@ -500,16 +834,26 @@ function bestOrdering(state, action) {
 		cards: best
 	};
 }
-function chooseTableAction(state, random, level = "standard") {
+function chooseTableAction(state, random, level = "standard", options = {}) {
 	const all = tableLegalMoves(state);
 	if (all.length === 0) throw new Error("There is no legal Switch action.");
 	const selfCancelling = (action) => action.type === "play" && action.cards.some((card, index) => isRedKing(card) && action.cards.slice(0, index).some(isBlackKing));
 	const sensible = all.filter((action) => !selfCancelling(action));
 	const actions = sensible.length > 0 ? sensible : all;
 	if (level === "relaxed" && random() < .5) return actions[Math.min(actions.length - 1, Math.floor(Math.max(0, random()) * actions.length))];
+	const weights = options.weights ?? (options.tactics === false ? NO_TACTICS : tacticWeights(level, options.personality));
+	const context = {
+		weights,
+		view: viewFor(state, state.turn)
+	};
+	if (weights.patience > 0 && !state.pendingPenalty) {
+		const plays = actions.filter((action) => action.type === "play");
+		const draw = actions.find((action) => action.type === "draw");
+		if (draw && shouldPickUp(context.view, weights, plays.map((play) => play.cards), random)) return draw;
+	}
 	const scored = actions.map((action) => ({
 		action,
-		score: score(state, action, level)
+		score: score(state, action, level, context)
 	}));
 	const top = Math.max(...scored.map((entry) => entry.score));
 	const best = scored.filter((entry) => entry.score === top);

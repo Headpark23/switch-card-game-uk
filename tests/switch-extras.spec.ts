@@ -65,7 +65,7 @@ test("the computer level can be changed from the coach sheet and is remembered",
   await page.getByRole("button", { name: "Learn rules" }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
   await page.getByRole("button", { name: /Why & tactics: / }).click();
-  await page.getByRole("button", { name: /Computer: Standard/ }).click();
-  await expect(page.getByRole("button", { name: /Computer: Sharp/ })).toBeVisible();
+  await page.getByRole("button", { name: /Computer: Medium/ }).click();
+  await expect(page.getByRole("button", { name: /Computer: Hard/ })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("switchComputerLevel"))).toBe("sharp");
 });

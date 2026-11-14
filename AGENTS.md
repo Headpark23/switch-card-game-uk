@@ -135,3 +135,8 @@ Darts: first to three legs wins a set. Knock Out: whoever finishes last in a rou
 - Reactions are a fixed set of 18 (10 sayings, 8 emojis) and nothing else; the server stores only the id. They are message content, so emoji here do not break the no-emoji-icons rule.
 - Absent players get a visible countdown. No move for 30 seconds: they are told the computer will play their move in 10 seconds. At 40 seconds the computer plays it (ruling 23).
 - The server owns the game and sends each seat a masked view. Nobody but the server may see another seat's hand or the draw pile order.
+
+## Computer players: levels, tactics, personalities (owner decisions, 14 Nov 2026)
+- Levels are called Easy, Medium and Hard (ids relaxed, standard, sharp). Easy: no tactics. Medium: tempo, shield, aces. Hard: all seven. Each computer (John, Paul, George, Ringo, Ziggy, Marley, Bowie) has a personality that weights the tactics its level allows; the Play lobby shows them. Ruling 29, `src/switch/computerTactics.ts`.
+- A computer playing for an absent human uses no tactics (`api/_room.js`). A computer with one legal move makes it quickly; only moves with a choice take the 5 second think time (`FORCED_THINK_MS`).
+- Measure any tactic change with `node scripts/ai-selfplay.mjs 600` (add `ablate` for one tactic at a time) and rebuild the online engine with `npm run build:engine`.

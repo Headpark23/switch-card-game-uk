@@ -72,3 +72,7 @@ Five new keys, added by `src/switch/telemetry.ts` and `src/switch/useTableTeleme
 | `switchStatsTable` | The running penalty-card tally of the game in progress | Removed once the game is over. Separate from `switchTableGame`, which is untouched. |
 
 `switchStatsTest` is only ever set by tests, to let an automated browser send counts.
+
+## Rivals (14 Nov 2026)
+
+No new key. Each record in `switchComputerGames` gains an optional `rivals` list (`[{ name, place }]`): how each computer at the table finished. Me > Computer ranks John, Paul and the rest by how often they finished ahead of you. Games saved before this carry no `rivals` and are simply left out of that ranking.

@@ -19,10 +19,18 @@ export interface ComputerGame {
   readonly moves: number;
   /** Which way of playing this game belonged to. Missing means a single game, as before game types existed. */
   readonly mode?: PlayMode;
+  /** How each computer at the table finished in this game. Missing on games played before rivals were tracked. */
+  readonly rivals?: readonly RivalPlace[];
   /** Every game of one Knock Out, league, Cup, Darts or Dominoes match shares this id. */
   readonly seriesId?: string;
   /** Set on the last game you played in a series: how the whole series ended for you. */
   readonly series?: SeriesResult;
+}
+
+/** One computer's finishing place in a game you played. */
+export interface RivalPlace {
+  readonly name: string;
+  readonly place: number;
 }
 
 /** How a whole series (a tournament or match) ended for the player. */
@@ -47,7 +55,8 @@ function isGame(value: unknown): value is ComputerGame {
     && typeof game.level === "string" && LEVELS.includes(game.level) && typeof game.won === "boolean"
     && typeof game.place === "number" && typeof game.moves === "number"
     && (game.mode === undefined || typeof game.mode === "string") && (game.seriesId === undefined || typeof game.seriesId === "string")
-    && (game.series === undefined || (game.series !== null && typeof game.series === "object"));
+    && (game.series === undefined || (game.series !== null && typeof game.series === "object"))
+    && (game.rivals === undefined || (Array.isArray(game.rivals) && game.rivals.every((rival) => rival !== null && typeof rival === "object" && typeof (rival as RivalPlace).name === "string" && typeof (rival as RivalPlace).place === "number")));
 }
 
 export function getComputerGames(extensions: Extensions): ComputerGame[] {
@@ -173,6 +182,52 @@ export function summariseComputerGames(games: readonly ComputerGame[]): Computer
     currentStreak: streak, bestStreak: best, form: ordered.slice(-10).map((game) => (game.won ? "W" : "L")),
     byLevel, byOpponents, averageMoves: ordered.length ? Math.round(moves / ordered.length) : 0,
   };
+}
+
+export interface RivalSummary {
+  readonly name: string;
+  /** Games you played with this computer at the table (only games where its place was recorded). */
+  readonly games: number;
+  /** Games it finished ahead of you. */
+  readonly ahead: number;
+  /** Games you finished ahead of it. */
+  readonly behind: number;
+  /** Games where you finished level (a game that ends the moment someone is out can leave a tie behind them). */
+  readonly level: number;
+  /** Games this computer won outright. */
+  readonly wins: number;
+  /** How often it finished ahead of you; a level finish counts as half. 0 to 1. */
+  readonly edge: number;
+  readonly averagePlace: number;
+}
+
+/** A computer has to share this many games with you before it can be called your toughest rival. */
+export const RIVAL_MIN_GAMES = 3;
+
+/** How each computer has fared against you, toughest first. Games saved before rivals were tracked are left out. */
+export function summariseRivals(games: readonly ComputerGame[]): RivalSummary[] {
+  const table = new Map<string, { games: number; ahead: number; behind: number; level: number; wins: number; places: number }>();
+  for (const game of games) {
+    for (const rival of game.rivals ?? []) {
+      const entry = table.get(rival.name) ?? { games: 0, ahead: 0, behind: 0, level: 0, wins: 0, places: 0 };
+      entry.games += 1;
+      entry.places += rival.place;
+      if (rival.place < game.place) entry.ahead += 1;
+      else if (rival.place > game.place) entry.behind += 1;
+      else entry.level += 1;
+      if (rival.place === 1) entry.wins += 1;
+      table.set(rival.name, entry);
+    }
+  }
+  return [...table.entries()].map(([name, entry]) => ({
+    name, games: entry.games, ahead: entry.ahead, behind: entry.behind, level: entry.level, wins: entry.wins,
+    edge: (entry.ahead + entry.level / 2) / entry.games, averagePlace: entry.places / entry.games,
+  })).sort((a, b) => (b.games >= RIVAL_MIN_GAMES ? 1 : 0) - (a.games >= RIVAL_MIN_GAMES ? 1 : 0) || b.edge - a.edge || b.wins - a.wins || b.games - a.games || a.name.localeCompare(b.name));
+}
+
+/** The computer that has beaten you most often, once enough games are in. */
+export function toughestRival(rivals: readonly RivalSummary[]): RivalSummary | null {
+  return rivals.find((rival) => rival.games >= RIVAL_MIN_GAMES) ?? null;
 }
 
 export function newGameId(): string {

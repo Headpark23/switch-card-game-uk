@@ -3,16 +3,25 @@ import { ArrowRight, BookOpen, Lightning, Robot } from '@phosphor-icons/react';
 import { readActiveTable, readSpeed, saveSpeed } from '../switch/activeTable';
 import { SPEED_NAMES, type Speed } from '../switch/presentation';
 import { COMPUTER_NAMES } from '../switch/presentation';
-import type { ComputerLevel } from '../switch/ai';
+import { LEVEL_NAMES, LEVEL_NOTES, type ComputerLevel } from '../switch/ai';
+import { PERSONALITIES, TACTICS, tacticWeights, type TacticId } from '../switch/computerTactics';
+
+/** One line saying what a computer leans on at this level. Easy computers use no tactics at all. */
+function leansOn(level: ComputerLevel, personality: string): string {
+  if (level === 'relaxed') return 'No tactics on Easy: just friendly play.';
+  const weights = tacticWeights(level, personality);
+  const favourites = (Object.keys(TACTICS) as TacticId[]).filter((tactic) => weights[tactic] >= 1.2).sort((a, b) => weights[b] - weights[a]).slice(0, 2);
+  return favourites.length ? `Leans on ${favourites.map((tactic) => TACTICS[tactic].name.toLowerCase()).join(' and ')}.` : 'An even mix of tactics.';
+}
 import { getComputerGames, getMeId, summariseComputerGames } from '../switch/computerLog';
 import { readClub } from '../switch/clubStore';
 import { MODES, modeInfo, validateSetup, type PlayMode, type SeriesSetup } from '../switch/series';
 import { CardImage, FeltHeader, MiniFan } from '../ui';
 
 const LEVELS: readonly { id: ComputerLevel; name: string; note: string }[] = [
-  { id: 'relaxed', name: 'Relaxed', note: 'Makes friendly mistakes' },
-  { id: 'standard', name: 'Standard', note: 'Plays sensibly' },
-  { id: 'sharp', name: 'Sharp', note: 'Plays to beat you' },
+  { id: 'relaxed', name: LEVEL_NAMES.relaxed, note: LEVEL_NOTES.relaxed },
+  { id: 'standard', name: LEVEL_NAMES.standard, note: LEVEL_NOTES.standard },
+  { id: 'sharp', name: LEVEL_NAMES.sharp, note: LEVEL_NOTES.sharp },
 ];
 const KEY = 'switchTable';
 
@@ -89,6 +98,15 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
     <div className="lobby-group" role="group" aria-label="Difficulty">
       <h2>How good are they?</h2>
       <div className="seg three">{LEVELS.map((entry) => <button key={entry.id} aria-pressed={choice.level === entry.id} className={choice.level === entry.id ? 'active' : ''} onClick={() => set({ level: entry.id })}><b>{entry.name}</b><small>{entry.note}</small></button>)}</div>
+    </div>
+
+    <div className="lobby-group" role="group" aria-label="Who you are playing">
+      <h2>Who you are playing</h2>
+      <ul className="personalities">{PERSONALITIES.slice(0, choice.opponents).map((personality) => <li key={personality.id}>
+        <span className="personality-top"><strong>{personality.name}</strong><em>{personality.title}</em></span>
+        <span>{personality.blurb}</span>
+        <small>{leansOn(choice.level, personality.id)}</small>
+      </li>)}</ul>
     </div>
 
     {choice.mode === 'darts' && <div className="lobby-group" role="group" aria-label="Sets to win">

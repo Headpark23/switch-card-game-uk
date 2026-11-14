@@ -1,5 +1,5 @@
 import { rankOf, suitOf } from "./cards";
-import { wentOut, type TableState } from "./table";
+import { tableLegalMoves, wentOut, type TableState } from "./table";
 import type { CardId, GameAction, Suit } from "./types";
 
 /**
@@ -12,7 +12,8 @@ import type { CardId, GameAction, Suit } from "./types";
  * never show the final card early and cards never reorder after they land.
  */
 export type Step =
-  | { readonly kind: "think"; readonly seat: number }
+  /** `forced`: the player had exactly one legal move (such as having to pick up), so there was nothing to think over. */
+  | { readonly kind: "think"; readonly seat: number; readonly forced?: boolean }
   | { readonly kind: "card"; readonly seat: number; readonly card: CardId; readonly index: number; readonly count: number }
   /** Cards leaving the deck for a seat. `penalty` is a two or king pick-up; `ouch` is a penalty landing on someone with one card left. */
   | { readonly kind: "draw"; readonly seat: number; readonly count: number; readonly penalty?: boolean; readonly ouch?: boolean }
@@ -44,8 +45,13 @@ export const SPEEDS: Readonly<Record<Speed, Timings>> = {
 /** Reduced motion: nothing travels, but the cards still land one at a time so the order stays readable. */
 export const REDUCED: Timings = { highlight: 0, think: 400, flight: 0, gap: 320, announce: 800, draw: 450 };
 
-/** A computer player takes at least this long over every move at the table, whatever the pace setting (owner request, 14 Nov 2026). */
+/**
+ * A computer player takes at least this long over a move that has choices in it, whatever the pace setting (owner
+ * request, 14 Nov 2026). A move it is forced into, when it has exactly one legal action (such as picking up with nothing
+ * to play), is quick, like a person who needs no time to think: `FORCED_THINK_MS`.
+ */
 export const MIN_THINK_MS = 5000;
+export const FORCED_THINK_MS = 900;
 /** You have this long to say "Last Card" before a computer may spot that you did not. */
 export const LAST_CARD_GRACE_MS = 5000;
 
@@ -78,7 +84,7 @@ export function drawTiming(count: number, penalty: boolean, timings: Timings): {
 
 export function stepDuration(step: Step, timings: Timings): number {
   switch (step.kind) {
-    case "think": return timings.think;
+    case "think": return step.forced ? Math.min(timings.think, FORCED_THINK_MS) : timings.think;
     case "card": return timings.flight + timings.gap;
     case "draw": return drawTiming(step.count, step.penalty === true, timings).total;
     case "announce": return timings.announce;
@@ -128,7 +134,7 @@ export function effectText(before: TableState, after: TableState, cards: readonl
 export function planTurn(before: TableState, action: GameAction, after: TableState, names: readonly string[], options: { think: boolean; missedCall?: boolean }): Step[] {
   const seat = before.turn;
   const steps: Step[] = [];
-  if (options.think) steps.push({ kind: "think", seat });
+  if (options.think) steps.push({ kind: "think", seat, forced: tableLegalMoves(before).length === 1 });
   if (action.type === "accept-missed-turn") {
     steps.push({ kind: "announce", seat, text: `${names[seat]} miss${seat === 0 ? "" : "es"} a turn`, tone: "info" });
     return steps;

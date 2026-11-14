@@ -948,3 +948,17 @@
 
 /* "Play selected" always stays inside the phone: it rides just above the tab bar while the hand scrolls beneath it. */
 .table-game .multi-action{position:sticky;bottom:calc(76px + var(--mobile-safe-area-height,0px));z-index:6;box-shadow:0 -8px 18px #1f3a2c26,0 0 0 1px #d9e1cf}
+
+.rival-verdict{margin:0 0 8px;font-size:14px;color:var(--ink)}
+.rivals{list-style:none;margin:0 0 6px;padding:0;display:grid;gap:6px}
+.rivals li{display:grid;gap:4px;border:1px solid #d8c99f;background:#fffaf0;border-radius:12px;padding:9px 12px}
+.rivals li.toughest{border-color:#b8923a;background:#fff3d2}
+.rivals .rival-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.rivals .rival-top strong{font-size:14px;color:var(--ink)}.rivals .rival-top em{font-style:normal;font-size:12.5px;color:var(--muted)}
+.rivals i{display:block;height:8px;border-radius:5px;background:#e8e0cc;overflow:hidden}.rivals i b{display:block;height:100%;background:linear-gradient(90deg,#a8472f,#d9772f)}
+.rivals small{font-size:12px;color:var(--muted)}
+.personalities{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.personalities li{display:grid;gap:2px;border:1px solid #d8c99f;background:#fffaf0;border-radius:12px;padding:8px 12px;font-size:12.5px;color:var(--ink)}
+.personality-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.personality-top strong{font-size:14px;color:var(--green)}.personality-top em{font-style:normal;font-size:12px;color:var(--muted)}
+.personalities small{font-size:12px;color:var(--muted)}

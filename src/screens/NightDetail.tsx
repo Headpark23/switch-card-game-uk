@@ -6,7 +6,7 @@ import type { SwitchNightRecord } from '../switch/history';
 import { countryName } from '../switch/places';
 import { resolveHistoryPlayerId, type LocalProfile } from '../switch/profiles';
 
-const LEVEL_NAMES: Record<string, string> = { relaxed: 'Relaxed', standard: 'Standard', sharp: 'Sharp' };
+const LEVEL_NAMES: Record<string, string> = { relaxed: 'Easy', standard: 'Medium', sharp: 'Hard' };
 const ordinal = (place: number) => `${place}${['st', 'nd', 'rd'][place - 1] ?? 'th'}`;
 const longDate = (iso: string) => new Date(iso).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -48,6 +48,7 @@ export default function NightDetail({ night, game, meId, profiles, onClose }: {
           <li><Robot size={17} weight="bold" /><span>{record.opponents === 1 ? 'One computer player' : `${record.opponents} computer players`} · {LEVEL_NAMES[record.level]}</span></li>
           <li><Trophy size={17} weight="bold" /><span>Finished {ordinal(record.place)} of {record.opponents + 1} · {record.moves} moves</span></li>
         </ul>
+        {record.rivals && record.rivals.length > 0 && <section className="night-section"><h4>How the computers finished</h4><ol>{[{ name: 'You', place: record.place }, ...record.rivals].sort((a, b) => a.place - b.place).map((entry) => <li key={entry.name}>{ordinal(entry.place)} · {entry.name}</li>)}</ol></section>}
         <p className="dash-note">Games against the computer count towards your record, streaks and badges.</p>
       </div>;
     })()}

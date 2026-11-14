@@ -13,7 +13,7 @@ import { powers } from '../content';
 import { Fan } from '../ui';
 
 const FORMAT_NAMES: Record<string, string> = { 'head-to-head': 'One v One', domino: 'Domino', darts: 'Darts', league: 'Group Play', knockout: 'Knock Out', cup: 'Switch Cup' };
-const LEVEL_NAMES: Record<string, string> = { relaxed: 'Relaxed', standard: 'Standard', sharp: 'Sharp' };
+const LEVEL_NAMES: Record<string, string> = { relaxed: 'Easy', standard: 'Medium', sharp: 'Hard' };
 
 /** The corner index of a playing card, so each launch tile reads as an ace dealt onto the table. */
 function TileIndex({ suit, flip = false }: { suit: string; flip?: boolean }) {

@@ -255,7 +255,11 @@ export function tick(room, now, random = secureRandom) {
     }
     const due = dueFor(room);
     if (due.at > now) break;
-    playAction(room, room.game.turn, chooseTableAction(room.game, random, room.level), { at: due.at, lastCard: true, auto: due.auto });
+    // A computer seat plays as itself (its personality and tactics). When the computer plays for a person who ran out of
+    // time, it plays plainly, with no tactics: it is covering for them, not out to win (owner decision, 14 Nov 2026).
+    const mover = room.seats[room.game.turn];
+    const options = mover.kind === "human" ? { tactics: false } : { personality: mover.name };
+    playAction(room, room.game.turn, chooseTableAction(room.game, random, room.level, options), { at: due.at, lastCard: true, auto: due.auto });
     changed = true;
   }
   return changed;

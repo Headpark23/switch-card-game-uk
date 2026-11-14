@@ -215,7 +215,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
         setGame(before);
         push(`${names[before.turn]} spotted that you did not say "Last Card". You pick up two cards.`);
       }
-      const action = chooseTableAction(before, Math.random, level);
+      const action = chooseTableAction(before, Math.random, level, { personality: names[before.turn] });
       show(before, action, applyTableAction(before, action), !spotted);
     }, exposed ? timings.highlight + callGrace() : timings.highlight);
     return () => window.clearTimeout(timer);
@@ -228,7 +228,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     if (logged.current === gameId) return;
     logged.current = gameId;
     // Every game counts: your place in this one is logged under its game type, whatever the tournament does with it.
-    logComputerGame({ id: gameId, opponents, level, won: game.winner === 0, place: tablePlaces(game)[0], moves: game.move, ...(series ? { mode: series.mode, seriesId: series.seriesId } : {}) });
+    logComputerGame({ id: gameId, opponents, level, won: game.winner === 0, place: tablePlaces(game)[0], moves: game.move, rivals: names.slice(1).map((name, index) => ({ name, place: tablePlaces(game)[index + 1] })), ...(series ? { mode: series.mode, seriesId: series.seriesId } : {}) });
     stats.onFinish({ won: game.winner === 0, place: tablePlaces(game)[0], moves: game.move });
     if (!series) clearActiveTable();
   }, [game, lastCalled, gameId, opponents, level]);
@@ -322,7 +322,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   /** You are out and only the computers are left: play the rest of the round out in an instant. */
   function skipToResult() {
     let table = gameRef.current;
-    for (let guard = 0; guard < 3000 && table.status === 'playing'; guard += 1) table = applyTableAction(table, chooseTableAction(table, Math.random, level));
+    for (let guard = 0; guard < 3000 && table.status === 'playing'; guard += 1) table = applyTableAction(table, chooseTableAction(table, Math.random, level, { personality: names[table.turn] }));
     if (table.status === 'playing') return;
     busy.current = false;
     setShowing(null);

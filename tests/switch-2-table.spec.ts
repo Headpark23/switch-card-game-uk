@@ -267,10 +267,11 @@ test("a finished game is logged exactly once and the saved game is cleared", asy
   await expect(page.getByRole("heading", { name: /You won the/ })).toBeVisible({ timeout: 10_000 });
   const read = () => page.evaluate(() => {
     const club = JSON.parse(localStorage.getItem("switchScoreKeeper") || "{}");
-    const games = (club.extensions?.switchComputerGames ?? []) as { id: string; won: boolean }[];
-    return { count: games.filter((game) => game.id === "cpu-test-game").length, won: games[0]?.won, active: localStorage.getItem("switchTableGame") };
+    const games = (club.extensions?.switchComputerGames ?? []) as { id: string; won: boolean; rivals?: { name: string; place: number }[] }[];
+    return { count: games.filter((game) => game.id === "cpu-test-game").length, won: games[0]?.won, active: localStorage.getItem("switchTableGame"), rivals: games[0]?.rivals };
   });
-  expect(await read()).toEqual({ count: 1, won: true, active: null });
+  // Each computer's finishing place is kept so Me can show who is hardest to beat.
+  expect(await read()).toEqual({ count: 1, won: true, active: null, rivals: [{ name: "John", place: 2 }] });
   await page.reload();
   await page.getByRole("navigation").getByRole("button", { name: "Me", exact: true }).click();
   expect((await read()).count).toBe(1);
