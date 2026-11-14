@@ -142,7 +142,7 @@ test("draw pile turnover preserves the top discard and safely exhausts", async (
   expect(result.uniqueCount).toBe(result.zoneCount);
 });
 
-test("power cards stack, pass turns and cannot finish illegally", async ({ page }) => {
+test("power cards stack, pass turns, and a seven or jack as the last card forces a pickup instead of winning", async ({ page }) => {
   await page.goto("/");
 
   const result = await page.evaluate(async () => {
@@ -183,8 +183,14 @@ test("power cards stack, pass turns and cannot finish illegally", async ({ page 
       { type: "play", cards: ["JH", "JS"] },
     );
 
+    // Ruling 19: these may be played as the last cards, but they cannot win. One card is picked up and the turn passes.
     const finalSeven = rules.legalMoves({ ...sevenState, playerHand: ["7H"] });
     const finalJack = rules.legalMoves({ ...jackState, playerHand: ["JH"] });
+    const pickupOf = (state: any) => ({ hand: state.playerHand, turn: state.turn, status: state.status, winner: state.winner, top: state.discardPile.at(-1), suit: state.currentSuit, drawLeft: state.drawPile.length });
+    const sevenLast = pickupOf(rules.applyAction({ ...sevenState, playerHand: ["7H"] }, { type: "play", cards: ["7H"] }));
+    const jackLast = pickupOf(rules.applyAction({ ...jackState, playerHand: ["JH"] }, { type: "play", cards: ["JH"] }));
+    const twoJacksLast = pickupOf(rules.applyAction({ ...twoState, playerHand: ["JH", "JS"], computerHand: ["4D"] }, { type: "play", cards: ["JH", "JS"] }));
+    const eightLast = pickupOf(rules.applyAction({ ...eightState, playerHand: ["8H"], computerHand: ["4D"] }, { type: "play", cards: ["8H"] }));
     const penaltyMoves = rules.legalMoves({
       ...twoState,
       playerHand: ["AS", "2H", "3C"],
@@ -201,6 +207,10 @@ test("power cards stack, pass turns and cannot finish illegally", async ({ page 
       twoJacksTurn: twoJacks.turn,
       finalSeven,
       finalJack,
+      sevenLast,
+      jackLast,
+      twoJacksLast,
+      eightLast,
       penaltyMoves,
     };
   });
@@ -213,8 +223,14 @@ test("power cards stack, pass turns and cannot finish illegally", async ({ page 
   expect(result.jackTurn).toBe("player");
   // Ruling 18: two jacks mean play again.
   expect(result.twoJacksTurn).toBe("player");
-  expect(result.finalSeven).not.toContainEqual({ type: "play", cards: ["7H"] });
-  expect(result.finalJack).not.toContainEqual({ type: "play", cards: ["JH"] });
+  expect(result.finalSeven).toContainEqual({ type: "play", cards: ["7H"] });
+  expect(result.finalJack).toContainEqual({ type: "play", cards: ["JH"] });
+  // The seven goes down, one card comes off the deck (AC is on top), it is the computer's turn and nobody has won.
+  expect(result.sevenLast).toEqual({ hand: ["AC"], turn: "computer", status: "playing", winner: null, top: "7H", suit: "H", drawLeft: 7 });
+  expect(result.jackLast).toEqual({ hand: ["AC"], turn: "computer", status: "playing", winner: null, top: "JH", suit: "H", drawLeft: 7 });
+  expect(result.twoJacksLast).toMatchObject({ hand: ["AC"], turn: "computer", status: "playing", winner: null, top: "JS", suit: "S" });
+  // An eight is different: it can win, and nobody picks up.
+  expect(result.eightLast).toMatchObject({ hand: [], status: "won", winner: "player" });
   expect(result.penaltyMoves).toContainEqual({ type: "play", cards: ["2H"] });
   expect(result.penaltyMoves).not.toContainEqual({ type: "play", cards: ["AS"], chosenSuit: "S" });
 });

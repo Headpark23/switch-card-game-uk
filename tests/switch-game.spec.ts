@@ -149,7 +149,7 @@ test("the main rules story teaches the complete game in five interactive steps",
   await page.getByRole("button", { name: "04 CALL" }).click();
   await expect(page.getByText(/Forget to announce it and you pick up 2 penalty cards/)).toBeVisible();
   await page.getByRole("button", { name: "05 WIN" }).click();
-  await expect(page.getByText(/cannot finish on a seven/)).toBeVisible();
+  await expect(page.getByText(/A seven cannot win the game/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Play the guided game" })).toBeVisible();
 });
 

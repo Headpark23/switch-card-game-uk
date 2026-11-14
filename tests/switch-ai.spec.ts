@@ -85,11 +85,12 @@ test("computer chooses an ace suit from its remaining hand", async ({ page }) =>
   expect(action).toEqual({ type: "play", cards: ["AS"], chosenSuit: "C" });
 });
 
-test("computer never finishes illegally on a seven or two-player jack", async ({ page }) => {
+test("computer never wins on a seven or two-player jack, and picks up a card instead", async ({ page }) => {
   await page.goto("/");
 
   const result = await page.evaluate(async () => {
     const ai = await import("/src/switch/ai.ts");
+    const rules = await import("/src/switch/rules.ts");
     const state = {
       playerHand: ["4D", "5D"],
       computerHand: ["7H"],
@@ -102,14 +103,18 @@ test("computer never finishes illegally on a seven or two-player jack", async ({
       winner: null,
       move: 3,
     };
-    return {
-      seven: ai.chooseComputerAction(state, () => 0),
-      jack: ai.chooseComputerAction({ ...state, computerHand: ["JH"] }, () => 0),
+    // Ruling 19: a last seven or two-player jack may be played, but it never wins: the computer picks up a card and the turn passes.
+    const outcome = (hand: string[]) => {
+      const next = rules.applyAction({ ...state, computerHand: hand }, ai.chooseComputerAction({ ...state, computerHand: hand }, () => 0));
+      return { status: next.status, winner: next.winner, computerCards: next.computerHand.length, turn: next.turn };
     };
+    return { seven: outcome(["7H"]), jack: outcome(["JH"]) };
   });
 
-  expect(result.seven).toEqual({ type: "draw" });
-  expect(result.jack).toEqual({ type: "draw" });
+  expect(result.seven).toEqual({ status: "playing", winner: null, computerCards: expect.any(Number), turn: "player" });
+  expect(result.jack).toEqual({ status: "playing", winner: null, computerCards: expect.any(Number), turn: "player" });
+  expect(result.seven.computerCards).toBeGreaterThanOrEqual(1);
+  expect(result.jack.computerCards).toBeGreaterThanOrEqual(1);
 });
 
 test("the computer never wastes a black king by pairing it with a red king", async ({ page }) => {

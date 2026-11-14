@@ -42,7 +42,8 @@ const playable = (g, c) => {
   if (g.penalty.kind === "king") return r === "K";
   return r === "8";
 };
-// Ruling 18: two or four jacks mean play again, so like a seven they cannot be the last play at any table size.
+// Ruling 18: two or four jacks mean play again, so like a seven they cannot win at any table size. Ruling 19: they may
+// still be played as the last cards, but then the player picks up one card and the turn passes.
 const cannotFinish = (g, rank, count = 1) => rank === "7" || (rank === "J" && (g.n === 2 || count % 2 === 0));
 
 const perms = (a) => (a.length <= 1 ? [a] : a.flatMap((x, i) => perms([...a.slice(0, i), ...a.slice(i + 1)]).map((r) => [x, ...r])));
@@ -54,7 +55,6 @@ export function legalPlays(g, p = g.cur) {
     const same = hand.filter((c) => rankOf(c) === rank);
     for (let mask = 1; mask < 1 << same.length; mask++) {
       const set = same.filter((_, i) => mask & (1 << i));
-      if (cannotFinish(g, rank, set.length) && set.length === hand.length) continue;
       if (!set.some((c) => playable(g, c))) continue;
       if (rank === "K") {
         for (const order of perms(set)) if (playable(g, order[0])) out.push({ cards: order, suit: suitOf(order.at(-1)) });
@@ -129,7 +129,15 @@ export function step(g, decision) {
     else { g.dir *= -1; next = mod(p + g.dir, g.n); note = " and reverses direction"; }
   } else next = mod(p + g.dir, g.n);
   g.lastCount = k;
-  if (!g.hands[p].length) g.winner = p;
+  if (!g.hands[p].length) {
+    if (cannotFinish(g, rank, k)) {
+      // Ruling 19: these cards cannot win. They may still be played as the last cards, but the player then picks up one
+      // card from the deck (and says "Last Card" again) and the turn passes on the way play was already going.
+      drawCards(g, p, 1);
+      next = mod(p + g.dir, g.n);
+      note = " as their last cards, which cannot win: picks up a card and the turn passes";
+    } else g.winner = p;
+  }
   g.cur = next;
   return `${name} plays ${cards.map(pretty).join(" ")}${rank === "A" ? ` and calls ${SYM[suit]}` : ""}${note}`;
 }

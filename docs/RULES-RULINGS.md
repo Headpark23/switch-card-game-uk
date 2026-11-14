@@ -6,7 +6,7 @@ Decided 7 Nov 2026, after playing 10,000 simulated games (2 to 6 players, four d
 
 | # | Question | Ruling |
 |---|----------|--------|
-| 1 | Can an 8 be the winning card with two players? | Yes. An 8 can win. Only a 7 (always), a jack (two players) and two or four jacks played together (any table, ruling 18) cannot be the last card. |
+| 1 | Can an 8 be the winning card with two players? | Yes. An 8 can win. Only a 7 (always), a jack (two players) and two or four jacks played together (any table, ruling 18) cannot win. They may still be played as the last cards, but they force a pickup (ruling 19). |
 | 2 | Can a 2 or a king be the winning card? | Yes. You win at once and nobody picks up. The same goes for an ace. |
 | 3 | Must the first card of a same-number set match the suit? | No. The first card must match the suit or the number of the previous card. The last card played decides the suit. |
 | 4 | Does picking up end your turn? | Yes, for both the single card on a normal turn and for penalties from twos or kings. Only a 7 lets you play again. |
@@ -19,7 +19,7 @@ Decided 7 Nov 2026, after playing 10,000 simulated games (2 to 6 players, four d
 ## How these are enforced
 
 - `src/switch/rules.ts` is the engine. `scripts/table-sim.mjs` is a second implementation written only from the rules text, for 2 to 6 players.
-- `tests/table-sim.test.mjs`: 300 full games per table size must finish, keep all 52 cards, and never end on a forbidden card.
+- `tests/table-sim.test.mjs`: 300 full games per table size must finish, keep all 52 cards, and never win on a forbidden card.
 - `tests/switch-rules-sim.spec.ts`: the engine must agree with the simulator on every legal move and every result, for 2, 3 and 4 players.
 - `scripts/contentious.mjs` measures how often each open point comes up. `npm run test:rules` runs the quick checks.
 - The in-app rules (`src/content.ts`) say all of the above in plain words.
@@ -42,3 +42,5 @@ Decided 7 Nov 2026, after playing 10,000 simulated games (2 to 6 players, four d
 17. **League playoffs are knockouts (8 Nov 2026, owner request).** The championship is a knockout among the top two from every league (two leagues: 4 players, 3 games: 4 become 3, 3 become 2, the last two play for the title). The plate is the same knockout among everyone ranked third or lower. Each game, the player who finishes last drops out. One player alone in the plate takes a bye.
 
 18. **Two or four jacks mean play again (13 Nov 2026, owner ruling).** One or three jacks reverse the direction of play; with two players that brings play straight back, so the same player plays again. Two or four jacks never reverse: the direction stays as it was and whoever played them plays again, at every table size. Because they mean play again, two or four jacks cannot be a player's last cards (the same reason a seven cannot). One or three jacks can still be the winning play with three or more players. This replaces the earlier reading that two jacks cancel out and play moves on.
+
+19. **A seven or jacks that cannot win may still be played as the last cards, but they force a pickup (14 Nov 2026, owner clarification of the finishing rule and rulings 1 and 18).** A seven (any table), a jack (two players) and two or four jacks together (any table) cannot win the game. They are NOT illegal as the last cards: the player puts them down, picks up one card from the deck, says "Last Card" again, and their turn ends. They are left holding that one card and the next player plays. Direction of play is unchanged, nothing else happens (no extra turn), and the played cards still set the suit. This replaces the earlier engine behaviour that refused the play altogether.

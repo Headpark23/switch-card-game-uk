@@ -44,7 +44,12 @@ export interface TableOptions {
 
 const TWO_PLAYER_OPTIONS: TableOptions = Object.freeze({ jackMayFinish: false });
 
-function cannotBeFinalPlay(cards: readonly CardId[], hand: readonly CardId[], options: TableOptions): boolean {
+/**
+ * Owner ruling 19 (14 Nov 2026): a seven, a jack with two players, or two or four jacks at any table cannot win the
+ * game, but they CAN be played as the last cards. When they are, the player is not out: the cards go down, they pick
+ * up one card from the deck, say "Last Card" again, and their turn ends. This says whether a play is one of those.
+ */
+export function forcesPickup(cards: readonly CardId[], hand: readonly CardId[], options: TableOptions = TWO_PLAYER_OPTIONS): boolean {
   if (cards.length !== hand.length) return false;
   const playedRank = rankOf(cards[0]);
   return playedRank === "7" || (playedRank === "J" && (!options.jackMayFinish || cards.length % 2 === 0));
@@ -71,9 +76,7 @@ export function legalActionsFor(
   options: TableOptions = TWO_PLAYER_OPTIONS,
 ): GameAction[] {
   const playable = hand.filter((card) => isPlayableDuringPenalty(card, context));
-  const actions = playable
-    .filter((card) => !cannotBeFinalPlay([card], hand, options))
-    .flatMap(playActionsFor);
+  const actions = playable.flatMap(playActionsFor);
 
   for (const rank of new Set(hand.map(rankOf))) {
     const matchingCards = hand.filter((card) => rankOf(card) === rank);
@@ -86,13 +89,11 @@ export function legalActionsFor(
       if (rank === "K") {
         for (const cards of orderings(subset)) {
           if (!playable.includes(cards[0])) continue;
-          if (cannotBeFinalPlay(cards, hand, options)) continue;
           actions.push({ type: "play", cards });
         }
         continue;
       }
       const cards = [firstLegal, ...subset.filter((card) => card !== firstLegal)];
-      if (cannotBeFinalPlay(cards, hand, options)) continue;
       if (rank === "A") {
         for (const chosenSuit of SUITS) actions.push({ type: "play", cards, chosenSuit });
       } else {
@@ -153,7 +154,7 @@ export function drawCards(state: GameState, count: number, recipient: Turn): Gam
 
 /**
  * A play is legal when every card is in the hand, all share one rank, the first
- * card may legally be played, and the play does not finish on a seven or jack.
+ * card may legally be played. (A seven or jack as the last cards is legal too, but it forces a pickup: ruling 19.)
  * The order matters: the last card played decides the new suit, so any order
  * that starts with a playable card is accepted.
  */
@@ -169,7 +170,6 @@ export function isLegalPlayFor(
   const rank = rankOf(cards[0]);
   if (!cards.every((card) => rankOf(card) === rank)) return false;
   if (!isPlayableDuringPenalty(cards[0], context)) return false;
-  if (cannotBeFinalPlay(cards, hand, options)) return false;
   if (rank === "A") return action.chosenSuit !== undefined && SUITS.includes(action.chosenSuit);
   return action.chosenSuit === undefined;
 }
@@ -214,7 +214,8 @@ export function applyAction(state: GameState, action: GameAction): GameState {
   const remaining = handFor(state, actor).filter((card) => !playedSet.has(card));
   const lastCard = played.at(-1) as CardId;
   const playedRank = rankOf(lastCard);
-  const winner = remaining.length === 0 ? actor : null;
+  const pickupInstead = remaining.length === 0 && forcesPickup(played, handFor(state, actor));
+  const winner = remaining.length === 0 && !pickupInstead ? actor : null;
   let pendingPenalty: GameState["pendingPenalty"] = null;
 
   if (playedRank === "2") {
@@ -245,18 +246,20 @@ export function applyAction(state: GameState, action: GameAction): GameState {
   // Ruling 18: two or four jacks mean play again. One or three reverse, which with two players is also play again.
   const keepsTurn = playedRank === "7" || playedRank === "J";
 
-  return {
+  const afterPlay: GameState = {
     ...state,
     playerHand: actor === "player" ? remaining : [...state.playerHand],
     computerHand: actor === "computer" ? remaining : [...state.computerHand],
     discardPile: [...state.discardPile, ...played],
     currentSuit: playedRank === "A" ? (action.chosenSuit as Suit) : suitOf(lastCard),
-    turn: keepsTurn ? actor : otherTurn(actor),
+    turn: keepsTurn && !pickupInstead ? actor : otherTurn(actor),
     pendingPenalty,
     status: winner ? "won" : "playing",
     winner,
     move: state.move + 1,
   };
+  // Ruling 19: the last cards were a seven or jacks, so the game goes on. One card from the deck, and the turn ends.
+  return pickupInstead ? drawCards(afterPlay, 1, actor) : afterPlay;
 }
 
 const POWER_RANKS = new Set(["A", "2", "7", "8", "J", "K"]);

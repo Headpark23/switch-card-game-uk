@@ -35,6 +35,16 @@ function isBlackKing(card: CardId) {
   return card === "KS" || card === "KC";
 }
 
+/**
+ * Ruling 19: a seven or jacks played as the very last cards cannot win. The cards go down, one card is picked up from
+ * the deck and the turn ends. True when this play was exactly that.
+ */
+export function wasForcedPickup(before: GameState, after: GameState, cards: readonly CardId[], side: Side): boolean {
+  const hand = side === "you" ? before.playerHand : before.computerHand;
+  const rank = rankOf(cards[0]);
+  return cards.length === hand.length && after.status === "playing" && (rank === "7" || rank === "J");
+}
+
 /** Why the card just played matters, in one or two sentences. */
 export function explainEffect(before: GameState, after: GameState, cards: readonly CardId[], side: Side, aceSuit?: Suit): string {
   const rank = rankOf(cards[0]);
@@ -42,6 +52,9 @@ export function explainEffect(before: GameState, after: GameState, cards: readon
   const penalty = after.pendingPenalty;
   const wasBlackKingStack = before.pendingPenalty?.kind === "black-king";
 
+  if (wasForcedPickup(before, after, cards, side)) {
+    return `${subject(side)} played ${side === "you" ? "your" : "its"} last card, but a ${rank === "7" ? "seven" : "jack"} cannot win the game. ${side === "you" ? "You pick" : "It picks"} up one card from the deck and ${next === "you" ? "it is your turn" : "the computer plays next"}.`;
+  }
   if (penalty?.kind === "draw-two") {
     return `${subject(side)} played a two, so ${next} must pick up ${penalty.cards} cards unless ${next === "you" ? "you stack" : "they stack"} another two.`;
   }
@@ -131,9 +144,6 @@ export function explainUnplayable(card: CardId, state: GameState): string {
   if (penalty?.kind === "draw-two") return `Twos are stacking, so only another two can answer. ${card} cannot follow the current card.`;
   if (penalty?.kind === "black-king") return `A black king is active, so only a king can answer. ${card} cannot follow the current card.`;
   if (penalty?.kind === "miss-turn") return `An eight is active, so only another eight can answer. ${card} cannot follow the current card.`;
-  if (rank === "7" || rank === "J") {
-    if (state.playerHand.length === 1) return "You cannot finish on a seven or a jack in this two-player game.";
-  }
   const topRank = RANK_WORDS[rankOf(top)];
   const article = /^[aeiou]/i.test(topRank) ? "an" : "a";
   return `That card cannot follow the current card. ${card} is a ${RANK_WORDS[rank]} of ${SUIT_NAMES[suitOf(card)]}, and the pile needs ${SUIT_NAMES[state.currentSuit]} or ${article} ${topRank}.`;

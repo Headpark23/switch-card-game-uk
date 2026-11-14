@@ -16,7 +16,7 @@ let computerLevel: ComputerLevel = readLevel();
 import { cardIdLabel } from '../switch/cards';
 import { applyAction, createInitialGame, drawCards, legalMoves, isLegalPlay } from '../switch/rules';
 import type { CardId, GameState, Suit } from '../switch/types';
-import { explainEffect, explainOptions, explainPickup, explainUnplayable } from '../switch/coach';
+import { explainEffect, explainOptions, explainPickup, explainUnplayable, wasForcedPickup } from '../switch/coach';
 import { adviseMove } from '../switch/tactics';
 import { explainLesson, explainPickupLesson, explainStart, type Lesson } from '../switch/lessons';
 import { cue, feedbackEnabled, setFeedbackEnabled } from '../feedback';
@@ -75,7 +75,8 @@ function describePlay(before: GameState, after: GameState, cards: readonly CardI
   const cardRank = rank(cards[0]);
   let notice = cards.length === 1 ? `${who} played ${cards[0]}.` : `${who} played ${cards.length} ${cardRank}s together.`;
   const wasKing = before.pendingPenalty?.kind === 'black-king';
-  if (after.pendingPenalty?.kind === 'draw-two') notice += ` ${after.pendingPenalty.cards} cards are now at stake.`;
+  if (wasForcedPickup(before, after, cards, actor)) notice += ` That was ${actor === 'you' ? 'your' : 'its'} last card, but a ${cardRank === '7' ? 'seven' : 'jack'} cannot win the game, so ${actor === 'you' ? 'you pick' : 'it picks'} up one card.`;
+  else if (after.pendingPenalty?.kind === 'draw-two') notice += ` ${after.pendingPenalty.cards} cards are now at stake.`;
   else if (after.pendingPenalty?.kind === 'black-king') {
     notice += wasKing && cards.some(isRedKing)
       ? ` A red king cancels 5; ${after.pendingPenalty.cards} cards are still at stake.`
@@ -264,8 +265,15 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
       return;
     }
     if (after.playerHand.length === 1) {
+      const forced = wasForcedPickup(before, after, cards, 'you');
+      if (forced) flyDraw(1, 'you');
       cue('last-card');
-      setView((current) => ({ ...current, engine: after, hint: false, meaning, lesson, awaitingLastCard: true, notice: 'One card left. Say “Last Card” before play continues.' }));
+      setView((current) => ({
+        ...current, engine: after, hint: false, meaning, lesson, awaitingLastCard: true,
+        notice: forced
+          ? `${rank(cards[0]) === '7' ? 'A seven' : 'A jack'} cannot win the game, so you pick up one card. One card left: say “Last Card” again before play continues.`
+          : 'One card left. Say “Last Card” before play continues.',
+      }));
       return;
     }
     setView((current) => ({ ...current, engine: after, hint: false, meaning, lesson, notice }));
@@ -346,9 +354,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
     if (!canPlay(staged[0])) { refuse([staged[0]], explainUnplayable(staged[0], engine)); return; }
     if (rank(staged[0]) === 'A') { setAceChoice(staged); return; }
     if (!isLegalPlay(engine, { type: 'play', cards: staged })) {
-      refuse([...staged], staged.length === engine.playerHand.length && (rank(staged[staged.length - 1]) === '7' || rank(staged[staged.length - 1]) === 'J')
-        ? 'You cannot finish on a seven or a jack in this two-player game. Change the order or keep a card back.'
-        : 'Those cards cannot be played in that order. Try a different order, or play fewer cards.');
+      refuse([...staged], 'Those cards cannot be played in that order. Try a different order, or play fewer cards.');
       return;
     }
     playSet(staged);

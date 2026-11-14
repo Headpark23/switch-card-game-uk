@@ -1,5 +1,5 @@
 import { rankOf, suitOf } from "./cards";
-import { applyAction, isPlayableDuringPenalty, legalMoves } from "./rules";
+import { applyAction, forcesPickup, isPlayableDuringPenalty, legalMoves } from "./rules";
 import type { CardId, GameAction, GameState, RandomSource } from "./types";
 
 /**
@@ -27,7 +27,7 @@ function scoreAction(state: GameState, action: GameAction): number {
   const remaining = state.computerHand.filter((card) => !action.cards.includes(card));
   let score = action.cards.length * 100;
 
-  if (remaining.length === 0) score += 10_000;
+  if (remaining.length === 0 && !forcesPickup(action.cards, state.computerHand)) score += 10_000;
   if (state.pendingPenalty) score += 1_000;
   score += POWER_CARD_SCORE[rank] ?? 0;
 

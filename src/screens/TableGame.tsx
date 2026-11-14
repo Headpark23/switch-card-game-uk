@@ -44,6 +44,10 @@ function describe(before: TableState, after: TableState, who: string, action: Ga
   const plays = who === 'You' ? 'play' : 'plays';
   const text = cards.length === 1 ? `${who} ${plays} ${cardIdLabel(cards[0])}` : `${who} ${plays} ${cards.map(cardIdLabel).join(', then ')}`;
   if (rank(cards[0]) === 'A') return `${text}: the suit is ${suitNames[action.chosenSuit ?? suit(cards[cards.length - 1])]}.`;
+  // Ruling 19: a seven or jacks as the last cards cannot win. One card comes from the deck and the turn passes.
+  if (cards.length === before.hands[before.turn].length && after.status === 'playing') {
+    return `${text}, but that cannot win the game, so ${who === 'You' ? 'you pick' : `${who} picks`} up one card.`;
+  }
   return text + '.';
 }
 
@@ -209,7 +213,7 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
     if (!staged.length || busy.current) return;
     if (rank(staged[0]) === 'A') { setAceChoice(staged); return; }
     if (!isLegalTablePlay(game, { type: 'play', cards: staged })) {
-      refuse([...staged], staged.length === hand.length && rank(staged[staged.length - 1]) === '7' ? 'You cannot finish on a seven. Keep a card back.' : staged.length === hand.length && rank(staged[staged.length - 1]) === 'J' && seats === 2 ? 'You cannot finish on a jack in a two-player game.' : staged.length === hand.length && rank(staged[staged.length - 1]) === 'J' && staged.length % 2 === 0 ? 'Two or four jacks mean play again, so they cannot be your last cards. Keep a card back.' : 'Those cards cannot be played in that order. Try a different order, or play fewer cards.');
+      refuse([...staged], 'Those cards cannot be played in that order. Try a different order, or play fewer cards.');
       return;
     }
     commit(staged);

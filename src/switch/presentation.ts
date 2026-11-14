@@ -65,6 +65,10 @@ export function effectText(before: TableState, after: TableState, cards: readonl
   const rank = rankOf(cards[cards.length - 1]);
   const actor = before.turn;
   if (after.status === "won") return null;
+  // Ruling 19: a seven or jacks as the very last cards cannot win. The player picks up one card and the turn passes.
+  if ((rank === "7" || rank === "J") && cards.length === before.hands[actor].length) {
+    return `${rank === "7" ? "A seven" : "Jacks"} cannot win: ${names[actor]} pick${actor === 0 ? "" : "s"} up a card`;
+  }
   const pending = after.pendingPenalty;
   if (rank === "2" && pending?.kind === "draw-two") return `Twos: ${names[after.turn]} faces ${plural(pending.cards, "card")}`;
   if (rank === "K") {
@@ -108,6 +112,13 @@ export function planTurn(before: TableState, action: GameAction, after: TableSta
   action.cards.forEach((card, index) => steps.push({ kind: "card", seat, card, index, count: action.cards.length }));
   const effect = effectText(before, after, action.cards, names, action.chosenSuit);
   if (effect) steps.push({ kind: "announce", seat, text: effect, tone: "power" });
+  // The last cards were a seven or jacks, which cannot win: one card is picked up from the deck.
+  if (after.status === "playing" && before.hands[seat].length === action.cards.length) {
+    steps.push({ kind: "draw", seat, count: after.hands[seat].length });
+    if (after.discardPile.length < before.discardPile.length + action.cards.length) {
+      steps.push({ kind: "announce", seat, text: "Deck empty: the played pile is turned over to make a new deck", tone: "info" });
+    }
+  }
   if (after.status === "playing" && seat !== 0 && after.hands[seat].length === 1) {
     steps.push({ kind: "announce", seat, text: `${names[seat]}: "Last Card!"`, tone: "last" });
   }
@@ -144,8 +155,10 @@ export function visibleAt(before: TableState, after: TableState, steps: readonly
   const drawsDone = steps.slice(0, at).some((step) => step.kind === "draw");
   const handCounts = (drawsDone ? after : before).hands.map((hand, index) => {
     if (index !== seat) return hand.length;
+    // Once the pickup is done the engine's hand is the true one (a last seven or jacks leave, then one card comes in).
+    if (drawsDone) return after.hands[seat].length;
     // Cards leave the hand as they are thrown, the one in the air included.
-    return before.hands[seat].length - landed.length - (current.kind === "card" ? 1 : 0) + (drawsDone ? after.hands[seat].length - before.hands[seat].length : 0);
+    return before.hands[seat].length - landed.length - (current.kind === "card" ? 1 : 0);
   });
   return {
     discardPile: drawsDone ? after.discardPile : [...before.discardPile, ...landed],

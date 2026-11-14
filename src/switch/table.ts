@@ -1,5 +1,5 @@
 import { createDeck, rankOf, suitOf } from "./cards";
-import { isLegalPlayFor, legalActionsFor, type TableOptions } from "./rules";
+import { forcesPickup, isLegalPlayFor, legalActionsFor, type TableOptions } from "./rules";
 import type { CardId, GameAction, PendingPenalty, RandomSource, Suit } from "./types";
 
 /**
@@ -167,19 +167,23 @@ export function applyTableAction(state: TableState, action: GameAction): TableSt
     turn = wrap(actor + direction, seats);
   }
 
-  const won = remaining.length === 0;
-  return {
+  // Ruling 19: a seven, or jacks that cannot win, may be played as the last cards. They do not win: the player picks
+  // up one card from the deck, says "Last Card" again, and the turn passes on. The direction is left as it was.
+  const pickupInstead = remaining.length === 0 && forcesPickup(played, state.hands[actor], tableOptions(seats));
+  const won = remaining.length === 0 && !pickupInstead;
+  const afterPlay: TableState = {
     ...state,
     hands: state.hands.map((hand, index) => (index === actor ? remaining : hand)),
     discardPile: [...state.discardPile, ...played],
     currentSuit: playedRank === "A" ? (action.chosenSuit as Suit) : suitOf(lastCard),
-    turn,
-    direction,
+    turn: pickupInstead ? wrap(actor + state.direction, seats) : turn,
+    direction: pickupInstead ? state.direction : direction,
     pendingPenalty,
     status: won ? "won" : "playing",
     winner: won ? actor : null,
     move: state.move + 1,
   };
+  return pickupInstead ? dealTo(afterPlay, actor, 1) : afterPlay;
 }
 
 /** Finishing places once someone is out: the winner, then fewest cards left in hand. Ties share the better place. */

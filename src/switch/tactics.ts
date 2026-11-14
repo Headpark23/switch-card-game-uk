@@ -69,7 +69,7 @@ function scorePlay(state: GameState, action: Play): number {
   const opponent = state.computerHand.length;
   let score = action.cards.length * 100;
 
-  if (remaining.length === 0) score += 10_000;
+  if (after.status === "won") score += 10_000;
   if (state.pendingPenalty) score += 1_000;
   else {
     if (isAttack(first)) score += opponent <= 2 ? 150 : -30;
@@ -93,7 +93,10 @@ function reasonsFor(state: GameState, action: Play): string[] {
   const opponent = state.computerHand.length;
   const reasons: string[] = [];
 
-  if (remaining.length === 0) return ["It is your last card, so it wins the game."];
+  if (after.status === "won") return ["It is your last card, so it wins the game."];
+  if (action.cards.length === state.playerHand.length) {
+    return ["This is your last card, but a seven or a jack cannot win the game. You pick up one card, say \"Last Card\" again, and play passes to the computer."];
+  }
   if (state.pendingPenalty) {
     const label = state.pendingPenalty.kind === "miss-turn" ? "the missed turn" : `the ${state.pendingPenalty.cards} cards`;
     reasons.push(`It answers the penalty, so you avoid ${state.pendingPenalty.kind === "miss-turn" ? "missing a turn" : "picking them up"} and pass ${label} back.`);
@@ -132,7 +135,7 @@ function situationalTactics(state: GameState, playing: readonly CardId[] = []): 
   if (hand.some((card) => rankOf(card) === "K" && !isBlackKing(card))) tactics.push("Red kings are your answer to black kings. Keep one in hand if you can.");
   if (opponent <= 2) tactics.push(`The computer is nearly out (${plural(opponent, "card")}). Hit it with a two, a black king or an eight, or race to finish first.`);
   else if (opponent >= 7) tactics.push("The computer has plenty of cards, so there is no rush. Play sensibly and keep your power cards back.");
-  if (hand.length <= 3) tactics.push("Do not let a seven or a jack be your last card. In a two-player game you cannot finish on either, so plan to get rid of them first.");
+  if (hand.length <= 3) tactics.push("Do not let a seven or a jack be your last card. In a two-player game neither can win the game: you would have to pick up a card and say Last Card again, so get rid of them early.");
   tactics.push("Matching cards of one number can be played together. Look for pairs: the last one you pick sets the suit.");
   return tactics.slice(0, 3);
 }
@@ -142,6 +145,7 @@ function cardNotes(state: GameState, legalCards: ReadonlySet<CardId>): CardNote[
   const top = state.discardPile[state.discardPile.length - 1];
   return state.playerHand.map((card) => {
     if (legalCards.has(card)) {
+      if (state.playerHand.length === 1 && (rankOf(card) === "7" || rankOf(card) === "J")) return { card, legal: true, text: "Legal, but it cannot win the game. You would pick up one card, say Last Card again, and your turn would end." };
       if (penalty) return { card, legal: true, text: `Legal. It answers the penalty. ${effectHint(card)}` };
       const bySuit = rankOf(card) !== "A" && suitOf(card) === state.currentSuit;
       const lead = rankOf(card) === "A" ? "Legal, and wild." : bySuit ? `Legal: it matches the suit (${SUITS[state.currentSuit]}).` : `Legal: it matches the ${RANKS[rankOf(top)]}, and switches the suit to ${SUITS[suitOf(card)]}.`;
@@ -150,7 +154,6 @@ function cardNotes(state: GameState, legalCards: ReadonlySet<CardId>): CardNote[
     if (penalty?.kind === "draw-two") return { card, legal: false, text: "Not legal. Only a two can answer a two." };
     if (penalty?.kind === "black-king") return { card, legal: false, text: "Not legal. Only a king can answer a black king." };
     if (penalty?.kind === "miss-turn") return { card, legal: false, text: "Not legal. Only an eight can answer an eight." };
-    if (state.playerHand.length === 1 && (rankOf(card) === "7" || rankOf(card) === "J")) return { card, legal: false, text: "You cannot finish on a seven or a jack in a two-player game." };
     return { card, legal: false, text: `Not legal. The pile needs ${SUITS[state.currentSuit]} or a ${RANKS[rankOf(top)]}.` };
   });
 }

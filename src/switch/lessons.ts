@@ -1,4 +1,5 @@
 import { rankOf, suitOf } from "./cards";
+import { wasForcedPickup } from "./coach";
 import { legalMoves } from "./rules";
 import type { CardId, GameState, Suit } from "./types";
 
@@ -42,6 +43,16 @@ export function explainLesson(before: GameState, after: GameState, cards: readon
   const suitNow = SUITS[after.currentSuit];
   const base = { cards: cards.slice(0, 4), happened };
 
+  if (wasForcedPickup(before, after, cards, side)) {
+    return {
+      ...base,
+      title: "Last card, but it cannot win",
+      rule: "A seven, a jack in a two-player game, or two or four jacks together cannot be the winning play. You may still play them as your last cards, but then you pick up one card from the deck, say “Last Card” again, and your turn ends.",
+      why: `${who} ${side === "you" ? "pick" : "picks"} up one card, so ${side === "you" ? "you are" : "the computer is"} back to a single card, and it is ${next === "you" ? "your" : "the computer's"} turn.`,
+      tip: "Play sevens and jacks early, so the card you finish on is one that can win: a number, a two, an eight, a king or an ace.",
+    };
+  }
+
   if (rank === "2") {
     return {
       ...base,
@@ -83,7 +94,7 @@ export function explainLesson(before: GameState, after: GameState, cards: readon
     return {
       ...base,
       title: "A seven: play again",
-      rule: "After a seven you play another card straight away. You cannot finish the game on a seven, because you still have to play again.",
+      rule: "After a seven you play another card straight away. A seven cannot win the game: if it is your last card, you pick up one card from the deck, say “Last Card” again, and your turn ends.",
       why: `${who} ${side === "you" ? "play" : "plays"} again. The pile still needs ${SUITS[after.currentSuit]} or a seven.`,
       tip: "A seven is a free move. Use it to get rid of a spare card and set up the suit you hold most of.",
     };
@@ -95,7 +106,7 @@ export function explainLesson(before: GameState, after: GameState, cards: readon
       title: odd ? "A jack: reverse the order" : "Two jacks: play again",
       rule: "One or three jacks reverse the direction of play. Two or four jacks never reverse: whoever played them plays again. With two players, a reverse brings play straight back to the person who played it, so any jacks mean play again.",
       why: odd ? `In a two-player game ${side === "you" ? "you play" : "the computer plays"} again.` : `Two or four jacks always mean play again, so ${side === "you" ? "you play" : "the computer plays"} again.`,
-      tip: "With two players a jack works like a seven. Remember that you cannot finish on one.",
+      tip: "With two players a jack works like a seven. Remember that a jack cannot win the game: as your last card it means picking up one and saying Last Card again.",
     };
   }
   if (rank === "A") {
