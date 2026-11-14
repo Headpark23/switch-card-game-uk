@@ -100,6 +100,7 @@ Darts: first to three legs wins a set. Knock Out: whoever finishes last in a rou
 - Real playing cards are the icon language: home actions are four aces dealt onto the table, and game types and modes use `MiniFan` hands instead of numbers or generic icons. Other icons come from Phosphor in one weight; no emoji or text glyphs as icons.
 - No small-caps label above a heading, and no thick coloured side stripes on cards or callouts.
 - Wins are celebrated with `CardShower` (a match, Knock Out, Cup, league championship, beating the computer); it never blocks taps and is skipped under reduced motion.
+- Pick-ups at the table (14 Nov 2026): card backs slide from the deck to whoever picks up, like a played card in reverse. Penalty pick-ups (2, 4, 6, 8, 5, 10) are slower, a small "+N" floats up from the deck, and "Ouch!" floats up from anyone hit by a penalty while on their last card (`drawTiming` in `src/switch/presentation.ts`).
 
 ## Switch 2.0 decisions (13 Nov 2026)
 - Five permanent bottom tabs: Home | Play | Score | Club | Me. The lit tab follows the section on screen (`SECTION` map in `Prototype.tsx`); no oversized hero tab.

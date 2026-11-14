@@ -14,7 +14,8 @@ import type { CardId, GameAction, Suit } from "./types";
 export type Step =
   | { readonly kind: "think"; readonly seat: number }
   | { readonly kind: "card"; readonly seat: number; readonly card: CardId; readonly index: number; readonly count: number }
-  | { readonly kind: "draw"; readonly seat: number; readonly count: number }
+  /** Cards leaving the deck for a seat. `penalty` is a two or king pick-up; `ouch` is a penalty landing on someone with one card left. */
+  | { readonly kind: "draw"; readonly seat: number; readonly count: number; readonly penalty?: boolean; readonly ouch?: boolean }
   | { readonly kind: "announce"; readonly seat: number; readonly text: string; readonly tone: "power" | "last" | "info" };
 
 export type Speed = "quick" | "natural" | "relaxed";
@@ -45,11 +46,23 @@ export const REDUCED: Timings = { highlight: 0, think: 400, flight: 0, gap: 320,
 
 export const SPEED_NAMES: Readonly<Record<Speed, string>> = { quick: "Quick", natural: "Natural", relaxed: "Relaxed" };
 
+/**
+ * How a pick-up plays out. Cards slide from the deck to the hand one after another; a penalty (2, 4, 6, 8, 5 or 10 cards)
+ * is slower so the damage can be followed. With reduced motion nothing travels, the count simply shows for a moment.
+ */
+export function drawTiming(count: number, penalty: boolean, timings: Timings): { trip: number; stagger: number; shown: number; total: number } {
+  if (timings.flight <= 0) return { trip: 0, stagger: 0, shown: 0, total: penalty ? timings.announce : timings.draw };
+  const trip = penalty ? timings.draw * 1.7 : timings.draw * 1.1;
+  const shown = Math.min(count, 8);
+  const stagger = penalty ? timings.gap * 1.2 : timings.gap;
+  return { trip, stagger, shown, total: trip + (shown - 1) * stagger + (penalty ? timings.announce * 0.6 : timings.gap) };
+}
+
 export function stepDuration(step: Step, timings: Timings): number {
   switch (step.kind) {
     case "think": return timings.think;
     case "card": return timings.flight + timings.gap;
-    case "draw": return timings.draw;
+    case "draw": return drawTiming(step.count, step.penalty === true, timings).total;
     case "announce": return timings.announce;
   }
 }
@@ -102,7 +115,8 @@ export function planTurn(before: TableState, action: GameAction, after: TableSta
   }
   if (action.type === "draw") {
     const count = after.hands[seat].length - before.hands[seat].length;
-    steps.push({ kind: "draw", seat, count });
+    const penalty = before.pendingPenalty !== null && before.pendingPenalty.kind !== "miss-turn";
+    steps.push({ kind: "draw", seat, count, penalty, ouch: penalty && before.hands[seat].length === 1 });
     // The deck ran out mid-pickup: the played pile was turned over to make a new one.
     if (after.discardPile.length < before.discardPile.length) {
       steps.push({ kind: "announce", seat, text: "Deck empty: the played pile is turned over to make a new deck", tone: "info" });

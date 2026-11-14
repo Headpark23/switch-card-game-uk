@@ -10,7 +10,7 @@ import { cue } from '../feedback';
 import { logComputerGame } from '../switch/logGame';
 import { getComputerGames, getMeId, summariseComputerGames } from '../switch/computerLog';
 import { readClub } from '../switch/clubStore';
-import { planTurn, REDUCED, SPEED_NAMES, SPEEDS, stepDuration, visibleAt, type Speed, type Step } from '../switch/presentation';
+import { drawTiming, planTurn, REDUCED, SPEED_NAMES, SPEEDS, stepDuration, visibleAt, type Speed, type Step } from '../switch/presentation';
 import { clearActiveTable, newTableGameId, readSpeed, saveActiveTable, saveSpeed, type ActiveTable } from '../switch/activeTable';
 import { CardImage, CardShower, rank, suit, suitNames, suitSymbols } from '../ui';
 import RealCards from './RealCards';
@@ -146,6 +146,39 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
     return () => animation.cancel();
   }, [showing?.id, showing?.at, timings.flight]);
 
+  // Cards slide from the deck to whoever is picking up, one after another. A penalty is slower so it can be followed.
+  useLayoutEffect(() => {
+    const step = visible.drawing;
+    if (!step || timings.flight <= 0) return;
+    const section = sectionRef.current;
+    const pile = section?.querySelector<HTMLElement>('.draw-pile');
+    const target = step.seat === 0 ? section?.querySelector<HTMLElement>('.player-hand') : section?.querySelector<HTMLElement>(`[data-seat="${step.seat}"]`);
+    const back = pile?.querySelector('img');
+    if (!pile || !target || !back) return;
+    const { trip, stagger, shown } = drawTiming(step.count, step.penalty === true, timings);
+    const from = pile.getBoundingClientRect();
+    const end = target.getBoundingClientRect();
+    const scale = from.width / (pile.offsetWidth || 1) || 1;
+    const dx = (end.left + end.width / 2 - (from.left + from.width / 2)) / scale;
+    const dy = (end.top + end.height / 2 - (from.top + from.height / 2)) / scale;
+    const fliers: HTMLElement[] = [];
+    const animations: Animation[] = [];
+    for (let index = 0; index < shown; index += 1) {
+      const flier = document.createElement('span');
+      flier.className = 'draw-flier';
+      flier.setAttribute('aria-hidden', 'true');
+      flier.appendChild(back.cloneNode() as HTMLElement);
+      pile.appendChild(flier);
+      fliers.push(flier);
+      animations.push(flier.animate([
+        { transform: 'translate(0, 0) rotate(0deg) scale(1)', opacity: 1, offset: 0 },
+        { transform: `translate(${dx * 0.6}px, ${dy * 0.6}px) rotate(${step.seat === 0 ? 8 : -8}deg) scale(.92)`, opacity: 1, offset: 0.65 },
+        { transform: `translate(${dx}px, ${dy}px) rotate(0deg) scale(.7)`, opacity: 0, offset: 1 },
+      ], { duration: trip, delay: index * stagger, easing: 'cubic-bezier(.25,.7,.3,1)', fill: 'backwards' }));
+    }
+    return () => { animations.forEach((animation) => animation.cancel()); fliers.forEach((flier) => flier.remove()); };
+  }, [showing?.id, showing?.at, timings]);
+
   // The computers play one after another. Nothing starts while a turn is still being shown.
   useEffect(() => {
     if (showing || game.status !== 'playing' || game.turn === 0 || awaitingLastCard) return;
@@ -280,6 +313,10 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
   const activeName = names[visible.active];
   const status = yourMove ? (awaitingLastCard ? 'YOUR CALL' : 'YOUR MOVE') : visible.thinking ? `${activeName.toUpperCase()} IS CHOOSING` : visible.active === 0 ? 'YOU PLAY' : `${activeName.toUpperCase()} TO PLAY`;
   const pile = visible.discardPile.slice(-3);
+  const drawingNow = visible.drawing;
+  const drawingTiming = drawTiming(drawingNow?.count ?? 0, drawingNow?.penalty === true, timings);
+  const ouchFor = (seat: number) => drawingNow?.ouch && drawingNow.seat === seat
+    ? <span key={`ouch-${showing?.id}`} className="ouch" aria-hidden="true" data-testid="ouch" style={{ animationDelay: `${Math.round(drawingTiming.trip)}ms` }}>Ouch!</span> : null;
   const notice = warn || (visible.announce ? visible.announce.text + '.'
     : visible.thinking ? `${activeName} is choosing a move…`
     : visible.flying ? `${activeName === 'You' ? 'You play' : `${activeName} plays`} ${cardIdLabel(visible.flying.card)}${visible.flying.count > 1 ? ` (${visible.flying.index + 1} of ${visible.flying.count})` : ''}.`
@@ -301,13 +338,13 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
         return <div role="listitem" key={name} data-seat={seat} className={'seat' + (active ? ' turn' : '') + (game.dealer === seat ? ' dealer' : '')} aria-label={`${name} has ${count} card${count === 1 ? '' : 's'}${game.dealer === seat ? ', dealer' : ''}${active ? ', playing now' : ''}`}>
           <span className="seat-name">{name}{game.dealer === seat && <i className="dealer-pip" title="Dealer">D</i>}</span>
           <span className="seat-fan" aria-hidden="true">{Array.from({ length: Math.min(5, count) }, (_, i) => <CardImage code="back" key={i} />)}</span>
-          <strong className={count === 1 ? 'last' : ''}>{count} card{count === 1 ? '' : 's'}</strong>
+          <strong className={count === 1 ? 'last' : ''}>{count} card{count === 1 ? '' : 's'}</strong>{ouchFor(seat)}
           <span className="seat-state" aria-hidden="true">{active ? (visible.thinking ? <><i className="think-dots"><b /><b /><b /></i>Choosing</> : 'Playing') : count === 1 ? 'Last card' : ' '}</span>
         </div>;
       })}
     </div>
     <div className="game-table">
-      <button className="draw-pile" onClick={pickUp} disabled={!canAct || !!staged.length || missTurn} aria-label={missTurn ? 'Draw pile unavailable while resolving the eight' : pendingDraw ? `Pick up ${pendingDraw} cards` : legalCards.length ? 'Pick up one card instead of playing' : 'Draw a card'}><CardImage code="back" /><span>{!yourMove ? 'Deck' : missTurn ? 'Eight played' : pendingDraw ? `Pick up ${pendingDraw}` : legalCards.length ? 'Pick up instead' : 'Draw'}</span></button>
+      <button className="draw-pile" onClick={pickUp} disabled={!canAct || !!staged.length || missTurn} aria-label={missTurn ? 'Draw pile unavailable while resolving the eight' : pendingDraw ? `Pick up ${pendingDraw} cards` : legalCards.length ? 'Pick up one card instead of playing' : 'Draw a card'}><CardImage code="back" />{drawingNow?.penalty && <span key={`count-${showing?.id}`} className="draw-count" aria-hidden="true" data-testid="draw-count" style={{ animationDuration: `${drawingTiming.total}ms` }}>+{drawingNow.count}</span>}<span>{!yourMove ? 'Deck' : missTurn ? 'Eight played' : pendingDraw ? `Pick up ${pendingDraw}` : legalCards.length ? 'Pick up instead' : 'Draw'}</span></button>
       <div className="discard-pile">
         <span className="pile-wrap" data-testid="discard-pile" data-top={pile[pile.length - 1]} data-order={visible.discardPile.slice(-6).join(' ')}>
           {pile.map((card, index) => <span key={card} className={'pile-card depth-' + (pile.length - 1 - index)}><CardImage code={card} /></span>)}
@@ -321,6 +358,7 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
     <p className={'game-notice' + (warn && yourMove ? ' warn' : '')} aria-live="polite" role={warn ? 'alert' : undefined}>{notice}</p>
     {recent.length > 1 && <ul className="move-log" aria-label="Recent moves">{recent.slice(0, -1).map((line, index) => <li key={index}>{line}</li>)}</ul>}
     <div className={'your-seat' + (visible.active === 0 ? ' turn' : '')} data-seat="0">
+      {ouchFor(0)}
       {yourMove && <span className="your-move-tag" aria-hidden="true">{awaitingLastCard ? 'Your call' : 'Your move'}</span>}
       {yourMove && missTurn && !awaitingLastCard && <div className="miss-turn-action"><strong>An eight was played</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you miss this turn.'}</p><button className="primary" onClick={pickUp}>Accept missed turn <ArrowRight size={18} /></button></div>}
       {awaitingLastCard && !showing
