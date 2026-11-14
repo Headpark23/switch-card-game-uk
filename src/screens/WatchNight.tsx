@@ -88,9 +88,10 @@ export default function WatchNight({ initialCode, initialAs = '', onBack }: { in
       {as && <p className="watch-as"><CheckCircle size={17} weight="fill" /><span>Playing as <b>{as}</b>. Results save to your history automatically.</span><button className="text-link" onClick={() => { forgetJoin(code); setAs(undefined); }}>Change</button></p>}
       {as === null && <p className="watch-as"><span>Just watching. Nothing is saved to your history.</span><button className="text-link" onClick={() => { forgetJoin(code); setAs(undefined); }}>I am playing</button></p>}
       {results.length > 0 && <ul className="watch-results" aria-label="Saved results">{results.slice(0, 5).map((night) => <li key={night.id}><strong>{night.title}: {night.outcome}</strong><span>{night.formatLabel} · {new Date(night.completedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}{as ? ' · saved to your history' : ''}</span></li>)}</ul>}
+      <p className="watch-host">{snapshot.host ? `${snapshot.host} is keeping score.` : 'The host is keeping score.'} You are watching, so only {snapshot.host ?? 'the host'} can change the scores.</p>
       <p className="watch-status" role="status">{snapshot.status}</p>
       <ol className="watch-lines" aria-label="Scoreboard">{snapshot.lines.map((line, index) => <li key={index} className={line.lead ? 'lead' : ''}><span>{line.label}</span><strong>{line.value}</strong></li>)}</ol>
-      <p className="dash-note">Updates every few seconds · last change {new Date(updatedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}. Only the host can change the scores.</p>
+      <p className="dash-note">Updates every few seconds · last change {new Date(updatedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}.</p>
       <button className="text-link" onClick={() => { setSnapshot(null); setResults([]); setJoined(null); setAs(undefined); setCode(''); setInput(''); }}>Join a different night</button>
     </>}
   </section>;

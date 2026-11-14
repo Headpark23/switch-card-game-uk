@@ -1,5 +1,7 @@
 import { ArrowRight, Broadcast, CalendarPlus, ClockCounterClockwise, Club, GraduationCap, PuzzlePiece, Question, UsersThree } from '@phosphor-icons/react';
+import { useEffect, useState } from 'react';
 import { loadLink, wantJoinForm } from '../switch/clubSync';
+import { fetchShare, loadKeys } from '../switch/shareNight';
 import { readClub } from '../switch/clubStore';
 import { getActiveNight } from '../switch/activeNight';
 import { readActiveTable } from '../switch/activeTable';
@@ -50,6 +52,15 @@ type Props = {
 /** HOME: a compact, personal dashboard on the photographic card-table background. */
 export default function HomeHub(props: Props) {
   const club = readClub();
+  const sharing = loadKeys();
+  const [arrived, setArrived] = useState<string[]>([]);
+  // A game being shared shows who has opened it, so the host can see it worked without opening the scorecard.
+  useEffect(() => {
+    if (!sharing) return;
+    let alive = true;
+    fetchShare(sharing.code).then((result) => { if (alive) setArrived(result.joined.map((entry) => entry.name)); }).catch(() => { /* offline */ });
+    return () => { alive = false; };
+  }, [sharing?.code]); // eslint-disable-line react-hooks/exhaustive-deps
   const meId = getMeId(club);
   const profiles = getProfiles(club);
   const me = profiles.find((profile) => profile.id === meId && profile.name.toLowerCase() !== 'you');
@@ -70,6 +81,9 @@ export default function HomeHub(props: Props) {
   ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, 3);
 
   const nightLabel = activeNight ? (activeNight.kind === 'score' ? FORMAT_NAMES[activeNight.session.format] : activeNight.kind === 'league' ? 'Group Play' : activeNight.kind === 'cup' ? 'Switch Cup' : 'Knock Out') : '';
+  const nightTitle = activeNight?.kind === 'score' ? `Your game: ${activeNight.session.players.map((player) => player.name).join(' v ')}` : activeNight ? `Your ${nightLabel}` : '';
+  const nightScore = activeNight?.kind === 'score' && activeNight.session.players.length === 2 && activeNight.session.format !== 'darts' ? ` · ${activeNight.session.players.map((player) => activeNight.session.scores[player.id] ?? 0).join('–')}` : '';
+  const nightShare = sharing ? (arrived.length ? ` · ${arrived.join(' & ')} joined` : ' · sharing live') : '';
   const power = powers[new Date().getDate() % powers.length];
 
   return <>
@@ -80,7 +94,7 @@ export default function HomeHub(props: Props) {
 
       {(activeTable || activeNight) && <div className="resume-stack">
         {activeTable && <button className="resume-card" onClick={props.onResumeTable}><span className="resume-dot" aria-hidden="true" /><span><strong>Resume your game</strong><small>Against {activeTable.opponents === 1 ? 'the computer' : `${activeTable.opponents} computers`} · {LEVEL_NAMES[activeTable.level]} · {activeTable.game.hands[0].length} cards in hand</small></span><ArrowRight size={17} /></button>}
-        {activeNight && <button className="resume-card night" onClick={props.onScore}><span className="resume-dot" aria-hidden="true" /><span><strong>Back to tonight’s scorecard</strong><small>{nightLabel} in progress</small></span><ArrowRight size={17} /></button>}
+        {activeNight && <button className="resume-card night" onClick={props.onScore}><span className="resume-dot" aria-hidden="true" /><span><strong>{nightTitle}</strong><small>{nightLabel}{nightScore}{nightShare} · tap to carry on</small></span><ArrowRight size={17} /></button>}
       </div>}
 
       <div className="home-tiles v2">

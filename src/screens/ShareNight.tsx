@@ -84,7 +84,7 @@ export default function ShareNight({ snapshot }: { snapshot: NightSnapshot }) {
   </section>;
 
   return <section className="share-night invite live" aria-label="Sharing live scores">
-    <div><strong>Sharing live · code <b className="night-code">{keys.code}</b></strong><span>The scores update on their phones as you play.</span></div>
+    <div><strong>Sharing live · code <b className="night-code">{keys.code}</b></strong><span>You are keeping score, and only you can change it. The scores update on their phones as you play.</span></div>
     {named.length > 0 && <ul className="share-people" aria-label="Who has been sent this game">{named.map((name) => {
       const arrived = joined.some((entry) => same(entry.name, name));
       const sent = invites.find((entry) => same(entry.name, name));

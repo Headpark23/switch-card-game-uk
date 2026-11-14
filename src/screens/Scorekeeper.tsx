@@ -11,6 +11,7 @@ import { ensureProfiles, getProfiles } from '../switch/profiles';
 import { converge } from '../switch/clubSync';
 import ClubhouseLeagues from './ClubhouseLeagues';
 import ShareNight from './ShareNight';
+import { myNames } from '../switch/joinedNights';
 import { buildSnapshot, loadKeys, publishResult } from '../switch/shareNight';
 import HandCounter from './HandCounter';
 import { evenSizes, shuffled } from '../switch/draw';
@@ -183,7 +184,7 @@ export default function SwitchScorekeeper({onBack,backLabel='Home',initialView='
   const dealerBar=(key:string,list:readonly Player[])=>{const dealer=dealers[key];if(!dealer)return null;const nameOf=(id:string)=>list.find(player=>player.id===id)?.name??'Player';return <DealerBar dealer={dealer} nameOf={nameOf} onPass={()=>{turnDeal(key,1);persistHistory(storedExtensions);}} onPick={id=>{setDealersNow({...dealersRef.current,[key]:setDealer(dealer,id)});persistHistory(storedExtensions);}}/>;};
   const activeKnockout=knockout?knockout.players.filter(player=>!knockout.eliminatedIds.includes(player.id)):[];
   const currentRound=cup?.rounds.at(-1);
-  const shareSnapshot=buildSnapshot({club:getClubName(storedExtensions)||undefined,session,knockout,cup,leagues:leagueStarted?leagues:[]});
+  const shareSnapshot=buildSnapshot({club:getClubName(storedExtensions)||undefined,host:myNames(storedExtensions)[0],session,knockout,cup,leagues:leagueStarted?leagues:[]});
   const cupPlayer=(id:string)=>cup?.players.find(player=>player.id===id);
   // Whoever has just won anything: a match, a Knock Out, the Cup or the league championship. A win already showing when the screen opens is not replayed.
   const celebrated=(session&&scoreWinnerId(session))||knockout?.championId||cup?.championId||(leagueStarted?league.playoffKnockouts.championship?.championId:null)||null;

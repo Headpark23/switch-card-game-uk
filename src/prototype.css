@@ -889,3 +889,4 @@
 .share-who em.in{color:var(--green);font-weight:600}
 .share-people .share-send{width:auto;flex:none;padding:8px 14px}
 .share-night .share-help{font-size:12px;line-height:1.45;color:var(--muted);margin:0}
+.watch-host{margin:0;padding:9px 12px;border-radius:10px;background:#f4efe1;font-size:13px;line-height:1.45;color:var(--ink,#1f2a24)}

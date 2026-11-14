@@ -21,7 +21,8 @@ export function cleanSnapshot(input) {
   const lines = Array.isArray(input.lines) ? input.lines.slice(0, 24).map((line) => ({ label: text(line?.label, 40), value: text(line?.value, 60), lead: Boolean(line?.lead) })).filter((line) => line.label) : [];
   if (!lines.length) return null;
   const players = Array.isArray(input.players) ? input.players.slice(0, 24).map((name) => text(name, 40)).filter(Boolean) : [];
-  return { title: text(input.title, 60) || "Switch night", format: text(input.format, 30), status: text(input.status, 80), lines, ...(players.length ? { players } : {}) };
+  const host = text(input.host, 40);
+  return { title: text(input.title, 60) || "Switch night", format: text(input.format, 30), status: text(input.status, 80), lines, ...(players.length ? { players } : {}), ...(host ? { host } : {}) };
 }
 
 /** A finished night as the host saved it: who played, who won and the full scores. Anything else is dropped. */
