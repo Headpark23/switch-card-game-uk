@@ -1,9 +1,11 @@
 import { CaretLeft, CheckCircle } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { KeyboardInput, useKeyboard } from '../mobile';
-import { fetchShare, reportJoined, type JoinedPlayer, type NightSnapshot } from '../switch/shareNight';
+import { useConfirm } from '../Confirm';
+import { clearActiveNight, getActiveNight } from '../switch/activeNight';
+import { fetchShare, loadKeys, reportJoined, type JoinedPlayer, type NightSnapshot } from '../switch/shareNight';
 import { collectResults, forgetJoin, loadJoined, myNames, rememberJoin, rememberWho } from '../switch/joinedNights';
-import { readClub } from '../switch/clubStore';
+import { readClub, updateClub } from '../switch/clubStore';
 import type { SwitchNightRecord } from '../switch/history';
 import { CardShower } from '../ui';
 
@@ -12,6 +14,8 @@ const same = (left: string, right: string) => left.trim().toLowerCase() === righ
 /** Friend side: enter a code (or open a link), say which player you are, and watch the scoreboard refresh. Saved results land in your own history. */
 export default function WatchNight({ initialCode, initialAs = '', onBack }: { initialCode: string; initialAs?: string; onBack: () => void }) {
   const keyboard = useKeyboard();
+  const [confirm, confirmSheet] = useConfirm();
+  const [, refresh] = useState(0);
   const [input, setInput] = useState(initialCode);
   const [code, setCode] = useState(initialCode.trim().toUpperCase());
   const [snapshot, setSnapshot] = useState<NightSnapshot | null>(null);
@@ -66,6 +70,19 @@ export default function WatchNight({ initialCode, initialAs = '', onBack }: { in
   // Nights shared by an older version of the app carry no player list, so fall back to the scoreboard names.
   const players = snapshot?.players?.length ? snapshot.players : (snapshot?.lines ?? []).map((line) => line.label.replace(/^\d+\.\s*/, ''));
   const latest = results[0];
+  const host = snapshot?.host ?? 'the host';
+  const finished = snapshot?.done === true;
+  const winner = snapshot?.lines.find((line) => line.lead)?.label;
+  const wonIt = !!(finished && as && winner && same(winner, as));
+  // A second, editable scorecard of the same game on this phone would be confusing: the host's is the only real one.
+  const own = snapshot ? getActiveNight(readClub()) : null;
+  const names = snapshot?.players ?? [];
+  const hasOwnCopy = !!own && own.kind === 'score' && loadKeys()?.code !== code && names.length >= 2 && own.session.players.length === names.length && own.session.players.every((player) => names.some((name) => same(name, player.name)));
+  async function removeOwnCopy() {
+    if (!await confirm({ title: 'Remove your own scorecard?', message: `${host} is keeping score of this game, so the copy on your phone is not needed. Your own copy will be deleted; ${host}'s game is not affected.`, confirmLabel: 'Remove my copy', destructive: true })) return;
+    updateClub((current) => clearActiveNight(current));
+    refresh((tick) => tick + 1);
+  }
   const iWon = !!(latest && as && latest.players.some((player) => same(player.name, as) && latest.winnerIds.includes(player.id)));
 
   return <section className="watch-night" aria-labelledby="watch-title">
@@ -78,7 +95,7 @@ export default function WatchNight({ initialCode, initialAs = '', onBack }: { in
     </form>}
     {error && <p className="score-error" role="alert">{error}</p>}
     {snapshot && <>
-      <CardShower trigger={justSaved && iWon ? justSaved : null} />
+      <CardShower trigger={justSaved && iWon ? justSaved : wonIt ? `${code}-final` : null} />
       {as === undefined && <div className="watch-who" role="group" aria-label="Which player are you?">
         <strong>Which one are you?</strong>
         <span>Pick your name and every result from this night is saved to your own history and stats.</span>
@@ -88,11 +105,14 @@ export default function WatchNight({ initialCode, initialAs = '', onBack }: { in
       {as && <p className="watch-as"><CheckCircle size={17} weight="fill" /><span>Playing as <b>{as}</b>. Results save to your history automatically.</span><button className="text-link" onClick={() => { forgetJoin(code); setAs(undefined); }}>Change</button></p>}
       {as === null && <p className="watch-as"><span>Just watching. Nothing is saved to your history.</span><button className="text-link" onClick={() => { forgetJoin(code); setAs(undefined); }}>I am playing</button></p>}
       {results.length > 0 && <ul className="watch-results" aria-label="Saved results">{results.slice(0, 5).map((night) => <li key={night.id}><strong>{night.title}: {night.outcome}</strong><span>{night.formatLabel} · {new Date(night.completedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}{as ? ' · saved to your history' : ''}</span></li>)}</ul>}
-      <p className="watch-host">{snapshot.host ? `${snapshot.host} is keeping score.` : 'The host is keeping score.'} You are watching, so only {snapshot.host ?? 'the host'} can change the scores.</p>
+      {finished
+        ? <p className="watch-final" role="status"><CheckCircle size={20} weight="fill" /><span><b>Game over.</b> {snapshot.host ? `${snapshot.host} finished it` : 'The host finished it'}, so it is finished for everyone. The scores are final.</span></p>
+        : <p className="watch-host">{snapshot.host ? `${snapshot.host} is keeping score.` : 'The host is keeping score.'} You are watching, so only {host} can change the scores.</p>}
+      {hasOwnCopy && <div className="watch-dupe" role="group" aria-label="Your own scorecard"><span>{finished ? 'Your phone still has its own unfinished scorecard of this game.' : `Your phone has its own scorecard of this game, but ${host} is keeping the real one.`}</span><button onClick={() => void removeOwnCopy()}>Remove my copy</button></div>}
       <p className="watch-status" role="status">{snapshot.status}</p>
       <ol className="watch-lines" aria-label="Scoreboard">{snapshot.lines.map((line, index) => <li key={index} className={line.lead ? 'lead' : ''}><span>{line.label}</span><strong>{line.value}</strong></li>)}</ol>
       <p className="dash-note">Updates every few seconds · last change {new Date(updatedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}.</p>
       <button className="text-link" onClick={() => { setSnapshot(null); setResults([]); setJoined(null); setAs(undefined); setCode(''); setInput(''); }}>Join a different night</button>
     </>}
-  </section>;
+  {confirmSheet}</section>;
 }

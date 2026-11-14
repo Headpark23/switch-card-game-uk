@@ -22,7 +22,7 @@ export function cleanSnapshot(input) {
   if (!lines.length) return null;
   const players = Array.isArray(input.players) ? input.players.slice(0, 24).map((name) => text(name, 40)).filter(Boolean) : [];
   const host = text(input.host, 40);
-  return { title: text(input.title, 60) || "Switch night", format: text(input.format, 30), status: text(input.status, 80), lines, ...(players.length ? { players } : {}), ...(host ? { host } : {}) };
+  return { title: text(input.title, 60) || "Switch night", format: text(input.format, 30), status: text(input.status, 80), lines, ...(players.length ? { players } : {}), ...(host ? { host } : {}), ...(input.done === true ? { done: true } : {}) };
 }
 
 /** A finished night as the host saved it: who played, who won and the full scores. Anything else is dropped. */

@@ -80,3 +80,10 @@ test("a friend says who they are, the host can read it back, and only names on t
   const read = await (await handleNight(req("GET", `?code=${code}`), store, 7)).json();
   assert.deepEqual(read.joined.map((entry) => entry.name), ["Blair"]);
 });
+
+test("a scoreboard says when the game is finished, and who is keeping score", () => {
+  const clean = cleanSnapshot({ ...snap, host: "Rebecca", done: true });
+  assert.equal(clean.host, "Rebecca");
+  assert.equal(clean.done, true);
+  assert.equal("done" in cleanSnapshot({ ...snap, done: "yes" }), false);
+});

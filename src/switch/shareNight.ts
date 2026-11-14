@@ -13,6 +13,8 @@ export interface NightSnapshot {
   readonly players?: readonly string[];
   /** Who is keeping score. Only they can change the scoreboard; everyone else is watching. */
   readonly host?: string;
+  /** True once the host has finished the game. It is then over for everyone watching. */
+  readonly done?: boolean;
 }
 
 export interface SharedNightKeys { readonly code: string; readonly token: string }
@@ -56,7 +58,8 @@ export function buildSnapshot(input: Parameters<typeof buildBoard>[0]): NightSna
   const board = buildBoard(input);
   if (!board) return null;
   const players = input.session?.players ?? input.knockout?.players ?? input.cup?.players ?? input.leagues.flatMap((league) => league.results.map((result) => result.player));
-  return { ...board, players: players.map((player) => player.name), ...(input.host ? { host: input.host } : {}) };
+  const finished = input.session ? Boolean(scoreWinnerId(input.session)) : input.knockout ? Boolean(input.knockout.championId) : input.cup ? Boolean(input.cup.championId) : false;
+  return { ...board, players: players.map((player) => player.name), ...(input.host ? { host: input.host } : {}), ...(finished ? { done: true } : {}) };
 }
 
 const KEY = "switchSharedNight";

@@ -45,6 +45,7 @@ for (const scenario of [
   await host.evaluate(() => { (navigator as unknown as { share: (data: { text: string }) => Promise<void> }).share = async (data) => { (window as unknown as { sent: string }).sent = data.text; }; });
   await host.getByRole("button", { name: "Send to Rebecca" }).click();
   const code = (await host.getByText(/^[A-Z2-9]{6}$/).first().textContent())!.trim();
+  await expect.poll(() => host.evaluate(() => (window as unknown as { sent?: string }).sent ?? "")).toContain("night=");
   const link = (await host.evaluate(() => (window as unknown as { sent: string }).sent)).match(/https?:\/\/\S+/)![0];
   expect(link).toContain(`night=${code}`);
   await expect(host.getByText(/Sent at .* waiting for them to open it/)).toBeVisible();
@@ -88,6 +89,7 @@ test("only the person who started the game can change its scores; the friend wat
   await host.getByRole("button", { name: "Start One v One" }).click();
   await host.evaluate(() => { (navigator as unknown as { share: (data: { text: string }) => Promise<void> }).share = async (data) => { (window as unknown as { sent: string }).sent = data.text; }; });
   await host.getByRole("button", { name: "Send to Martin" }).click();
+  await expect.poll(() => host.evaluate(() => (window as unknown as { sent?: string }).sent ?? "")).toContain("night=");
   const link = (await host.evaluate(() => (window as unknown as { sent: string }).sent)).match(/https?:\/\/\S+/)![0];
   const code = new URL(link).searchParams.get("night")!;
 
@@ -113,5 +115,51 @@ test("only the person who started the game can change its scores; the friend wat
   await expect(card).toContainText("Martin joined");
   await card.click();
   await expect(host.getByRole("button", { name: "Win game" }).first()).toBeVisible();
+  await hostContext.close(); await friendContext.close();
+});
+
+test("when the host finishes the game it is finished for the friend too, and the friend's own unfinished copy can be removed", async ({ browser }) => {
+  test.setTimeout(90_000);
+  const rows = new Map<string, unknown>();
+  const hostContext = await browser.newContext({ viewport: { width: 1000, height: 1100 } });
+  const friendContext = await browser.newContext({ viewport: { width: 1000, height: 1100 } });
+  await serve(hostContext, rows); await serve(friendContext, rows);
+  const host = await hostContext.newPage(); const friend = await friendContext.newPage();
+
+  const startGame = async (page: typeof host) => {
+    await page.goto("/");
+    await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
+    await page.getByRole("button", { name: "One v One" }).click();
+    const names = page.getByPlaceholder("Enter name");
+    await names.nth(0).fill("Rebecca"); await names.nth(1).fill("Martin");
+    await page.getByLabel("Games to win").fill("1");
+    await page.getByRole("button", { name: "Start One v One" }).click();
+  };
+  // While the message was slow, the friend set up a scorecard of their own for the same game.
+  await startGame(friend);
+  await expect(friend.getByRole("button", { name: "Win game" }).first()).toBeVisible();
+
+  await startGame(host);
+  await host.evaluate(() => { (navigator as unknown as { share: (data: { text: string }) => Promise<void> }).share = async (data) => { (window as unknown as { sent: string }).sent = data.text; }; });
+  await host.getByRole("button", { name: "Send to Martin" }).click();
+  await expect.poll(() => host.evaluate(() => (window as unknown as { sent?: string }).sent ?? "")).toContain("night=");
+  const link = (await host.evaluate(() => (window as unknown as { sent: string }).sent)).match(/https?:\/\/\S+/)![0];
+
+  await friend.goto(link.replace(/^https?:\/\/[^/]+/, ""));
+  await expect(friend.getByText(/is keeping score/)).toBeVisible();
+  await expect(friend.getByRole("group", { name: "Your own scorecard" })).toBeVisible();
+
+  // Rebecca wins her best-of-1. For Martin it is over: no "keeping score" line, a clear final result.
+  await host.getByRole("button", { name: "Win game" }).first().click();
+  await expect(friend.getByText(/finished it, so it is finished for everyone/)).toBeVisible({ timeout: 30_000 });
+  await expect(friend.getByText(/is keeping score/)).toHaveCount(0);
+  await expect(friend.getByRole("list", { name: "Scoreboard" }).getByText("1 games")).toBeVisible();
+
+  // Martin removes his own unfinished copy, so only Rebecca's game exists.
+  await friend.getByRole("button", { name: "Remove my copy" }).click();
+  await friend.getByRole("button", { name: "Remove my copy" }).last().click();
+  await expect(friend.getByRole("group", { name: "Your own scorecard" })).toHaveCount(0);
+  await friend.getByRole("navigation").getByRole("button", { name: "Home", exact: true }).click();
+  await expect(friend.getByRole("button", { name: /Your game:/ })).toHaveCount(0);
   await hostContext.close(); await friendContext.close();
 });
