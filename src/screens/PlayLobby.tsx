@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, BookOpen, Lightning, Robot } from '@phosphor-icons/react';
+import { ArrowRight, BookOpen, Lightning, Robot, UsersThree } from '@phosphor-icons/react';
 import { readActiveTable, readSpeed, saveSpeed } from '../switch/activeTable';
 import { SPEED_NAMES, type Speed } from '../switch/presentation';
 import { COMPUTER_NAMES } from '../switch/presentation';
@@ -15,6 +15,7 @@ function leansOn(level: ComputerLevel, personality: string): string {
 }
 import { getComputerGames, getMeId, summariseComputerGames } from '../switch/computerLog';
 import { readClub } from '../switch/clubStore';
+import { loadSeat } from '../switch/onlineRoom';
 import { MODES, modeInfo, validateSetup, type PlayMode, type SeriesSetup } from '../switch/series';
 import { CardImage, FeltHeader, MiniFan } from '../ui';
 
@@ -50,14 +51,16 @@ type Props = {
   onResume: () => void;
   onMe: () => void;
   onLearn: () => void;
+  onFriends: () => void;
 };
 
 /** PLAY: the competitive game against 1 to 7 computers, as a single game or a tournament. Guided practice lives in Learn the Rules, apart from this. */
-export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLearn }: Props) {
+export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLearn, onFriends }: Props) {
   const [choice, setChoice] = useState(loadTableChoice);
   const [speed, setSpeed] = useState<Speed>(readSpeed);
   const [active] = useState(readActiveTable);
   const club = readClub();
+  const kept = loadSeat();
   const record = summariseComputerGames(getComputerGames(club).filter((game) => game.playerId === getMeId(club)));
   const set = (next: Partial<Choice>) => {
     const merged = { ...choice, ...next };
@@ -73,6 +76,8 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
     <FeltHeader compact id="play-title" title="Take a seat." intro="Play Switch against up to seven computers, as a single game or a whole tournament. Every game counts towards your record." cards={['AS', 'KH']} />
 
     {active && <button className="resume-card" onClick={onResume}><span className="resume-dot" aria-hidden="true" /><span><strong>Resume your game</strong><small>Against {active.opponents === 1 ? 'the computer' : `${active.opponents} computers`} · {LEVELS.find((entry) => entry.id === active.level)?.name} · {active.game.hands[0].length} cards in hand</small></span><ArrowRight size={17} /></button>}
+
+    <button className="friends-entry" onClick={onFriends} data-testid="play-friends"><UsersThree size={24} weight="fill" /><span><strong>{kept ? `Back to your table (${kept.code})` : 'Play with friends'}</strong><small>{kept ? 'Your friends and family are waiting.' : 'A private table for family and friends, anywhere. Start one or join with a code.'}</small></span><ArrowRight size={16} /></button>
 
     <div className="lobby-group" role="group" aria-label="Game type">
       <h2>What are we playing?</h2>

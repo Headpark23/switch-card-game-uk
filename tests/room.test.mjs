@@ -381,3 +381,20 @@ test("Redis: the commands are the right shape, namespaced and always expiring", 
 test("the server's copy of the rules is built from the app's rules and is up to date", () => {
   execFileSync(process.execPath, ["scripts/build-room-engine.mjs", "--check"], { stdio: "pipe" });
 });
+
+test("the answer to starting a game is cut for the person who started it, even though the seats were shuffled", async () => {
+  for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+    const store = memoryStore();
+    const random = seeded(seed);
+    const made = await call(store, { body: { seats: 4, level: "standard", name: "Host" } }, T0, random);
+    const joined = await call(store, { code: made.body.code, op: "join", body: { name: "Guest" } }, T0, random);
+    const started = await call(store, { code: made.body.code, op: "start", token: made.body.token }, T0, random);
+    assert.equal(started.body.seats[0].name, "Host", `seed ${seed}: the host sees themself first`);
+    assert.equal(started.body.seats[0].you, true);
+    const again = await call(store, { method: "GET", code: made.body.code, token: made.body.token }, T0, random);
+    assert.deepEqual(started.body.game.hands[0], again.body.game.hands[0], `seed ${seed}: same hand as a fresh look`);
+    const guest = await call(store, { method: "GET", code: made.body.code, token: joined.body.token }, T0, random);
+    assert.equal(guest.body.seats[0].name, "Guest");
+    assert.notDeepEqual(started.body.game.hands[0], guest.body.game.hands[0]);
+  }
+});

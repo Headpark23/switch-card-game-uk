@@ -20,7 +20,7 @@ import { sortHand } from '../switch/sortHand';
 
 import { COMPUTER_NAMES } from '../switch/presentation';
 export { COMPUTER_NAMES };
-const ordinal = (place: number) => `${place}${['st', 'nd', 'rd'][place - 1] ?? 'th'}`;
+export const ordinal = (place: number) => `${place}${['st', 'nd', 'rd'][place - 1] ?? 'th'}`;
 const SPEED_ORDER: Speed[] = ['quick', 'natural', 'relaxed'];
 
 /** The deal passes clockwise game after game, so nobody has to remember whose turn it is to deal. */
@@ -36,7 +36,7 @@ function pickups(state: TableState): number {
 }
 
 /** What a move did, in a few plain words, for the move log. */
-function describe(before: TableState, after: TableState, who: string, action: GameAction): string {
+export function describe(before: TableState, after: TableState, who: string, action: GameAction): string {
   if (action.type === 'accept-missed-turn') return `${who} miss${who === 'You' ? '' : 'es'} a turn.`;
   if (action.type === 'draw') {
     const count = after.hands[before.turn].length - before.hands[before.turn].length;

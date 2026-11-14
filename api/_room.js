@@ -415,7 +415,8 @@ async function route(request, store, now, random) {
     else throw new RoomError("Unknown request.");
     return true;
   });
-  return json(viewFor(outcome.room, seatIndex, now));
+  // Starting a game shuffles the seats, so the answer is cut for wherever this token sits now, never the seat it had before.
+  return json(viewFor(outcome.room, findSeat(outcome.room, token), now));
 }
 
 /** A tiny in-memory store with the same shape as the Redis one, for tests and local use. */

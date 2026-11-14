@@ -133,3 +133,15 @@ Done and tested, not deployed and with no screens yet.
 - **A move that arrives just late.** A move reaching the server within 1 second of the 40-second deadline still beats the computer.
 - **Seating.** People and computers are seated in a random order at the start. Everyone's view turns the table so they are seat 0, which is what the existing table screen expects.
 - **Reactions.** The 18 ids are fixed in `REACTIONS` (`api/_room.js`); the wording and emoji belong in the app.
+
+## Built so far: the screens (14 Nov 2026)
+
+- **Play > Play with friends** (`FriendsTable.tsx`): Start a table (name, 2 to 8 seats, Easy/Medium/Hard) or Join with a code. A link `/?table=CODE` opens the join form with the code in and shows who is already there.
+- **Waiting room and table** (`OnlineTable.tsx`): the code in large type, an Invite button (share sheet, or copies the invitation), who has sat down, and Deal for the host. The game itself reuses the felt table, card flights and pick-up animations; each turn the server reports is shown through `planTurn`/`visibleAt` like a computer's. If several turns arrive at once the table simply shows where it now stands.
+- **Last Card**: the button tells the table at once; said after choosing the final card it is too late (ruling 26), so the server is not told.
+- **Absent players**: from 30 seconds a banner says the computer will play their move in N seconds (the server's own clock, so a wrong phone clock cannot change it). Away seats are labelled.
+- **Reactions**: a sheet of the 18, shown beside the sender for a few seconds. A test fails if the app's list and the server's ever differ.
+- **Results**: when a game ends it is saved once under the table's game id ("Won online", "Online · 4 players" in Me > History; Night detail marks computer-played moves).
+- `tests/switch-online-play.spec.ts` runs two real browser phones against the real server code: set up, join by link, deal, each sees only their own cards, a move reaches the other phone, a reaction appears.
+- Found by that test and fixed: the answer to "start" was cut for the host's seat number from before the seats were shuffled, so the host could briefly be shown another seat's view. Now cut for wherever the token sits after the shuffle (regression test in `tests/room.test.mjs`).
+- Still to do: a Vercel preview to try the Redis store for real; privacy wording (Privacy screen, `public/privacy.html`, store listing) to say tables are kept for a day.

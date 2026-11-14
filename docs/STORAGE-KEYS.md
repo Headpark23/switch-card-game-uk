@@ -76,3 +76,12 @@ Five new keys, added by `src/switch/telemetry.ts` and `src/switch/useTableTeleme
 ## Rivals (14 Nov 2026)
 
 No new key. Each record in `switchComputerGames` gains an optional `rivals` list (`[{ name, place }]`): how each computer at the table finished. Me > Computer ranks John, Paul and the rest by how often they finished ahead of you. Games saved before this carry no `rivals` and are simply left out of that ranking.
+
+## Online play with friends (14 Nov 2026)
+
+| Key | What it holds | Notes |
+| --- | --- | --- |
+| `switchOnlineTable` | Your seat at a private table: `{ code, token, name, savedAt }` | The token is the only thing that proves the seat is yours. Kept 26 hours (tables last 24), so closing the app and coming back drops you straight back in. Cleared by "Leave the table". |
+| `switchOnlineName` | The name you last used at a table | A convenience so the name field is already filled in. |
+
+Finished online games are saved in `switchComputerGames` like every other game: each record gains an optional `online` (`{ code, humans, autoMoves }`) and its `rivals` may carry `human: true`. Games saved before this carry neither and are unaffected.

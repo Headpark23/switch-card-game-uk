@@ -25,12 +25,26 @@ export interface ComputerGame {
   readonly seriesId?: string;
   /** Set on the last game you played in a series: how the whole series ended for you. */
   readonly series?: SeriesResult;
+  /** Present when this was played online with friends and family rather than against computers alone. */
+  readonly online?: OnlineGame;
+}
+
+/** What is known about a game played online at a private table. */
+export interface OnlineGame {
+  /** The table's code, for the record only. */
+  readonly code: string;
+  /** The people who sat at the table, you included. */
+  readonly humans: readonly string[];
+  /** How many of your moves the computer made for you because the clock ran out. */
+  readonly autoMoves: number;
 }
 
 /** One computer's finishing place in a game you played. */
 export interface RivalPlace {
   readonly name: string;
   readonly place: number;
+  /** True for a person at an online table. Missing means a computer. */
+  readonly human?: boolean;
 }
 
 /** How a whole series (a tournament or match) ended for the player. */

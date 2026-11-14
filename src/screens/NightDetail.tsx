@@ -45,11 +45,12 @@ export default function NightDetail({ night, game, meId, profiles, onClose }: {
         <p className={'night-result ' + (record.won ? 'win' : 'loss')}>{record.won ? 'You won' : `You finished ${ordinal(record.place)}`}</p>
         <ul className="night-facts">
           <li><CalendarBlank size={17} weight="bold" /><span>{longDate(record.playedAt)}</span></li>
-          <li><Robot size={17} weight="bold" /><span>{record.opponents === 1 ? 'One computer player' : `${record.opponents} computer players`} · {LEVEL_NAMES[record.level]}</span></li>
+          <li>{record.online ? <Users size={17} weight="bold" /> : <Robot size={17} weight="bold" />}<span>{record.online ? `Online with ${record.online.humans.filter((name) => name !== 'You').join(', ') || 'friends'}${record.rivals && record.rivals.some((rival) => !rival.human) ? ` and ${record.rivals.filter((rival) => !rival.human).length} computer${record.rivals.filter((rival) => !rival.human).length === 1 ? '' : 's'}` : ''}` : record.opponents === 1 ? 'One computer player' : `${record.opponents} computer players`} · {LEVEL_NAMES[record.level]}</span></li>
           <li><Trophy size={17} weight="bold" /><span>Finished {ordinal(record.place)} of {record.opponents + 1} · {record.moves} moves</span></li>
         </ul>
-        {record.rivals && record.rivals.length > 0 && <section className="night-section"><h4>How the computers finished</h4><ol>{[{ name: 'You', place: record.place }, ...record.rivals].sort((a, b) => a.place - b.place).map((entry) => <li key={entry.name}>{ordinal(entry.place)} · {entry.name}</li>)}</ol></section>}
-        <p className="dash-note">Games against the computer count towards your record, streaks and badges.</p>
+        {record.rivals && record.rivals.length > 0 && <section className="night-section"><h4>{record.online ? 'How everyone finished' : 'How the computers finished'}</h4><ol>{[{ name: 'You', place: record.place }, ...record.rivals].sort((a, b) => a.place - b.place).map((entry) => <li key={entry.name}>{ordinal(entry.place)} · {entry.name}</li>)}</ol></section>}
+        {record.online && record.online.autoMoves > 0 && <p className="dash-note">The computer played {record.online.autoMoves} move{record.online.autoMoves === 1 ? '' : 's'} for you when the clock ran out.</p>}
+        <p className="dash-note">{record.online ? 'Games played online count towards your record, streaks and badges.' : 'Games against the computer count towards your record, streaks and badges.'}</p>
       </div>;
     })()}
   </BottomSheet>;
