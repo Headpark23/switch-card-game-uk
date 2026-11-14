@@ -44,6 +44,24 @@ export const SPEEDS: Readonly<Record<Speed, Timings>> = {
 /** Reduced motion: nothing travels, but the cards still land one at a time so the order stays readable. */
 export const REDUCED: Timings = { highlight: 0, think: 400, flight: 0, gap: 320, announce: 800, draw: 450 };
 
+/** A computer player takes at least this long over every move at the table, whatever the pace setting (owner request, 14 Nov 2026). */
+export const MIN_THINK_MS = 5000;
+/** You have this long to say "Last Card" before a computer may spot that you did not. */
+export const LAST_CARD_GRACE_MS = 5000;
+
+/** Automated test browsers skip the human-sized waits so suites stay fast. A test that checks them sets `switchRealPace` to "1". */
+export function paceIsHuman(): boolean {
+  try {
+    if (typeof navigator !== "undefined" && (navigator as Navigator & { webdriver?: boolean }).webdriver) return window.localStorage.getItem("switchRealPace") === "1";
+  } catch { /* storage blocked: treat as a person */ }
+  return true;
+}
+
+/** The pace setting with the thinking floor applied. Animation speed is untouched. */
+export function withThinkingFloor(timings: Timings): Timings {
+  return paceIsHuman() ? { ...timings, think: Math.max(timings.think, MIN_THINK_MS) } : timings;
+}
+
 export const SPEED_NAMES: Readonly<Record<Speed, string>> = { quick: "Quick", natural: "Natural", relaxed: "Relaxed" };
 
 /**

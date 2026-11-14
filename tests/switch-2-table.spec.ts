@@ -190,6 +190,58 @@ test("four of a kind to win: Last Card goes in before the fourth card", async ({
   await expect(page.getByText(/You won the/)).toBeVisible({ timeout: 10_000 });
 });
 
+test("Play selected never leaves the phone: a big hand and four cards selected, scrolled to the top or the bottom", async ({ page }) => {
+  const hand = ["6C", "6S", "6D", "6H", "3C", "4C", "9C", "10C", "3D", "4D", "9D", "10D", "QD", "QC"];
+  const seven = ["3H", "4H", "5H", "7H", "9H", "10H", "JH"];
+  await seedTable(page, { hands: [hand, seven, seven, seven, seven, seven, seven, seven], discard: ["4D"], suit: "C", turn: 0 });
+  await resume(page);
+  for (const card of ["6C", "6S", "6D", "6H"]) await page.locator(`.player-hand button[data-card="${card}"]`).click();
+  const play = page.getByRole("button", { name: "Play selected" });
+  for (const place of ["top", "bottom"] as const) {
+    await page.locator(".mobile-scroll").evaluate((el, where) => { el.scrollTop = where === "top" ? 0 : el.scrollHeight; }, place);
+    await page.waitForTimeout(300);
+    const box = await play.boundingBox();
+    const scroll = await page.locator(".mobile-scroll").boundingBox();
+    const tabs = await page.locator(".bottom-tabs").boundingBox();
+    expect(box && scroll && tabs).toBeTruthy();
+    expect(box!.y).toBeGreaterThanOrEqual(scroll!.y);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(tabs!.y);
+  }
+});
+
+test("a computer takes at least five seconds over its move", async ({ page }) => {
+  test.setTimeout(40_000);
+  await seedTable(page, { hands: [["9C", "3D"], ["3C", "4C", "8C"]], discard: ["4D", "6C"], suit: "C", turn: 1 }, { switchRealPace: "1" });
+  await resume(page);
+  const top = () => page.getByTestId("discard-pile").getAttribute("data-top");
+  const start = Date.now();
+  await expect(page.getByTestId("turn-status")).toContainText("CHOOSING");
+  const before = await top();
+  await expect.poll(top, { timeout: 15_000, intervals: [100] }).not.toBe(before);
+  expect(Date.now() - start).toBeGreaterThanOrEqual(4900);
+});
+
+test("you have five seconds to say Last Card before a computer spots it", async ({ page }) => {
+  test.setTimeout(40_000);
+  await seedTable(page, { hands: [["9C"], ["3C", "4C", "8C"]], discard: ["4D", "6C"], suit: "C", turn: 1 }, { switchRealPace: "1" });
+  await resume(page);
+  await page.waitForTimeout(4000);
+  // Four seconds in: nobody has spotted anything yet.
+  await expect(page.locator(".player-hand button")).toHaveCount(1);
+  // By about six seconds the computer has spotted it and you pick up two.
+  await expect(page.locator(".player-hand button")).toHaveCount(3, { timeout: 4000 });
+});
+
+test("saying Last Card inside the five seconds means nothing is spotted", async ({ page }) => {
+  test.setTimeout(40_000);
+  await seedTable(page, { hands: [["9C"], ["3C", "4C", "8C"]], discard: ["4D", "6C"], suit: "C", turn: 1 }, { switchRealPace: "1" });
+  await resume(page);
+  await page.waitForTimeout(2500);
+  await page.getByTestId("last-card-button").click();
+  await page.waitForTimeout(9000);
+  await expect(page.locator(".player-hand button")).toHaveCount(1);
+});
+
 test("an eight makes the next player miss a turn, and the highlight follows the engine", async ({ page }) => {
   await seedTable(page, { hands: [["8H", "9C", "3S"], ["3C", "4C", "6C"], ["QD", "QC", "4S"]], discard: ["4D", "8C"], suit: "C", turn: 0 });
   await resume(page);

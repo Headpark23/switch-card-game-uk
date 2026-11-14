@@ -945,3 +945,6 @@
 
 /* A play-on game (league round): you are out and the computers finish the round. */
 .out-panel{border:1px solid #d7c28d;background:#f6edcf;border-radius:12px;padding:12px 13px;margin:8px 0 11px}.out-panel strong{display:block;font-family:'DM Serif Display',Georgia,serif;font-size:20px;font-weight:400}.out-panel p{font-size:12px;line-height:1.45;color:var(--muted);margin:4px 0 10px}.out-panel .secondary{min-height:40px;padding:8px 12px;font-size:12px}
+
+/* "Play selected" always stays inside the phone: it rides just above the tab bar while the hand scrolls beneath it. */
+.table-game .multi-action{position:sticky;bottom:calc(76px + var(--mobile-safe-area-height,0px));z-index:6;box-shadow:0 -8px 18px #1f3a2c26,0 0 0 1px #d9e1cf}

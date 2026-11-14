@@ -11,7 +11,7 @@ import { logComputerGame } from '../switch/logGame';
 import { useTableTelemetry } from '../switch/useTableTelemetry';
 import { getComputerGames, getMeId, summariseComputerGames } from '../switch/computerLog';
 import { readClub } from '../switch/clubStore';
-import { drawTiming, planTurn, REDUCED, SPEED_NAMES, SPEEDS, stepDuration, visibleAt, type Speed, type Step } from '../switch/presentation';
+import { drawTiming, LAST_CARD_GRACE_MS, paceIsHuman, planTurn, REDUCED, SPEED_NAMES, SPEEDS, stepDuration, visibleAt, withThinkingFloor, type Speed, type Step } from '../switch/presentation';
 import { clearActiveTable, newTableGameId, readSpeed, saveActiveTable, saveSpeed, type ActiveTable } from '../switch/activeTable';
 import { CardImage, CardShower, rank, suit, suitNames, suitSymbols } from '../ui';
 import RealCards from './RealCards';
@@ -60,8 +60,8 @@ function prefersReducedMotion(): boolean {
 /** One turn being shown: the engine's result is already decided; the steps reveal it in order. */
 type Showing = { id: number; before: TableState; after: TableState; action: GameAction; steps: Step[]; at: number; line: string };
 
-/** How long a computer waits before spotting that you did not say "Last Card". */
-const CALL_GRACE = 1600;
+/** How long you have to say "Last Card" before a computer spots that you did not: five seconds. */
+const callGrace = () => (paceIsHuman() ? LAST_CARD_GRACE_MS : 1600);
 
 /** When this game is one of a tournament's games, the series screen runs the show: it names the seats and decides what happens next. */
 export type SeriesGame = { title: string; seriesId: string; mode: PlayMode; /** League rounds: players leave as they go out and the rest play on until every place is decided (ruling 24). */ playOn?: boolean; onFinished: (table: TableState, gameId: string) => void };
@@ -87,7 +87,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   const setLastCalled = (value: boolean) => { calledRef.current = value; setLastCalledState(value); };
   const [flash, setFlash] = useState<CardId[]>([]);
   const [speed, setSpeedState] = useState<Speed>(readSpeed);
-  const timings = useMemo(() => (prefersReducedMotion() ? REDUCED : SPEEDS[speed]), [speed]);
+  const timings = useMemo(() => withThinkingFloor(prefersReducedMotion() ? REDUCED : SPEEDS[speed]), [speed]);
   const logged = useRef<string | null>(null);
   // Anonymous counts for the owner's dashboard (who dealt the penalty cards, how the game ended). Never read back by the game.
   const stats = useTableTelemetry(gameId, opponents, level);
@@ -206,15 +206,18 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     const timer = window.setTimeout(() => {
       let before = gameRef.current;
       if (before.status !== 'playing' || before.turn === 0) return;
+      // The five seconds you were given to say it also served as the computer's thinking time.
+      let spotted = false;
       if (before.hands[0].length === 1 && !calledRef.current) {
+        spotted = true;
         cue('penalty');
         before = dealTo(before, 0, 2);
         setGame(before);
         push(`${names[before.turn]} spotted that you did not say "Last Card". You pick up two cards.`);
       }
       const action = chooseTableAction(before, Math.random, level);
-      show(before, action, applyTableAction(before, action), true);
-    }, exposed ? timings.highlight + CALL_GRACE : timings.highlight);
+      show(before, action, applyTableAction(before, action), !spotted);
+    }, exposed ? timings.highlight + callGrace() : timings.highlight);
     return () => window.clearTimeout(timer);
   }, [showing, game.status, game.turn, game.move, lastCalled, level, timings]);
 

@@ -28,7 +28,7 @@ function validState(value: unknown): value is TableState {
   if (!value || typeof value !== "object") return false;
   const s = value as Record<string, unknown>;
   const cardList = (list: unknown) => Array.isArray(list) && list.every((card) => typeof card === "string");
-  return Array.isArray(s.hands) && s.hands.length >= 2 && s.hands.length <= 5 && s.hands.every(cardList)
+  return Array.isArray(s.hands) && s.hands.length >= 2 && s.hands.length <= 8 && s.hands.every(cardList)
     && cardList(s.drawPile) && cardList(s.discardPile) && (s.discardPile as unknown[]).length > 0
     && typeof s.currentSuit === "string" && Number.isInteger(s.turn) && (s.direction === 1 || s.direction === -1)
     && Number.isInteger(s.dealer) && s.status === "playing" && Number.isInteger(s.move);
