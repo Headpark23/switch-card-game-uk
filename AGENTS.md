@@ -123,4 +123,12 @@ Darts: first to three legs wins a set. Knock Out: whoever finishes last in a rou
 
 ## Computer game types (owner decisions, 14 Nov 2026)
 - PLAY offers Single game, Knock Out, Group Play, Switch Cup, Darts scoring and Dominoes scoring against 1 to 7 computers (8 at the table). 7 or 8 seats use two decks (ruling 21). Computers, in order: John, Paul, George, Ringo, Ziggy, Marley, Bowie. Rules and scoring are in `docs/RULES-RULINGS.md` items 21-22. Every type is recorded in stats, trophies, badges and streaks.
+- Group Play league games are played on (ruling 24): the first out scores the league size in points and leaves, the rest keep playing, and so on down to 1 point for the last player. Never end a league round at the first finisher.
 - Dominoes scoring (computer mode) is a lowest-total-wins game: leftover cards add to your total (A 1 ... K 13), and the first to reach the chosen number loses.
+
+## Online play with friends and family (owner decisions, 14 Nov 2026)
+- Online play is a private table with friends and family, started from Play ("Play with friends": Start a table, Join with a code). Computers fill empty seats. No public matchmaking, no accounts needed, no free-text chat. Design: `docs/superpowers/specs/2026-11-14-switch-online-play-design.md`.
+- Online games count: every finished game is a stat (win or loss) and shows in Me > History, like every other game.
+- Reactions are a fixed set of 18 (10 sayings, 8 emojis) and nothing else; the server stores only the id. They are message content, so emoji here do not break the no-emoji-icons rule.
+- Absent players get a visible countdown. No move for 30 seconds: they are told the computer will play their move in 10 seconds. At 40 seconds the computer plays it (ruling 23).
+- The server owns the game and sends each seat a masked view. Nobody but the server may see another seat's hand or the draw pile order.

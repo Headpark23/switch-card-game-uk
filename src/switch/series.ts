@@ -2,7 +2,7 @@ import type { ComputerLevel } from "./ai";
 import { rankOf } from "./cards";
 import { createCup, drawNextCupRound, selectCupWinner, type CupState } from "./cup";
 import { rankLeague, tiedGroups, type League } from "./leagues";
-import { applyTableAction, createTable, type TableState } from "./table";
+import { applyTableAction, createTable, finishingOrder, type TableState } from "./table";
 import { chooseTableAction } from "./tableAi";
 import type { CardId, Player, RandomSource } from "./types";
 
@@ -89,22 +89,30 @@ export function resultOf(table: TableState, ids: readonly string[]): GameResult 
   const cards: Record<string, number> = {};
   table.hands.forEach((hand, seat) => { points[ids[seat]] = hand.reduce((sum, card) => sum + cardValue(card), 0); cards[ids[seat]] = hand.length; });
   const winnerId = ids[table.winner ?? 0];
-  const order = [...ids].sort((a, b) => (a === winnerId ? -1 : b === winnerId ? 1 : 0) || cards[a] - cards[b] || points[a] - points[b] || ids.indexOf(a) - ids.indexOf(b));
+  // A play-on game (a league round) was played until every place was decided, so the order is simply who went out when.
+  // An ordinary game ends at the first player out and the rest are placed by what they still hold.
+  const order = table.playOn
+    ? finishingOrder(table).map((seat) => ids[seat])
+    : [...ids].sort((a, b) => (a === winnerId ? -1 : b === winnerId ? 1 : 0) || cards[a] - cards[b] || points[a] - points[b] || ids.indexOf(a) - ids.indexOf(b));
   return { order, winnerId, points, moves: table.move };
 }
 
 /** Plays a whole game between computers, instantly. Used for every game you are not in. */
-export function simulateGame(ids: readonly string[], level: ComputerLevel, random: RandomSource): GameResult {
-  let table = createTable(ids.length, random, Math.floor(random() * ids.length));
+export function simulateGame(ids: readonly string[], level: ComputerLevel, random: RandomSource, playOn = false): GameResult {
+  let table = createTable(ids.length, random, Math.floor(random() * ids.length), { playOn });
   let guard = 0;
   while (table.status === "playing" && guard < 3000) {
     table = applyTableAction(table, chooseTableAction(table, random, level));
     guard += 1;
   }
   if (table.status === "playing") {
-    // A game that never ends (it should not happen): the shortest hand takes it.
+    // A game that never ends (it should not happen): the shortest hands take the places. A play-on game keeps whoever is already out.
     const sizes = table.hands.map((hand) => hand.length);
-    table = { ...table, status: "won", winner: sizes.indexOf(Math.min(...sizes)) };
+    if (table.playOn) {
+      const out = [...(table.out ?? [])];
+      for (const seat of sizes.map((size, index) => ({ size, index })).filter((entry) => !out.includes(entry.index)).sort((a, b) => a.size - b.size || a.index - b.index).map((entry) => entry.index)) out.push(seat);
+      table = { ...table, out, status: "won", winner: out[0] };
+    } else table = { ...table, status: "won", winner: sizes.indexOf(Math.min(...sizes)) };
   }
   return resultOf(table, ids);
 }
@@ -114,6 +122,11 @@ export interface PendingGame {
   readonly key: string;
   readonly title: string;
   readonly playerIds: readonly string[];
+  /**
+   * Play on after the first player is out until every place is decided (league rounds and deciding games, ruling 24):
+   * with four players the first out gets 4 points, the other three play on, the next out gets 3, and the last two play for 2 and 1.
+   */
+  readonly playOn?: boolean;
 }
 
 interface KnockoutPart { readonly remaining: readonly string[]; readonly out: readonly string[]; readonly championId: string | null }
@@ -209,10 +222,10 @@ export function pendingGames(state: SeriesState): PendingGame[] {
     case "group": {
       if (state.phase === "league") {
         return state.leagues.filter((league) => league.played < league.ids.length)
-          .map((league) => ({ key: `${league.id}-game-${league.played + 1}`, title: `${league.name} · game ${league.played + 1} of ${league.ids.length}`, playerIds: league.ids }));
+          .map((league) => ({ key: `${league.id}-game-${league.played + 1}`, title: `${league.name} · game ${league.played + 1} of ${league.ids.length}`, playerIds: league.ids, playOn: true }));
       }
       if (state.phase === "decider") {
-        return state.leagues.flatMap((league) => tiedGroups(leagueOf(league)).map((group) => ({ key: `${league.id}-decider-${group.map((player) => player.id).join("+")}`, title: `${league.name} deciding game`, playerIds: group.map((player) => player.id) })));
+        return state.leagues.flatMap((league) => tiedGroups(leagueOf(league)).map((group) => ({ key: `${league.id}-decider-${group.map((player) => player.id).join("+")}`, title: `${league.name} deciding game`, playerIds: group.map((player) => player.id), playOn: true })));
       }
       return [...koPending(state.championship, "championship", `Championship · ${state.championship?.remaining.length} left`), ...koPending(state.plate, "plate", `Plate · ${state.plate?.remaining.length} left`)];
     }
@@ -394,7 +407,7 @@ export function advanceComputers(state: SeriesState, random: RandomSource): { re
   for (let guard = 0; guard < 200; guard += 1) {
     const waiting = pendingGames(current).find((game) => !game.playerIds.includes(ME_ID));
     if (!waiting) break;
-    const result = simulateGame(waiting.playerIds, current.base.setup.level, random);
+    const result = simulateGame(waiting.playerIds, current.base.setup.level, random, waiting.playOn === true);
     lines.push(`${waiting.title}: ${nameOf(current, result.winnerId)} won.`);
     current = submitGame(current, waiting.key, result);
   }

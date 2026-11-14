@@ -26,6 +26,18 @@ export interface TableState {
   readonly status: "playing" | "won";
   readonly winner: number | null;
   readonly move: number;
+  /**
+   * Play-on games (league rounds, ruling 24): players who have gone out, first out first. Everyone else carries on,
+   * skipped players keep no cards, and the game is over when one player is left holding cards. Absent in an ordinary
+   * game, which ends the moment the first player is out.
+   */
+  readonly out?: readonly number[];
+  readonly playOn?: boolean;
+}
+
+export interface TableSetup {
+  /** Keep playing after the first player is out until every place is decided. */
+  readonly playOn?: boolean;
 }
 
 /** You plus seven computers. */
@@ -46,13 +58,30 @@ function wrap(seat: number, seats: number): number {
   return ((seat % seats) + seats) % seats;
 }
 
-/** The seat that plays after `seat`, the way play is going now. */
-export function nextSeat(state: Pick<TableState, "hands" | "direction">, seat: number): number {
-  return wrap(seat + state.direction, state.hands.length);
+/** Seats still in the game: everyone, less those who have already gone out in a play-on game. */
+export function liveSeats(state: Pick<TableState, "hands" | "out">): number {
+  return state.hands.length - (state.out?.length ?? 0);
+}
+
+/** The next seat from `seat` in `direction` that has not gone out. */
+function stepFrom(hands: number, out: readonly number[] | undefined, seat: number, direction: 1 | -1): number {
+  let next = wrap(seat + direction, hands);
+  for (let guard = 0; guard < hands && out?.includes(next); guard += 1) next = wrap(next + direction, hands);
+  return next;
+}
+
+/** The seat that plays after `seat`, the way play is going now. Seats that are out are skipped. */
+export function nextSeat(state: Pick<TableState, "hands" | "direction" | "out">, seat: number): number {
+  return stepFrom(state.hands.length, state.out, seat, state.direction);
+}
+
+/** True when `seat` emptied its hand with the move that took `before` to `after` (and so is out, or has won). */
+export function wentOut(after: TableState, seat: number): boolean {
+  return (after.out?.includes(seat) ?? false) || (after.status === "won" && after.winner === seat);
 }
 
 /** Shuffles, deals seven each one card at a time, and turns an ordinary starter. The seat after the dealer plays first. */
-export function createTable(seats: number, random: RandomSource, dealer = 0): TableState {
+export function createTable(seats: number, random: RandomSource, dealer = 0, setup: TableSetup = {}): TableState {
   if (!Number.isInteger(seats) || seats < 2 || seats > MAX_SEATS) throw new Error(`Switch is for 2 to ${MAX_SEATS} players.`);
   const deck = createShoe(decksFor(seats));
   for (let index = deck.length - 1; index > 0; index -= 1) {
@@ -80,16 +109,17 @@ export function createTable(seats: number, random: RandomSource, dealer = 0): Ta
     status: "playing",
     winner: null,
     move: 0,
+    ...(setup.playOn ? { playOn: true, out: [] } : {}),
   };
 }
 
 export function tableLegalMoves(state: TableState, seat = state.turn): GameAction[] {
   if (state.status !== "playing") return [];
-  return legalActionsFor(state.hands[seat], state, tableOptions(state.hands.length));
+  return legalActionsFor(state.hands[seat], state, tableOptions(liveSeats(state)));
 }
 
 export function isLegalTablePlay(state: TableState, action: Extract<GameAction, { type: "play" }>): boolean {
-  return state.status === "playing" && isLegalPlayFor(state.hands[state.turn], state, action, tableOptions(state.hands.length));
+  return state.status === "playing" && isLegalPlayFor(state.hands[state.turn], state, action, tableOptions(liveSeats(state)));
 }
 
 /** Gives `count` cards to a seat. When the deck runs out the played pile is turned over, oldest card first, unshuffled. */
@@ -118,7 +148,8 @@ export function dealTo(state: TableState, seat: number, count: number): TableSta
 
 export function applyTableAction(state: TableState, action: GameAction): TableState {
   if (state.status !== "playing") throw new Error("This game of Switch is over.");
-  const seats = state.hands.length;
+  // The rules (a jack finishing, a jack bouncing play back) follow the players still in, so three left is a three-player game.
+  const seats = liveSeats(state);
   const actor = state.turn;
 
   if (action.type === "accept-missed-turn") {
@@ -169,42 +200,75 @@ export function applyTableAction(state: TableState, action: GameAction): TableSt
     if (seats === 2) turn = actor;
     else {
       direction = (direction * -1) as 1 | -1;
-      turn = wrap(actor + direction, seats);
+      turn = stepFrom(state.hands.length, state.out, actor, direction);
     }
   } else {
-    turn = wrap(actor + direction, seats);
+    turn = stepFrom(state.hands.length, state.out, actor, direction);
   }
 
   // Ruling 19: a seven, or jacks that cannot win, may be played as the last cards. They do not win: the player picks
   // up one card from the deck, says "Last Card" again, and the turn passes on. The direction is left as it was.
   const pickupInstead = remaining.length === 0 && forcesPickup(played, state.hands[actor], tableOptions(seats));
-  const won = remaining.length === 0 && !pickupInstead;
-  const afterPlay: TableState = {
+  const emptied = remaining.length === 0 && !pickupInstead;
+  const hands = state.hands.map((hand, index) => (index === actor ? remaining : hand));
+  const base: TableState = {
     ...state,
-    hands: state.hands.map((hand, index) => (index === actor ? remaining : hand)),
+    hands,
     discardPile: [...state.discardPile, ...played],
     currentSuit: playedRank === "A" ? (action.chosenSuit as Suit) : suitOf(lastCard),
-    turn: pickupInstead ? wrap(actor + state.direction, seats) : turn,
+    turn: pickupInstead ? stepFrom(state.hands.length, state.out, actor, state.direction) : turn,
     direction: pickupInstead ? state.direction : direction,
     pendingPenalty,
-    status: won ? "won" : "playing",
-    winner: won ? actor : null,
     move: state.move + 1,
   };
-  return pickupInstead ? dealTo(afterPlay, actor, 1) : afterPlay;
+  if (pickupInstead) return dealTo({ ...base, status: "playing", winner: null }, actor, 1);
+  if (!emptied) return { ...base, status: "playing", winner: null };
+  if (!state.playOn) return { ...base, status: "won", winner: actor };
+
+  // A play-on game: this player is out. If at least two others still hold cards, they carry on without them.
+  const out = [...(state.out ?? []), actor];
+  const stillIn = hands.length - out.length;
+  if (stillIn >= 2) return { ...base, out, status: "playing", winner: null };
+  // One player is left holding cards: every place is decided.
+  return { ...base, out, status: "won", winner: out[0] };
 }
 
 /**
  * A player who put down their last cards (a set such as two tens, or a seven or jacks that cannot win) without having
  * said "Last Card" does not win on it. The play stands, but they pick up two cards and the game goes on.
+ * In a play-on game the same applies to going out: they are back in, and no place is given to them.
  */
 export function penaliseMissedLastCard(after: TableState, seat: number): TableState {
-  const reopened: TableState = after.status === "won" ? { ...after, status: "playing", winner: null } : after;
+  let reopened: TableState = after;
+  if (after.playOn) {
+    if (after.out?.includes(seat)) reopened = { ...after, out: after.out.filter((entry) => entry !== seat), status: "playing", winner: null };
+  } else if (after.status === "won") {
+    reopened = { ...after, status: "playing", winner: null };
+  }
   return dealTo(reopened, seat, 2);
 }
 
-/** Finishing places once someone is out: the winner, then fewest cards left in hand. Ties share the better place. */
+/**
+ * Everyone from first to last. In a play-on game that is the order they went out, with the one player left holding
+ * cards last; in an ordinary game it is the winner, then fewest cards left.
+ */
+export function finishingOrder(state: TableState): number[] {
+  if (state.playOn) {
+    const out = state.out ?? [];
+    const left = state.hands.map((_, seat) => seat).filter((seat) => !out.includes(seat))
+      .sort((a, b) => state.hands[a].length - state.hands[b].length || a - b);
+    return [...out, ...left];
+  }
+  return state.hands.map((_, seat) => seat)
+    .sort((a, b) => (a === state.winner ? -1 : b === state.winner ? 1 : 0) || state.hands[a].length - state.hands[b].length || a - b);
+}
+
+/** Finishing places once someone is out: the winner, then fewest cards left in hand. Ties share the better place. A play-on game has no ties. */
 export function tablePlaces(state: TableState): number[] {
+  if (state.playOn) {
+    const order = finishingOrder(state);
+    return state.hands.map((_, seat) => order.indexOf(seat) + 1);
+  }
   const counts = state.hands.map((hand) => hand.length);
   return counts.map((count) => 1 + counts.filter((other) => other < count).length);
 }

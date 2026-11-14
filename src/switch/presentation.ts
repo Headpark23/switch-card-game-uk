@@ -1,5 +1,5 @@
 import { rankOf, suitOf } from "./cards";
-import type { TableState } from "./table";
+import { wentOut, type TableState } from "./table";
 import type { CardId, GameAction, Suit } from "./types";
 
 /**
@@ -67,6 +67,8 @@ export function stepDuration(step: Step, timings: Timings): number {
   }
 }
 
+const ORDINALS = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
+
 const SUIT_NAMES: Readonly<Record<Suit, string>> = { S: "spades", H: "hearts", D: "diamonds", C: "clubs" };
 
 function plural(count: number, word: string): string {
@@ -77,7 +79,7 @@ function plural(count: number, word: string): string {
 export function effectText(before: TableState, after: TableState, cards: readonly CardId[], names: readonly string[], chosenSuit?: Suit): string | null {
   const rank = rankOf(cards[cards.length - 1]);
   const actor = before.turn;
-  if (after.status === "won") return null;
+  if (wentOut(after, actor)) return null;
   // Ruling 19: a seven or jacks as the very last cards cannot win. The player picks up one card and the turn passes.
   if ((rank === "7" || rank === "J") && cards.length === before.hands[actor].length) {
     return `${rank === "7" ? "A seven" : "Jacks"} cannot win: ${names[actor]} pick${actor === 0 ? "" : "s"} up a card`;
@@ -127,12 +129,17 @@ export function planTurn(before: TableState, action: GameAction, after: TableSta
   const effect = effectText(before, after, action.cards, names, action.chosenSuit);
   if (effect) steps.push({ kind: "announce", seat, text: effect, tone: "power" });
   // The last cards were a seven or jacks, which cannot win: one card is picked up from the deck.
-  if (after.status === "playing" && before.hands[seat].length === action.cards.length) {
+  if (!wentOut(after, seat) && before.hands[seat].length === action.cards.length) {
     if (options.missedCall) steps.push({ kind: "announce", seat, text: `No "Last Card" called: ${names[seat]} pick${seat === 0 ? "" : "s"} up two`, tone: "info" });
     steps.push({ kind: "draw", seat, count: after.hands[seat].length, ...(options.missedCall ? { penalty: true } : {}) });
     if (after.discardPile.length < before.discardPile.length + action.cards.length) {
       steps.push({ kind: "announce", seat, text: "Deck empty: the played pile is turned over to make a new deck", tone: "info" });
     }
+  }
+  // A play-on game: this player is out with a place, and everyone else carries on.
+  if (after.playOn && after.status === "playing" && wentOut(after, seat)) {
+    const place = (after.out ?? []).indexOf(seat) + 1;
+    steps.push({ kind: "announce", seat, text: `${names[seat]} ${seat === 0 ? "are" : "is"} out: ${ORDINALS[place - 1] ?? `${place}th`} place`, tone: "power" });
   }
   if (after.status === "playing" && seat !== 0 && after.hands[seat].length === 1) {
     steps.push({ kind: "announce", seat, text: `${names[seat]}: "Last Card!"`, tone: "last" });

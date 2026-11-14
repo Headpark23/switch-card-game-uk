@@ -3,7 +3,7 @@ import { ArrowClockwise, ArrowCounterClockwise, ArrowRight, CheckCircle, HandPal
 import type { ComputerLevel } from '../switch/ai';
 import { cardIdLabel } from '../switch/cards';
 import { explainUnplayable } from '../switch/coach';
-import { applyTableAction, createTable, dealTo, isLegalTablePlay, penaliseMissedLastCard, tableLegalMoves, tablePlaces, type TableState } from '../switch/table';
+import { applyTableAction, createTable, dealTo, isLegalTablePlay, penaliseMissedLastCard, tableLegalMoves, tablePlaces, wentOut, type TableState } from '../switch/table';
 import { chooseTableAction } from '../switch/tableAi';
 import type { CardId, GameAction, GameState, Suit } from '../switch/types';
 import { cue } from '../feedback';
@@ -47,7 +47,7 @@ function describe(before: TableState, after: TableState, who: string, action: Ga
   const text = cards.length === 1 ? `${who} ${plays} ${cardIdLabel(cards[0])}` : `${who} ${plays} ${cards.map(cardIdLabel).join(', then ')}`;
   if (rank(cards[0]) === 'A') return `${text}: the suit is ${suitNames[action.chosenSuit ?? suit(cards[cards.length - 1])]}.`;
   // Ruling 19: a seven or jacks as the last cards cannot win. One card comes from the deck and the turn passes.
-  if (cards.length === before.hands[before.turn].length && after.status === 'playing') {
+  if (cards.length === before.hands[before.turn].length && !wentOut(after, before.turn)) {
     return `${text}, but that cannot win the game, so ${who === 'You' ? 'you pick' : `${who} picks`} up one card.`;
   }
   return text + '.';
@@ -64,7 +64,7 @@ type Showing = { id: number; before: TableState; after: TableState; action: Game
 const CALL_GRACE = 1600;
 
 /** When this game is one of a tournament's games, the series screen runs the show: it names the seats and decides what happens next. */
-export type SeriesGame = { title: string; seriesId: string; mode: PlayMode; onFinished: (table: TableState, gameId: string) => void };
+export type SeriesGame = { title: string; seriesId: string; mode: PlayMode; /** League rounds: players leave as they go out and the rest play on until every place is decided (ruling 24). */ playOn?: boolean; onFinished: (table: TableState, gameId: string) => void };
 
 type Props = { opponents: number; level: ComputerLevel; resume?: ActiveTable | null; seatNames?: string[]; series?: SeriesGame; onExit: () => void; onOpenCards: () => void; onStartNight: () => void; onChange: () => void };
 
@@ -72,7 +72,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   const seats = opponents + 1;
   const names = useMemo(() => seatNames ?? ['You', ...COMPUTER_NAMES.slice(0, opponents)], [opponents, seatNames]);
   const [gameId, setGameId] = useState(() => resume?.id ?? newTableGameId());
-  const [game, setGame] = useState<TableState>(() => resume?.game ?? createTable(seats, Math.random, pickDealer(seats)));
+  const [game, setGame] = useState<TableState>(() => resume?.game ?? createTable(seats, Math.random, pickDealer(seats), { playOn: series?.playOn }));
   const [showing, setShowing] = useState<Showing | null>(null);
   const [recent, setRecent] = useState<string[]>(() => (resume ? ['Game resumed where you left it.'] : []));
   const [staged, setStaged] = useState<CardId[]>([]);
@@ -110,6 +110,9 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   const legalCards = hand.filter(canPlay);
   const places = game.status === 'won' ? tablePlaces(game) : [];
   const youWon = game.winner === 0;
+  // A play-on game: once you are out the computers finish the round. Your place is already fixed.
+  const youOutAt = game.playOn && game.status === 'playing' ? (game.out ?? []).indexOf(0) + 1 : 0;
+  const outAfter = (showing ? showing.before : game).out ?? [];
   const finished = game.status === 'won' && !showing;
 
   const push = (line: string) => setRecent((current) => [...current.slice(-3), line]);
@@ -305,7 +308,17 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     setShowing(null);
     setRecent([]); setStaged([]); setAceChoice(null); setHint(false); setLastCalled(false);
     setGameId(newTableGameId());
-    setGame(createTable(seats, Math.random, pickDealer(seats)));
+    setGame(createTable(seats, Math.random, pickDealer(seats), { playOn: series?.playOn }));
+  }
+
+  /** You are out and only the computers are left: play the rest of the round out in an instant. */
+  function skipToResult() {
+    let table = gameRef.current;
+    for (let guard = 0; guard < 3000 && table.status === 'playing'; guard += 1) table = applyTableAction(table, chooseTableAction(table, Math.random, level));
+    if (table.status === 'playing') return;
+    busy.current = false;
+    setShowing(null);
+    setGame(table);
   }
 
   function cycleSpeed() {
@@ -325,8 +338,8 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
       <div className="completion">
         <CheckCircle size={56} weight="light" />
         <h1>{youWon ? <>You won<br />this game.</> : <>{names[game.winner ?? 0]} won<br />this game.</>}</h1>
-        <p>{series.title}. You finished {ordinal(places[0])} of {seats} with {hand.length} card{hand.length === 1 ? '' : 's'} left.</p>
-        <ol className="place-list" aria-label="Places in this game">{[...game.hands.keys()].sort((a, b) => places[a] - places[b] || a - b).map((seat) => <li key={seat} className={seat === 0 ? 'me' : ''}><b>{ordinal(places[seat])}</b><span>{names[seat]}</span><em>{game.hands[seat].length} left</em></li>)}</ol>
+        <p>{series.title}. {game.playOn ? `You finished ${ordinal(places[0])} of ${seats}.` : `You finished ${ordinal(places[0])} of ${seats} with ${hand.length} card${hand.length === 1 ? '' : 's'} left.`}</p>
+        <ol className="place-list" aria-label="Places in this game">{[...game.hands.keys()].sort((a, b) => places[a] - places[b] || a - b).map((seat) => <li key={seat} className={seat === 0 ? 'me' : ''}><b>{ordinal(places[seat])}</b><span>{names[seat]}</span><em>{game.hands[seat].length === 0 ? 'Out' : `${game.hands[seat].length} left`}</em></li>)}</ol>
         <button className="primary" data-testid="series-continue" onClick={() => series.onFinished(game, gameId)}>Continue <ArrowRight size={18} /></button>
       </div>
     </section>;
@@ -379,8 +392,8 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
         return <div role="listitem" key={name} data-seat={seat} className={'seat' + (active ? ' turn' : '') + (game.dealer === seat ? ' dealer' : '')} aria-label={`${name} has ${count} card${count === 1 ? '' : 's'}${game.dealer === seat ? ', dealer' : ''}${active ? ', playing now' : ''}`}>
           <span className="seat-name">{name}{game.dealer === seat && <i className="dealer-pip" title="Dealer">D</i>}</span>
           <span className="seat-fan" aria-hidden="true">{Array.from({ length: Math.min(5, count) }, (_, i) => <CardImage code="back" key={i} />)}</span>
-          <strong className={count === 1 ? 'last' : ''}>{count} card{count === 1 ? '' : 's'}</strong>{ouchFor(seat)}
-          <span className="seat-state" aria-hidden="true">{active ? (visible.thinking ? <><i className="think-dots"><b /><b /><b /></i>Choosing</> : 'Playing') : count === 1 ? 'Last card' : ' '}</span>
+          <strong className={count === 1 ? 'last' : ''}>{outAfter.includes(seat) ? 'Out' : `${count} card${count === 1 ? '' : 's'}`}</strong>{ouchFor(seat)}
+          <span className="seat-state" aria-hidden="true">{outAfter.includes(seat) ? `Out: ${ordinal(outAfter.indexOf(seat) + 1)}` : active ? (visible.thinking ? <><i className="think-dots"><b /><b /><b /></i>Choosing</> : 'Playing') : count === 1 ? 'Last card' : ' '}</span>
         </div>;
       })}
     </div>
@@ -403,14 +416,15 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
       {ouchFor(0)}
       {yourMove && <span className="your-move-tag" aria-hidden="true">Your move</span>}
       {yourMove && missTurn && <div className="miss-turn-action"><strong>An eight was played</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you miss this turn.'}</p><button className="primary" onClick={pickUp}>Accept missed turn <ArrowRight size={18} /></button></div>}
-      <>
+      {youOutAt > 0 && <div className="out-panel" role="status" data-testid="you-are-out"><strong>You are out: {ordinal(youOutAt)} place.</strong><p>The others play on for the places still to be decided.</p><button className="secondary" onClick={skipToResult}>Skip to the result <ArrowRight size={18} /></button></div>}
+      {youOutAt === 0 && <>
           {staged.length === 0 && <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!canAct}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={cycleSpeed} aria-label={`Computer pace: ${SPEED_NAMES[speed]}. Tap to change`}><Timer size={16} />{SPEED_NAMES[speed]}</button><button className="pace-button sort-button" onClick={() => setGame((current) => ({ ...current, hands: current.hands.map((cards, seat) => (seat === 0 ? sortHand(cards) : cards)) }))}><SortAscending size={16} />Sort</button><span>{hand.length} in hand</span></div>}
           {hint && yourMove && <p className="game-hint"><Lightbulb size={17} />{hintText}</p>}
           <div className={'player-hand' + (hand.length > 10 ? ' dense' : '') + (hand.length > 8 ? ' two-rows' : '')} style={{ '--n': hand.length, '--per': Math.ceil(hand.length / 2) } as CSSProperties} aria-label="Your hand">
             {hand.map((card, index) => <button key={card} style={{ '--i': 0, zIndex: index + 1 } as CSSProperties} data-card={card} onClick={() => chooseCard(card)} className={(hint && yourMove && canPlay(card) ? 'playable ' : '') + (staged.includes(card) ? 'selected ' : '') + (flash.includes(card) ? 'illegal' : '')} disabled={!canAct} aria-label={staged.includes(card) ? `Deselect ${cardIdLabel(card)}` : `Select ${cardIdLabel(card)}${canPlay(card) ? ', legal move' : ', not currently playable'}`}><CardImage code={card} />{staged.includes(card) && <i className="order-badge" aria-hidden="true">{staged.indexOf(card) + 1}</i>}</button>)}
           </div>
           {staged.length > 0 && <div className="multi-action"><p>{staged.length === 1 ? '1 card selected' : `${staged.length} cards selected. They land in the order you tapped them, and the last one sets the suit.`}</p><button className="primary" onClick={playStaged} disabled={!canAct}>Play selected</button><button className="text-link" onClick={() => setStaged([])}>Clear selection</button></div>}
-        </>
+        </>}
     </div>
     {aceChoice && <div className="suit-choice" role="dialog" aria-label="Choose a suit"><p>Choose the suit for your ace</p><div>{(['S', 'H', 'D', 'C'] as Suit[]).map((chosen) => <button key={chosen} className={chosen === 'H' || chosen === 'D' ? 'red' : ''} onClick={() => { const cards = aceChoice; setAceChoice(null); commit(cards, chosen); }}>{suitSymbols[chosen]}<span>{suitNames[chosen]}</span></button>)}</div><button className="text-link" onClick={() => setAceChoice(null)}>Cancel</button></div>}
   </section>;

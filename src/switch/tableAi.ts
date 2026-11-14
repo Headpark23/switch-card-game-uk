@@ -1,7 +1,7 @@
 import { isBlackKing, isRedKing, rankOf, suitOf } from "./cards";
 import { isPlayableDuringPenalty } from "./rules";
 import type { ComputerLevel } from "./ai";
-import { applyTableAction, nextSeat, tableLegalMoves, type TableState } from "./table";
+import { applyTableAction, nextSeat, tableLegalMoves, wentOut, type TableState } from "./table";
 import type { CardId, GameAction, RandomSource } from "./types";
 
 /**
@@ -15,7 +15,8 @@ function score(state: TableState, action: GameAction, level: ComputerLevel): num
   if (action.type === "draw") return state.pendingPenalty ? -400 : level === "sharp" ? -60 : 0;
 
   const next = applyTableAction(state, action);
-  if (next.status === "won") return 100_000;
+  // Going out is the best move there is, in a play-on game too (where the game carries on without you).
+  if (wentOut(next, seat)) return 100_000;
   const rank = rankOf(action.cards[0]);
   const remaining = next.hands[seat];
   let total = action.cards.length * 100;
@@ -34,7 +35,7 @@ function score(state: TableState, action: GameAction, level: ComputerLevel): num
   if (penalty?.kind === "draw-two" || penalty?.kind === "black-king") total += penalty.cards * 9 * urgency;
   if (penalty?.kind === "miss-turn") total += 45 * urgency;
   // Anyone at the table close to going out makes holding cards back dangerous.
-  const danger = Math.min(...next.hands.filter((_, index) => index !== seat).map((hand) => hand.length));
+  const danger = Math.min(...next.hands.filter((_, index) => index !== seat && !next.out?.includes(index)).map((hand) => hand.length));
   if (danger <= 2) total += action.cards.length * 40;
 
   if (next.turn === seat) {

@@ -65,7 +65,7 @@ export default function SeriesPlay({ setup, onTable, onExit, onChange, onMe, onO
 
   if (view === 'table' && next) {
     return <TableGame key={`${state.base.id}-${next.key}-${run.deal}`} opponents={ids.length - 1} level={setup.level} seatNames={seatNames}
-      series={{ title: `${info.name} · ${next.title}`, seriesId: state.base.id, mode: setup.mode, onFinished: finished }}
+      series={{ title: `${info.name} · ${next.title}`, seriesId: state.base.id, mode: setup.mode, playOn: next.playOn, onFinished: finished }}
       onExit={() => setView('board')} onChange={onChange} onOpenCards={onOpenCards} onStartNight={onStartNight} />;
   }
 
