@@ -27,7 +27,8 @@ self.addEventListener('message', (event) => {
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
-  if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
+  // The owner's dashboard is never kept offline, and a standalone page must never replace the saved app shell.
+  if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.pathname === '/stats.html') return;
 
   if (request.mode === 'navigate') {
     // Network first so updates arrive; fall back to the saved app shell offline.
@@ -35,7 +36,7 @@ self.addEventListener('fetch', (event) => {
       const cache = await caches.open(CACHE);
       try {
         const fresh = await fetch(request);
-        if (fresh.ok) cache.put('/index.html', fresh.clone());
+        if (fresh.ok && !/\.html$/i.test(url.pathname)) cache.put('/index.html', fresh.clone());
         return fresh;
       } catch {
         return (await cache.match("/index.html", { ignoreVary: true })) || Response.error();

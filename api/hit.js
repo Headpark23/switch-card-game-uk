@@ -1,6 +1,7 @@
 import { get, put } from "@vercel/blob";
 import { handleHit } from "./_hit.js";
 import { makeLimiter, tooMany } from "./_limit.js";
+import { recordOnServer } from "./_statsStore.js";
 
 const allow = makeLimiter({ max: 60, windowMs: 60_000 });
 
@@ -21,6 +22,11 @@ export default {
     const fail = () => new Response(JSON.stringify({ error: "Counter unavailable" }), { status: 503, headers: { "content-type": "application/json" } });
     if (!allow(request)) return tooMany();
     if (!process.env.BLOB_READ_WRITE_TOKEN) return fail();
-    try { return await handleHit(request, store); } catch { return fail(); }
+    try {
+      const response = await handleHit(request, store);
+      // The footer counter is the lifetime total; the dashboard also wants visits per day.
+      if (request.method === "POST" && response.ok) await recordOnServer([{ e: "visit" }]);
+      return response;
+    } catch { return fail(); }
   },
 };

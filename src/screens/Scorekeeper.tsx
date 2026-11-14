@@ -6,6 +6,7 @@ import { clearCupResult, createCup, cupUndoStep, drawNextCupRound, isCupFinal, s
 import { createCrossLeaguePlayoffs, rankLeague, tiedGroups, type League } from '../switch/leagues';
 import { clearPicks, emptyLeagueProgress, recordFinisher, settleTie, undoLastRound, undoRoundBlocker, type LeagueProgress } from '../switch/leagueNight';
 import { createKnockout, createPlayoffKnockout, markLost, undoKnockout, type KnockoutState } from '../switch/knockout';
+import { trackNightSaved } from '../switch/telemetry';
 import { addNight, completionFromCup, completionFromKnockout, completionFromLeagues, completionFromSession, createNightRecord } from '../switch/history';
 import { ensureProfiles, getProfiles } from '../switch/profiles';
 import { converge } from '../switch/clubSync';
@@ -191,7 +192,7 @@ export default function SwitchScorekeeper({onBack,backLabel='Home',initialView='
   const winnerOnOpen=useRef(celebrated);
   const completion=session?completionFromSession(session):knockout?completionFromKnockout(knockout):cup?completionFromCup(cup):leagueStarted?completionFromLeagues(leagues,playoffs,league.playoffKnockouts):null;
   function persistHistory(nextExtensions:Record<string,unknown>,replaceExtensions=false){const currentPlayers=session?.players??knockout?.players??cup?.players??visiblePlayers;const currentScores=session?{...session.scores}:leagueStarted?{...league.scores}:{};persist(currentPlayers,currentScores,nextExtensions,replaceExtensions);}
-  function saveCompletedNight(){if(!completion||savedCurrent)return;keyboard.hide();try{const place=cleanPlace(placeName,placeCountry);const night=createNightRecord(nightName,completion,undefined,undefined,place);const added=addNight(storedExtensions,night);setSentToFriends(publishResult(shareSnapshot,night));window.setTimeout(()=>setSavePromptOpen(false),0);setDealersNow({});persistHistory(clearActiveNight(place?putLastPlace(added,place):added),true);setSavedCurrent(true);setError('');setView('history');}catch(reason){setError(reason instanceof Error?reason.message:'This night could not be saved.');}}
+  function saveCompletedNight(){if(!completion||savedCurrent)return;keyboard.hide();try{const place=cleanPlace(placeName,placeCountry);const night=createNightRecord(nightName,completion,undefined,undefined,place);const added=addNight(storedExtensions,night);trackNightSaved(night.format,night.players.length,sharing);setSentToFriends(publishResult(shareSnapshot,night));window.setTimeout(()=>setSavePromptOpen(false),0);setDealersNow({});persistHistory(clearActiveNight(place?putLastPlace(added,place):added),true);setSavedCurrent(true);setError('');setView('history');}catch(reason){setError(reason instanceof Error?reason.message:'This night could not be saved.');}}
   // A finished, unsaved night asks to be saved straight away, once per result (a correction that changes the result asks again).
   const completionKey=completion?`${completion.format}:${completion.winnerIds.join(',')}:${completion.outcome}`:null;
   useEffect(()=>{if(completionKey&&!savedCurrent&&completionKey!==savePromptFor){setSavePromptFor(completionKey);setSavePromptOpen(true);keyboard.hide();}if(!completionKey){setSavePromptFor(null);setSavePromptOpen(false);}},[completionKey,savedCurrent]);// eslint-disable-line react-hooks/exhaustive-deps

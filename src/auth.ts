@@ -1,5 +1,6 @@
 import { hasClubData, isSyncDocument, mergeDocuments, sameClub, type SyncDocument } from './switch/sync';
 import { loadScorekeeper, saveScorekeeper, SCOREKEEPER_STORAGE_KEY } from './switch/storage';
+import { trackFeature } from './switch/telemetry';
 
 /**
  * Google sign-in and cloud sync. Switch stays fully usable without it: with no client ID
@@ -46,6 +47,7 @@ export async function createSession(credential: string, fetcher: typeof fetch = 
   const response = await fetcher(AUTH_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential }) });
   if (response.status === 503) throw new Error('Cloud backup is not switched on yet.');
   if (!response.ok) throw new Error('Google sign-in was not accepted. Try again.');
+  trackFeature('signin');
   return ((await response.json()) as { account: Account }).account;
 }
 

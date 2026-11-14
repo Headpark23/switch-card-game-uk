@@ -1,6 +1,7 @@
 import { get, put } from "@vercel/blob";
 import { handleClub } from "./_club.js";
 import { makeLimiter, tooMany } from "./_limit.js";
+import { countOnServer } from "./_statsStore.js";
 
 const allow = makeLimiter({ max: 120, windowMs: 60_000 });
 
@@ -19,6 +20,12 @@ export default {
   async fetch(request) {
     if (!allow(request)) return tooMany();
     if (!process.env.BLOB_READ_WRITE_TOKEN) return new Response(JSON.stringify({ error: "Sharing is not switched on yet." }), { status: 503, headers: { "content-type": "application/json" } });
-    try { return await handleClub(request, store); } catch { return new Response(JSON.stringify({ error: "Club sharing is unavailable right now." }), { status: 503, headers: { "content-type": "application/json" } }); }
+    try {
+      const response = await handleClub(request, store);
+      // A new shared club is the moment sharing starts; every later save from a phone is a sync.
+      if (request.method === "POST" && response.status === 201) await countOnServer(["server.clubs.created"]);
+      else if (request.method === "PUT" && response.ok) await countOnServer(["server.clubs.syncs"]);
+      return response;
+    } catch { return new Response(JSON.stringify({ error: "Club sharing is unavailable right now." }), { status: 503, headers: { "content-type": "application/json" } }); }
   },
 };

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowRight, CaretLeft, CheckCircle, Fire, Trophy, XCircle } from '@phosphor-icons/react';
 import { cue } from '../feedback';
+import { trackFeature } from '../switch/telemetry';
 import { badgeFor, checkAnswer, legalCardsFor, loadProgress, puzzles, recordResult, saveProgress, type PuzzleProgress } from '../switch/puzzles';
 import type { CardId } from '../switch/types';
 import { CardImage, suitNames } from '../ui';
@@ -27,6 +28,7 @@ export default function Puzzles({ onBack, onTutorial }: { onBack: () => void; on
     const updated = recordResult(progress, puzzle.id, outcome.correct);
     setResult(outcome); setProgress(updated); saveProgress(updated);
     cue(outcome.correct ? 'good' : 'bad');
+    if (outcome.correct && !progress.solved.includes(puzzle.id)) trackFeature('puzzle_solved');
   }
   function advance() {
     setPicked([]); setResult(null);

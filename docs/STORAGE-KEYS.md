@@ -58,3 +58,17 @@ From Switch 2.0, guided practice (Learn the Rules) writes nothing to `switchComp
 
 Profiles gain an optional `updatedAt`, and `switchClub` an `updatedAt`, so two phones can tell which rename or archive is newer. Older records without them still load.
 
+
+## Anonymous usage counts (14 Nov 2026)
+
+Five new keys, added by `src/switch/telemetry.ts` and `src/switch/useTableTelemetry.ts`. None holds an identifier, and none changes an existing key. They are all removed by "Delete data on this device" (they start with `switch`).
+
+| Key | Purpose | Notes |
+|---|---|---|
+| `switchStatsSeen` | The UTC day this phone was first counted | Only "has been counted", never an id. Decides whether an open is a new device. |
+| `switchStatsDay` | The UTC day this phone was last counted as active | Lets the server count one active device per day. |
+| `switchStatsOptOut` | `1` when the person has turned counting off (Me > Privacy) | Nothing is sent while set, and the outbox is emptied. |
+| `switchStatsOutbox` | Counts waiting to be sent (up to 100) | Sent when online, then removed. |
+| `switchStatsTable` | The running penalty-card tally of the game in progress | Removed once the game is over. Separate from `switchTableGame`, which is untouched. |
+
+`switchStatsTest` is only ever set by tests, to let an automated browser send counts.

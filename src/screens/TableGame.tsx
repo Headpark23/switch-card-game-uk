@@ -8,6 +8,7 @@ import { chooseTableAction } from '../switch/tableAi';
 import type { CardId, GameAction, GameState, Suit } from '../switch/types';
 import { cue } from '../feedback';
 import { logComputerGame } from '../switch/logGame';
+import { useTableTelemetry } from '../switch/useTableTelemetry';
 import { getComputerGames, getMeId, summariseComputerGames } from '../switch/computerLog';
 import { readClub } from '../switch/clubStore';
 import { drawTiming, planTurn, REDUCED, SPEED_NAMES, SPEEDS, stepDuration, visibleAt, type Speed, type Step } from '../switch/presentation';
@@ -83,6 +84,7 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
   const timings = useMemo(() => (prefersReducedMotion() ? REDUCED : SPEEDS[speed]), [speed]);
   const logged = useRef<string | null>(null);
   // Anonymous counts for the owner's dashboard (who dealt the penalty cards, how the game ended). Never read back by the game.
+  const stats = useTableTelemetry(gameId, opponents, level);
   const showId = useRef(0);
   /** Set the moment a move is submitted, so a double tap can never send it twice. Released when the turn has been shown. */
   const busy = useRef(false);
@@ -109,6 +111,7 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
   const push = (line: string) => setRecent((current) => [...current.slice(-3), line]);
 
   function show(before: TableState, action: GameAction, after: TableState, think: boolean, missedCall = false) {
+    stats.onMove(before, action, after);
     showId.current += 1;
     const steps = planTurn(before, action, after, names, { think, missedCall });
     let line = describe(before, after, names[before.turn], action);
@@ -212,6 +215,7 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
     if (logged.current === gameId) return;
     logged.current = gameId;
     logComputerGame({ id: gameId, opponents, level, won: game.winner === 0, place: tablePlaces(game)[0], moves: game.move });
+    stats.onFinish({ won: game.winner === 0, place: tablePlaces(game)[0], moves: game.move });
     clearActiveTable();
   }, [game, lastCalled, gameId, opponents, level]);
 

@@ -6,6 +6,7 @@ import { getHistory, REMOVED_NIGHTS_KEY } from "./history";
 import { claimMe, mergeProfiles } from "./identity";
 import { ensureProfiles, getProfiles, putProfiles, type LocalProfile } from "./profiles";
 import { getSeasons } from "./seasons";
+import { trackFeature } from "./telemetry";
 
 type Extensions = Record<string, unknown>;
 
@@ -154,6 +155,7 @@ export async function joinClub(code: string, as: string): Promise<void> {
   lastSent = ""; lastStamp = 0;
   writeClub((current) => claimByName(applyClub(current, result.doc as ClubDoc), as));
   markJoined(result.doc?.name ?? "", as.trim());
+  trackFeature("club_joined");
   // The invitation has done its job: take it out of the address so nothing offers to join again.
   try { const url = new URL(window.location.href); if (url.searchParams.has("club")) { url.searchParams.delete("club"); window.history.replaceState(null, "", url.pathname + url.search + url.hash); } } catch { /* ignore */ }
   await syncClub();

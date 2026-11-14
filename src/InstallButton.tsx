@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { DeviceMobile, DotsThreeVertical, ShareNetwork, X } from '@phosphor-icons/react';
 import { BottomSheet } from './mobile';
+import { trackFeature } from './switch/telemetry';
 
 type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> };
 
@@ -26,6 +27,7 @@ function useInstall() {
   useSyncExternalStore(subscribe, () => `${installed}-${!!deferred}`);
   const [help, setHelp] = useState(false);
   async function install() {
+    trackFeature('install_prompt');
     if (!deferred) { setHelp(true); return; }
     const prompt = deferred;
     await prompt.prompt();

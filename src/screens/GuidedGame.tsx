@@ -20,6 +20,7 @@ import { explainEffect, explainOptions, explainPickup, explainUnplayable, wasFor
 import { adviseMove } from '../switch/tactics';
 import { explainLesson, explainPickupLesson, explainStart, type Lesson } from '../switch/lessons';
 import { cue, feedbackEnabled, setFeedbackEnabled } from '../feedback';
+import { track } from '../switch/telemetry';
 import RealCards from './RealCards';
 import { ShareButton } from '../ShareButton';
 import { challengeShareCard } from '../switch/club';
@@ -173,6 +174,9 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
   useEffect(() => onStatusChange(outcome), [outcome, onStatusChange]);
   // Guided practice is unranked: it never adds to competitive stats, streaks, rankings or badges. Only PLAY logs games.
   useEffect(() => { if (outcome === 'won') cue('win'); else if (outcome === 'lost') cue('bad'); }, [outcome]);
+  // Anonymous counts only (see telemetry.ts): a practice game began, and how it ended.
+  useEffect(() => { track({ e: 'practice', stage: 'start' }); }, []);
+  useEffect(() => { if (outcome !== 'playing') track({ e: 'practice', stage: 'finish', won: outcome === 'won' }); }, [outcome]);
 
   useLayoutEffect(() => {
     const reset = () => {

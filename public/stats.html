@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="color-scheme" content="light">
+<title>Switch dashboard</title>
+<style>
+:root{
+  --cream:#fbf8f0;--card:#fffdf7;--ink:#092e23;--muted:#59605b;--line:#ded7c7;--green:#053527;--gold:#ac7b26;
+  /* Chart series, validated for colour-blind separation. Fixed order: you, computers, other, lost. */
+  --s1:#16804f;--s2:#b98308;--s3:#3a64b0;--s4:#c0452b;
+  --grid:#e8e1d1;--surface:#fffdf7;
+}
+*{box-sizing:border-box}
+html{background:var(--cream)}
+body{margin:0;background:var(--cream);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h1,h2,h3{font-family:Georgia,"DM Serif Display",serif;font-weight:400;margin:0;letter-spacing:-.4px}
+main{max-width:1120px;margin:0 auto;padding:20px 16px 80px}
+button{font:inherit;color:inherit;cursor:pointer}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;padding:8px 0 18px;border-bottom:1px solid var(--line)}
+header.top h1{font-size:34px;line-height:1.05}
+header.top p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;border:1px solid #c9bfaa;border-radius:22px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:none;padding:7px 14px;min-height:36px;font-size:13px}
+.seg button[aria-pressed=true]{background:var(--green);color:#fff}
+.btn{border:1px solid #c9bfaa;background:var(--card);border-radius:22px;padding:7px 14px;min-height:36px;font-size:13px}
+.btn.primary{background:var(--green);border-color:var(--green);color:#fff}
+.banner{margin:14px 0 0;padding:10px 14px;border-radius:10px;background:#f6edcf;border:1px solid #e3d9c4;font-size:13px}
+.banner.error{background:#f8ded7;border-color:#e4b3a6;color:#7d281c}
+section.block{margin-top:34px}
+section.block>h2{font-size:26px;margin-bottom:4px}
+section.block>p.lede{margin:0 0 14px;color:var(--muted);font-size:13px;max-width:70ch}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0}
+.kpi .v{font-family:Georgia,serif;font-size:32px;line-height:1.1;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:12px;color:var(--muted);margin-top:2px}
+.kpi .s{font-size:11px;color:var(--muted);margin-top:6px;border-top:1px solid var(--line);padding-top:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:12px;margin-top:12px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
+.panel h3{font-size:19px;margin-bottom:2px}
+.panel .sub{font-size:12px;color:var(--muted);margin:0 0 10px}
+.panel.wide{grid-column:1/-1}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin:0 0 6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+svg.chart{display:block;width:100%;height:auto;overflow:visible}
+svg text{fill:var(--muted);font:11px system-ui,sans-serif}
+.hit{fill:transparent}.hit:hover,.hit:focus{fill:#09352711;outline:none}
+.hbars{display:grid;gap:7px}
+.hrow{display:grid;grid-template-columns:minmax(76px,32%) 1fr auto;gap:8px;align-items:center;font-size:13px}
+.hrow .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hrow .track{height:12px;background:#f0eadb;border-radius:3px;overflow:hidden;display:flex;gap:2px}
+.hrow .fill{height:100%;border-radius:0 3px 3px 0;min-width:2px}
+.hrow .num{font-variant-numeric:tabular-nums;color:var(--ink);font-size:12px;white-space:nowrap}
+.hrow .num small{color:var(--muted)}
+.empty{color:var(--muted);font-size:13px;padding:12px 0}
+.records{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.record{border:1px dashed #cfc4ae;border-radius:12px;padding:12px 14px;background:#fffaf0}
+.record b{font-family:Georgia,serif;font-size:28px;font-weight:400;display:block;line-height:1.1}
+.record span{font-size:12px;color:var(--muted)}
+details.data{margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+details.data summary{cursor:pointer;font-weight:600;font-size:14px}
+.tablewrap{overflow:auto;max-height:420px;margin-top:10px}
+table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+th,td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--card)}
+thead th{position:sticky;top:0;background:#f6f0e2;font-weight:600}
+.note{font-size:12px;color:var(--muted);margin-top:30px;border-top:1px solid var(--line);padding-top:14px}
+.note li{margin:3px 0}
+#tip{position:fixed;z-index:50;pointer-events:none;background:#0d2a20;color:#fff;border-radius:8px;padding:7px 10px;font-size:12px;line-height:1.45;max-width:260px;box-shadow:0 6px 18px #0004;opacity:0;transition:opacity .08s}
+#tip b{font-weight:600}
+.login{max-width:380px;margin:12vh auto 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px}
+.login h1{font-size:30px}
+.login p{color:var(--muted);font-size:13px}
+.login input{width:100%;height:46px;border:1px solid #c9bfaa;border-radius:10px;padding:10px 12px;font:inherit;background:#fffdf9;margin:10px 0}
+.skip{position:absolute;left:-999px}.skip:focus{left:8px;top:8px;background:#fff;padding:6px 10px;z-index:99}
+@media(max-width:520px){header.top h1{font-size:28px}.kpi .v{font-size:27px}}
+@media print{.controls,.btn{display:none}}
+</style>
+</head>
+<body>
+<a class="skip" href="#app">Skip to the numbers</a>
+<main id="app" aria-live="polite"></main>
+<div id="tip" role="presentation"></div>
+<script>
+"use strict";
+const TOKEN_KEY = "switchDashToken";
+const app = document.getElementById("app");
+const tipEl = document.getElementById("tip");
+const C = { you: "var(--s1)", cpu: "var(--s2)", other: "var(--s3)", lost: "var(--s4)" };
+const PAGE_NAMES = { Learn: "Learn (Home)", Rules: "Rules", Cards: "Cards guide", Modes: "Game modes", Watch: "Watch a night", Questions: "Questions", Tutorial: "Tutorial", Score: "Score", Club: "Club", Quick: "Quick night", Puzzles: "Puzzles", Privacy: "Privacy", Play: "Play lobby", Table: "At the table", Me: "Me" };
+const FORMAT_NAMES = { "head-to-head": "One v One", domino: "Domino scoring", darts: "Darts scoring", league: "Group Play", knockout: "Knock Out", cup: "Switch Cup" };
+const FEATURE_NAMES = { share_app: "Shared the app", install_prompt: "Tapped Install", install_done: "Installed to home screen", signin: "Signed in with Google", feedback_open: "Opened feedback", club_joined: "Joined a shared club", puzzle_solved: "Solved a puzzle", referee_used: "Used the referee", hand_counter_used: "Counted a hand", export_data: "Downloaded their data" };
+const PLATFORM_NAMES = { ios: "iPhone / iPad", android: "Android", windows: "Windows", mac: "Mac", linux: "Linux", other: "Other" };
+const LEVEL_NAMES = { relaxed: "Relaxed", standard: "Standard", sharp: "Sharp" };
+
+let state = { range: 30, data: null, demo: false };
+
+/* ---------- small helpers ---------- */
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const n0 = (v) => Math.round(v).toLocaleString("en-GB");
+const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) + "%" : "–");
+const per = (a, b, d = 1) => (b > 0 ? (a / b).toFixed(d) : "–");
+const get = (o, k) => (o && o[k]) || 0;
+const iso = (d) => d.toISOString().slice(0, 10);
+const addDays = (s, n) => iso(new Date(Date.parse(s + "T00:00:00Z") + n * 86400000));
+const shortDate = (s) => new Date(s + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+const longDate = (s) => new Date(s + "T00:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+
+function sum(days, key) { let t = 0; for (const d of days) t += get(d.c, key); return t; }
+function keysWith(totals, prefix) { return Object.keys(totals.c).filter((k) => k.startsWith(prefix)); }
+
+/** Every calendar day from the first with data to today, so quiet days show as zero rather than vanishing. */
+function fillDays(days, upTo) {
+  if (!days.length) return [];
+  const byDay = new Map(days.map((d) => [d.day, d]));
+  const out = [];
+  for (let day = days[0].day; day <= upTo; day = addDays(day, 1)) out.push(byDay.get(day) || { day, c: {}, m: {} });
+  return out;
+}
+
+/* ---------- tooltips ---------- */
+document.addEventListener("pointermove", (e) => {
+  const t = e.target.closest && e.target.closest("[data-tip]");
+  if (!t) { tipEl.style.opacity = 0; return; }
+  tipEl.innerHTML = t.getAttribute("data-tip");
+  tipEl.style.opacity = 1;
+  const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+  tipEl.style.left = Math.min(window.innerWidth - w - 8, Math.max(8, e.clientX + 14)) + "px";
+  tipEl.style.top = Math.min(window.innerHeight - h - 8, Math.max(8, e.clientY - h - 10)) + "px";
+});
+document.addEventListener("focusin", (e) => {
+  const t = e.target.closest && e.target.closest("[data-tip]");
+  if (!t) return;
+  const r = t.getBoundingClientRect();
+  tipEl.innerHTML = t.getAttribute("data-tip"); tipEl.style.opacity = 1;
+  tipEl.style.left = Math.max(8, r.left) + "px"; tipEl.style.top = Math.max(8, r.top - tipEl.offsetHeight - 8) + "px";
+});
+document.addEventListener("focusout", () => { tipEl.style.opacity = 0; });
+
+/* ---------- charts ---------- */
+function niceMax(v) {
+  if (v <= 4) return 4;
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  const m = v / p;
+  return (m <= 1.2 ? 1.2 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p;
+}
+
+/** Daily columns. `series` = [{ key|get, label, color }]. kind "stack" stacks them; kind "line" draws lines. */
+function dailyChart(days, series, opts = {}) {
+  const W = 640, H = opts.height || 190, L = 36, R = 6, T = 8, B = 22;
+  const n = days.length;
+  if (!n) return '<p class="empty">Nothing yet.</p>';
+  const value = (d, s) => (s.get ? s.get(d) : get(d.c, s.key));
+  const stacked = opts.kind !== "line";
+  const tops = days.map((d) => (stacked ? series.reduce((t, s) => t + value(d, s), 0) : Math.max(...series.map((s) => value(d, s)))));
+  const max = niceMax(Math.max(1, ...tops));
+  const pw = W - L - R, ph = H - T - B, step = pw / n;
+  const y = (v) => T + ph - (v / max) * ph;
+  let g = "";
+  for (let i = 0; i <= 3; i++) {
+    const v = (max / 3) * i, yy = y(v);
+    g += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="var(--grid)" stroke-width="1"/><text x="${L - 6}" y="${yy + 4}" text-anchor="end">${n0(v)}</text>`;
+  }
+  let marks = "";
+  if (stacked) {
+    const bw = Math.max(2, Math.min(18, step * 0.72));
+    days.forEach((d, i) => {
+      let base = 0;
+      const cx = L + step * i + step / 2;
+      series.forEach((s) => {
+        const v = value(d, s);
+        if (v <= 0) return;
+        const top = y(base + v), bottom = y(base);
+        marks += `<rect x="${cx - bw / 2}" y="${top}" width="${bw}" height="${Math.max(1, bottom - top - (base ? 1.5 : 0))}" rx="2" fill="${s.color}"/>`;
+        base += v;
+      });
+    });
+  } else {
+    series.forEach((s) => {
+      const pts = days.map((d, i) => `${(L + step * i + step / 2).toFixed(1)},${y(value(d, s)).toFixed(1)}`).join(" ");
+      marks += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+      const last = days.length - 1;
+      marks += `<circle cx="${L + step * last + step / 2}" cy="${y(value(days[last], s))}" r="4" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`;
+    });
+  }
+  let hits = "";
+  days.forEach((d, i) => {
+    const tip = `<b>${esc(longDate(d.day))}</b><br>` + series.map((s) => `${esc(s.label)}: <b>${n0(value(d, s))}</b>`).join("<br>");
+    hits += `<rect class="hit" tabindex="0" x="${L + step * i}" y="${T}" width="${step}" height="${ph}" data-tip="${esc(tip)}"/>`;
+  });
+  const labels = [0, Math.floor((n - 1) / 2), n - 1].filter((v, i, a) => a.indexOf(v) === i)
+    .map((i, k, a) => `<text x="${L + step * i + step / 2}" y="${H - 5}" text-anchor="${k === 0 ? "start" : k === a.length - 1 ? "end" : "middle"}">${shortDate(days[i].day)}</text>`).join("");
+  const aria = esc(opts.label || "Daily chart") + ": " + series.map((s) => `${s.label} ${n0(days.reduce((t, d) => t + value(d, s), 0))} in total`).join(", ");
+  return `${legend(series)}<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${aria}">${g}${marks}${labels}${hits}</svg>`;
+}
+function legend(series) {
+  if (series.length < 2) return "";
+  return `<div class="legend">${series.map((s) => `<span><i style="background:${s.color}"></i>${esc(s.label)}</span>`).join("")}</div>`;
+}
+
+/** Horizontal bars: items = [{ label, value, color, note }]. Sorted by the caller. */
+function hbars(items, opts = {}) {
+  items = items.filter((i) => i.value > 0 || opts.keepZero);
+  if (!items.length) return '<p class="empty">Nothing yet.</p>';
+  const max = Math.max(...items.map((i) => i.value), 1);
+  return `<div class="hbars">${items.map((i) => `<div class="hrow" data-tip="${esc(i.tip || `${i.label}: <b>${n0(i.value)}</b>${i.note ? " · " + i.note : ""}`)}" tabindex="0">
+    <div class="name" title="${esc(i.label)}">${esc(i.label)}</div>
+    <div class="track"><div class="fill" style="width:${(i.value / max) * 100}%;background:${i.color || C.you}"></div></div>
+    <div class="num">${opts.fmt ? opts.fmt(i.value) : n0(i.value)}${i.note ? ` <small>${esc(i.note)}</small>` : ""}</div></div>`).join("")}</div>`;
+}
+
+/** Two bars per row (computers and you) for the same thing. */
+function pairBars(items, aLabel, bLabel) {
+  const max = Math.max(1, ...items.flatMap((i) => [i.a, i.b]));
+  if (!items.some((i) => i.a || i.b)) return '<p class="empty">Nothing yet.</p>';
+  const row = (name, v, color, who) => `<div class="hrow" data-tip="${esc(`${name} · ${who}: <b>${n0(v)}</b>`)}" tabindex="0"><div class="name">${esc(who)}</div><div class="track"><div class="fill" style="width:${(v / max) * 100}%;background:${color}"></div></div><div class="num">${n0(v)}</div></div>`;
+  return `<div class="legend"><span><i style="background:${C.cpu}"></i>${esc(aLabel)}</span><span><i style="background:${C.you}"></i>${esc(bLabel)}</span></div>` +
+    items.map((i) => `<div style="margin:0 0 10px"><div style="font-size:13px;font-weight:600;margin-bottom:3px">${esc(i.label)}</div><div class="hbars">${row(i.label, i.a, C.cpu, aLabel)}${row(i.label, i.b, C.you, bLabel)}</div></div>`).join("");
+}
+
+const kpi = (value, label, sub) => `<div class="kpi"><div class="v">${value}</div><div class="l">${esc(label)}</div>${sub ? `<div class="s">${sub}</div>` : ""}</div>`;
+const panel = (title, sub, body, wide) => `<div class="panel${wide ? " wide" : ""}"><h3>${esc(title)}</h3>${sub ? `<p class="sub">${esc(sub)}</p>` : ""}${body}</div>`;
+
+/* ---------- the page ---------- */
+function render() {
+  const d = state.data;
+  const { range } = state;
+  const today = iso(new Date());
+  const all = fillDays(d.days, today);
+  const view = range === 0 ? all : all.slice(-range);
+  const T = d.totals;               // lifetime
+  const rs = (k) => sum(view, k);   // in the chosen range
+  const rangeName = range === 0 ? "since counting began" : `last ${range} days`;
+  const todayDay = all[all.length - 1] || { c: {} };
+  const started = d.firstDay ? longDate(d.firstDay) : "today";
+
+  const finished = get(T.c, "games.finished"), won = get(T.c, "games.won");
+  const cpuPen = get(T.c, "pen.dealtByCpu"), youPen = get(T.c, "pen.dealtByYou");
+  const landedYou = get(T.c, "pen.landedOnYou"), landedCpu = get(T.c, "pen.landedOnCpu");
+  const penTotal = landedYou + landedCpu;
+
+  const html = [];
+  html.push(`<header class="top"><div><h1>Switch dashboard</h1><p>Anonymous totals since ${esc(started)} · updated ${new Date(d.generatedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</p></div>
+    <div class="controls"><div class="seg" role="group" aria-label="Date range">${[[7, "7 days"], [30, "30 days"], [90, "90 days"], [0, "All time"]].map(([v, l]) => `<button data-range="${v}" aria-pressed="${range === v}">${l}</button>`).join("")}</div>
+    <button class="btn" id="refresh">Refresh</button><button class="btn" id="csv">Download CSV</button>${state.demo ? "" : '<button class="btn" id="lock">Lock</button>'}</div></header>`);
+  if (state.demo) html.push('<div class="banner" role="status"><b>Demo data.</b> These numbers are made up to show the layout. Nothing here is real.</div>');
+
+  /* Audience */
+  const activeNow = get(todayDay.c, "active");
+  const avgActive = view.length ? sum(view, "active") / view.length : 0;
+  html.push(`<section class="block" aria-labelledby="h-aud"><h2 id="h-aud">Audience</h2><p class="lede">How many phones, how often. A "device" is one phone or browser, counted once when it first opens Switch and once per day it is used. There is no id behind it, so a person on two phones counts twice.</p>
+    <div class="kpis">
+      ${kpi(n0(get(T.c, "devices.total")), "Devices counted", `${n0(get(T.c, "devices.new"))} brand new · ${n0(get(T.c, "devices.existing"))} already had Switch`)}
+      ${kpi(n0(rs("devices.new")), "New devices", rangeName)}
+      ${kpi(n0(activeNow), "Active today", `avg ${avgActive.toFixed(1)}/day in range`)}
+      ${kpi(n0(d.hits), "Lifetime visits", `footer counter · ${n0(sum(all, "visits"))} since daily counting`)}
+      ${kpi(pct(rs("returning"), rs("active")), "Returning share", `of active devices, ${rangeName}`)}
+      ${kpi(pct(rs("installed"), rs("active")), "Installed as an app", `opened from the home screen, ${rangeName}`)}
+    </div>
+    <div class="grid">
+      ${panel("Visits and active devices per day", "Page loads against devices that used Switch that day.", dailyChart(view, [{ key: "visits", label: "Visits", color: C.other }, { key: "active", label: "Active devices", color: C.you }], { kind: "line", label: "Visits and active devices" }), true)}
+      ${panel("New devices per day", "Phones seen for the first time.", dailyChart(view, [{ key: "devices.new", label: "Brand new", color: C.you }, { key: "devices.existing", label: "Already had Switch", color: C.other }], { label: "New devices" }))}
+      ${panel("Platform", "Active devices by kind, " + rangeName + ".", hbars(Object.keys(PLATFORM_NAMES).map((k) => ({ label: PLATFORM_NAMES[k], value: rs("platform." + k), color: C.you })).sort((a, b) => b.value - a.value), { fmt: (v) => n0(v) }))}
+      ${panel("Busiest hours", "Visits by hour of day (your local time).", hourChart(all, view))}
+      ${panel("Busiest days", "Visits by day of the week, " + rangeName + ".", weekdayChart(view))}
+    </div></section>`);
+
+  /* Games v the computer */
+  const lvl = Object.keys(LEVEL_NAMES).map((k) => ({ label: LEVEL_NAMES[k], value: get(T.c, "games.level." + k), won: get(T.c, "games.level." + k + ".won") }));
+  const opp = [1, 2, 3, 4, 5].map((k) => ({ label: k + (k === 1 ? " computer" : " computers"), value: get(T.c, "games.opp." + k), won: get(T.c, "games.opp." + k + ".won") }));
+  const place = [1, 2, 3, 4, 5, 6].map((k) => ({ label: ["1st", "2nd", "3rd", "4th", "5th", "6th"][k - 1], value: get(T.c, "games.place." + k), color: k === 1 ? C.you : C.cpu }));
+  const started_ = get(T.c, "games.started");
+  html.push(`<section class="block" aria-labelledby="h-games"><h2 id="h-games">Games against the computer</h2><p class="lede">Competitive games on the Play tab. Practice games in Learn the Rules are counted separately and never as games.</p>
+    <div class="kpis">
+      ${kpi(n0(finished), "Games finished", `${n0(rs("games.finished"))} ${rangeName}`)}
+      ${kpi(pct(won, finished), "You win", `${n0(won)} won · ${n0(get(T.c, "games.lost"))} lost`)}
+      ${kpi(per(get(T.c, "games.moves"), finished, 0), "Moves per game", "turns taken by everyone")}
+      ${kpi(get(T.c, "games.timed") ? per(get(T.c, "games.seconds") / 60, get(T.c, "games.timed")) + " min" : "–", "Typical game length", "time actually spent playing")}
+      ${kpi(started_ ? pct(Math.max(0, started_ - finished), started_) : "–", "Left unfinished", "started but not completed")}
+      ${kpi(n0(get(T.c, "practice.start")), "Practice games started", `${pct(get(T.c, "practice.finish"), get(T.c, "practice.start"))} finished · ${pct(get(T.c, "practice.won"), get(T.c, "practice.finish"))} won`)}
+    </div>
+    <div class="grid">
+      ${panel("Games per day", "Finished games, split by result.", dailyChart(view, [{ key: "games.won", label: "You won", color: C.you }, { key: "games.lost", label: "You lost", color: C.lost }], { label: "Games per day" }), true)}
+      ${panel("Win rate by computer level", "Share of games you won (all time).", hbars(lvl.map((l) => ({ label: LEVEL_NAMES[l.label.toLowerCase()] || l.label, value: l.value ? Math.round((l.won / l.value) * 100) : 0, color: C.you, note: `${n0(l.value)} games`, tip: `${l.label}: you won <b>${l.won}</b> of <b>${l.value}</b>` })), { fmt: (v) => v + "%", keepZero: true }))}
+      ${panel("Win rate by table size", "How you do as the table fills up.", hbars(opp.map((l) => ({ label: l.label, value: l.value ? Math.round((l.won / l.value) * 100) : 0, color: C.you, note: `${n0(l.value)} games`, tip: `${l.label}: you won <b>${l.won}</b> of <b>${l.value}</b>` })), { fmt: (v) => v + "%", keepZero: true }))}
+      ${panel("Where you finish", "Finishing place across all games.", hbars(place))}
+    </div></section>`);
+
+  /* Penalties */
+  const rank = ["2", "8", "K", "7", "J", "A"];
+  const rankName = { 2: "Twos (draw)", 8: "Eights (miss a turn)", K: "Kings", 7: "Sevens (play again)", J: "Jacks (reverse)", A: "Aces (choose suit)" };
+  html.push(`<section class="block" aria-labelledby="h-pen"><h2 id="h-pen">Penalty cards</h2><p class="lede">"Dealt by" means a computer (or you) played the two or black king that forced the pick-up, even if the cards landed on someone else further round the table.</p>
+    <div class="kpis">
+      ${kpi(n0(cpuPen), "Dealt out by computers", `${n0(rs("pen.dealtByCpu"))} ${rangeName}`)}
+      ${kpi(n0(youPen), "Dealt out by you", `${n0(rs("pen.dealtByYou"))} ${rangeName}`)}
+      ${kpi(n0(landedYou), "Picked up by you", `${pct(landedYou, penTotal)} of all penalty cards`)}
+      ${kpi(per(cpuPen, finished), "Computer penalty per game", "cards dealt out per finished game")}
+      ${kpi(n0(get(T.c, "pen.ouch")), "“Ouch!” moments", "hit while on your last card")}
+      ${kpi(n0(get(T.c, "pen.lastCard")), "Forgot “Last Card”", "two-card penalty")}
+    </div>
+    <div class="grid">
+      ${panel("Penalty cards dealt per day", "Cards forced onto the table, by who played the power card.", dailyChart(view, [{ key: "pen.dealtByCpu", label: "By computers", color: C.cpu }, { key: "pen.dealtByYou", label: "By you", color: C.you }], { label: "Penalty cards per day" }), true)}
+      ${panel("Who picked them up", "All penalty cards, by receiver.", hbars([{ label: "You", value: landedYou, color: C.you }, { label: "Computers", value: landedCpu, color: C.cpu }]))}
+      ${panel("Missed turns (eights)", "Turns lost to an eight.", hbars([{ label: "You", value: get(T.c, "pen.missedYou"), color: C.you }, { label: "Computers", value: get(T.c, "pen.missedCpu"), color: C.cpu }]))}
+      ${panel("Power cards played", "How often each power card was played (counted by card).", pairBars(rank.map((r) => ({ label: rankName[r], a: get(T.c, "plays.c." + r), b: get(T.c, "plays.y." + r) })), "Computers", "You"), true)}
+      ${panel("Ordinary pick-ups", "Cards drawn when there was no penalty.", hbars([{ label: "You", value: get(T.c, "draws.you"), color: C.you }, { label: "Computers", value: get(T.c, "draws.cpu"), color: C.cpu }]))}
+      ${panel("Cards played", "Total cards laid down.", hbars([{ label: "You", value: get(T.c, "cards.you"), color: C.you }, { label: "Computers", value: get(T.c, "cards.cpu"), color: C.cpu }]))}
+    </div></section>`);
+
+  /* Scoring and clubs */
+  const nf = Object.keys(FORMAT_NAMES).map((k) => ({ label: FORMAT_NAMES[k], value: get(T.c, "nights.format." + k), color: C.other })).sort((a, b) => b.value - a.value);
+  const snap = d.snapshot || { accounts: {}, clubs: {}, sharedNights: {} };
+  const cl = snap.clubs || {};
+  const sizes = cl.sizes || {};
+  const clubFormats = Object.entries(cl.nightsByFormat || {}).map(([k, v]) => ({ label: FORMAT_NAMES[k] || k, value: v, color: C.you })).sort((a, b) => b.value - a.value);
+  html.push(`<section class="block" aria-labelledby="h-club"><h2 id="h-club">Game nights and clubs</h2><p class="lede">Nights saved on phones are counted as they are saved. The shared-club figures are read from what is stored on the server right now.</p>
+    <div class="kpis">
+      ${kpi(n0(get(T.c, "nights.saved")), "Nights saved", `${n0(rs("nights.saved"))} ${rangeName}`)}
+      ${kpi(per(get(T.c, "nights.players"), get(T.c, "nights.saved")), "Players per night", "average")}
+      ${kpi(n0(get(T.c, "server.clubs.created")), "Shared clubs created", `${n0(cl.total || 0)} stored now`)}
+      ${kpi(n0(get(T.c, "feature.club_joined")), "Joined a shared club", "people who used a club link")}
+      ${kpi(n0(get(T.c, "server.nights.shared")), "Live nights shared", `${n0(get(T.c, "server.nights.joined"))} friends joined`)}
+      ${kpi(n0((snap.accounts || {}).total || 0), "Cloud backups", `${n0((snap.accounts || {}).backedUp30d || 0)} backed up in 30 days`)}
+    </div>
+    <div class="grid">
+      ${panel("Nights saved per day", "Scored on a phone, any format.", dailyChart(view, [{ key: "nights.saved", label: "Nights saved", color: C.you }], { label: "Nights saved per day" }), true)}
+      ${panel("Which formats get played", "Nights saved, all time.", hbars(nf))}
+      ${panel("Shared clubs today", "Read from the server just now" + (cl.sampled ? " (newest " + cl.inspected + " clubs)" : "") + ".", hbars([
+        { label: "Clubs stored", value: cl.total || 0, color: C.you }, { label: "Used in 7 days", value: cl.active7d || 0, color: C.you }, { label: "Used in 30 days", value: cl.active30d || 0, color: C.you },
+        { label: "Players in them", value: cl.players || 0, color: C.other }, { label: "Nights in them", value: cl.nights || 0, color: C.other }, { label: "Seasons in them", value: cl.seasons || 0, color: C.other }]))}
+      ${panel("Club sizes", "Players per shared club.", hbars([{ label: "1 player", value: sizes.solo || 0 }, { label: "2 to 4", value: sizes.small || 0 }, { label: "5 to 9", value: sizes.medium || 0 }, { label: "10 or more", value: sizes.large || 0 }].map((x) => ({ ...x, color: C.you }))))}
+      ${panel("Formats inside shared clubs", "Nights stored in shared clubs.", hbars(clubFormats))}
+      ${panel("Live shared nights", "Scoreboards friends can watch (kept two weeks).", hbars([{ label: "Live now", value: (snap.sharedNights || {}).liveNow || 0, color: C.you }, { label: "Started in last 24 hours", value: (snap.sharedNights || {}).last24h || 0, color: C.you }, { label: "Files kept", value: (snap.sharedNights || {}).filesKept || 0, color: C.other }]))}
+    </div></section>`);
+
+  /* Engagement */
+  const views = Object.keys(PAGE_NAMES).map((k) => ({ label: PAGE_NAMES[k], value: get(T.c, "view." + k), color: C.other })).sort((a, b) => b.value - a.value);
+  const feats = Object.keys(FEATURE_NAMES).map((k) => ({ label: FEATURE_NAMES[k], value: get(T.c, "feature." + k), color: C.you })).sort((a, b) => b.value - a.value);
+  html.push(`<section class="block" aria-labelledby="h-eng"><h2 id="h-eng">What people use</h2>
+    <div class="grid">
+      ${panel("Screens opened", "Times each screen was shown, all time.", hbars(views))}
+      ${panel("Things people do", "One-off actions, all time.", hbars(feats))}
+    </div></section>`);
+
+  /* Records */
+  html.push(`<section class="block" aria-labelledby="h-rec"><h2 id="h-rec">Records</h2><p class="lede">The biggest moments so far.</p>
+    <div class="records">
+      <div class="record"><b>${get(T.m, "max.stack") ? n0(get(T.m, "max.stack")) : "–"}</b><span>biggest pick-up a table has faced</span></div>
+      <div class="record"><b>${get(T.m, "max.dealtByCpuInGame") ? n0(get(T.m, "max.dealtByCpuInGame")) : "–"}</b><span>most penalty cards computers dealt in one game</span></div>
+      <div class="record"><b>${get(T.m, "max.moves") ? n0(get(T.m, "max.moves")) : "–"}</b><span>longest game, in moves</span></div>
+      <div class="record"><b>${get(T.m, "max.seconds") ? Math.round(get(T.m, "max.seconds") / 60) + " min" : "–"}</b><span>longest game, in minutes</span></div>
+      <div class="record"><b>${n0(sum(all, "visits") ? Math.max(...all.map((x) => get(x.c, "visits"))) : 0)}</b><span>most visits in a day</span></div>
+      <div class="record"><b>${n0(Math.max(0, ...all.map((x) => get(x.c, "active"))))}</b><span>most active devices in a day</span></div>
+    </div></section>`);
+
+  /* Table view */
+  const cols = [["visits", "Visits"], ["active", "Active"], ["devices.new", "New"], ["games.finished", "Games"], ["games.won", "Won"], ["pen.dealtByCpu", "CPU penalty"], ["pen.dealtByYou", "Your penalty"], ["nights.saved", "Nights"], ["practice.start", "Practice"]];
+  html.push(`<details class="data"><summary>Show the daily numbers as a table</summary><div class="tablewrap"><table><thead><tr><th scope="col">Day</th>${cols.map((c) => `<th scope="col">${c[1]}</th>`).join("")}</tr></thead><tbody>${[...view].reverse().map((x) => `<tr><th scope="row" style="font-weight:400;background:var(--card);text-align:left">${esc(shortDate(x.day))}</th>${cols.map((c) => `<td>${n0(get(x.c, c[0]))}</td>`).join("")}</tr>`).join("")}</tbody></table></div></details>`);
+
+  html.push(`<div class="note"><b>How to read this</b><ul>
+    <li>Counting began on ${esc(started)}. Anything before that is only in the lifetime visits figure.</li>
+    <li>Everything is an anonymous total. There is no way to see who played, what they scored or where they were. A phone that turns counting off, or sends Do Not Track, is not counted.</li>
+    <li>Devices are phones or browsers, not people, and "active" is one count per device per day, so weekly and monthly unique users cannot be worked out. Clearing site data makes a phone look new again.</li>
+    <li>Counts are added as they arrive without a database, so two events in the same instant can occasionally lose one. Treat small differences as noise.</li>
+    <li>Times are UTC on the server; the hour chart converts to your local time.</li></ul></div>`);
+
+  app.innerHTML = html.join("");
+  app.querySelectorAll("[data-range]").forEach((b) => b.addEventListener("click", () => { state.range = Number(b.dataset.range); render(); }));
+  document.getElementById("refresh").addEventListener("click", () => load());
+  document.getElementById("csv").addEventListener("click", () => downloadCsv(all));
+  const lock = document.getElementById("lock");
+  if (lock) lock.addEventListener("click", () => { try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {} showLogin(); });
+}
+
+function hourChart(all, view) {
+  const hours = Array.from({ length: 24 }, () => 0);
+  const offset = -new Date().getTimezoneOffset() / 60;
+  for (const k of Object.keys(hoursSource(view))) { const h = Number(k.slice(5)); hours[(((h + Math.round(offset)) % 24) + 24) % 24] += hoursSource(view)[k]; }
+  const items = hours.map((v, h) => ({ label: String(h).padStart(2, "0") + ":00", value: v }));
+  const W = 640, H = 150, L = 6, B = 20, T = 6, step = (W - L - 6) / 24, max = Math.max(1, ...hours);
+  if (!hours.some(Boolean)) return '<p class="empty">Nothing yet.</p>';
+  const bars = items.map((it, i) => { const h = (it.value / max) * (H - B - T); return `<rect class="hit" tabindex="0" x="${L + step * i}" y="${T}" width="${step}" height="${H - B - T}" data-tip="${esc(it.label + ": <b>" + n0(it.value) + "</b> visits")}"/><rect x="${L + step * i + 2}" y="${H - B - h}" width="${step - 4}" height="${Math.max(h, it.value ? 2 : 0)}" rx="2" fill="${C.other}" pointer-events="none"/>`; }).join("");
+  const ticks = [0, 6, 12, 18].map((h) => `<text x="${L + step * h}" y="${H - 4}">${String(h).padStart(2, "0")}:00</text>`).join("");
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Visits by hour of day">${bars}${ticks}</svg>`;
+}
+function hoursSource(view) { const o = {}; for (const d of view) for (const k in d.c) if (k.startsWith("hour.")) o[k] = (o[k] || 0) + d.c[k]; return o; }
+
+function weekdayChart(view) {
+  const names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const t = names.map(() => 0);
+  for (const d of view) { const wd = (new Date(d.day + "T00:00:00Z").getUTCDay() + 6) % 7; t[wd] += get(d.c, "visits"); }
+  return hbars(names.map((n, i) => ({ label: n, value: t[i], color: C.other })), { keepZero: true });
+}
+
+function downloadCsv(all) {
+  const keys = new Set(); all.forEach((d) => Object.keys(d.c).forEach((k) => keys.add(k)));
+  const cols = [...keys].sort();
+  const rows = [["day", ...cols].join(",")].concat(all.map((d) => [d.day, ...cols.map((k) => get(d.c, k))].join(",")));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([rows.join("\n")], { type: "text/csv" }));
+  a.download = "switch-stats-" + iso(new Date()) + ".csv";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------- loading and sign-in ---------- */
+function showLogin(message) {
+  app.innerHTML = `<form class="login" id="loginForm"><h1>Switch dashboard</h1><p>Owner only. Enter the dashboard token you set as STATS_TOKEN.</p>
+    ${message ? `<div class="banner error" role="alert">${esc(message)}</div>` : ""}
+    <label for="tok" style="font-size:13px">Token</label><input id="tok" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+    <button class="btn primary" style="width:100%">Open dashboard</button><p style="margin-top:14px">Or <a href="#demo" id="demoLink">preview the layout with made-up numbers</a>.</p></form>`;
+  document.getElementById("loginForm").addEventListener("submit", (e) => { e.preventDefault(); try { sessionStorage.setItem(TOKEN_KEY, document.getElementById("tok").value.trim()); } catch (x) {} load(); });
+  document.getElementById("demoLink").addEventListener("click", () => setTimeout(boot, 0));
+}
+
+async function load() {
+  if (state.demo) { state.data = demoData(); render(); return; }
+  let token = "";
+  try { token = sessionStorage.getItem(TOKEN_KEY) || ""; } catch (e) {}
+  if (!token) return showLogin();
+  app.innerHTML = '<p class="empty" role="status">Loading the numbers…</p>';
+  try {
+    const res = await fetch("/api/stats?days=730", { headers: { authorization: "Bearer " + token }, cache: "no-store" });
+    const body = await res.json().catch(() => ({}));
+    if (res.status === 401) { try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {} return showLogin(body.error || "That token is not right."); }
+    if (!res.ok) return showLogin(body.error || "The numbers could not be loaded.");
+    state.data = body; render();
+  } catch (e) { showLogin("Could not reach the server. Check your connection and try again."); }
+}
+
+/* ---------- made-up numbers for previewing the layout ---------- */
+function demoData() {
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const today = iso(new Date()), days = [], tot = { c: {}, m: {} };
+  const add = (c, k, v) => { if (v > 0) { c[k] = (c[k] || 0) + v; tot.c[k] = (tot.c[k] || 0) + v; } };
+  for (let i = 59; i >= 0; i--) {
+    const day = addDays(today, -i), c = {}, grow = 1 + (60 - i) / 25;
+    const visits = Math.round((12 + rnd() * 16) * grow), active = Math.round(visits * (0.55 + rnd() * 0.15));
+    add(c, "visits", visits); add(c, "active", active); add(c, "opens", visits + 3);
+    const fresh = Math.round(visits * (0.25 + rnd() * 0.2)); add(c, "devices.new", fresh); add(c, "devices.total", fresh); add(c, "returning", active - fresh);
+    add(c, "platform.ios", Math.round(active * 0.6)); add(c, "platform.android", Math.round(active * 0.3)); add(c, "platform.windows", Math.round(active * 0.06)); add(c, "platform.mac", Math.round(active * 0.04)); add(c, "installed", Math.round(active * 0.22));
+    for (let h = 0; h < 24; h++) add(c, "hour." + String(h).padStart(2, "0"), Math.round(visits * [0.01, 0, 0, 0, 0, 0.01, 0.02, 0.03, 0.03, 0.03, 0.03, 0.04, 0.05, 0.04, 0.04, 0.04, 0.05, 0.07, 0.1, 0.13, 0.14, 0.1, 0.05, 0.02][h]));
+    const games = Math.round(active * (0.4 + rnd() * 0.5)), won = Math.round(games * (0.38 + rnd() * 0.12));
+    add(c, "games.started", games + 1); add(c, "games.finished", games); add(c, "games.won", won); add(c, "games.lost", games - won); add(c, "games.moves", games * 31);
+    add(c, "games.timed", games); add(c, "games.seconds", games * 330);
+    const lv = ["relaxed", "standard", "sharp"]; for (let g = 0; g < games; g++) { const l = lv[Math.floor(rnd() * 3)], o = 1 + Math.floor(rnd() * 4); add(c, "games.level." + l, 1); add(c, "games.opp." + o, 1); if (rnd() < 0.5 - lv.indexOf(l) * 0.1) { add(c, "games.level." + l + ".won", 1); add(c, "games.opp." + o + ".won", 1); } add(c, "games.place." + (1 + Math.floor(rnd() * (o + 1))), 1); }
+    add(c, "pen.dealtByCpu", Math.round(games * (3 + rnd() * 4))); add(c, "pen.dealtByYou", Math.round(games * (2 + rnd() * 3)));
+    add(c, "pen.landedOnYou", Math.round(games * 4)); add(c, "pen.landedOnCpu", Math.round(games * 3.2)); add(c, "pen.ouch", Math.round(games * 0.1)); add(c, "pen.lastCard", Math.round(games * 0.08));
+    add(c, "pen.missedYou", Math.round(games * 0.6)); add(c, "pen.missedCpu", Math.round(games * 0.8)); add(c, "draws.you", games * 6); add(c, "draws.cpu", games * 7); add(c, "cards.you", games * 14); add(c, "cards.cpu", games * 17);
+    ["2", "8", "K", "7", "J", "A"].forEach((r, k) => { add(c, "plays.c." + r, Math.round(games * (1.6 - k * 0.2))); add(c, "plays.y." + r, Math.round(games * (1.4 - k * 0.18))); });
+    add(c, "practice.start", Math.round(fresh * 0.8)); add(c, "practice.finish", Math.round(fresh * 0.5)); add(c, "practice.won", Math.round(fresh * 0.3));
+    const nights = Math.round(active * 0.12); add(c, "nights.saved", nights); add(c, "nights.players", nights * 3.4 | 0);
+    ["head-to-head", "domino", "darts", "league", "knockout", "cup"].forEach((f, k) => add(c, "nights.format." + f, Math.round(nights * [0.35, 0.15, 0.2, 0.12, 0.1, 0.08][k])));
+    days.push({ day, c, m: {} });
+  }
+  ["Learn", "Rules", "Play", "Table", "Score", "Club", "Me", "Puzzles", "Cards", "Questions"].forEach((p, k) => add({}, "view." + p, Math.round(900 / (k + 1))));
+  ["share_app", "install_prompt", "install_done", "signin", "feedback_open", "club_joined", "puzzle_solved", "referee_used"].forEach((f, k) => add({}, "feature." + f, Math.round(300 / (k + 1.5))));
+  add({}, "server.clubs.created", 14); add({}, "feature.club_joined", 31); add({}, "server.nights.shared", 22); add({}, "server.nights.joined", 41);
+  tot.m = { "max.stack": 18, "max.dealtByCpuInGame": 34, "max.moves": 142, "max.seconds": 1260 };
+  return { generatedAt: new Date().toISOString(), hits: 4821, firstDay: days[0].day, days, totals: tot, snapshot: {
+    accounts: { total: 9, backedUp7d: 5, backedUp30d: 8 }, clubs: { total: 14, active7d: 8, active30d: 12, inspected: 14, sampled: false, players: 61, nights: 118, seasons: 6, nightsByFormat: { "head-to-head": 40, league: 30, darts: 22, cup: 14, knockout: 8, domino: 4 }, sizes: { solo: 2, small: 7, medium: 4, large: 1 } },
+    sharedNights: { liveNow: 3, last24h: 2, filesKept: 22 } } };
+}
+
+function boot() {
+  state.demo = location.hash === "#demo";
+  load();
+}
+window.addEventListener("hashchange", boot);
+boot();
+</script>
+</body>
+</html>

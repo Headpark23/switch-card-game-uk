@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ShareNetwork } from '@phosphor-icons/react';
 import { BottomSheet, KeyboardTextarea } from '../mobile';
 import { FEEDBACK_KINDS, diagnostics, feedbackLink, type FeedbackKind } from '../switch/privacy';
+import { trackFeature } from '../switch/telemetry';
 
 // One count per app load, however many screens mount the footer. Only a number is stored, never who or what.
 let counted: Promise<number | null> | null = null;
@@ -40,6 +41,7 @@ export function ShareAppButton() {
   const [note, setNote] = useState('');
   async function share() {
     setNote('');
+    trackFeature('share_app');
     try {
       if (typeof navigator.share === 'function') { await navigator.share({ title: 'Switch', text: SHARE_TEXT, url: APP_URL }); return; }
       await navigator.clipboard.writeText(`${SHARE_TEXT} ${APP_URL}`);
@@ -62,7 +64,7 @@ export default function AppFooter({ page, onPrivacy }: { page: string; onPrivacy
   return <footer className="app-footer">
     <ShareAppButton />
     <div className="footer-actions" role="group" aria-label="Get in touch">
-      {(Object.keys(FEEDBACK_KINDS) as FeedbackKind[]).map((key) => <button key={key} onClick={(event) => { if (event.detail < 2) setKind(key); }}>{FEEDBACK_KINDS[key].label}</button>)}
+      {(Object.keys(FEEDBACK_KINDS) as FeedbackKind[]).map((key) => <button key={key} onClick={(event) => { if (event.detail < 2) { setKind(key); trackFeature('feedback_open'); } }}>{FEEDBACK_KINDS[key].label}</button>)}
     </div>
     <p className="footer-line">
       {hits !== null && <span className="hit-counter" aria-label={`${hits.toLocaleString('en-GB')} visits so far`}>{hits.toLocaleString('en-GB')} visits · </span>}

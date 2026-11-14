@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { trackFeature } from '../switch/telemetry';
 import { refereeRuling, type Situation } from '../switch/referee';
 import type { CardId, Suit } from '../switch/types';
 
@@ -12,6 +13,7 @@ function Chips<T extends string>({ label, options, value, onPick }: { label: str
 
 /** "Can I play this?" The referee uses the same rules as the game and says which rule applies. */
 export default function Referee() {
+  useEffect(() => { trackFeature('referee_used'); }, []);
   const [topRank, setTopRank] = useState('9');
   const [suit, setSuit] = useState<Suit>('H');
   const [situation, setSituation] = useState<Situation>('nothing');

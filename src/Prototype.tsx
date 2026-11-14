@@ -15,6 +15,7 @@ import { BottomSheet, KeyboardInput, MobileScroll, useKeyboard, useKeyboardInset
 import { modes, powers, ruleChapters, rules } from './content';
 import { Fan, FeltHeader, MiniFan } from './ui';
 import { enableOffline } from './offline';
+import { trackOpen, trackView } from './switch/telemetry';
 import InstallButton, { InstallBanner } from './InstallButton';
 import { AccountPanel } from './AccountPanel';
 import HomeHub from './screens/HomeHub';
@@ -23,6 +24,8 @@ import '@fontsource/dm-sans/400.css';
 import '@fontsource/dm-sans/500.css';
 import '@fontsource/dm-sans/600.css';
 
+// Anonymous counts for the owner's dashboard. This runs first, before anything has been saved on a fresh phone.
+trackOpen();
 enableOffline();
 
 // The game screens are loaded on demand so the rules pages open quickly.
@@ -101,6 +104,7 @@ export default function Prototype() {
   /** Where a learning page goes back to: the rules guide, or Home when it was opened from Home. */
   const [learnBack, setLearnBack] = useState<'Learn' | 'Rules'>('Learn');
   const keyboard = useKeyboard();
+  useEffect(() => { trackView(page); }, [page]);
   const { bottomInset, isKeyboardVisible } = useKeyboardInsets();
   // One-off repair: games left on the automatic "You" player rejoin the owner's real name.
   useState(() => { try { if (recoverMyGames(readClub())) updateClub((current) => recoverMyGames(current) ?? current); } catch { /* leave saved data alone */ } return 0; });

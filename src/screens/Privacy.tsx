@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { deleteCloudCopy, loadAccount, saveAccount } from '../auth';
 import { CONTACT_EMAIL, eraseDeviceData, exportDeviceData, switchKeys } from '../switch/privacy';
+import { setStatsOptedOut, statsOptedOut, trackFeature } from '../switch/telemetry';
 
 type Confirm = null | 'device' | 'cloud';
 
@@ -8,6 +9,7 @@ export default function Privacy(_props: { onBack: () => void }) {
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [note, setNote] = useState('');
   const [signedIn, setSignedIn] = useState(() => loadAccount() !== null);
+  const [counting, setCounting] = useState(() => !statsOptedOut());
   const items = switchKeys().length;
 
   function download() {
@@ -15,6 +17,7 @@ export default function Privacy(_props: { onBack: () => void }) {
     const link = document.createElement('a');
     link.href = url; link.download = 'my-switch-data.json'; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    trackFeature('export_data');
     setNote('Your data has been saved as my-switch-data.json.');
   }
   function eraseDevice() {
@@ -32,7 +35,7 @@ export default function Privacy(_props: { onBack: () => void }) {
   return <section className="privacy-page" aria-labelledby="privacy-title">
     
     <h1 id="privacy-title">Your club is<br />yours.</h1>
-    <p className="intro">Switch has no ads, no tracking cookies and no analytics. It keeps your club on your phone. Here is exactly what happens to your data.</p>
+    <p className="intro">Switch has no ads, no tracking cookies and no profiles of you. It keeps your club on your phone, and adds up how the app is used in anonymous totals (you can turn that off below). Here is exactly what happens to your data.</p>
 
     <div className="privacy-controls">
       <h2>Your controls</h2>
@@ -44,6 +47,7 @@ export default function Privacy(_props: { onBack: () => void }) {
         <button className="primary" onClick={() => (confirm === 'device' ? eraseDevice() : void eraseCloud())}>Yes, delete</button>
         <button className="text-link" onClick={() => setConfirm(null)}>Keep it</button>
       </div>}
+      <label className="feedback-check"><input type="checkbox" checked={counting} onChange={(event) => { setStatsOptedOut(!event.target.checked); setCounting(event.target.checked); }} /> Include this phone in anonymous usage counts</label>
       {note && <p role="status" className="share-note">{note}</p>}
     </div>
 
@@ -54,8 +58,8 @@ export default function Privacy(_props: { onBack: () => void }) {
       <p>Signing in is optional and needs your tick of consent. Google tells us your name, email address and profile picture, and we keep a private backup of your club so it can follow you to another phone. We use it only for that. A short-lived secure cookie keeps you signed in; it is essential to the feature and holds no tracking. Google may see that you used its sign-in button. Sign out or delete the cloud copy at any time.</p>
       <h2>Shared nights</h2>
       <p>If you share a night, its title, player first names and scores are stored under a six-letter code so friends can watch. It is deleted automatically after two weeks. Share first names only.</p>
-      <h2>Visit counter</h2>
-      <p>Each time the app opens, one number goes up by one. No cookie, no device ID and no IP address is saved by Switch. Our hosting provider (Vercel) briefly keeps standard server logs, which include IP addresses, for security.</p>
+      <h2>Anonymous usage counts</h2>
+      <p>Switch adds up how the app is used as plain totals: visits, new phones, games played and how they ended, penalty cards dealt, and which screens are opened. Nothing in them says who you are: no name, score, club, device ID, cookie or IP address is saved with a count, and your phone only remembers that it has been counted today. Tick or untick the box above to take part or not. If your browser sends Do Not Track or Global Privacy Control, nothing is sent at all. Our hosting provider (Vercel) briefly keeps standard server logs, which include IP addresses, for security.</p>
       <h2>Feedback emails</h2>
       <p>The feedback buttons open your own email app. We only receive what you choose to send, and use it to reply and improve Switch. Ask and we will delete it.</p>
       <h2>Who is responsible</h2>
