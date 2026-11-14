@@ -1,31 +1,57 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Switch privacy</title>
-<style>body{font:16px/1.6 system-ui,sans-serif;max-width:640px;margin:0 auto;padding:24px;background:#fbf6e6;color:#14231d}h1{font-family:Georgia,serif;color:#053527}a{color:#053527}</style></head>
+<style>body{font:16px/1.6 system-ui,sans-serif;max-width:640px;margin:0 auto;padding:24px;background:#fbf6e6;color:#14231d}h1{font-family:Georgia,serif;color:#053527}a{color:#053527}table{border-collapse:collapse;width:100%;font-size:15px}th,td{border:1px solid #d8cfae;padding:8px;text-align:left;vertical-align:top}th{background:#f1e9c9}</style></head>
 <body>
 <h1>Switch privacy</h1>
-<p><strong>Short version:</strong> Switch keeps your club on your phone. If you choose to sign in with Google, a private backup of your club is also kept so it can follow you to another phone. We do not sell data and we do not run ad trackers. Switch only adds up anonymous usage totals, which you can switch off.</p>
-<h2>What is stored, and where</h2>
+<p><em>Last updated 14 November 2026.</em></p>
+<p><strong>Short version:</strong> Switch keeps your club on your phone. Playing, learning and keeping score work offline and send nothing anywhere. A few optional features (sharing a night, sharing a club, Google sign-in backup) send the names and scores you choose to share to our server. We also add up anonymous usage totals, which you can turn off. We do not sell data, show ads or use advertising IDs.</p>
+
+<h2>What is stored on your phone</h2>
 <ul>
-<li>Player names, scores, night history, puzzle progress and settings are saved in your browser or app storage on this device. If you sign in, a copy is also backed up to your account (see below).</li>
-<li>The app works offline. Nothing needs to be sent anywhere to play, learn or keep score.</li>
+<li>Player names, scores, night history, computer-game results, puzzle progress and settings are saved in this device's app storage.</li>
 <li>Share pictures are made on your phone. You choose where they go.</li>
 </ul>
-<h2>Optional sign-in and backup</h2>
-<p>If you choose Google sign-in, Google tells us your name, email and profile picture so we can attach a cloud backup of your club to you. The backup is stored privately, readable only by your account, and contains the names and results you entered. We use it only to restore your club on your devices. You can stay signed out and nothing is uploaded.</p>
-<h2>Your choices</h2>
+
+<h2>What leaves your phone, and when</h2>
+<table>
+<tr><th>Feature</th><th>What is sent</th><th>Is it optional?</th></tr>
+<tr><td>Anonymous usage counts</td><td>Small named events such as "a game finished: 3 players, you lost", which screens are opened, whether the app is installed, and the kind of phone (iPhone, Android, etc.). No name, score, club, device ID, cookie or IP address is saved with a count.</td><td>Yes. Turn it off in Me &rsaquo; Privacy. Nothing is sent if your browser sends Do Not Track or Global Privacy Control.</td></tr>
+<tr><td>Visit counter</td><td>A single number that goes up by one when the app opens. Nothing else is saved.</td><td>It is a plain page-load count and carries no information about you.</td></tr>
+<tr><td>Shared night</td><td>The night's title, player first names, scores and, when saved, its full result (format, winner, venue name and country if you entered them). It is stored under a 6-letter code. The host also holds a secret edit token on their phone.</td><td>Yes. Only if you share a night. Share first names only.</td></tr>
+<tr><td>Joining a night</td><td>The name of the player you say you are, so the host can see who joined.</td><td>Yes. Only if you open a shared night.</td></tr>
+<tr><td>Shared club</td><td>The club's name, its players' names and colours, saved nights with their scores, and seasons. It is stored under an 8-character code. Anyone who has the code can read the club and add to it.</td><td>Yes. Only if you share or join a club.</td></tr>
+<tr><td>Google sign-in and cloud backup</td><td>Google gives us your name, email address and profile picture when you sign in. Your name, email and picture are kept in a short-lived secure sign-in cookie, not in a database. A private backup of your club is stored against your Google account ID.</td><td>Yes. Switch works fully without an account.</td></tr>
+<tr><td>Feedback emails</td><td>Only what you choose to write in your own email app, plus screen and browser details if you tick the box.</td><td>Yes.</td></tr>
+</table>
+<p>Everything is sent over an encrypted (HTTPS) connection. We use the information only to make these features work and to understand, in totals, how the app is used. Google may see that you used its sign-in button.</p>
+
+<h2>How long we keep it</h2>
 <ul>
-<li>You can export or delete your night history in the app at any time.</li>
-<li>Clearing the app's site data removes everything stored on the device.</li>
-<li>To remove a cloud backup, email <a href="mailto:martinwhite228@gmail.com">martinwhite228@gmail.com</a>.</li>
+<li><strong>Usage counts:</strong> kept as daily totals. They contain no personal information.</li>
+<li><strong>Cloud backup:</strong> until you delete it. Use "Delete my cloud copy" in Me &rsaquo; Privacy, or ask us.</li>
+<li><strong>Shared night:</strong> it can no longer be opened after two weeks. We remove the stored copy when you ask.</li>
+<li><strong>Shared club:</strong> kept until you ask us to delete it. Leaving a club in the app only stops that phone syncing; it does not delete the shared copy.</li>
+<li><strong>Feedback emails:</strong> until you ask us to delete them.</li>
+<li>Our host (Vercel) keeps standard server logs, which include IP addresses, briefly for security.</li>
 </ul>
+
+<h2>Your choices and how to delete your data</h2>
+<ul>
+<li>In the app (Me &rsaquo; Privacy) you can download your data, delete everything stored on the device, delete your cloud backup, and turn off usage counts.</li>
+<li>Deleting data on a device does not delete copies you shared (a night, a club or a backup). To have those removed, see <a href="/delete-data.html">how to ask us to delete your data</a>.</li>
+<li>Clearing the app's site or app data removes everything stored on the device.</li>
+</ul>
+
 <h2>Who is responsible</h2>
 <p>M. White is the data controller. Contact <a href="mailto:martinwhite228@gmail.com">martinwhite228@gmail.com</a>. Under UK GDPR you can ask to see, correct, export, restrict or erase your data, object to its use, or withdraw consent. You can also complain to the Information Commissioner's Office at <a href="https://ico.org.uk">ico.org.uk</a>.</p>
-<h2>Shared nights, visit counter and feedback</h2>
-<p>If you share a night, its title, first names and scores are stored under a six-letter code and deleted after two weeks. The app adds up anonymous totals of how it is used (visits, new phones, games played and how they ended, penalty cards dealt, which screens are opened). No name, score, club, cookie, device ID or IP address is saved with them. You can switch this off under Me &gt; Privacy, and nothing is sent if your browser sends Do Not Track or Global Privacy Control. Our host (Vercel) keeps standard server logs briefly for security. The feedback buttons open your own email app, and we only receive what you send.</p>
-<p>Data may be processed by Vercel and Google, including in the USA, under their standard safeguards. Please do not sign in if you are under 13 without a parent or guardian.</p>
+
+<h2>Other companies involved</h2>
+<p>Vercel hosts the app and stores shared nights, clubs, backups and usage totals. Google provides sign-in. Data may be processed in the USA under their standard safeguards. We do not sell your data or share it for advertising.</p>
+
 <h2>Children</h2>
-<p>Switch is a family card game. It does not knowingly collect personal information from children.</p>
-<h2>Contact</h2>
-<p>Questions or requests: <a href="mailto:martinwhite228@gmail.com">martinwhite228@gmail.com</a>.</p>
-<p><a href="/">Back to Switch</a></p>
+<p>Switch is a family card game and works without an account. It does not knowingly collect personal information from children. Please do not sign in, or share a night or club with children's names, without a parent or guardian.</p>
+
+<h2>Changes</h2>
+<p>If this policy changes in a way that matters, the date at the top will change and the in-app Privacy screen will be updated to match.</p>
+<p><a href="/delete-data.html">Delete my data</a> &middot; <a href="/">Back to Switch</a></p>
 </body></html>

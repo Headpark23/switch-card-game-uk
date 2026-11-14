@@ -14,14 +14,14 @@ Switch is the companion for the card game you play with real cards.
 - Settle any argument in seconds with searchable answers and quick-pick topics.
 - Keep score the easy way: Quick night is one tap per round. Or run Domino, Darts, Knockout, Group leagues and Switch Cup nights.
 - See history, stats, leaderboards and share a picture of the night.
-- Works offline. Your data stays on your phone.
+- Works offline. Your club stays on your phone unless you choose to share a night or club, or back it up with Google.
 
 **Keywords:** card game, switch, rules, score keeper, game night, family games, leaderboard, scoreboard
 
 **Category:** Games > Card (or Utilities > Reference if the store prefers a companion classification)
-**Age rating:** 4+ (no ads, no purchases, no user-generated public content)
+**Age rating:** 4+ (no ads, no purchases; shared nights and clubs show only names and scores to people holding the code)
 
 **Screenshots:** `docs/store/01-home.png` to `06-referee.png` (regenerate with `node scripts/store-screenshots.mjs <url>`).
 These include the device frame; export frameless crops if a store requires raw screen captures.
 
-**Privacy policy URL:** `https://<your-domain>/privacy.html` (support email: headpark@gmail.com).
+**Privacy policy URL:** `https://<your-domain>/privacy.html` (support email: martinwhite228@gmail.com). Deletion page: `https://<your-domain>/delete-data.html`.
