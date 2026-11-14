@@ -8,11 +8,12 @@
     "update:runtime-lock": "node scripts/update-mobile-runtime-lock.mjs",
     "test:runtime": "playwright test",
     "test:offline": "playwright test -c playwright.offline.config.ts",
-    "test:sites": "node --test tests/sites-worker.test.mjs tests/sync-worker.test.mjs tests/vercel-db.test.mjs tests/night-share.test.mjs tests/hit-counter.test.mjs tests/rate-limit.test.mjs tests/stats.test.mjs",
+    "test:sites": "node --test tests/room.test.mjs tests/sites-worker.test.mjs tests/sync-worker.test.mjs tests/vercel-db.test.mjs tests/night-share.test.mjs tests/hit-counter.test.mjs tests/rate-limit.test.mjs tests/stats.test.mjs",
     "test:rules": "node --test tests/table-sim.test.mjs && node scripts/table-sim.mjs 4 500 1",
+    "build:engine": "node scripts/build-room-engine.mjs",
     "predev": "npm run check:runtime",
     "dev": "vite",
-    "prebuild": "npm run check:runtime",
+    "prebuild": "npm run check:runtime && npm run build:engine",
     "build": "tsc && vite build && node scripts/prepare-sites-build.mjs"
   },
   "dependencies": {

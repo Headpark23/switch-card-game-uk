@@ -40,8 +40,10 @@ Everything is validated and trimmed in the same style as `_night.js`: unknown fi
 ## Realtime and storage
 
 - **First version: polling.** Phones poll every 1.5 s while the app is visible and 5 s when idle. A game is a few writes a second at most.
-- **Storage: Vercel Blob with `ifMatch`.** The room document carries the move counter; a write that loses a race gets a precondition failure, re-reads and retries once. Turn-based play means one writer at a time, apart from joins, reactions and the absent-player takeover.
-- **Spike first.** Before building on it, measure Blob read-after-write latency and consistency from the deployed function. If the 95th percentile is above about 1.5 s, or races show up, swap the store for Redis (Upstash through the Vercel Marketplace) behind the same `store.read` / `store.write` shape. The handler does not change.
+- **Storage: Redis (Upstash), decided 14 Nov 2026.** Blob is ruled out. The Vercel Hobby plan allows the whole team 2,000 Blob writes and 10,000 Blob reads a month (268 and 165 already used by club and night sharing), and a four-player game polling every 1.5 s would use the reads in about an hour and the writes in about 17 games. The existing free Upstash database `upstash-kv-aquamarine-cloud` (500,000 commands a month, shared with the `basic-calculator` project) was connected to `switch-card-night` for Production and Preview. Variables: `ROOMS_KV_REST_API_URL`, `ROOMS_KV_REST_API_TOKEN`, `ROOMS_KV_REST_API_READ_ONLY_TOKEN`, `ROOMS_KV_URL`, `ROOMS_REDIS_URL`.
+- **Sharing a database.** Every room key starts with `switch:room:` so nothing can touch the other app's data, and rooms always get an expiry (24 hours after the last move). Watch the shared allowance: one hour of a four-player game polling every 1.5 s is about 10,000 commands. Past 500,000 a month the free tier is full; moving Switch to its own pay-as-you-go database ($0.20 per 100,000 commands) is the fallback.
+- **Safe writes.** A move is applied with an atomic check on the move counter (a small Lua script or a transaction), so two writers can never both win. The handler talks to a `store` with `read`, `write` and `update` so tests can use an in-memory fake, as the other API tests do.
+- **One command per poll.** Upstash counts commands, not bytes, so a poll is a single `GET` of the whole table (a few kilobytes). Reading a counter first would double the cost. A poll writes only when something actually changed (a move, or a person's "last seen" at most every 10 seconds).
 - **Not WebSockets yet.** Vercel's native WebSockets are in public beta with a 300 s default connection limit and no cross-instance broadcast. Revisit later, or use a hosted realtime service, only if polling feels slow.
 - **Rate limit.** The club limit (120 requests a minute per address) would stop a family of four on one home connection, each polling every 1.5 s. Room reads get their own larger limit keyed by address and code.
 
@@ -99,7 +101,7 @@ The reaction picker is one button at the side of the table, next to Last Card. T
 
 ## Build order
 
-1. Spike: Blob `ifMatch` latency and races from a deployed function (decides Blob or Redis).
+1. Storage: done. Redis connected to the Switch project (see above). Check latency from a Vercel preview deployment once the room handler exists.
 2. Engine on the server: bundle `table.ts`, `rules.ts`, `cards.ts` and `tableAi.ts` for the API (Vercel compiling an `api/*.ts` handler, or a build step with the bundler already installed), with the secrecy test.
 3. Room handler, store, clock and reactions, all unit tested in node.
 4. Pull the display out of `TableGame.tsx` into a reusable table view.
@@ -113,3 +115,21 @@ The reaction picker is one button at the side of the table, next to Last Card. T
 - After two computer-played moves in a row, should the seat go to "away" with a short delay (proposed), or stay at 40 s every turn?
 - Should online results also flow into a shared club's history for players who are in the same club (proposed, later phase)?
 - Series modes online (Knock Out, Cup, Darts, Dominoes): later, or never?
+
+## Built so far: the server (14 Nov 2026)
+
+Done and tested, not deployed and with no screens yet.
+
+- `api/_room.js`: tables, seats, dealing, move checking, Last Card, the turn clock, reactions, masked views, the HTTP handler. `api/_roomStore.js`: the Redis store (compare-and-set with a small Lua script). `api/_roomHandler.js` and `api/room.js`: the route, with its own generous rate limit (900 requests a minute per address). `api/_engine.js`: the app's table engine and computer player, bundled for the server by `npm run build:engine` (runs before every build; `tests/room.test.mjs` fails if the committed copy is out of date).
+- `tests/room.test.mjs` (18 tests, part of `npm run test:sites`): no seat is ever shown another seat's cards across whole games, stale and illegal moves are refused, the clock, away seats, computers playing in turn, reactions, rematch, expiry, collisions and the Redis commands.
+- The Redis store has only been checked against a fake. Its Lua script and Upstash's REST address are verified for real on the first Vercel preview deployment.
+
+### Choices made while building (each can be changed)
+
+- **Calls and moves.** `POST /api/room?code=&op=` takes `join`, `start`, `move`, `call` (Last Card on its own), `react` and `again` (host deals again). A move can carry `lastCard: true`.
+- **Last Card online.** Same as ruling 20: emptying your hand without having called means you pick up two. Holding exactly one card without having called is spotted by the table after 5 seconds (the computer does this against you at home), unless you call first. Open for the owner: is an automatic spot after 5 seconds what you want, or should another person have to press a button?
+- **Away seats.** Built as proposed: two computer-played moves in a row marks a person "away"; the computer then plays for them after 5 seconds, and any move of their own brings them back.
+- **Nobody there.** If no person has polled for 30 seconds, all clocks stop and start again when someone returns, so a game nobody is watching is never played out.
+- **A move that arrives just late.** A move reaching the server within 1 second of the 40-second deadline still beats the computer.
+- **Seating.** People and computers are seated in a random order at the start. Everyone's view turns the table so they are seat 0, which is what the existing table screen expects.
+- **Reactions.** The 18 ids are fixed in `REACTIONS` (`api/_room.js`); the wording and emoji belong in the app.
