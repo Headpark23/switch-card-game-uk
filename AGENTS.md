@@ -123,6 +123,7 @@ Darts: first to three legs wins a set. Knock Out: whoever finishes last in a rou
 
 ## Computer game types (owner decisions, 14 Nov 2026)
 - PLAY offers Single game, Knock Out, Group Play, Switch Cup, Darts scoring and Dominoes scoring against 1 to 7 computers (8 at the table). 7 or 8 seats use two decks (ruling 21). Computers, in order: John, Paul, George, Ringo, Ziggy, Marley, Bowie. Rules and scoring are in `docs/RULES-RULINGS.md` items 21-22. Every type is recorded in stats, trophies, badges and streaks.
+- Knock Out against the computer is 1 v 1 rounds, winners go through (ruling 25). Last Card is called after selecting the first card(s) of a finishing set and before selecting the final card; the button lives in the player's card area (ruling 26).
 - Group Play league games are played on (ruling 24): the first out scores the league size in points and leaves, the rest keep playing, and so on down to 1 point for the last player. Never end a league round at the first finisher.
 - Dominoes scoring (computer mode) is a lowest-total-wins game: leftover cards add to your total (A 1 ... K 13), and the first to reach the chosen number loses.
 

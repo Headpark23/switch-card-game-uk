@@ -94,3 +94,38 @@ test("two decks at 7 and 8 players: 104 cards, seven each, no duplicate card ids
     { seats: 8, total: 104, unique: 104, hand: 7 },
   ]);
 });
+
+test("Knock Out is head to head: every game has two players, winners go through, one champion at the end", async ({ page }) => {
+  await page.goto("/");
+  const report = await page.evaluate(async () => {
+    const series = await import("/src/switch/series.ts");
+    const problems: string[] = [];
+    for (let players = 3; players <= 8; players += 1) {
+      for (let run = 0; run < 5; run += 1) {
+        let state = series.startSeries({ mode: "knockout", opponents: players - 1, level: "standard" }, Math.random);
+        let guard = 0;
+        let games = 0;
+        const beaten = new Set<string>();
+        while (!series.isSeriesOver(state) && guard++ < 100) {
+          const waiting = series.pendingGames(state);
+          if (!waiting.length) { problems.push(`${players}: stuck`); break; }
+          for (const game of waiting) {
+            if (game.playerIds.length !== 2) problems.push(`${players}: a knock out game had ${game.playerIds.length} players`);
+            if (game.playerIds.some((id: string) => beaten.has(id))) problems.push(`${players}: a beaten player was drawn again`);
+            const result = series.simulateGame(game.playerIds, "standard", Math.random, game.playOn === true);
+            beaten.add(result.order[1]);
+            state = series.submitGame(state, game.key, result);
+            games += 1;
+          }
+        }
+        const outcome = series.seriesOutcome(state);
+        if (!outcome) { problems.push(`${players}: no champion`); continue; }
+        if (games !== players - 1) problems.push(`${players}: ${games} games, expected ${players - 1}`);
+        if (beaten.has(outcome.winnerId)) problems.push(`${players}: the champion had lost a game`);
+        if (new Set(outcome.order).size !== players) problems.push(`${players}: places are not everyone once`);
+      }
+    }
+    return problems;
+  });
+  expect(report).toEqual([]);
+});

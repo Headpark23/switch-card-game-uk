@@ -95,13 +95,16 @@ test("Dominoes scoring is played to the end at the table and lands in your stats
   await page.getByRole("button", { name: /Computer/ }).first().click().catch(() => undefined);
 });
 
-test("Knock Out against two computers drops the last player each game until one is left", async ({ page }) => {
+test("Knock Out is 1 v 1 games: win yours to go through, until one player is left", async ({ page }) => {
   test.setTimeout(240_000);
   await openPlay(page, { mode: "knockout", opponents: 2, level: "relaxed" });
   await page.getByRole("button", { name: /Start Knock Out/ }).click();
+  // Three players: one 1 v 1 game and one bye, then a final. You may sit out round 1 on the bye.
   for (let round = 0; round < 4; round += 1) {
+    await expect(page.getByTestId("series-play").or(page.getByTestId("series-result"))).toBeVisible();
     if (await page.getByTestId("series-result").isVisible()) break;
     await page.getByTestId("series-play").click();
+    await expect(page.getByTestId("series-strip")).toContainText("match");
     await playUntilGameEnds(page);
     await page.getByTestId("series-continue").click();
   }
@@ -110,4 +113,6 @@ test("Knock Out against two computers drops the last player each game until one 
   expect(list.every((game) => game.mode === "knockout")).toBe(true);
   expect(list.filter((game) => game.series)).toHaveLength(1);
   expect(list.find((game) => game.series)?.series?.players).toBe(3);
+  // Every game you played was head to head.
+  expect(list.filter((game) => !game.series).every((game) => game.opponents === 1)).toBe(true);
 });

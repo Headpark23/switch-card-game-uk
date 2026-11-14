@@ -82,6 +82,8 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   // "Last Card" is the player's own job: the button is always there, nothing prompts for it, and forgetting costs two cards.
   const [lastCalled, setLastCalledState] = useState(() => resume?.lastCardCalled ?? false);
   const calledRef = useRef(lastCalled);
+  /** Whether Last Card had been called at the moment the final card of your hand was selected (ruling 20: it must come first). */
+  const calledBeforeFinalRef = useRef(false);
   const setLastCalled = (value: boolean) => { calledRef.current = value; setLastCalledState(value); };
   const [flash, setFlash] = useState<CardId[]>([]);
   const [speed, setSpeedState] = useState<Speed>(readSpeed);
@@ -249,10 +251,13 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     if (staged.includes(card)) { setStaged((current) => current.filter((item) => item !== card)); return; }
     if (!staged.length) {
       if (!canPlay(card)) { refuse([card], explainUnplayable(card, projection())); return; }
+      calledBeforeFinalRef.current = hand.length === 1 && calledRef.current;
       setStaged([card]);
       return;
     }
     if (rank(card) !== rank(staged[0])) { refuse([card], `Cards played together must be the same number or picture, so the ${cardIdLabel(card)} cannot join.`); return; }
+    // Selecting the final card of your hand: "Last Card" has to have been said before this tap, not after.
+    if (staged.length + 1 === hand.length) calledBeforeFinalRef.current = calledRef.current;
     setStaged((current) => [...current, card]);
   }
 
@@ -266,7 +271,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     let after = applyTableAction(before, action);
     // Playing out your last cards (two tens to win, or a seven that cannot) needs "Last Card" first.
     const emptied = cards.length === before.hands[0].length;
-    const missed = emptied && !calledRef.current;
+    const missed = emptied && !calledBeforeFinalRef.current;
     if (missed) { cue('penalty'); after = penaliseMissedLastCard(after, 0); }
     // The call is used up by an emptied hand (a pickup means saying it again) and by any play that leaves two or more.
     if (emptied || after.hands[0].length > 1) setLastCalled(false);
@@ -407,7 +412,6 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
         <span>Suit <b className={visible.currentSuit === 'H' || visible.currentSuit === 'D' ? 'red' : ''}>{suitSymbols[visible.currentSuit]} {suitNames[visible.currentSuit]}</b></span>
         {seats > 2 && <span className="direction" aria-label={`Play goes ${visible.direction === 1 ? 'clockwise' : 'anticlockwise'}`}>{visible.direction === 1 ? <ArrowClockwise size={14} weight="bold" /> : <ArrowCounterClockwise size={14} weight="bold" />}{visible.direction === 1 ? 'Clockwise' : 'Anticlockwise'}</span>}
       </div>
-      <button className={'last-card-button' + (lastCalled ? ' called' : '')} onClick={callLastCard} aria-pressed={lastCalled} data-testid="last-card-button"><HandPalm size={22} weight={lastCalled ? 'fill' : 'regular'} /><span>{lastCalled ? 'Called' : 'Last Card'}</span></button>
       {visible.announce && <div key={`${showing?.id}-${showing?.at}`} className={'table-announce ' + visible.announce.tone} data-testid="table-announce" aria-hidden="true">{visible.announce.text}</div>}
     </div>
     <p className={'game-notice' + (warn && yourMove ? ' warn' : '')} aria-live="polite" role={warn ? 'alert' : undefined}>{notice}</p>
@@ -418,8 +422,9 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
       {yourMove && missTurn && <div className="miss-turn-action"><strong>An eight was played</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you miss this turn.'}</p><button className="primary" onClick={pickUp}>Accept missed turn <ArrowRight size={18} /></button></div>}
       {youOutAt > 0 && <div className="out-panel" role="status" data-testid="you-are-out"><strong>You are out: {ordinal(youOutAt)} place.</strong><p>The others play on for the places still to be decided.</p><button className="secondary" onClick={skipToResult}>Skip to the result <ArrowRight size={18} /></button></div>}
       {youOutAt === 0 && <>
-          {staged.length === 0 && <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!canAct}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={cycleSpeed} aria-label={`Computer pace: ${SPEED_NAMES[speed]}. Tap to change`}><Timer size={16} />{SPEED_NAMES[speed]}</button><button className="pace-button sort-button" onClick={() => setGame((current) => ({ ...current, hands: current.hands.map((cards, seat) => (seat === 0 ? sortHand(cards) : cards)) }))}><SortAscending size={16} />Sort</button><span>{hand.length} in hand</span></div>}
+          {staged.length === 0 && <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!canAct}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={cycleSpeed} aria-label={`Computer pace: ${SPEED_NAMES[speed]}. Tap to change`}><Timer size={16} />{SPEED_NAMES[speed]}</button><button className="pace-button sort-button" onClick={() => setGame((current) => ({ ...current, hands: current.hands.map((cards, seat) => (seat === 0 ? sortHand(cards) : cards)) }))}><SortAscending size={16} />Sort</button></div>}
           {hint && yourMove && <p className="game-hint"><Lightbulb size={17} />{hintText}</p>}
+          <div className="hand-row"><span>{hand.length} in hand</span><button className={'last-card-button' + (lastCalled ? ' called' : '')} onClick={callLastCard} aria-pressed={lastCalled} data-testid="last-card-button" aria-label={lastCalled ? 'Last Card called' : 'Call Last Card'}><HandPalm size={20} weight={lastCalled ? 'fill' : 'regular'} /><span>{lastCalled ? 'Called' : 'Last Card'}</span></button></div>
           <div className={'player-hand' + (hand.length > 10 ? ' dense' : '') + (hand.length > 8 ? ' two-rows' : '')} style={{ '--n': hand.length, '--per': Math.ceil(hand.length / 2) } as CSSProperties} aria-label="Your hand">
             {hand.map((card, index) => <button key={card} style={{ '--i': 0, zIndex: index + 1 } as CSSProperties} data-card={card} onClick={() => chooseCard(card)} className={(hint && yourMove && canPlay(card) ? 'playable ' : '') + (staged.includes(card) ? 'selected ' : '') + (flash.includes(card) ? 'illegal' : '')} disabled={!canAct} aria-label={staged.includes(card) ? `Deselect ${cardIdLabel(card)}` : `Select ${cardIdLabel(card)}${canPlay(card) ? ', legal move' : ', not currently playable'}`}><CardImage code={card} />{staged.includes(card) && <i className="order-badge" aria-hidden="true">{staged.indexOf(card) + 1}</i>}</button>)}
           </div>

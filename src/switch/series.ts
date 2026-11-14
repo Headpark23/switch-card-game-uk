@@ -30,7 +30,7 @@ export interface ModeInfo {
 
 export const MODES: readonly ModeInfo[] = [
   { id: "single", name: "Single game", short: "Single", blurb: "One game of Switch. First out wins.", minPlayers: 2, maxPlayers: 8 },
-  { id: "knockout", name: "Knock Out", short: "Knock Out", blurb: "Last to finish each game is out, until one is left.", minPlayers: 3, maxPlayers: 8 },
+  { id: "knockout", name: "Knock Out", short: "Knock Out", blurb: "1 v 1 games. Win yours to go through to the next round, until one is left.", minPlayers: 3, maxPlayers: 8 },
   { id: "group", name: "Group Play", short: "Group Play", blurb: "Two leagues, then the championship and plate knockouts.", minPlayers: 6, maxPlayers: 8 },
   { id: "cup", name: "Switch Cup", short: "Switch Cup", blurb: "Head-to-head knockout rounds. Win your match to go through.", minPlayers: 2, maxPlayers: 8 },
   { id: "darts", name: "Darts scoring", short: "Darts", blurb: "Each game is a leg. Three legs win a set; win the sets to win the match.", minPlayers: 2, maxPlayers: 8 },
@@ -133,8 +133,8 @@ interface KnockoutPart { readonly remaining: readonly string[]; readonly out: re
 interface LeagueSlot { readonly id: string; readonly name: string; readonly ids: readonly string[]; readonly played: number; readonly points: Readonly<Record<string, number>>; readonly wins: Readonly<Record<string, number>>; readonly playoffOrder: readonly string[]; readonly deciders: readonly (readonly string[])[] }
 
 export type SeriesState =
-  | { readonly kind: "knockout"; readonly base: SeriesBase; readonly part: KnockoutPart }
-  | { readonly kind: "cup"; readonly base: SeriesBase; readonly cup: CupState }
+  /** Knock Out and the Cup are both head-to-head knockout rounds (ruling 11): win your game to go through. */
+  | { readonly kind: "knockout" | "cup"; readonly base: SeriesBase; readonly cup: CupState }
   | { readonly kind: "darts"; readonly base: SeriesBase; readonly legs: Readonly<Record<string, number>>; readonly sets: Readonly<Record<string, number>>; readonly setsToWin: number; readonly winnerId: string | null }
   | { readonly kind: "dominoes"; readonly base: SeriesBase; readonly totals: Readonly<Record<string, number>>; readonly limit: number; readonly loserId: string | null; readonly last: Readonly<Record<string, number>> }
   | { readonly kind: "group"; readonly base: SeriesBase; readonly leagues: readonly LeagueSlot[]; readonly phase: "league" | "decider" | "playoffs"; readonly championship: KnockoutPart | null; readonly plate: KnockoutPart | null };
@@ -175,7 +175,7 @@ export function startSeries(setup: SeriesSetup, random: RandomSource, id = `seri
   const ids = players.map((player) => player.id);
   const base: SeriesBase = { id, setup, players, games: 0, yourGames: 0, yourWins: 0 };
   switch (setup.mode) {
-    case "knockout": return { kind: "knockout", base, part: { remaining: ids, out: [], championId: null } };
+    case "knockout": return { kind: "knockout", base, cup: createCup(players, random) };
     case "cup": return { kind: "cup", base, cup: createCup(players, random) };
     case "darts": return { kind: "darts", base, legs: Object.fromEntries(ids.map((entry) => [entry, 0])), sets: Object.fromEntries(ids.map((entry) => [entry, 0])), setsToWin: setup.setsToWin as number, winnerId: null };
     case "dominoes": return { kind: "dominoes", base, totals: Object.fromEntries(ids.map((entry) => [entry, 0])), limit: setup.limit as number, loserId: null, last: {} };
@@ -211,9 +211,9 @@ function koOrder(part: KnockoutPart): string[] {
 
 export function pendingGames(state: SeriesState): PendingGame[] {
   switch (state.kind) {
-    case "knockout": return koPending(state.part, "knockout", `Round ${state.part.out.length + 1} · ${state.part.remaining.length} players`);
     case "darts": return state.winnerId ? [] : [{ key: `darts-${state.base.games + 1}`, title: `Game ${state.base.games + 1}`, playerIds: state.base.players.map((player) => player.id) }];
     case "dominoes": return state.loserId ? [] : [{ key: `dominoes-${state.base.games + 1}`, title: `Game ${state.base.games + 1}`, playerIds: state.base.players.map((player) => player.id) }];
+    case "knockout":
     case "cup": {
       if (state.cup.championId) return [];
       const round = state.cup.rounds.at(-1);
@@ -248,7 +248,6 @@ export function submitGame(state: SeriesState, key: string, result: GameResult):
   if (!pending) throw new Error("That game is not waiting to be played.");
   const base = withGame(state, result, pending.playerIds);
   switch (state.kind) {
-    case "knockout": return { ...state, base, part: koApply(state.part, result) };
     case "darts": {
       const legs = { ...state.legs, [result.winnerId]: state.legs[result.winnerId] + 1 };
       const sets = { ...state.sets };
@@ -265,6 +264,7 @@ export function submitGame(state: SeriesState, key: string, result: GameResult):
       const loserId = over.length ? over.sort((a, b) => b[1] - a[1] || (result.points[b[0]] ?? 0) - (result.points[a[0]] ?? 0) || state.base.players.findIndex((p) => p.id === b[0]) - state.base.players.findIndex((p) => p.id === a[0]))[0][0] : null;
       return { ...state, base, totals, loserId, last: result.points };
     }
+    case "knockout":
     case "cup": {
       let cup = selectCupWinner(state.cup, key, result.winnerId);
       const round = cup.rounds.at(-1);
@@ -323,7 +323,7 @@ function settle(state: Extract<SeriesState, { kind: "group" }>): SeriesState {
 
 export function isSeriesOver(state: SeriesState): boolean {
   switch (state.kind) {
-    case "knockout": return state.part.championId !== null;
+    case "knockout":
     case "cup": return state.cup.championId !== null;
     case "darts": return state.winnerId !== null;
     case "dominoes": return state.loserId !== null;
@@ -344,7 +344,7 @@ export function seriesOutcome(state: SeriesState): SeriesOutcome | null {
   if (!isSeriesOver(state)) return null;
   const ids = state.base.players.map((player) => player.id);
   switch (state.kind) {
-    case "knockout": { const order = koOrder(state.part); return { winnerId: order[0], order }; }
+    case "knockout":
     case "cup": {
       const champion = state.cup.championId as string;
       // Furthest into the draw is best: players who lasted more rounds rank higher.
@@ -377,9 +377,9 @@ export interface StandingRow { readonly id: string; readonly name: string; reado
 export function standings(state: SeriesState): { readonly heading: string; readonly rows: StandingRow[] }[] {
   const name = (id: string) => nameOf(state, id);
   switch (state.kind) {
-    case "knockout": return [{ heading: "Knock Out", rows: [...state.part.remaining.map((id) => ({ id, name: name(id), main: "In", note: "" })), ...[...state.part.out].reverse().map((id) => ({ id, name: name(id), main: "Out", note: "", out: true }))] }];
     case "darts": return [{ heading: `First to ${state.setsToWin} sets`, rows: state.base.players.map((player) => ({ id: player.id, name: player.name, main: `${state.sets[player.id]} set${state.sets[player.id] === 1 ? "" : "s"}`, note: `${state.legs[player.id]} leg${state.legs[player.id] === 1 ? "" : "s"}` })).sort((a, b) => state.sets[b.id] - state.sets[a.id] || state.legs[b.id] - state.legs[a.id]) }];
     case "dominoes": return [{ heading: `First to ${state.limit} loses`, rows: state.base.players.map((player) => ({ id: player.id, name: player.name, main: String(state.totals[player.id]), note: state.last[player.id] === undefined ? "" : `+${state.last[player.id]} last game` })).sort((a, b) => Number(a.main) - Number(b.main)) }];
+    case "knockout":
     case "cup": return state.cup.rounds.slice(-1).map((round) => ({ heading: `Round ${round.number}`, rows: [...round.fixtures.map((fixture) => ({ id: fixture.id, name: fixture.playerIds.map(name).join(" v "), main: fixture.winnerId ? `${name(fixture.winnerId)} won` : "To play", note: "" })), ...(round.byePlayerId ? [{ id: "bye", name: name(round.byePlayerId), main: "Bye", note: "straight through" }] : [])] }));
     case "group": {
       const tables = state.leagues.map((league) => ({ heading: league.name, rows: rankLeague(leagueOf(league).results, league.playoffOrder).map((entry) => ({ id: entry.player.id, name: name(entry.player.id), main: `${entry.points} pts`, note: `${entry.wins ?? 0} win${entry.wins === 1 ? "" : "s"}${entry.tied && league.played >= league.ids.length ? " · level" : ""}` })) }));

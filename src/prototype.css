@@ -901,9 +901,9 @@
 @keyframes ouch-float{0%{opacity:0;transform:translate(-50%,8px) scale(.6) rotate(-6deg)}15%{opacity:1;transform:translate(-50%,-4px) scale(1.2) rotate(4deg)}70%{opacity:1;transform:translate(-50%,-30px) scale(1) rotate(-2deg)}100%{opacity:0;transform:translate(-50%,-52px) scale(1) rotate(0)}}
 @media(prefers-reduced-motion:reduce){@keyframes draw-count-float{0%,100%{opacity:0}15%,85%{opacity:1}}@keyframes ouch-float{0%,100%{opacity:0}15%,85%{opacity:1}}}
 
-.table-game .game-table .last-card-button{position:absolute;right:8px;top:50%;transform:translateY(-50%);z-index:7;width:62px;min-height:62px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:16px;border:2px solid var(--gold);background:#fbf1d4;color:#7e1d17;font-size:11px;font-weight:800;line-height:1.1;text-align:center;box-shadow:0 4px 12px #02150f77;cursor:pointer}
-.table-game .game-table .last-card-button:active{transform:translateY(-50%) scale(.95)}
-.table-game .game-table .last-card-button.called{background:#7e1d17;color:#fff7ea;border-color:#f1d899}
+.table-game .hand-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0 4px}.table-game .hand-row>span{font-size:11px;color:var(--muted)}
+.table-game .last-card-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:4px 14px;border-radius:999px;border:2px solid var(--gold);background:#fbf1d4;color:#7e1d17;font-size:12px;font-weight:800;line-height:1;cursor:pointer;box-shadow:0 2px 6px #02150f33}
+.table-game .last-card-button:active{transform:scale(.96)}.table-game .last-card-button.called{background:#7e1d17;color:#fff7ea;border-color:#f1d899}
 
 /* Computer game types: picker, options, tournament board (14 Nov 2026) */
 .mode-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}

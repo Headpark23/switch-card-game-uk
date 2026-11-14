@@ -154,6 +154,42 @@ test("finishing with a set after calling Last Card wins", async ({ page }) => {
   await expect(page.getByText(/You won the/)).toBeVisible({ timeout: 10_000 });
 });
 
+test("Last Card sits in your card area, and is said between the first and the last card of a finishing set", async ({ page }) => {
+  await seedTable(page, { hands: [["10H", "10S"], ["3C", "4C", "8C"]], discard: ["4D", "6H"], suit: "H", turn: 0 });
+  await resume(page);
+  // The button lives with your hand, not on the table.
+  await expect(page.locator(".your-seat").getByTestId("last-card-button")).toBeVisible();
+  await expect(page.locator(".game-table").getByTestId("last-card-button")).toHaveCount(0);
+  await page.getByRole("button", { name: /Select Ten of hearts/ }).click();
+  await page.getByTestId("last-card-button").click();
+  await page.getByRole("button", { name: /Select Ten of spades/ }).click();
+  await page.getByRole("button", { name: "Play selected" }).click();
+  await expect(page.getByText(/You won the/)).toBeVisible({ timeout: 10_000 });
+});
+
+test("saying Last Card after the final card of a set is already selected is too late: two cards are picked up", async ({ page }) => {
+  await seedTable(page, { hands: [["10H", "10S"], ["3C", "4C", "8C"]], discard: ["4D", "6H"], suit: "H", turn: 0 });
+  await resume(page);
+  await page.getByRole("button", { name: /Select Ten of hearts/ }).click();
+  await page.getByRole("button", { name: /Select Ten of spades/ }).click();
+  await page.getByTestId("last-card-button").click();
+  await page.getByRole("button", { name: "Play selected" }).click();
+  await expect(page.getByText("You won the")).toHaveCount(0);
+  await expect(page.locator(".player-hand button")).toHaveCount(2, { timeout: 10_000 });
+});
+
+test("four of a kind to win: Last Card goes in before the fourth card", async ({ page }) => {
+  await seedTable(page, { hands: [["9H", "9S", "9D", "9C"], ["3C", "4C", "8C"]], discard: ["4D", "6H"], suit: "H", turn: 0 });
+  await resume(page);
+  await page.getByRole("button", { name: /Select Nine of hearts/ }).click();
+  await page.getByRole("button", { name: /Select Nine of spades/ }).click();
+  await page.getByRole("button", { name: /Select Nine of diamonds/ }).click();
+  await page.getByTestId("last-card-button").click();
+  await page.getByRole("button", { name: /Select Nine of clubs/ }).click();
+  await page.getByRole("button", { name: "Play selected" }).click();
+  await expect(page.getByText(/You won the/)).toBeVisible({ timeout: 10_000 });
+});
+
 test("an eight makes the next player miss a turn, and the highlight follows the engine", async ({ page }) => {
   await seedTable(page, { hands: [["8H", "9C", "3S"], ["3C", "4C", "6C"], ["QD", "QC", "4S"]], discard: ["4D", "8C"], suit: "C", turn: 0 });
   await resume(page);

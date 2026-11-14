@@ -62,7 +62,7 @@ test("a league game scores 4, 3, 2 and 1 in the order players went out, and the 
     return { kinds, knockout, order: result.order, ids: game.playerIds, gained, finished: play.status, wins: state.leagues[0].wins, winner: result.winnerId, seenOutTurns, emptyHands: play.hands.filter((hand: string[]) => hand.length === 0).length, size: game.playerIds.length };
   });
   expect(out.kinds.league).toEqual([true, true]);
-  expect(out.knockout).toEqual([false]);
+  expect(out.knockout).toEqual([false, false]);
   expect(out.finished).toBe("won");
   expect(out.seenOutTurns).toEqual([]);
   // Everyone but the last place went out holding no cards; the last holds cards.
