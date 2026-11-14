@@ -1,4 +1,4 @@
-import { rankOf, suitOf } from "./cards";
+import { isBlackKing, isRedKing, rankOf, suitOf } from "./cards";
 import { isPlayableDuringPenalty } from "./rules";
 import type { ComputerLevel } from "./ai";
 import { applyTableAction, nextSeat, tableLegalMoves, type TableState } from "./table";
@@ -8,9 +8,6 @@ import type { CardId, GameAction, RandomSource } from "./types";
  * The computer players at a bigger table. Same three temperaments as the two-player opponent:
  * relaxed makes friendly mistakes, standard sheds cards, sharp watches who is about to go out.
  */
-function isBlackKing(card: CardId): boolean {
-  return card === "KS" || card === "KC";
-}
 
 function score(state: TableState, action: GameAction, level: ComputerLevel): number {
   const seat = state.turn;
@@ -82,7 +79,7 @@ export function chooseTableAction(state: TableState, random: RandomSource, level
   if (all.length === 0) throw new Error("There is no legal Switch action.");
   // A black king followed by a red king in one set cancels itself: legal, but a waste.
   const selfCancelling = (action: GameAction) => action.type === "play"
-    && action.cards.some((card, index) => (card === "KH" || card === "KD") && action.cards.slice(0, index).some(isBlackKing));
+    && action.cards.some((card, index) => isRedKing(card) && action.cards.slice(0, index).some(isBlackKing));
   const sensible = all.filter((action) => !selfCancelling(action));
   const actions = sensible.length > 0 ? sensible : all;
 

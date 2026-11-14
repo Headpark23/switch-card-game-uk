@@ -15,7 +15,7 @@ export const isRedKing=(card:string)=>rank(card)==='K'&&(suit(card)==='H'||suit(
 export const fullDeck=createDeck().map(card=>card.id);
 export function CardImage({code}:{code:string}) {
   const suits:Record<string,string>={S:'spades',H:'hearts',D:'diamonds',C:'clubs'};const names:Record<string,string>={A:'Ace',K:'King',Q:'Queen',J:'Jack'};
-  return <img className="playing-card" src={'/images/cards/'+code+'.webp'} alt={code==='back'?'Face-down deck':`${names[rank(code)]||rank(code)} of ${suits[suit(code)]}`} draggable={false}/>;
+  return <img className="playing-card" src={'/images/cards/'+code.replace("'",'')+'.webp'} alt={code==='back'?'Face-down deck':`${names[rank(code)]||rank(code)} of ${suits[suit(code)]}`} draggable={false}/>;
 }
 export function Fan({codes}:{codes:string[]}) {return <div className="card-fan">{codes.map(code=><CardImage key={code} code={code}/>)}</div>;}
 /**

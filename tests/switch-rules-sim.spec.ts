@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { buildCases, compareInPage } from "../scripts/engine-vs-rules.mjs";
 
 // The app's rules engine must agree, position by position, with an independent player built only from the written rules.
-test("the rules engine agrees with the written rules for 2, 3 and 4 players", async ({ page }) => {
+test("the rules engine agrees with the written rules for 2, 3, 4, 7 and 8 players", async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto("/?frame=1");
   const result = await compareInPage(page, buildCases(25));

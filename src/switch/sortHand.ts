@@ -1,9 +1,10 @@
+import { faceOf } from "./cards";
 import type { CardId } from "./types";
 
 const RANKS = "A23456789TJQK";
 const SUITS = "SHDC";
 const split = (card: CardId): [string, string] => {
-  const text = String(card);
+  const text = faceOf(card);
   const suit = text.slice(-1);
   const rank = text.slice(0, -1) === "10" ? "T" : text.slice(0, -1);
   return [rank, suit];

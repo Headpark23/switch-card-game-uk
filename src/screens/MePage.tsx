@@ -6,7 +6,8 @@ import { KeyboardInput, useKeyboard } from '../mobile';
 import { BadgeButton, BadgeSheet, BadgeWall, PassportBook } from './Badges';
 import { PlayerCabinet } from './TrophyRoom';
 import { derivePassport, deriveBadges, type BadgeProgress } from '../switch/badges';
-import { ensureMe, getComputerGames, getMeId, summariseComputerGames, type ComputerGame } from '../switch/computerLog';
+import { ensureMe, gameMode, getComputerGames, getMeId, summariseByMode, summariseComputerGames, type ComputerGame } from '../switch/computerLog';
+import { MODES, modeInfo } from '../switch/series';
 import { claimMe, mergeProfiles } from '../switch/identity';
 import { useConfirm } from '../Confirm';
 import { derivePlayerStats } from '../switch/analytics';
@@ -79,6 +80,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, initialSection = 'ov
   const computerAll = getComputerGames(extensions);
   const games = computerAll.filter((game) => game.playerId === me.id);
   const summary = summariseComputerGames(games);
+  const byMode = summariseByMode(games);
   const stats = derivePlayerStats(me, nights, allProfiles);
   const badges = deriveBadges(me, nights, allProfiles, computerAll);
   const earned = badges.filter((badge) => badge.earned);
@@ -91,7 +93,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, initialSection = 'ov
   type Row = { key: string; when: string; kind: 'night' | 'computer'; title: string; detail: string; won: boolean; open: () => void };
   const rows: Row[] = [
     ...(filter !== 'computer' ? myNights.map((night): Row => ({ key: night.id, when: night.completedAt, kind: 'night', title: night.title, detail: `${FORMAT_NAMES[night.format] ?? night.formatLabel} · ${night.players.length} players${night.place ? ` · ${night.place.name}, ${countryName(night.place.country)}` : ''}`, won: wonNight(night), open: () => setOpenNight(night) })) : []),
-    ...(filter !== 'nights' ? games.map((game): Row => ({ key: game.id, when: game.playedAt, kind: 'computer', title: game.won ? 'Beat the computer' : `Finished ${game.place}${['st', 'nd', 'rd'][game.place - 1] ?? 'th'}`, detail: `${game.opponents === 1 ? '1 opponent' : `${game.opponents} opponents`} · ${LEVEL_NAMES[game.level]} · ${game.moves} moves`, won: game.won, open: () => setOpenGame(game) })) : []),
+    ...(filter !== 'nights' ? games.map((game): Row => ({ key: game.id, when: game.playedAt, kind: 'computer', title: game.won ? 'Beat the computer' : `Finished ${game.place}${['st', 'nd', 'rd'][game.place - 1] ?? 'th'}`, detail: `${gameMode(game) === 'single' ? '' : `${modeInfo(gameMode(game)).name}${game.series ? (game.series.won ? ' · won the whole thing' : ` · finished ${game.series.place}${['st', 'nd', 'rd'][game.series.place - 1] ?? 'th'} overall`) : ''} · `}${game.opponents === 1 ? '1 opponent' : `${game.opponents} opponents`} · ${LEVEL_NAMES[game.level]} · ${game.moves} moves`, won: game.won, open: () => setOpenGame(game) })) : []),
   ].sort((a, b) => Date.parse(b.when) - Date.parse(a.when));
 
   const rename = async () => {
@@ -148,8 +150,14 @@ export default function MePage({ onPlay, onClub, onPrivacy, initialSection = 'ov
           </div>
           <h3>By difficulty</h3>
           {(['relaxed', 'standard', 'sharp'] as const).map((level) => <Bar key={level} label={LEVEL_NAMES[level]} value={summary.byLevel[level]?.wins ?? 0} total={summary.byLevel[level]?.games ?? 0} />)}
+          <h3>By game type</h3>
+          <ul className="mode-stats" aria-label="Results by game type">{MODES.map((mode) => {
+            const entry = byMode.find((item) => item.mode === mode.id);
+            return <li key={mode.id} className={entry ? '' : 'empty'}><strong>{mode.name}</strong>
+              {entry ? <span>{mode.id === 'single' ? `${entry.won} won of ${entry.played}` : `${entry.played} played · ${entry.won} won`}{entry.played > 0 && mode.id !== 'single' ? ` · best finish ${entry.bestPlace}${['st', 'nd', 'rd'][entry.bestPlace - 1] ?? 'th'}` : ''}{entry.bestStreak > 1 ? ` · best run ${entry.bestStreak}` : ''}</span> : <span>Not played yet</span>}</li>;
+          })}</ul>
           <h3>By table size</h3>
-          {[1, 2, 3, 4].map((count) => <Bar key={count} label={count === 1 ? 'Head to head' : `You + ${count} computers`} value={summary.byOpponents[count]?.wins ?? 0} total={summary.byOpponents[count]?.games ?? 0} />)}
+          {[1, 2, 3, 4, 5, 6, 7].map((count) => <Bar key={count} label={count === 1 ? 'Head to head' : `You + ${count} computers`} value={summary.byOpponents[count]?.wins ?? 0} total={summary.byOpponents[count]?.games ?? 0} />)}
           <button className="primary" onClick={onPlay}>Play again <ArrowRight size={18} /></button>
         </>}
     </>}

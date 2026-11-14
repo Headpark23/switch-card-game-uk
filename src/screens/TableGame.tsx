@@ -15,6 +15,7 @@ import { drawTiming, planTurn, REDUCED, SPEED_NAMES, SPEEDS, stepDuration, visib
 import { clearActiveTable, newTableGameId, readSpeed, saveActiveTable, saveSpeed, type ActiveTable } from '../switch/activeTable';
 import { CardImage, CardShower, rank, suit, suitNames, suitSymbols } from '../ui';
 import RealCards from './RealCards';
+import type { PlayMode } from '../switch/series';
 import { sortHand } from '../switch/sortHand';
 
 import { COMPUTER_NAMES } from '../switch/presentation';
@@ -62,11 +63,14 @@ type Showing = { id: number; before: TableState; after: TableState; action: Game
 /** How long a computer waits before spotting that you did not say "Last Card". */
 const CALL_GRACE = 1600;
 
-type Props = { opponents: number; level: ComputerLevel; resume?: ActiveTable | null; onExit: () => void; onOpenCards: () => void; onStartNight: () => void; onChange: () => void };
+/** When this game is one of a tournament's games, the series screen runs the show: it names the seats and decides what happens next. */
+export type SeriesGame = { title: string; seriesId: string; mode: PlayMode; onFinished: (table: TableState, gameId: string) => void };
 
-export default function TableGame({ opponents, level, resume = null, onExit, onOpenCards, onStartNight, onChange }: Props) {
+type Props = { opponents: number; level: ComputerLevel; resume?: ActiveTable | null; seatNames?: string[]; series?: SeriesGame; onExit: () => void; onOpenCards: () => void; onStartNight: () => void; onChange: () => void };
+
+export default function TableGame({ opponents, level, resume = null, seatNames, series, onExit, onOpenCards, onStartNight, onChange }: Props) {
   const seats = opponents + 1;
-  const names = useMemo(() => ['You', ...COMPUTER_NAMES.slice(0, opponents)], [opponents]);
+  const names = useMemo(() => seatNames ?? ['You', ...COMPUTER_NAMES.slice(0, opponents)], [opponents, seatNames]);
   const [gameId, setGameId] = useState(() => resume?.id ?? newTableGameId());
   const [game, setGame] = useState<TableState>(() => resume?.game ?? createTable(seats, Math.random, pickDealer(seats)));
   const [showing, setShowing] = useState<Showing | null>(null);
@@ -211,12 +215,14 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
 
   // An unfinished game is kept so it can be resumed; a finished one is logged once, under its own id, and forgotten.
   useEffect(() => {
-    if (game.status === 'playing') { saveActiveTable({ id: gameId, opponents, level, game, awaitingLastCard: false, lastCardCalled: lastCalled }); return; }
+    // A game inside a tournament is never saved for resuming; the tournament screen owns what happens next.
+    if (game.status === 'playing') { if (!series) saveActiveTable({ id: gameId, opponents, level, game, awaitingLastCard: false, lastCardCalled: lastCalled }); return; }
     if (logged.current === gameId) return;
     logged.current = gameId;
-    logComputerGame({ id: gameId, opponents, level, won: game.winner === 0, place: tablePlaces(game)[0], moves: game.move });
+    // Every game counts: your place in this one is logged under its game type, whatever the tournament does with it.
+    logComputerGame({ id: gameId, opponents, level, won: game.winner === 0, place: tablePlaces(game)[0], moves: game.move, ...(series ? { mode: series.mode, seriesId: series.seriesId } : {}) });
     stats.onFinish({ won: game.winner === 0, place: tablePlaces(game)[0], moves: game.move });
-    clearActiveTable();
+    if (!series) clearActiveTable();
   }, [game, lastCalled, gameId, opponents, level]);
 
   useEffect(() => { if (finished) cue(youWon ? 'win' : 'bad'); }, [finished, youWon]);
@@ -313,6 +319,19 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
     : missTurn ? 'Play another eight to pass the missed turn, or accept it.'
     : legalCards.length ? `You can play ${legalCards.map(cardIdLabel).join(', ')}. You may also pick up one card instead.` : 'You have no legal card. Pick up one card.';
 
+  if (finished && series) {
+    return <section className="tutorial game-tutorial table-game" aria-label="Game over">
+      <CardShower trigger={youWon ? `won-${gameId}` : null} />
+      <div className="completion">
+        <CheckCircle size={56} weight="light" />
+        <h1>{youWon ? <>You won<br />this game.</> : <>{names[game.winner ?? 0]} won<br />this game.</>}</h1>
+        <p>{series.title}. You finished {ordinal(places[0])} of {seats} with {hand.length} card{hand.length === 1 ? '' : 's'} left.</p>
+        <ol className="place-list" aria-label="Places in this game">{[...game.hands.keys()].sort((a, b) => places[a] - places[b] || a - b).map((seat) => <li key={seat} className={seat === 0 ? 'me' : ''}><b>{ordinal(places[seat])}</b><span>{names[seat]}</span><em>{game.hands[seat].length} left</em></li>)}</ol>
+        <button className="primary" data-testid="series-continue" onClick={() => series.onFinished(game, gameId)}>Continue <ArrowRight size={18} /></button>
+      </div>
+    </section>;
+  }
+
   if (finished) {
     const record = (() => { const club = readClub(); const mine = getComputerGames(club).filter((entry) => entry.playerId === getMeId(club)); return summariseComputerGames(mine); })();
     return <section className="tutorial game-tutorial table-game" aria-label="Game over">
@@ -344,14 +363,15 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
     : visible.drawing ? `${activeName === 'You' ? 'You pick' : `${activeName} picks`} up ${visible.drawing.count} card${visible.drawing.count === 1 ? '' : 's'}.`
     : yourMove ? (recent.length === 0 ? `${names[game.dealer]} dealt. You play first.` : recent[recent.length - 1]) : recent[recent.length - 1] ?? `${names[game.dealer]} dealt.`);
 
-  return <section ref={sectionRef} className="tutorial game-tutorial table-game" aria-label={`Game against ${opponents === 1 ? 'the computer' : `${opponents} computers`}`} data-active-seat={visible.active} data-showing={showing ? 'yes' : 'no'}>
+  return <section ref={sectionRef} className="tutorial game-tutorial table-game" aria-label={series ? series.title : `Game against ${opponents === 1 ? 'the computer' : `${opponents} computers`}`} data-active-seat={visible.active} data-showing={showing ? 'yes' : 'no'}>
     <div className={'turn-banner ' + (visible.active === 0 ? 'you' : 'computer')}>
       <span className="turn-dot" aria-hidden="true" />
       <span className="turn-status" aria-live="polite" data-testid="turn-status">{status}</span>
       <em className="dealer-chip" aria-label={`Dealer: ${names[game.dealer]}`}>Dealer · {names[game.dealer]}</em>
       <button onClick={onExit}>Exit</button>
     </div>
-    <div className={`seat-row seats-${opponents}`} role="list" aria-label="Players at the table">
+    {series && <p className="series-strip" data-testid="series-strip">{series.title}</p>}
+    <div className={`seat-row seats-${opponents}${opponents > 4 ? ' many' : ''}`} role="list" aria-label="Players at the table">
       {names.slice(1).map((name, index) => {
         const seat = index + 1;
         const count = visible.handCounts[seat];

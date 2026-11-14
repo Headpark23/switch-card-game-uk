@@ -1,4 +1,4 @@
-import type { ComputerGame } from "./computerLog";
+import { gameMode, seriesGames, type ComputerGame } from "./computerLog";
 import type { SwitchNightRecord } from "./history";
 import type { LocalProfile } from "./profiles";
 import { resolveHistoryPlayerId } from "./profiles";
@@ -32,6 +32,7 @@ type MetricId =
   | "played" | "wins" | "streak" | "formats" | "allFormats" | "winsCup" | "winsKnockout" | "winsDomino" | "winsDarts" | "winsDuel" | "winsLeague"
   | "monthWins" | "bigTable" | "trophies" | "grandTrophy" | "weekendWins" | "lateNights" | "opponents" | "rival"
   | "cpuGames" | "cpuWins" | "cpuStreak" | "cpuSharpWins" | "cpuRelaxedWins" | "cpuFourWins" | "cpuTableWins" | "cpuFast"
+  | "cpuKo" | "cpuGroup" | "cpuCup" | "cpuDarts" | "cpuDominoes" | "cpuModesWon" | "cpuEight" | "cpuSeries" | "cpuSeriesStreak" | "cpuEightPlayed"
   | "venues" | "countries" | "homeWins" | "awayWins" | "placedNights";
 
 const b = (id: string, label: string, hint: string, category: BadgeCategory, tier: BadgeTier, icon: string, need: number, metric: MetricId): BadgeDefinition =>
@@ -74,6 +75,17 @@ export const BADGES: readonly BadgeDefinition[] = [
   b("cpu-four", "Full table", "Beat 4 computers in one game", "computer", "gold", "UsersFour", 1, "cpuFourWins"),
   b("cpu-big-table", "Crowd control", "Beat a table of 3 or more computers 5 times", "computer", "silver", "UsersThree", 5, "cpuTableWins"),
   b("cpu-quick", "Blitz", "Win a game against the computer in 25 moves or fewer", "computer", "silver", "Timer", 1, "cpuFast"),
+  b("cpu-ko", "Last one standing", "Win a Knock Out against the computers", "computer", "silver", "Crown", 1, "cpuKo"),
+  b("cpu-ko-three", "Knock Out specialist", "Win 3 Knock Outs against the computers", "computer", "gold", "Skull", 3, "cpuKo"),
+  b("cpu-group", "Group champion", "Win a Group Play championship against the computers", "computer", "gold", "Flag", 1, "cpuGroup"),
+  b("cpu-cup", "Cup holder", "Win a Switch Cup against the computers", "computer", "silver", "Trophy", 1, "cpuCup"),
+  b("cpu-darts", "Set and match", "Win a Darts scoring match against the computers", "computer", "silver", "Target", 1, "cpuDarts"),
+  b("cpu-dominoes", "Lowest wins", "Win a Dominoes scoring match against the computers", "computer", "silver", "GridFour", 1, "cpuDominoes"),
+  b("cpu-every-mode", "Every game type", "Win a Knock Out, Group Play, Switch Cup, Darts and Dominoes match", "computer", "platinum", "Diamond", 5, "cpuModesWon"),
+  b("cpu-series-ten", "Tournament regular", "Finish 10 tournaments or matches against the computers", "computer", "silver", "CalendarCheck", 10, "cpuSeries"),
+  b("cpu-series-streak", "Tournament run", "Win 3 tournaments or matches in a row", "computer", "gold", "Fire", 3, "cpuSeriesStreak"),
+  b("cpu-eight-play", "Full house of eight", "Play a game at a table of 8", "computer", "bronze", "UsersFour", 1, "cpuEightPlayed"),
+  b("cpu-eight-win", "Master of eight", "Win a game at a table of 8", "computer", "platinum", "ShieldStar", 1, "cpuEight"),
   b("first-venue", "Home ground", "Record where you played", "travel", "bronze", "MapPin", 1, "venues"),
   b("three-venues", "Regular haunts", "Play at 3 different venues", "travel", "bronze", "MapTrifold", 3, "venues"),
   b("ten-venues", "Venue hopper", "Play at 10 different venues", "travel", "silver", "Compass", 10, "venues"),
@@ -165,6 +177,14 @@ export function measureBadges(
     if (game.won) { cpuStreak += 1; cpuBest = Math.max(cpuBest, cpuStreak); } else cpuStreak = 0;
   }
   const cpuWon = mine.filter((game) => game.won);
+  const finished = seriesGames(mine);
+  const seriesWon = (mode: string) => finished.filter((game) => gameMode(game) === mode && game.series?.won).length;
+  let seriesStreak = 0;
+  let seriesBest = 0;
+  for (const game of finished) {
+    if (game.series?.won) { seriesStreak += 1; seriesBest = Math.max(seriesBest, seriesStreak); } else seriesStreak = 0;
+  }
+  const modesWon = ["knockout", "group", "cup", "darts", "dominoes"].filter((mode) => seriesWon(mode) > 0).length;
   return {
     played, wins: totalWins, streak: best, formats: formats.size, allFormats: ALL_FORMATS.filter((format) => formats.has(format)).length,
     winsCup: wins.cup ?? 0, winsKnockout: wins.knockout ?? 0, winsDomino: wins.domino ?? 0, winsDarts: wins.darts ?? 0, winsDuel: wins["head-to-head"] ?? 0, winsLeague: wins.league ?? 0,
@@ -174,6 +194,9 @@ export function measureBadges(
     cpuSharpWins: cpuWon.filter((game) => game.level === "sharp").length, cpuRelaxedWins: cpuWon.filter((game) => game.level === "relaxed").length,
     cpuFourWins: cpuWon.filter((game) => game.opponents >= 4).length, cpuTableWins: cpuWon.filter((game) => game.opponents >= 3).length,
     cpuFast: cpuWon.filter((game) => game.moves <= 25).length,
+    cpuKo: seriesWon("knockout"), cpuGroup: seriesWon("group"), cpuCup: seriesWon("cup"), cpuDarts: seriesWon("darts"), cpuDominoes: seriesWon("dominoes"),
+    cpuModesWon: modesWon, cpuSeries: finished.length, cpuSeriesStreak: seriesBest,
+    cpuEightPlayed: mine.filter((game) => game.opponents >= 7).length, cpuEight: cpuWon.filter((game) => game.opponents >= 7).length,
     venues: venues.size, countries: countries.size, homeWins, awayWins, placedNights: placed,
   };
 }

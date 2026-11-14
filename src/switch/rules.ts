@@ -1,4 +1,4 @@
-import { createDeck, rankOf, suitOf, SUITS } from "./cards";
+import { createDeck, isBlackKing, isRedKing, rankOf, suitOf, SUITS } from "./cards";
 import type { CardId, GameAction, GameState, RandomSource, Suit, Turn } from "./types";
 
 function otherTurn(turn: Turn): Turn {
@@ -23,7 +23,7 @@ export function isPlayableDuringPenalty(card: CardId, state: PlayContext): boole
     case "draw-two":
       return rankOf(card) === "2";
     case "black-king":
-      return card === "KS" || card === "KC" || card === "KH" || card === "KD";
+      return isBlackKing(card) || isRedKing(card);
     case "miss-turn":
       return rankOf(card) === "8";
     default:
@@ -231,7 +231,7 @@ export function applyAction(state: GameState, action: GameAction): GameState {
     // (never below nothing), so the card on top decides: black then red cancels, red then black leaves 5.
     let units = state.pendingPenalty?.kind === "black-king" ? state.pendingPenalty.units : 0;
     for (const card of played) {
-      if (card === "KS" || card === "KC") units = Math.min(2, units + 1);
+      if (isBlackKing(card)) units = Math.min(2, units + 1);
       else units = Math.max(0, units - 1);
     }
     if (units > 0) {

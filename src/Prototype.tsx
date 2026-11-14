@@ -8,6 +8,7 @@ import { flushSharedResults } from './switch/shareNight';
 import { startClubSync } from './switch/clubSync';
 import type { SwitchNightRecord } from './switch/history';
 import type { ComputerLevel } from './switch/ai';
+import type { SeriesSetup } from './switch/series';
 import WatchNight from './screens/WatchNight';
 import Referee from './screens/Referee';
 import NightReminder from './screens/NightReminder';
@@ -37,6 +38,7 @@ const Privacy = lazy(() => import('./screens/Privacy'));
 const AppFooter = lazy(() => import('./screens/AppFooter'));
 const PlayLobby = lazy(() => import('./screens/PlayLobby'));
 const TableGame = lazy(() => import('./screens/TableGame'));
+const SeriesPlay = lazy(() => import('./screens/SeriesPlay'));
 const MePage = lazy(() => import('./screens/MePage'));
 
 /** Each way to play gets its own little hand of cards in place of a number or an icon. */
@@ -49,14 +51,14 @@ const MODE_CARDS: Record<string, string[]> = {
   'Switch Cup': ['KH', 'KD'],
 };
 
-type Page = 'Learn' | 'Rules' | 'Cards' | 'Modes' | 'Watch' | 'Questions' | 'Tutorial' | 'Score' | 'Club' | 'Quick' | 'Puzzles' | 'Privacy' | 'Play' | 'Table' | 'Me';
+type Page = 'Learn' | 'Rules' | 'Cards' | 'Modes' | 'Watch' | 'Questions' | 'Tutorial' | 'Score' | 'Club' | 'Quick' | 'Puzzles' | 'Privacy' | 'Play' | 'Table' | 'Series' | 'Me';
 type ScoreView = 'score' | 'stats' | 'leagues' | 'trophies' | 'history';
 type Tab = 'Home' | 'Play' | 'Score' | 'Club' | 'Me';
 
 /** Which of the five destinations each screen belongs to, so the bottom bar always shows where you are. Learning lives under Home, apart from competitive play. */
 const SECTION: Record<Page, Tab> = {
   Learn: 'Home', Rules: 'Home', Cards: 'Home', Questions: 'Home', Tutorial: 'Home', Puzzles: 'Home', Watch: 'Home',
-  Play: 'Play', Table: 'Play',
+  Play: 'Play', Table: 'Play', Series: 'Play',
   Score: 'Score', Quick: 'Score', Modes: 'Score',
   Club: 'Club',
   Me: 'Me', Privacy: 'Me',
@@ -154,6 +156,9 @@ export default function Prototype() {
   }
   const openRules = () => { try { window.localStorage.setItem('switchWelcome', 'done'); } catch { /* storage unavailable */ } setRuleStep(0); go('Rules'); };
   const startGuidedGame = () => go('Tutorial');
+  const [seriesAtTable, setSeriesAtTable] = useState(false);
+  const [seriesRun, setSeriesRun] = useState<{ setup: SeriesSetup; run: number } | null>(null);
+  const startSeriesPlay = (setup: SeriesSetup) => { setSeriesRun((current) => ({ setup, run: (current?.run ?? 0) + 1 })); go('Series'); };
   const dealMeIn = (opponents: number, level: ComputerLevel) => { setTable((current) => ({ opponents, level, resume: false, deal: current.deal + 1 })); go('Table'); };
   const resumeTable = () => {
     const saved = readActiveTable();
@@ -177,7 +182,7 @@ export default function Prototype() {
   const result = rules.filter((r) => (r.q + ' ' + r.a).toLowerCase().includes(query.toLowerCase()));
   return <div className="switch-app" onFocusCapture={resetDeviceScroll} data-section={section}>
     <MobileScroll key={page} className="switch-scroll">
-      <main className={'switch-content ' + (page === 'Learn' ? 'home' : 'interior') + (page === 'Tutorial' || page === 'Table' ? ' tutorial-page' : '') + (page === 'Cards' ? ' cards-page' : '') + (page === 'Rules' ? ' rules-page' : '')}>
+      <main className={'switch-content ' + (page === 'Learn' ? 'home' : 'interior') + (page === 'Tutorial' || page === 'Table' || (page === 'Series' && seriesAtTable) ? ' tutorial-page' : '') + (page === 'Cards' ? ' cards-page' : '') + (page === 'Rules' ? ' rules-page' : '')}>
         {page === 'Learn' && <>
           <HomeHub key={shownClubTick} onPlay={() => go('Play')} onResumeTable={resumeTable} onScore={() => openScore('score')} onClub={() => openClub('stats')} onAchievements={() => openMe('badges')} onRules={openRules} onPuzzles={() => go('Puzzles')} onQuestions={() => go('Questions')} onPlan={() => setPlanOpen(true)} onJoin={() => go('Watch')} onJoinClub={() => openClub('stats')} onHistory={() => openClub('history')} onPower={setSelected} />
           <AccountPanel home />
@@ -250,8 +255,9 @@ export default function Prototype() {
           <Suspense fallback={<Loading />}>
             {page === 'Score' && <SwitchScorekeeper section="score" onBack={() => go('Learn')} backLabel="Home" initialView={scoreView} onView={setScoreView} onQuick={() => go('Quick')} onModes={() => go('Modes')} />}
             {page === 'Club' && <SwitchScorekeeper key={shownClubTick} section="club" onBack={() => go('Learn')} backLabel="Home" initialView={clubView} onView={setClubView} />}
-            {page === 'Play' && <PlayLobby onDeal={dealMeIn} onResume={resumeTable} onMe={() => openMe('overview')} onLearn={openRules} />}
+            {page === 'Play' && <PlayLobby onDeal={dealMeIn} onStartSeries={startSeriesPlay} onResume={resumeTable} onMe={() => openMe('overview')} onLearn={openRules} />}
             {page === 'Table' && <TableGame key={table.deal} opponents={table.opponents} level={table.level} resume={table.resume ? readActiveTable() : null} onExit={() => go('Play')} onChange={() => go('Play')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} />}
+            {page === 'Series' && seriesRun && <SeriesPlay key={seriesRun.run} setup={seriesRun.setup} onTable={setSeriesAtTable} onExit={() => go('Play')} onChange={() => go('Play')} onMe={() => openMe('overview')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} />}
             {page === 'Me' && <MePage key={meSection} initialSection={meSection} onPlay={() => go('Play')} onClub={() => openClub('stats')} onPrivacy={() => go('Privacy')} />}
             {page === 'Tutorial' && <GuidedGame onExit={() => go('Rules')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onOpenPuzzles={() => go('Puzzles')} onPlayForReal={() => go('Play')} onStatusChange={onGameStatus} />}
             {page === 'Quick' && <QuickNight onBack={() => openScore('score')} onHistory={() => openClub('history')} />}
@@ -260,7 +266,7 @@ export default function Prototype() {
             {page === 'Privacy' && <Privacy onBack={() => openMe('overview')} />}
           </Suspense>
         </>}
-        {page !== 'Tutorial' && page !== 'Table' && page !== 'Cards' && <Suspense fallback={null}><AppFooter page={page} onPrivacy={() => go('Privacy')} /></Suspense>}
+        {page !== 'Tutorial' && page !== 'Table' && !(page === 'Series' && seriesAtTable) && page !== 'Cards' && <Suspense fallback={null}><AppFooter page={page} onPrivacy={() => go('Privacy')} /></Suspense>}
       </main>
     </MobileScroll>
     {/* While typing, the keyboard needs the room: the tab bar steps aside and returns when it closes. */}

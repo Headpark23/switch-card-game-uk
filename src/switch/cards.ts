@@ -44,12 +44,36 @@ export function createDeck(): Card[] {
   return FULL_DECK.map((card) => ({ ...card }));
 }
 
+/** Marks a card from the second deck (ruling 21). It plays exactly like its twin. */
+export const COPY_MARK = "'";
+
+/** The card as the rules see it: a copy from the second deck is the same card as its twin. */
+export function faceOf(id: CardId): CardId {
+  return (id.endsWith(COPY_MARK) ? id.slice(0, -1) : id) as CardId;
+}
+
 export function rankOf(id: CardId): Rank {
-  return id.slice(0, -1) as Rank;
+  return faceOf(id).slice(0, -1) as Rank;
 }
 
 export function suitOf(id: CardId): Suit {
-  return id.slice(-1) as Suit;
+  return faceOf(id).slice(-1) as Suit;
+}
+
+export function isBlackKing(id: CardId): boolean {
+  const face = faceOf(id);
+  return face === "KS" || face === "KC";
+}
+
+export function isRedKing(id: CardId): boolean {
+  const face = faceOf(id);
+  return face === "KH" || face === "KD";
+}
+
+/** One deck is 52 cards; two decks (7 or 8 players) are 104, the second deck's cards carrying the copy mark. */
+export function createShoe(decks: 1 | 2): CardId[] {
+  const ids = FULL_DECK.map((card) => card.id);
+  return decks === 1 ? ids : [...ids, ...ids.map((id) => `${id}${COPY_MARK}` as CardId)];
 }
 
 export function cardLabel(card: Card): string {

@@ -9,7 +9,7 @@
 - Switch 2.0 (owner decision, 13 Nov 2026): Switch is "your game-night club" with four equal experiences: playing Switch against the computer, scoring real game nights, clubs and competitions, and personal achievements. It replaces the earlier "primarily instructional" positioning; learning stays complete but sits under Home ("Learn rules").
 - Treat the complete game rules as the app's main attraction. Lead with an attractive, interactive teaching narrative derived from the original app's Rules and Game Flow sections, then connect it directly to practice in the guided game.
 - Keep “Learn to play” as a complete guided game against the computer. Offer optional legal-move hints, explain invalid moves, enforce the app's Switch rules, and continue play until either side wins.
-- Competitive play against 1 to 4 computers lives in PLAY and counts towards your record. Guided practice lives in Learn the Rules, never counts towards stats, streaks or badges, and ends with "Ready for the real challenge? Play against the computer."
+- Competitive play against 1 to 7 computers lives in PLAY and counts towards your record. Guided practice lives in Learn the Rules, never counts towards stats, streaks or badges, and ends with "Ready for the real challenge? Play against the computer."
 - The tutorial remains a companion for physical card nights. The tutorial must be fabulous and encourage physical play: every move explains what was played, the rule, why it matters, what you could play and a tip, and the flow leads from practice to real cards to logging the night. Build the coach and lessons game-agnostic so the pattern can be reused in other physical card and board game apps.
 - Test existing interactions before changing them, then verify iPhone and Pixel layouts after each meaningful change.
 
@@ -120,3 +120,7 @@ Darts: first to three legs wins a set. Knock Out: whoever finishes last in a rou
 - Sharing must be obvious: Home offers "Share my club" and "Join a club", saving a night lands on a screen with the invitation, a club link (`/?club=CODE`) goes straight to "Which one are you?", and once joined everything syncs with no further steps.
 - `tests/switch-club-sync.spec.ts` and `tests/switch-two-phones.spec.ts` run two real browser phones against one server; keep them passing.
 
+
+## Computer game types (owner decisions, 14 Nov 2026)
+- PLAY offers Single game, Knock Out, Group Play, Switch Cup, Darts scoring and Dominoes scoring against 1 to 7 computers (8 at the table). 7 or 8 seats use two decks (ruling 21). Computers, in order: John, Paul, George, Ringo, Ziggy, Marley, Bowie. Rules and scoring are in `docs/RULES-RULINGS.md` items 21-22. Every type is recorded in stats, trophies, badges and streaks.
+- Dominoes scoring (computer mode) is a lowest-total-wins game: leftover cards add to your total (A 1 ... K 13), and the first to reach the chosen number loses.

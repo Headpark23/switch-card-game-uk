@@ -2,12 +2,12 @@ import { expect, test } from "@playwright/test";
 // @ts-expect-error plain ES module used by both scripts and tests
 import { newGame, legalPlays, step, rng, STYLES } from "../scripts/table-sim.mjs";
 
-// The multi-seat engine must follow the written-rules simulator move for move, for 2 to 6 seats.
+// The multi-seat engine must follow the written-rules simulator move for move, for 2 to 8 seats.
 test("the table engine plays exactly like the written-rules simulator", async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto("/?frame=1");
   const games: unknown[] = [];
-  for (const n of [2, 3, 4, 5, 6]) {
+  for (const n of [2, 3, 4, 5, 6, 7, 8]) {
     for (let i = 0; i < 12; i++) {
       const random = rng(4242 + i * 13 + n);
       const g = newGame(n, random);
@@ -37,7 +37,7 @@ test("the table engine plays exactly like the written-rules simulator", async ({
       };
       for (const move of moves) {
         const d = move.decision;
-        const action = d.kind === "pickup" ? (move.missBefore ? { type: "accept-missed-turn" } : { type: "draw" }) : { type: "play", cards: d.play.cards, ...(d.play.cards[0].slice(0, -1) === "A" ? { chosenSuit: d.play.suit } : {}) };
+        const action = d.kind === "pickup" ? (move.missBefore ? { type: "accept-missed-turn" } : { type: "draw" }) : { type: "play", cards: d.play.cards, ...(d.play.cards[0].replace("'", "").slice(0, -1) === "A" ? { chosenSuit: d.play.suit } : {}) };
         try { state = table.applyTableAction(state, action); } catch (error) { problems.push(`n=${start.n}: ${JSON.stringify(action)} threw ${(error as Error).message}`); break; }
         checked++;
         const a = move.after;
@@ -61,19 +61,19 @@ test("computer players finish full games at every table size and never lose a ca
     const ai = await import("/src/switch/tableAi.ts");
     let seed = 7;
     const random = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
-    const out: { seats: number; finished: boolean; cards: number }[] = [];
-    for (const seats of [2, 3, 4, 5, 6]) {
+    const out: { seats: number; expected: number; finished: boolean; cards: number }[] = [];
+    for (const seats of [2, 3, 4, 5, 6, 7, 8]) {
       for (const level of ["relaxed", "standard", "sharp"] as const) {
         let state = table.createTable(seats, random, seats - 1);
         let guard = 0;
         while (state.status === "playing" && guard++ < 3000) state = table.applyTableAction(state, ai.chooseTableAction(state, random, level));
-        out.push({ seats, finished: state.status === "won", cards: state.hands.flat().length + state.drawPile.length + state.discardPile.length });
+        out.push({ seats, expected: seats > 6 ? 104 : 52, finished: state.status === "won", cards: state.hands.flat().length + state.drawPile.length + state.discardPile.length });
       }
     }
     return out;
   });
   for (const game of result) {
-    expect(game.cards).toBe(52);
+    expect(game.cards).toBe(game.expected);
     expect(game.finished).toBe(true);
   }
 });

@@ -6,6 +6,7 @@ import { readClub } from '../switch/clubStore';
 import { getActiveNight } from '../switch/activeNight';
 import { readActiveTable } from '../switch/activeTable';
 import { getComputerGames, getMeId } from '../switch/computerLog';
+import { modeInfo } from '../switch/series';
 import { getHistory } from '../switch/history';
 import { getProfiles, resolveHistoryPlayerId } from '../switch/profiles';
 import { powers } from '../content';
@@ -77,7 +78,7 @@ export default function HomeHub(props: Props) {
       const winners = night.players.filter((player) => night.winnerIds.includes(player.id)).map((player) => player.name).join(' & ');
       return { key: night.id, at: night.completedAt, title: night.title || `${FORMAT_NAMES[night.format] ?? night.formatLabel} night`, detail: `${FORMAT_NAMES[night.format] ?? night.formatLabel}${winners ? ` · won by ${winners}` : ''}`, won: mine, open: props.onHistory };
     }),
-    ...games.map((game): Row => ({ key: game.id, at: game.playedAt, title: game.won ? 'Beat the computer' : `Finished ${game.place}${['st', 'nd', 'rd'][game.place - 1] ?? 'th'} v the computer`, detail: `${game.opponents === 1 ? '1 opponent' : `${game.opponents} opponents`} · ${LEVEL_NAMES[game.level] ?? game.level}`, won: game.won, open: props.onAchievements })),
+    ...games.map((game): Row => ({ key: game.id, at: game.playedAt, title: game.won ? 'Beat the computer' : `Finished ${game.place}${['st', 'nd', 'rd'][game.place - 1] ?? 'th'} v the computer`, detail: `${game.mode && game.mode !== 'single' ? `${modeInfo(game.mode).name}${game.series ? (game.series.won ? ' · won' : ` · ${game.series.place}${['st', 'nd', 'rd'][game.series.place - 1] ?? 'th'} overall`) : ''} · ` : ''}${game.opponents === 1 ? '1 opponent' : `${game.opponents} opponents`} · ${LEVEL_NAMES[game.level] ?? game.level}`, won: game.won, open: props.onAchievements })),
   ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, 3);
 
   const nightLabel = activeNight ? (activeNight.kind === 'score' ? FORMAT_NAMES[activeNight.session.format] : activeNight.kind === 'league' ? 'Group Play' : activeNight.kind === 'cup' ? 'Switch Cup' : 'Knock Out') : '';
@@ -98,7 +99,7 @@ export default function HomeHub(props: Props) {
       </div>}
 
       <div className="home-tiles v2">
-        <button className="home-tile red" onClick={props.onPlay}><TileIndex suit="♥" /><strong>Play cards</strong><small>Against 1 to 4 computers</small></button>
+        <button className="home-tile red" onClick={props.onPlay}><TileIndex suit="♥" /><strong>Play cards</strong><small>Against 1 to 7 computers</small></button>
         <button className="home-tile" onClick={props.onScore}><TileIndex suit="♣" /><strong>Keep score</strong><small>Real cards, real table</small></button>
         <button className="home-tile" onClick={props.onClub}><TileIndex suit="♠" /><strong>My club</strong><small>Stats, seasons, trophies</small></button>
         <button className="home-tile red" onClick={props.onAchievements}><TileIndex suit="♦" /><strong>Achievements</strong><small>Badges and passport</small></button>

@@ -2,7 +2,7 @@ import { useState, type ComponentType, type ReactNode } from 'react';
 import { BottomSheet } from '../mobile';
 import {
   Airplane, Armchair, Barbell, Brain, CalendarCheck, CalendarStar, Cards, Columns, Compass, Cpu, Crosshair, Crown, Diamond, DiamondsFour, Fire, Flag, Globe,
-  GlobeHemisphereWest, GridFour, Handshake, House, Lightning, MapPin, MapTrifold, Medal, Moon, Ranking, Robot, Rocket, ShieldStar, Smiley, Spade, Stamp, Star,
+  GlobeHemisphereWest, GridFour, Handshake, House, Lightning, MapPin, MapTrifold, Medal, Moon, Ranking, Robot, Rocket, ShieldStar, Skull, Smiley, Spade, Stamp, Star,
   Sun, SuitcaseRolling, Sword, Target, Timer, Trophy, Users, UsersFour, UsersThree, type IconProps,
 } from '@phosphor-icons/react';
 import { BADGE_CATEGORIES, type BadgeProgress, type PassportStamp } from '../switch/badges';
@@ -11,7 +11,7 @@ import type { SwitchNightRecord } from '../switch/history';
 
 const ICONS: Readonly<Record<string, ComponentType<IconProps>>> = {
   Airplane, Armchair, Barbell, Brain, CalendarCheck, CalendarStar, Cards, Columns, Compass, Cpu, Crosshair, Crown, Diamond, DiamondsFour, Fire, Flag, Globe,
-  GlobeHemisphereWest, GridFour, Handshake, House, Lightning, MapPin, MapTrifold, Medal, Moon, Ranking, Robot, Rocket, ShieldStar, Smiley, Spade, Stamp, Star,
+  GlobeHemisphereWest, GridFour, Handshake, House, Lightning, MapPin, MapTrifold, Medal, Moon, Ranking, Robot, Rocket, ShieldStar, Skull, Smiley, Spade, Stamp, Star,
   Sun, SuitcaseRolling, Sword, Target, Timer, Trophy, Users, UsersFour, UsersThree,
 };
 

@@ -1,4 +1,4 @@
-import { createDeck, rankOf, suitOf } from "./cards";
+import { createShoe, isBlackKing, rankOf, suitOf } from "./cards";
 import { forcesPickup, isLegalPlayFor, legalActionsFor, type TableOptions } from "./rules";
 import type { CardId, GameAction, PendingPenalty, RandomSource, Suit } from "./types";
 
@@ -28,6 +28,14 @@ export interface TableState {
   readonly move: number;
 }
 
+/** You plus seven computers. */
+export const MAX_SEATS = 8;
+
+/** Ruling 21: one deck deals seven each to six players; seven or eight players play with two decks. */
+export function decksFor(seats: number): 1 | 2 {
+  return seats > 6 ? 2 : 1;
+}
+
 const POWER_RANKS = new Set(["A", "2", "7", "8", "J", "K"]);
 
 export function tableOptions(seats: number): TableOptions {
@@ -45,8 +53,8 @@ export function nextSeat(state: Pick<TableState, "hands" | "direction">, seat: n
 
 /** Shuffles, deals seven each one card at a time, and turns an ordinary starter. The seat after the dealer plays first. */
 export function createTable(seats: number, random: RandomSource, dealer = 0): TableState {
-  if (!Number.isInteger(seats) || seats < 2 || seats > 6) throw new Error("Switch is for 2 to 6 players.");
-  const deck = createDeck().map((card) => card.id);
+  if (!Number.isInteger(seats) || seats < 2 || seats > MAX_SEATS) throw new Error(`Switch is for 2 to ${MAX_SEATS} players.`);
+  const deck = createShoe(decksFor(seats));
   for (let index = deck.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(random() * (index + 1));
     [deck[index], deck[swapIndex]] = [deck[swapIndex], deck[index]];
@@ -136,14 +144,14 @@ export function applyTableAction(state: TableState, action: GameAction): TableSt
 
   if (playedRank === "2") {
     const previous = state.pendingPenalty?.kind === "draw-two" ? state.pendingPenalty.cards : 0;
-    pendingPenalty = { kind: "draw-two", cards: (previous + played.length * 2) as 2 | 4 | 6 | 8 };
+    pendingPenalty = { kind: "draw-two", cards: (previous + played.length * 2)  };
   } else if (playedRank === "8") {
     pendingPenalty = { kind: "miss-turn" };
   } else if (playedRank === "K") {
     // Ruling 14: kings count card by card, in the order laid down.
     let units = state.pendingPenalty?.kind === "black-king" ? state.pendingPenalty.units : 0;
     for (const card of played) {
-      if (card === "KS" || card === "KC") units = Math.min(2, units + 1);
+      if (isBlackKing(card)) units = Math.min(2, units + 1);
       else units = Math.max(0, units - 1);
     }
     if (units > 0) pendingPenalty = { kind: "black-king", units: units as 1 | 2, cards: (units * 5) as 5 | 10 };

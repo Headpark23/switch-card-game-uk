@@ -6,7 +6,7 @@ import { legalPlays, newGame, rng, step, STYLES, rankOf } from "./table-sim.mjs"
 export function buildCases(games) {
 
 const snapshots = [];
-for (const n of [2, 3, 4]) {
+for (const n of [2, 3, 4, 7, 8]) {
   for (let i = 0; i < games; i++) {
     const random = rng(9000 + i * 7 + n);
     const g = newGame(n, random);
@@ -48,7 +48,7 @@ const result = await page.evaluate(async (all) => {
     const pen = !s.penalty ? null : s.penalty.kind === "two" ? { kind: "draw-two", cards: s.penalty.cards } : s.penalty.kind === "king" ? { kind: "black-king", units: s.penalty.units, cards: s.penalty.cards } : { kind: "miss-turn" };
     const ctx = { discardPile: s.discard, currentSuit: s.suit, pendingPenalty: pen };
     const engine = rules.legalActionsFor(s.hand, ctx, { jackMayFinish: s.n > 2 }).filter((a) => a.type === "play")
-      .map((a) => (a.cards[0].slice(0, -1) === "K" ? [...a.cards] : [...a.cards].sort()).join(",") + (a.cards[0].slice(0, -1) === "A" ? "@" + a.chosenSuit : ""));
+      .map((a) => (a.cards[0].replace("'", "").slice(0, -1) === "K" ? [...a.cards] : [...a.cards].sort()).join(",") + (a.cards[0].replace("'", "").slice(0, -1) === "A" ? "@" + a.chosenSuit : ""));
     const mine = new Set(s.legal.map((l) => l.key));
     const theirs = new Set(engine);
     checked++;
@@ -66,7 +66,7 @@ const moved = await page.evaluate(async (all) => {
     const b = t.before;
     const pen = !b.penalty ? null : b.penalty.kind === "two" ? { kind: "draw-two", cards: b.penalty.cards } : b.penalty.kind === "king" ? { kind: "black-king", units: b.penalty.units, cards: b.penalty.cards } : { kind: "miss-turn" };
     const state = { playerHand: b.hand, computerHand: b.other, drawPile: b.draw, discardPile: b.discard, currentSuit: b.suit, turn: "player", pendingPenalty: pen, status: "playing", winner: null, move: 0 };
-    const action = t.decision.kind === "pickup" ? (pen?.kind === "miss-turn" ? { type: "accept-missed-turn" } : { type: "draw" }) : { type: "play", cards: t.decision.play.cards, chosenSuit: t.decision.play.cards[0].slice(0, -1) === "A" ? t.decision.play.suit : undefined };
+    const action = t.decision.kind === "pickup" ? (pen?.kind === "miss-turn" ? { type: "accept-missed-turn" } : { type: "draw" }) : { type: "play", cards: t.decision.play.cards, chosenSuit: t.decision.play.cards[0].replace("'", "").slice(0, -1) === "A" ? t.decision.play.suit : undefined };
     let next;
     try { next = rules.applyAction(state, action); } catch (e) { bad.push({ why: "engine refused a move the written rules allow", hand: b.hand.join(" "), top: b.discard.at(-1), penalty: b.penalty?.kind ?? null, action: JSON.stringify(action) }); continue; }
     checked++;
