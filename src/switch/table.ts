@@ -186,6 +186,15 @@ export function applyTableAction(state: TableState, action: GameAction): TableSt
   return pickupInstead ? dealTo(afterPlay, actor, 1) : afterPlay;
 }
 
+/**
+ * A player who put down their last cards (a set such as two tens, or a seven or jacks that cannot win) without having
+ * said "Last Card" does not win on it. The play stands, but they pick up two cards and the game goes on.
+ */
+export function penaliseMissedLastCard(after: TableState, seat: number): TableState {
+  const reopened: TableState = after.status === "won" ? { ...after, status: "playing", winner: null } : after;
+  return dealTo(reopened, seat, 2);
+}
+
 /** Finishing places once someone is out: the winner, then fewest cards left in hand. Ties share the better place. */
 export function tablePlaces(state: TableState): number[] {
   const counts = state.hands.map((hand) => hand.length);

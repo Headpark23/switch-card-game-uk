@@ -105,7 +105,7 @@ export function effectText(before: TableState, after: TableState, cards: readonl
  * Lists the steps for one turn. `before` is the state the move was chosen in, `after` the engine's result.
  * The seat that moved is always `before.turn`, so a card can never fly from the wrong seat.
  */
-export function planTurn(before: TableState, action: GameAction, after: TableState, names: readonly string[], options: { think: boolean }): Step[] {
+export function planTurn(before: TableState, action: GameAction, after: TableState, names: readonly string[], options: { think: boolean; missedCall?: boolean }): Step[] {
   const seat = before.turn;
   const steps: Step[] = [];
   if (options.think) steps.push({ kind: "think", seat });
@@ -128,7 +128,8 @@ export function planTurn(before: TableState, action: GameAction, after: TableSta
   if (effect) steps.push({ kind: "announce", seat, text: effect, tone: "power" });
   // The last cards were a seven or jacks, which cannot win: one card is picked up from the deck.
   if (after.status === "playing" && before.hands[seat].length === action.cards.length) {
-    steps.push({ kind: "draw", seat, count: after.hands[seat].length });
+    if (options.missedCall) steps.push({ kind: "announce", seat, text: `No "Last Card" called: ${names[seat]} pick${seat === 0 ? "" : "s"} up two`, tone: "info" });
+    steps.push({ kind: "draw", seat, count: after.hands[seat].length, ...(options.missedCall ? { penalty: true } : {}) });
     if (after.discardPile.length < before.discardPile.length + action.cards.length) {
       steps.push({ kind: "announce", seat, text: "Deck empty: the played pile is turned over to make a new deck", tone: "info" });
     }

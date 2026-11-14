@@ -119,18 +119,39 @@ test("your own set lands in the order you tapped, and a double tap plays it once
   await page.getByRole("button", { name: /Select Six of diamonds/ }).click();
   await page.getByRole("button", { name: /Select Six of hearts/ }).click();
   await watch(page);
+  // "Last Card" is always on the table and never prompted for: calling it is the player's own job.
+  await expect(page.getByTestId("last-card-button")).toBeVisible();
+  await page.getByTestId("last-card-button").click();
   await page.getByRole("button", { name: "Play selected" }).dblclick();
   await expect(page.getByTestId("turn-status")).toHaveText("YOU PLAY");
   await expect(page.getByTestId("discard-pile")).toHaveAttribute("data-top", "6H", { timeout: 10_000 });
   const { tops } = await read(page);
   const sixes = tops.filter((card) => card.startsWith("6") && card !== "6C");
   expect(sixes).toEqual(["6S", "6D", "6H"]);
-  // One play only: three sixes left the hand and the nine stayed, so it is time to call "Last Card".
-  await expect(page.getByText("One card remaining")).toBeVisible();
-  await expect(page.getByTestId("turn-status")).toHaveText("YOUR CALL");
-  await expect(page.locator(".seat").first()).toHaveText(/John3 cards/);
-  await page.getByRole("button", { name: 'Say "Last Card"' }).click();
+  // One play only: three sixes left the hand and the nine stayed. There is no prompt, and you were called, so no penalty.
+  await expect(page.getByText("One card remaining")).toHaveCount(0);
   await expect(page.getByTestId("turn-status")).toHaveText(/JOHN/);
+  await expect(page.locator(".player-hand button")).toHaveCount(1);
+});
+
+test("finishing with a set such as two tens still needs Last Card: without it there is no win and two cards are picked up", async ({ page }) => {
+  await seedTable(page, { hands: [["10H", "10S"], ["3C", "4C", "8C"]], discard: ["4D", "6H"], suit: "H", turn: 0 });
+  await resume(page);
+  await page.getByRole("button", { name: /Select Ten of hearts/ }).click();
+  await page.getByRole("button", { name: /Select Ten of spades/ }).click();
+  await page.getByRole("button", { name: "Play selected" }).click();
+  await expect(page.getByText("You won the")).toHaveCount(0);
+  await expect(page.locator(".player-hand button")).toHaveCount(2, { timeout: 10_000 });
+});
+
+test("finishing with a set after calling Last Card wins", async ({ page }) => {
+  await seedTable(page, { hands: [["10H", "10S"], ["3C", "4C", "8C"]], discard: ["4D", "6H"], suit: "H", turn: 0 });
+  await resume(page);
+  await page.getByTestId("last-card-button").click();
+  await page.getByRole("button", { name: /Select Ten of hearts/ }).click();
+  await page.getByRole("button", { name: /Select Ten of spades/ }).click();
+  await page.getByRole("button", { name: "Play selected" }).click();
+  await expect(page.getByText(/You won the/)).toBeVisible({ timeout: 10_000 });
 });
 
 test("an eight makes the next player miss a turn, and the highlight follows the engine", async ({ page }) => {
@@ -152,6 +173,7 @@ test("an eight makes the next player miss a turn, and the highlight follows the 
 test("a finished game is logged exactly once and the saved game is cleared", async ({ page }) => {
   await seedTable(page, { hands: [["9C"], ["3D", "4D", "6D"]], discard: ["4H", "9H"], suit: "H", turn: 0 });
   await resume(page);
+  await page.getByTestId("last-card-button").click();
   await page.getByRole("button", { name: /Select Nine of clubs/ }).click();
   await page.getByRole("button", { name: "Play selected" }).click();
   await expect(page.getByRole("heading", { name: /You won the/ })).toBeVisible({ timeout: 10_000 });

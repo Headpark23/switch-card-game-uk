@@ -900,3 +900,7 @@
 @keyframes draw-count-float{0%{opacity:0;transform:translate(-50%,10px) scale(.7)}15%{opacity:1;transform:translate(-50%,0) scale(1.1)}70%{opacity:1;transform:translate(-50%,-26px) scale(1)}100%{opacity:0;transform:translate(-50%,-44px) scale(1)}}
 @keyframes ouch-float{0%{opacity:0;transform:translate(-50%,8px) scale(.6) rotate(-6deg)}15%{opacity:1;transform:translate(-50%,-4px) scale(1.2) rotate(4deg)}70%{opacity:1;transform:translate(-50%,-30px) scale(1) rotate(-2deg)}100%{opacity:0;transform:translate(-50%,-52px) scale(1) rotate(0)}}
 @media(prefers-reduced-motion:reduce){@keyframes draw-count-float{0%,100%{opacity:0}15%,85%{opacity:1}}@keyframes ouch-float{0%,100%{opacity:0}15%,85%{opacity:1}}}
+
+.table-game .game-table .last-card-button{position:absolute;right:8px;top:50%;transform:translateY(-50%);z-index:7;width:62px;min-height:62px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:16px;border:2px solid var(--gold);background:#fbf1d4;color:#7e1d17;font-size:11px;font-weight:800;line-height:1.1;text-align:center;box-shadow:0 4px 12px #02150f77;cursor:pointer}
+.table-game .game-table .last-card-button:active{transform:translateY(-50%) scale(.95)}
+.table-game .game-table .last-card-button.called{background:#7e1d17;color:#fff7ea;border-color:#f1d899}

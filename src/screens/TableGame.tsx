@@ -3,7 +3,7 @@ import { ArrowClockwise, ArrowCounterClockwise, ArrowRight, CheckCircle, HandPal
 import type { ComputerLevel } from '../switch/ai';
 import { cardIdLabel } from '../switch/cards';
 import { explainUnplayable } from '../switch/coach';
-import { applyTableAction, createTable, dealTo, isLegalTablePlay, tableLegalMoves, tablePlaces, type TableState } from '../switch/table';
+import { applyTableAction, createTable, dealTo, isLegalTablePlay, penaliseMissedLastCard, tableLegalMoves, tablePlaces, type TableState } from '../switch/table';
 import { chooseTableAction } from '../switch/tableAi';
 import type { CardId, GameAction, GameState, Suit } from '../switch/types';
 import { cue } from '../feedback';
@@ -58,6 +58,9 @@ function prefersReducedMotion(): boolean {
 /** One turn being shown: the engine's result is already decided; the steps reveal it in order. */
 type Showing = { id: number; before: TableState; after: TableState; action: GameAction; steps: Step[]; at: number; line: string };
 
+/** How long a computer waits before spotting that you did not say "Last Card". */
+const CALL_GRACE = 1600;
+
 type Props = { opponents: number; level: ComputerLevel; resume?: ActiveTable | null; onExit: () => void; onOpenCards: () => void; onStartNight: () => void; onChange: () => void };
 
 export default function TableGame({ opponents, level, resume = null, onExit, onOpenCards, onStartNight, onChange }: Props) {
@@ -71,11 +74,15 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
   const [aceChoice, setAceChoice] = useState<CardId[] | null>(null);
   const [warn, setWarn] = useState('');
   const [hint, setHint] = useState(false);
-  const [awaitingLastCard, setAwaitingLastCard] = useState(() => resume?.awaitingLastCard ?? false);
+  // "Last Card" is the player's own job: the button is always there, nothing prompts for it, and forgetting costs two cards.
+  const [lastCalled, setLastCalledState] = useState(() => resume?.lastCardCalled ?? false);
+  const calledRef = useRef(lastCalled);
+  const setLastCalled = (value: boolean) => { calledRef.current = value; setLastCalledState(value); };
   const [flash, setFlash] = useState<CardId[]>([]);
   const [speed, setSpeedState] = useState<Speed>(readSpeed);
   const timings = useMemo(() => (prefersReducedMotion() ? REDUCED : SPEEDS[speed]), [speed]);
   const logged = useRef<string | null>(null);
+  // Anonymous counts for the owner's dashboard (who dealt the penalty cards, how the game ended). Never read back by the game.
   const showId = useRef(0);
   /** Set the moment a move is submitted, so a double tap can never send it twice. Released when the turn has been shown. */
   const busy = useRef(false);
@@ -85,10 +92,9 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
   const flyRef = useRef<HTMLSpanElement>(null);
 
   const shown = showing ? visibleAt(showing.before, showing.after, showing.steps, showing.at) : visibleAt(game, game, [], 0);
-  // Until you answer the "Last Card" call, the move is still yours: the highlight stays on your seat.
-  const visible = !showing && awaitingLastCard && game.status === 'playing' ? { ...shown, active: 0 } : shown;
-  const yourMove = !showing && game.status === 'playing' && (game.turn === 0 || awaitingLastCard);
-  const canAct = yourMove && !awaitingLastCard;
+  const visible = shown;
+  const yourMove = !showing && game.status === 'playing' && game.turn === 0;
+  const canAct = yourMove;
   const hand = showing && showing.before.turn === 0 && showing.action.type === 'draw' ? showing.before.hands[0] : game.hands[0];
   const pending = game.pendingPenalty;
   const missTurn = pending?.kind === 'miss-turn';
@@ -102,11 +108,12 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
 
   const push = (line: string) => setRecent((current) => [...current.slice(-3), line]);
 
-  function show(before: TableState, action: GameAction, after: TableState, think: boolean) {
+  function show(before: TableState, action: GameAction, after: TableState, think: boolean, missedCall = false) {
     showId.current += 1;
-    const steps = planTurn(before, action, after, names, { think });
+    const steps = planTurn(before, action, after, names, { think, missedCall });
     let line = describe(before, after, names[before.turn], action);
     if (before.turn !== 0 && after.status === 'playing' && after.hands[before.turn].length === 1) line += ` ${names[before.turn]} says "Last Card".`;
+    if (missedCall) line += ' You had not said "Last Card", so you pick up two.';
     setGame(after);
     setShowing({ id: showId.current, before, after, action, steps, at: 0, line });
   }
@@ -179,26 +186,34 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
     return () => { animations.forEach((animation) => animation.cancel()); fliers.forEach((flier) => flier.remove()); };
   }, [showing?.id, showing?.at, timings]);
 
-  // The computers play one after another. Nothing starts while a turn is still being shown.
+  // The computers play one after another. Nothing starts while a turn is still being shown. A computer that sees you
+  // holding one card without having called "Last Card" gets the chance to spot it, after a fair pause.
   useEffect(() => {
-    if (showing || game.status !== 'playing' || game.turn === 0 || awaitingLastCard) return;
+    if (showing || game.status !== 'playing' || game.turn === 0) return;
+    const exposed = game.hands[0].length === 1 && !lastCalled;
     const timer = window.setTimeout(() => {
-      const before = gameRef.current;
+      let before = gameRef.current;
       if (before.status !== 'playing' || before.turn === 0) return;
+      if (before.hands[0].length === 1 && !calledRef.current) {
+        cue('penalty');
+        before = dealTo(before, 0, 2);
+        setGame(before);
+        push(`${names[before.turn]} spotted that you did not say "Last Card". You pick up two cards.`);
+      }
       const action = chooseTableAction(before, Math.random, level);
       show(before, action, applyTableAction(before, action), true);
-    }, timings.highlight);
+    }, exposed ? timings.highlight + CALL_GRACE : timings.highlight);
     return () => window.clearTimeout(timer);
-  }, [showing, game.status, game.turn, game.move, awaitingLastCard, level, timings]);
+  }, [showing, game.status, game.turn, game.move, lastCalled, level, timings]);
 
   // An unfinished game is kept so it can be resumed; a finished one is logged once, under its own id, and forgotten.
   useEffect(() => {
-    if (game.status === 'playing') { saveActiveTable({ id: gameId, opponents, level, game, awaitingLastCard }); return; }
+    if (game.status === 'playing') { saveActiveTable({ id: gameId, opponents, level, game, awaitingLastCard: false, lastCardCalled: lastCalled }); return; }
     if (logged.current === gameId) return;
     logged.current = gameId;
     logComputerGame({ id: gameId, opponents, level, won: game.winner === 0, place: tablePlaces(game)[0], moves: game.move });
     clearActiveTable();
-  }, [game, awaitingLastCard, gameId, opponents, level]);
+  }, [game, lastCalled, gameId, opponents, level]);
 
   useEffect(() => { if (finished) cue(youWon ? 'win' : 'bad'); }, [finished, youWon]);
 
@@ -235,11 +250,16 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
     if (!isLegalTablePlay(before, action)) return;
     busy.current = true;
     cue('play');
-    const after = applyTableAction(before, action);
-    show(before, action, after, false);
+    let after = applyTableAction(before, action);
+    // Playing out your last cards (two tens to win, or a seven that cannot) needs "Last Card" first.
+    const emptied = cards.length === before.hands[0].length;
+    const missed = emptied && !calledRef.current;
+    if (missed) { cue('penalty'); after = penaliseMissedLastCard(after, 0); }
+    // The call is used up by an emptied hand (a pickup means saying it again) and by any play that leaves two or more.
+    if (emptied || after.hands[0].length > 1) setLastCalled(false);
+    show(before, action, after, false, missed);
     setStaged([]);
     setHint(false);
-    if (after.status === 'playing' && after.hands[0].length === 1) setAwaitingLastCard(true);
   }
 
   function playStaged() {
@@ -261,22 +281,19 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
     show(before, action, applyTableAction(before, action), false);
     setStaged([]);
     setHint(false);
+    setLastCalled(false);
   }
 
-  function answerLastCard(said: boolean) {
-    if (!awaitingLastCard) return;
-    cue(said ? 'good' : 'penalty');
-    setAwaitingLastCard(false);
-    if (!said) {
-      setGame((current) => dealTo(current, 0, 2));
-      push('You forgot "Last Card" and pick up two penalty cards.');
-    } else push('You called "Last Card".');
+  function callLastCard() {
+    if (game.status !== 'playing' || lastCalled) return;
+    cue('good');
+    setLastCalled(true);
   }
 
   function again() {
     busy.current = false;
     setShowing(null);
-    setRecent([]); setStaged([]); setAceChoice(null); setHint(false); setAwaitingLastCard(false);
+    setRecent([]); setStaged([]); setAceChoice(null); setHint(false); setLastCalled(false);
     setGameId(newTableGameId());
     setGame(createTable(seats, Math.random, pickDealer(seats)));
   }
@@ -311,7 +328,7 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
   }
 
   const activeName = names[visible.active];
-  const status = yourMove ? (awaitingLastCard ? 'YOUR CALL' : 'YOUR MOVE') : visible.thinking ? `${activeName.toUpperCase()} IS CHOOSING` : visible.active === 0 ? 'YOU PLAY' : `${activeName.toUpperCase()} TO PLAY`;
+  const status = yourMove ? 'YOUR MOVE' : visible.thinking ? `${activeName.toUpperCase()} IS CHOOSING` : visible.active === 0 ? 'YOU PLAY' : `${activeName.toUpperCase()} TO PLAY`;
   const pile = visible.discardPile.slice(-3);
   const drawingNow = visible.drawing;
   const drawingTiming = drawTiming(drawingNow?.count ?? 0, drawingNow?.penalty === true, timings);
@@ -353,24 +370,23 @@ export default function TableGame({ opponents, level, resume = null, onExit, onO
         <span>Suit <b className={visible.currentSuit === 'H' || visible.currentSuit === 'D' ? 'red' : ''}>{suitSymbols[visible.currentSuit]} {suitNames[visible.currentSuit]}</b></span>
         {seats > 2 && <span className="direction" aria-label={`Play goes ${visible.direction === 1 ? 'clockwise' : 'anticlockwise'}`}>{visible.direction === 1 ? <ArrowClockwise size={14} weight="bold" /> : <ArrowCounterClockwise size={14} weight="bold" />}{visible.direction === 1 ? 'Clockwise' : 'Anticlockwise'}</span>}
       </div>
+      <button className={'last-card-button' + (lastCalled ? ' called' : '')} onClick={callLastCard} aria-pressed={lastCalled} data-testid="last-card-button"><HandPalm size={22} weight={lastCalled ? 'fill' : 'regular'} /><span>{lastCalled ? 'Called' : 'Last Card'}</span></button>
       {visible.announce && <div key={`${showing?.id}-${showing?.at}`} className={'table-announce ' + visible.announce.tone} data-testid="table-announce" aria-hidden="true">{visible.announce.text}</div>}
     </div>
     <p className={'game-notice' + (warn && yourMove ? ' warn' : '')} aria-live="polite" role={warn ? 'alert' : undefined}>{notice}</p>
     {recent.length > 1 && <ul className="move-log" aria-label="Recent moves">{recent.slice(0, -1).map((line, index) => <li key={index}>{line}</li>)}</ul>}
     <div className={'your-seat' + (visible.active === 0 ? ' turn' : '')} data-seat="0">
       {ouchFor(0)}
-      {yourMove && <span className="your-move-tag" aria-hidden="true">{awaitingLastCard ? 'Your call' : 'Your move'}</span>}
-      {yourMove && missTurn && !awaitingLastCard && <div className="miss-turn-action"><strong>An eight was played</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you miss this turn.'}</p><button className="primary" onClick={pickUp}>Accept missed turn <ArrowRight size={18} /></button></div>}
-      {awaitingLastCard && !showing
-        ? <div className="last-card-call"><HandPalm size={27} /><strong>One card remaining</strong><p>Say "Last Card" now. Forgetting costs two cards.</p><button className="primary" onClick={() => answerLastCard(true)}>Say "Last Card"</button><button className="text-link" onClick={() => answerLastCard(false)}>Continue without saying it</button></div>
-        : <>
+      {yourMove && <span className="your-move-tag" aria-hidden="true">Your move</span>}
+      {yourMove && missTurn && <div className="miss-turn-action"><strong>An eight was played</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you miss this turn.'}</p><button className="primary" onClick={pickUp}>Accept missed turn <ArrowRight size={18} /></button></div>}
+      <>
           {staged.length === 0 && <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!canAct}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={cycleSpeed} aria-label={`Computer pace: ${SPEED_NAMES[speed]}. Tap to change`}><Timer size={16} />{SPEED_NAMES[speed]}</button><button className="pace-button sort-button" onClick={() => setGame((current) => ({ ...current, hands: current.hands.map((cards, seat) => (seat === 0 ? sortHand(cards) : cards)) }))}><SortAscending size={16} />Sort</button><span>{hand.length} in hand</span></div>}
           {hint && yourMove && <p className="game-hint"><Lightbulb size={17} />{hintText}</p>}
           <div className={'player-hand' + (hand.length > 10 ? ' dense' : '') + (hand.length > 8 ? ' two-rows' : '')} style={{ '--n': hand.length, '--per': Math.ceil(hand.length / 2) } as CSSProperties} aria-label="Your hand">
             {hand.map((card, index) => <button key={card} style={{ '--i': 0, zIndex: index + 1 } as CSSProperties} data-card={card} onClick={() => chooseCard(card)} className={(hint && yourMove && canPlay(card) ? 'playable ' : '') + (staged.includes(card) ? 'selected ' : '') + (flash.includes(card) ? 'illegal' : '')} disabled={!canAct} aria-label={staged.includes(card) ? `Deselect ${cardIdLabel(card)}` : `Select ${cardIdLabel(card)}${canPlay(card) ? ', legal move' : ', not currently playable'}`}><CardImage code={card} />{staged.includes(card) && <i className="order-badge" aria-hidden="true">{staged.indexOf(card) + 1}</i>}</button>)}
           </div>
           {staged.length > 0 && <div className="multi-action"><p>{staged.length === 1 ? '1 card selected' : `${staged.length} cards selected. They land in the order you tapped them, and the last one sets the suit.`}</p><button className="primary" onClick={playStaged} disabled={!canAct}>Play selected</button><button className="text-link" onClick={() => setStaged([])}>Clear selection</button></div>}
-        </>}
+        </>
     </div>
     {aceChoice && <div className="suit-choice" role="dialog" aria-label="Choose a suit"><p>Choose the suit for your ace</p><div>{(['S', 'H', 'D', 'C'] as Suit[]).map((chosen) => <button key={chosen} className={chosen === 'H' || chosen === 'D' ? 'red' : ''} onClick={() => { const cards = aceChoice; setAceChoice(null); commit(cards, chosen); }}>{suitSymbols[chosen]}<span>{suitNames[chosen]}</span></button>)}</div><button className="text-link" onClick={() => setAceChoice(null)}>Cancel</button></div>}
   </section>;

@@ -17,7 +17,10 @@ export interface ActiveTable {
   readonly opponents: number;
   readonly level: ComputerLevel;
   readonly game: TableState;
+  /** Kept so older saves still read; the Last Card prompt is gone and this is always false. */
   readonly awaitingLastCard: boolean;
+  /** The player has pressed the Last Card button and not yet used it. */
+  readonly lastCardCalled?: boolean;
   readonly savedAt: string;
 }
 
