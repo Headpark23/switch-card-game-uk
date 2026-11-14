@@ -4,7 +4,7 @@
 <body>
 <h1>Switch privacy</h1>
 <p><em>Last updated 14 November 2026.</em></p>
-<p><strong>Short version:</strong> Switch keeps your club on your phone. Playing, learning and keeping score work offline and send nothing anywhere. A few optional features (sharing a night, sharing a club, Google sign-in backup) send the names and scores you choose to share to our server. We also add up anonymous usage totals, which you can turn off. We do not sell data, show ads or use advertising IDs.</p>
+<p><strong>Short version:</strong> Switch keeps your club on your phone. Playing, learning and keeping score work offline and send nothing anywhere. A few optional features (playing friends online, sharing a night, sharing a club, Google sign-in backup) send the names and scores you choose to share to our server. We also add up anonymous usage totals, which you can turn off. We do not sell data, show ads or use advertising IDs.</p>
 
 <h2>What is stored on your phone</h2>
 <ul>
@@ -17,6 +17,7 @@
 <tr><th>Feature</th><th>What is sent</th><th>Is it optional?</th></tr>
 <tr><td>Anonymous usage counts</td><td>Small named events such as "a game finished: 3 players, you lost", which screens are opened, whether the app is installed, and the kind of phone (iPhone, Android, etc.). No name, score, club, device ID, cookie or IP address is saved with a count.</td><td>Yes. Turn it off in Me &rsaquo; Privacy. Nothing is sent if your browser sends Do Not Track or Global Privacy Control.</td></tr>
 <tr><td>Visit counter</td><td>A single number that goes up by one when the app opens. Nothing else is saved.</td><td>It is a plain page-load count and carries no information about you.</td></tr>
+<tr><td>Playing with friends online</td><td>The name you give at the table, the game itself (cards, moves and result) and which of the 18 set reactions you send. There is no free-text chat. The table is stored under a code; only people you give the code to can join, and nobody sees another player's hand.</td><td>Yes. Only if you start or join a table.</td></tr>
 <tr><td>Shared night</td><td>The night's title, player first names, scores and, when saved, its full result (format, winner, venue name and country if you entered them). It is stored under a 6-letter code. The host also holds a secret edit token on their phone.</td><td>Yes. Only if you share a night. Share first names only.</td></tr>
 <tr><td>Joining a night</td><td>The name of the player you say you are, so the host can see who joined.</td><td>Yes. Only if you open a shared night.</td></tr>
 <tr><td>Shared club</td><td>The club's name, its players' names and colours, saved nights with their scores, and seasons. It is stored under an 8-character code. Anyone who has the code can read the club and add to it.</td><td>Yes. Only if you share or join a club.</td></tr>
@@ -29,6 +30,7 @@
 <ul>
 <li><strong>Usage counts:</strong> kept as daily totals. They contain no personal information.</li>
 <li><strong>Cloud backup:</strong> until you delete it. Use "Delete my cloud copy" in Me &rsaquo; Privacy, or ask us.</li>
+<li><strong>Online table:</strong> deleted automatically 24 hours after the last move. Your result is kept only on your own phone.</li>
 <li><strong>Shared night:</strong> it can no longer be opened after two weeks. We remove the stored copy when you ask.</li>
 <li><strong>Shared club:</strong> kept until you ask us to delete it. Leaving a club in the app only stops that phone syncing; it does not delete the shared copy.</li>
 <li><strong>Feedback emails:</strong> until you ask us to delete them.</li>
@@ -46,7 +48,7 @@
 <p>M. White is the data controller. Contact <a href="mailto:martinwhite228@gmail.com">martinwhite228@gmail.com</a>. Under UK GDPR you can ask to see, correct, export, restrict or erase your data, object to its use, or withdraw consent. You can also complain to the Information Commissioner's Office at <a href="https://ico.org.uk">ico.org.uk</a>.</p>
 
 <h2>Other companies involved</h2>
-<p>Vercel hosts the app and stores shared nights, clubs, backups and usage totals. Google provides sign-in. Data may be processed in the USA under their standard safeguards. We do not sell your data or share it for advertising.</p>
+<p>Vercel hosts the app and stores shared nights, clubs, backups and usage totals. Upstash, through Vercel, holds online tables while they are being played. Google provides sign-in. Data may be processed in the USA under their standard safeguards. We do not sell your data or share it for advertising.</p>
 
 <h2>Children</h2>
 <p>Switch is a family card game and works without an account. It does not knowingly collect personal information from children. Please do not sign in, or share a night or club with children's names, without a parent or guardian.</p>

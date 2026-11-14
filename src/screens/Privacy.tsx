@@ -56,6 +56,8 @@ export default function Privacy(_props: { onBack: () => void }) {
       <p>Player names, scores, night history, puzzle progress and settings are saved in this device's app storage. Playing, learning and keeping score work offline and send nothing anywhere. Only the optional features below, and the anonymous counts, ever send anything.</p>
       <h2>If you sign in with Google</h2>
       <p>Signing in is optional and needs your tick of consent. Google tells us your name, email address and profile picture. Those are held in the secure sign-in cookie, and a private backup of your club is stored against your Google account ID so it can follow you to another phone. We use it only for that. A short-lived secure cookie keeps you signed in; it is essential to the feature and holds no tracking. Google may see that you used its sign-in button. Sign out or delete the cloud copy at any time.</p>
+      <h2>Playing with friends online</h2>
+      <p>If you start or join an online table, the name you give, the game itself (cards, moves and result) and which of the set reactions you send are kept on our server so everyone at the table can play. There is no free-text chat, only people with the table's code can join, and nobody sees another player's hand. The table is deleted automatically 24 hours after the last move; your result stays on your own phone.</p>
       <h2>Shared nights</h2>
       <p>If you share a night, its title, player first names and scores (and, once you save it, the full result with any venue and country you entered) are stored under a six-letter code so friends can watch. A friend who opens it says which player they are, so the host can see who joined. The night can no longer be opened after two weeks, and we remove the stored copy when you ask. Share first names only.</p>
       <h2>Shared clubs</h2>
@@ -67,7 +69,7 @@ export default function Privacy(_props: { onBack: () => void }) {
       <h2>Feedback emails</h2>
       <p>The feedback buttons open your own email app. We only receive what you choose to send, and use it to reply and improve Switch. Ask and we will delete it.</p>
       <h2>Who is responsible</h2>
-      <p>M. White is the data controller. Contact <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. Under UK GDPR you can ask to see, correct, export, restrict or erase your data, object to its use, or withdraw consent, and the buttons above do most of that instantly. You can also complain to the Information Commissioner's Office at ico.org.uk. Data may be processed by Vercel and Google, including in the USA, under their standard safeguards.</p>
+      <p>M. White is the data controller. Contact <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. Under UK GDPR you can ask to see, correct, export, restrict or erase your data, object to its use, or withdraw consent, and the buttons above do most of that instantly. You can also complain to the Information Commissioner's Office at ico.org.uk. Data may be processed by Vercel, Upstash (online tables) and Google, including in the USA, under their standard safeguards.</p>
       <h2>Children</h2>
       <p>Switch is a family card game and works without an account. Please do not sign in if you are under 13 without a parent or guardian.</p>
     </div>

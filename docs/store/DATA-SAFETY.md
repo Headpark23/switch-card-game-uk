@@ -22,6 +22,7 @@ Both pages must be live on the production domain before submitting.
 | Shared night (`/api/night`) | Yes | Title, player first names, scores, host name, full result (format, winner, venue name and country) | Private Blob under a 6-letter code, host token hash | Yes |
 | Join a night | Yes | The chosen player name | Same file | Yes |
 | Shared club (`/api/club`) | Yes | Club name, player names and colours, saved nights and scores, seasons | Private Blob under an 8-character code. Anyone with the code can read and add. | Yes |
+| Online table with friends (`/api/room`) | Yes | Player names typed at the table, the game itself (hands, moves, scores, result), reaction ids from the fixed set of 18 (no free text), a random seat token (only its SHA-256 hash is stored) | One JSON document per table in Upstash Redis (via Vercel) under `switch:room:CODE`, deleted automatically 24 hours after the last move | Yes |
 | Google sign-in and backup (`/api/auth/google`, `/api/sync`) | Yes | Google ID token (verified once). Name, email, picture go in a signed HttpOnly session cookie. The backup is the club document. | Backup stored against the Google account ID | Yes |
 | Feedback | Only via the user's own email app | What the user writes | Not on our server | Yes |
 
@@ -39,16 +40,17 @@ No ads, no advertising ID, no purchases, no location permission, no contacts, no
 
 | Play data type | Collected | Shared | Optional | Purpose | Why |
 |---|---|---|---|---|---|
-| Personal info > Name | Yes | No | Yes | App functionality, Account management | Player names in shared nights and clubs; Google account name |
+| Personal info > Name | Yes | No | Yes | App functionality, Account management | Player names in shared nights, clubs and online tables; Google account name |
 | Personal info > Email address | Yes | No | Yes | Account management | Google sign-in only |
 | Personal info > User IDs | Yes | No | Yes | Account management, App functionality | Google account ID keys the backup |
-| App activity > Other user-generated content | Yes | No | Yes | App functionality | Scores, nights, seasons and venue text in shared nights, clubs and backups |
+| App activity > Other user-generated content | Yes | No | Yes | App functionality | Scores, nights, seasons and venue text in shared nights, clubs and backups; moves and reaction choices at online tables (kept 24 hours) |
 | App activity > App interactions | Yes | No | Yes (opt-out) | Analytics | Anonymous counts of screens, games, nights and features used |
 
 Decisions to confirm when filling in the form:
 - **Profile picture.** It only passes through the session cookie and is not stored in a database. If Play's guidance in the form says a profile photo counts as collected, tick Photos and videos with purpose "Account management". Declaring slightly more is safer than less.
 - **Platform and "installed" flags.** They are coarse counters, not device identifiers, so they are declared under App interactions, not Device or other IDs.
 - **Venue text and country.** Typed by the user, not detected, so this is not Location data.
+- **Online tables.** Declared as collected, not shared: the other players at a table see your name and moves because you invited them with the code, and Upstash stores the table on our behalf as a service provider. Data is deleted automatically after 24 hours, so in the form the table data can be described as ephemeral if Play offers that option.
 - **Country guess.** The country picker defaults from the phone's language setting on the device only; it is not sent unless the user saves it in a shared night or club.
 
 ## Other Play Console declarations
@@ -57,7 +59,7 @@ Decisions to confirm when filling in the form:
 - **Ads:** No. (`AdSlot` in `src/ui.tsx` is a demo placeholder that is not rendered anywhere; keep it that way in the Android build.)
 - **Advertising ID:** not used. Declare "No".
 - **Target audience:** choose 13+ (or adults), not children. Targeting children brings in the Families policy, which does not fit Google sign-in and club sharing. The privacy policy still says children should not sign in without a parent.
-- **Content rating (IARC):** no gambling or simulated gambling, no violence, no user-to-user chat. Shared names and scores are the only user-generated content.
+- **Content rating (IARC):** no gambling or simulated gambling, no violence, no free-text chat. Users can interact at private online tables (joined by code only, no public matchmaking) using a fixed set of 18 reactions. Shared names and scores are the only user-generated content.
 - **Account deletion:** in-app "Delete my cloud copy" plus the web URL above.
 
 ## Known gaps to close in code (not done here)
