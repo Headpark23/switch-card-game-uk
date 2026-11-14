@@ -8,6 +8,8 @@ const FLIGHT_MS = 1300;
 const FLIGHT_GAP_MS = 550;
 type Flight = { cards: CardId[]; from: 'you' | 'computer'; origins: { x: number; y: number }[]; at: number; consumed: boolean };
 let lastComputerPlay: CardId[] = [];
+/** When the last pick-up animation ends, so the computer never starts its move on top of it. */
+let drawBusyUntil = 0;
 
 const LEVELS: ComputerLevel[] = ['relaxed', 'standard', 'sharp'];
 const LEVEL_NOTE: Record<ComputerLevel, string> = { relaxed: 'makes friendly mistakes', standard: 'plays sensibly', sharp: 'plays to beat you' };
@@ -16,6 +18,7 @@ let computerLevel: ComputerLevel = readLevel();
 import { cardIdLabel } from '../switch/cards';
 import { applyAction, createInitialGame, drawCards, legalMoves, isLegalPlay } from '../switch/rules';
 import type { CardId, GameState, Suit } from '../switch/types';
+import { drawTiming, REDUCED, SPEEDS } from '../switch/presentation';
 import { explainEffect, explainOptions, explainPickup, explainUnplayable, wasForcedPickup } from '../switch/coach';
 import { adviseMove } from '../switch/tactics';
 import { explainLesson, explainPickupLesson, explainStart, type Lesson } from '../switch/lessons';
@@ -197,11 +200,15 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
 
   useEffect(() => {
     if (outcome !== 'playing' || awaitingLastCard || engine.turn !== 'computer' || sheetOpen) return;
-    const pending = flight.current && !flight.current.consumed ? 0 : flight.current ? Math.max(0, flight.current.at + (flight.current.cards.length - 1) * FLIGHT_GAP_MS + FLIGHT_MS - Date.now()) : 0;
+    const pending = Math.max(drawBusyUntil - Date.now(), flight.current && !flight.current.consumed ? 0 : flight.current ? Math.max(0, flight.current.at + (flight.current.cards.length - 1) * FLIGHT_GAP_MS + FLIGHT_MS - Date.now()) : 0);
     const timer = setTimeout(() => {
       const next = computerStep(viewRef.current);
       if (lastComputerPlay.length) { noteFlight(lastComputerPlay, 'computer'); lastComputerPlay = []; }
-      else if (next.engine.computerHand.length > viewRef.current.engine.computerHand.length) flyDraw(next.engine.computerHand.length - viewRef.current.engine.computerHand.length, 'computer');
+      else if (next.engine.computerHand.length > viewRef.current.engine.computerHand.length) {
+        const before = viewRef.current.engine;
+        const hit = penaltyCards(before) > 0;
+        flyDraw(next.engine.computerHand.length - before.computerHand.length, 'computer', { penalty: hit, ouch: hit && before.computerHand.length === 1 });
+      }
       setView(next);
     }, 900 + pending);
     return () => clearTimeout(timer);
@@ -325,32 +332,51 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
     flight.current = { cards: [...cards], from, origins, at: Date.now(), consumed: false };
   }
 
-  /** Card backs slide from the draw pile to whoever picked up, so a pick-up is as visible as a play. */
-  function flyDraw(count: number, to: 'you' | 'computer') {
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+  /**
+   * Card backs slide from the draw pile to whoever picked up, so a pick-up is as visible as a play. A penalty is slower,
+   * floats a "+N" up from the deck, and says "Ouch!" over a hand that was down to its last card.
+   */
+  function flyDraw(count: number, to: 'you' | 'computer', options: { penalty?: boolean; ouch?: boolean } = {}) {
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    const timings = reduced ? REDUCED : SPEEDS.natural;
     const pile = document.querySelector<HTMLElement>('.draw-pile');
     const target = to === 'you' ? document.querySelector<HTMLElement>('.player-hand') : fanRef.current;
     const back = pile?.querySelector('img');
     if (!pile || !target || !back) return;
-    const from = pile.getBoundingClientRect();
-    const end = target.getBoundingClientRect();
-    const scale = from.width / (pile.offsetWidth || 1) || 1;
-    const dx = (end.left + end.width / 2 - (from.left + from.width / 2)) / scale;
-    const dy = (end.top + end.height / 2 - (from.top + from.height / 2)) / scale;
-    for (let index = 0; index < Math.min(count, 5); index += 1) {
-      const flier = document.createElement('span');
-      flier.className = 'draw-flier';
-      flier.setAttribute('aria-hidden', 'true');
-      flier.appendChild(back.cloneNode() as HTMLElement);
-      pile.appendChild(flier);
-      const anim = flier.animate([
-        { transform: 'translate(0, 0) rotate(0deg) scale(1)', opacity: 1, offset: 0 },
-        { transform: `translate(${dx * 0.6}px, ${dy * 0.6}px) rotate(${to === 'you' ? 8 : -8}deg) scale(.9)`, opacity: 1, offset: 0.65 },
-        { transform: `translate(${dx}px, ${dy}px) rotate(0deg) scale(.7)`, opacity: 0, offset: 1 },
-      ], { duration: 1000, delay: index * 260, easing: 'cubic-bezier(.25,.7,.3,1)', fill: 'backwards' });
-      anim.onfinish = () => flier.remove();
-      anim.oncancel = () => flier.remove();
+    const { trip, stagger, shown, total } = drawTiming(count, options.penalty === true, timings);
+    drawBusyUntil = Date.now() + total;
+    const made: HTMLElement[] = [];
+    const add = (parent: HTMLElement, className: string, text?: string) => {
+      const el = document.createElement('span');
+      el.className = className;
+      el.setAttribute('aria-hidden', 'true');
+      if (text) el.textContent = text;
+      parent.appendChild(el);
+      made.push(el);
+      return el;
+    };
+    if (options.penalty) add(pile, 'draw-count', `+${count}`).style.animationDuration = `${total}ms`;
+    if (options.ouch) {
+      if (getComputedStyle(target).position === 'static') target.style.position = 'relative';
+      add(target, 'ouch', 'Ouch!').style.animationDelay = `${Math.round(trip)}ms`;
     }
+    if (shown > 0) {
+      const from = pile.getBoundingClientRect();
+      const end = target.getBoundingClientRect();
+      const scale = from.width / (pile.offsetWidth || 1) || 1;
+      const dx = (end.left + end.width / 2 - (from.left + from.width / 2)) / scale;
+      const dy = (end.top + end.height / 2 - (from.top + from.height / 2)) / scale;
+      for (let index = 0; index < shown; index += 1) {
+        const flier = add(pile, 'draw-flier');
+        flier.appendChild(back.cloneNode() as HTMLElement);
+        flier.animate([
+          { transform: 'translate(0, 0) rotate(0deg) scale(1)', opacity: 1, offset: 0 },
+          { transform: `translate(${dx * 0.6}px, ${dy * 0.6}px) rotate(${to === 'you' ? 8 : -8}deg) scale(.92)`, opacity: 1, offset: 0.65 },
+          { transform: `translate(${dx}px, ${dy}px) rotate(0deg) scale(.7)`, opacity: 0, offset: 1 },
+        ], { duration: trip, delay: index * stagger, easing: 'cubic-bezier(.25,.7,.3,1)', fill: 'backwards' });
+      }
+    }
+    window.setTimeout(() => made.forEach((el) => el.remove()), total + 200);
   }
 
   function playStaged() {
@@ -369,7 +395,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
     if (!yourTurn || outcome !== 'playing') return;
     cue(pendingDraw ? 'penalty' : 'draw');
     const count = pendingDraw || 1;
-    if (pending?.kind !== 'miss-turn') flyDraw(count, 'you');
+    if (pending?.kind !== 'miss-turn') flyDraw(count, 'you', { penalty: pendingDraw > 0, ouch: pendingDraw > 0 && engine.playerHand.length === 1 });
     const next = applyAction(engine, pending?.kind === 'miss-turn' ? { type: 'accept-missed-turn' } : { type: 'draw' });
     setView((current) => ({
       ...current, engine: next, hint: false,
@@ -381,6 +407,8 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
 
   function answerLastCard(said: boolean) {
     cue(said ? 'good' : 'penalty');
+    // Your hand is back on screen once the call panel closes, so the two penalty cards fly in just after.
+    if (!said) window.setTimeout(() => flyDraw(2, 'you', { penalty: true, ouch: true }), 60);
     setView((current) => {
       if (said) return { ...current, awaitingLastCard: false, notice: '“Last Card!” — called in time.', engine: { ...current.engine, move: current.engine.move + 1 } };
       const penalised = drawCards(current.engine, 2, 'player');

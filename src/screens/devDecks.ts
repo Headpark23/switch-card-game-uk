@@ -34,6 +34,21 @@ export function testGameFromUrl(): GameState | null {
   if (typeof window === "undefined") return null;
   const name = new URLSearchParams(window.location.search).get("testDeck");
   if (name === null) return null;
+  // A tiny hand, so a test can reach "Last Card" in one play.
+  if (name === "lastCard") {
+    return {
+      playerHand: ["9H", "3C"],
+      computerHand: ["4D", "5D", "6D", "10D"],
+      drawPile: ["JC", "10C", "9C", "8C", "QD", "QC"],
+      discardPile: ["4H"],
+      currentSuit: "H",
+      turn: "player",
+      pendingPenalty: null,
+      status: "playing",
+      winner: null,
+      move: 0,
+    };
+  }
 
   const deck = (DECKS[name] ?? shuffled)();
   const playerHand = deck.splice(0, 7);
