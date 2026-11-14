@@ -130,3 +130,38 @@ test("going out without calling Last Card puts you back in with two cards, and n
   expect(out.cards).toBe(2);
   expect(out.turn).toBe(1);
 });
+
+// Ruling 28: once the leagues are played out, the play-offs are knockouts. Four play one game on until only one is
+// left holding cards (that player is out), then three, then a 1 v 1 final.
+test("play-off knockouts: 4 play on and the last holding cards is out, then 3, then a 1 v 1 final", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.goto("/");
+  const out = await page.evaluate(async () => {
+    const series = await import("/src/switch/series.ts");
+    let state = series.startSeries({ mode: "group", opponents: 7, level: "standard" }, Math.random);
+    const log: { key: string; size: number; playOn: boolean; title: string; loser: string; lastOut: boolean }[] = [];
+    let guard = 0;
+    while (!series.isSeriesOver(state) && guard++ < 200) {
+      const game = series.pendingGames(state)[0];
+      const result = series.simulateGame(game.playerIds, "standard", Math.random, game.playOn === true);
+      if (state.phase === "playoffs") {
+        const loser = [...result.order].reverse()[0];
+        log.push({ key: game.key, size: game.playerIds.length, playOn: game.playOn === true, title: game.title, loser, lastOut: result.order.length === game.playerIds.length && result.order.at(-1) === loser });
+      }
+      state = series.submitGame(state, game.key, result);
+    }
+    const outcome = series.seriesOutcome(state);
+    return { log, over: series.isSeriesOver(state), champion: outcome?.winnerId, outcomeSize: outcome?.order.length, championshipOut: state.championship.out.length, plateOut: state.plate.out.length };
+  });
+  expect(out.over).toBe(true);
+  const championship = out.log.filter((entry) => entry.key.startsWith("championship"));
+  const plate = out.log.filter((entry) => entry.key.startsWith("plate"));
+  expect(championship.map((entry) => entry.size)).toEqual([4, 3, 2]);
+  expect(championship.map((entry) => entry.playOn)).toEqual([true, true, false]);
+  expect(plate.map((entry) => entry.size)).toEqual([4, 3, 2]);
+  expect(plate.map((entry) => entry.playOn)).toEqual([true, true, false]);
+  expect(championship[0].title).toContain("knock out");
+  expect(championship[2].title).toContain("1 v 1");
+  expect(out.log.every((entry) => entry.lastOut)).toBe(true);
+  expect(out.outcomeSize).toBe(8);
+});

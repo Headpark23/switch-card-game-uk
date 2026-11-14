@@ -193,9 +193,16 @@ export function startSeries(setup: SeriesSetup, random: RandomSource, id = `seri
 
 const koFinished = (part: KnockoutPart | null) => !part || part.championId !== null;
 
-function koPending(part: KnockoutPart | null, key: string, title: string): PendingGame[] {
+/**
+ * The next game of a play-off knockout (ruling 28). Everyone still in plays one game together and it is played on
+ * until only one player is left holding cards: that player is out. Four become three, three become two, and the
+ * last two play a 1 v 1 final for the title.
+ */
+function koPending(part: KnockoutPart | null, key: string, label: string): PendingGame[] {
   if (!part || part.championId !== null || part.remaining.length < 2) return [];
-  return [{ key: `${key}-${part.out.length + 1}`, title, playerIds: part.remaining }];
+  const left = part.remaining.length;
+  const title = left === 2 ? `${label} final · 1 v 1` : `${label} knock out · ${left} players`;
+  return [{ key: `${key}-${part.out.length + 1}`, title, playerIds: part.remaining, playOn: left > 2 }];
 }
 
 function koApply(part: KnockoutPart, result: GameResult): KnockoutPart {
@@ -227,7 +234,7 @@ export function pendingGames(state: SeriesState): PendingGame[] {
       if (state.phase === "decider") {
         return state.leagues.flatMap((league) => tiedGroups(leagueOf(league)).map((group) => ({ key: `${league.id}-decider-${group.map((player) => player.id).join("+")}`, title: `${league.name} deciding game`, playerIds: group.map((player) => player.id), playOn: true })));
       }
-      return [...koPending(state.championship, "championship", `Championship · ${state.championship?.remaining.length} left`), ...koPending(state.plate, "plate", `Plate · ${state.plate?.remaining.length} left`)];
+      return [...koPending(state.championship, "championship", "Championship"), ...koPending(state.plate, "plate", "Plate")];
     }
   }
 }

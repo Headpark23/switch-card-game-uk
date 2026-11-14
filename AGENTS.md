@@ -126,6 +126,7 @@ Darts: first to three legs wins a set. Knock Out: whoever finishes last in a rou
 - Computers think for at least 5 seconds per move; the player has 5 seconds to say Last Card; "Play selected" must always be inside the phone view (ruling 27).
 - Knock Out against the computer is 1 v 1 rounds, winners go through (ruling 25). Last Card is called after selecting the first card(s) of a finishing set and before selecting the final card; the button lives in the player's card area (ruling 26).
 - Group Play league games are played on (ruling 24): the first out scores the league size in points and leaves, the rest keep playing, and so on down to 1 point for the last player. Never end a league round at the first finisher.
+- Group Play play-offs (ruling 28): after the leagues, the championship and plate are knock-outs. Four play one game on until one player is left holding cards, who is out; then three; then a 1 v 1 final.
 - Dominoes scoring (computer mode) is a lowest-total-wins game: leftover cards add to your total (A 1 ... K 13), and the first to reach the chosen number loses.
 
 ## Online play with friends and family (owner decisions, 14 Nov 2026)
