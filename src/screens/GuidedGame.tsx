@@ -100,11 +100,16 @@ function describePlay(before: GameState, after: GameState, cards: readonly CardI
   const wasKing = before.pendingPenalty?.kind === 'black-king';
   if (wasForcedPickup(before, after, cards, actor)) notice += ` That was ${actor === 'you' ? 'your' : 'its'} last card, but a ${cardRank === '7' ? 'seven' : 'jack'} cannot win the game, so ${actor === 'you' ? 'you pick' : 'it picks'} up one card.`;
   else if (after.pendingPenalty?.kind === 'draw-two') notice += ` ${after.pendingPenalty.cards} cards are now at stake.`;
-  else if (after.pendingPenalty?.kind === 'black-king') {
-    notice += wasKing && cards.some(isRedKing)
-      ? ` A red king cancels 5; ${after.pendingPenalty.cards} cards are still at stake.`
-      : ` ${after.pendingPenalty.cards} cards are now at stake.`;
-  } else if (wasKing && cards.some(isRedKing)) notice += ' The red king cancels the penalty.';
+  else if (after.pendingPenalty?.kind === 'black-king') notice += ` ${after.pendingPenalty.cards} cards are now at stake.`;
+  else if (wasKing && isRedKing(cards[cards.length - 1])) {
+    // A red king only takes 5 off the pile-up. Whoever laid it picks up what is left.
+    const gained = actor === 'you'
+      ? after.playerHand.length - (before.playerHand.length - cards.length)
+      : after.computerHand.length - (before.computerHand.length - cards.length);
+    notice += gained > 0
+      ? ` The red king takes 5 off, but ${actor === 'you' ? 'you still pick' : 'it still picks'} up the other ${gained}.`
+      : ' The red king cancels the penalty.';
+  }
   else if (cardRank === '8') notice += ' An eight can pass the skipped turn.';
   else if (cardRank === '7') notice += ' A seven means play again.';
   else if (cardRank === 'J') notice += cards.length % 2 ? ' The reverse sends play back to the same player.' : ' Two or four jacks mean the same player plays again.';
@@ -222,7 +227,15 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
     const pending = Math.max(drawBusyUntil - Date.now(), flight.current && !flight.current.consumed ? 0 : flight.current ? Math.max(0, flight.current.at + (flight.current.cards.length - 1) * FLIGHT_GAP_MS + FLIGHT_MS - Date.now()) : 0);
     const timer = setTimeout(() => {
       const next = computerStep(viewRef.current);
-      if (lastComputerPlay.length) { noteFlight(lastComputerPlay, 'computer'); lastComputerPlay = []; }
+      if (lastComputerPlay.length) {
+        const playedCards = lastComputerPlay;
+        const was = viewRef.current.engine;
+        noteFlight(playedCards, 'computer');
+        lastComputerPlay = [];
+        // A red king on a black-king pile-up: the computer picks up what is left.
+        const gained = next.engine.computerHand.length - (was.computerHand.length - playedCards.length);
+        if (gained > 0 && was.pendingPenalty?.kind === 'black-king') flyDraw(gained, 'computer', { penalty: true, ouch: was.computerHand.length - playedCards.length === 1 });
+      }
       else if (next.engine.computerHand.length > viewRef.current.engine.computerHand.length) {
         const before = viewRef.current.engine;
         const hit = penaltyCards(before) > 0;
@@ -306,6 +319,8 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
       }));
       return;
     }
+    const redGain = before.pendingPenalty?.kind === 'black-king' ? after.playerHand.length - (before.playerHand.length - cards.length) : 0;
+    if (redGain > 0) flyDraw(redGain, 'you', { penalty: true, ouch: before.playerHand.length - cards.length === 1 });
     setView((current) => ({ ...current, engine: after, hint: false, meaning, lesson, notice }));
   }
 
@@ -401,7 +416,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
   function playStaged() {
     if (!staged.length) return;
     if (!canPlay(staged[0])) { refuse([staged[0]], explainUnplayable(staged[0], engine)); return; }
-    if (rank(staged[0]) === 'A') { setAceChoice(staged); return; }
+    if (rank(staged[0]) === 'A' && staged.length < engine.playerHand.length) { setAceChoice(staged); return; }
     if (!isLegalPlay(engine, { type: 'play', cards: staged })) {
       refuse([...staged], 'Those cards cannot be played in that order. Try a different order, or play fewer cards.');
       return;
@@ -440,7 +455,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
   const gameHint = pending?.kind === 'draw-two'
     ? `Play another two to pass on ${pendingDraw + 2}, or pick up ${pendingDraw}.`
     : pending?.kind === 'black-king'
-      ? `Play another black king to add 5 and pass on ${pendingDraw + 5}, play a red king to cancel 5, or pick up ${pendingDraw}.`
+      ? `Play another black king to add 5 and pass on ${pendingDraw + 5}, play a red king to take 5 off (you still pick up the rest), or pick up ${pendingDraw}.`
       : pending?.kind === 'miss-turn'
         ? 'Play another eight to pass the missed turn. If you have none, you must miss your turn.'
         : legalCards.length

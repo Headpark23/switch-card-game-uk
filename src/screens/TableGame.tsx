@@ -346,7 +346,8 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
 
   function playStaged() {
     if (!staged.length || busy.current) return;
-    if (rank(staged[0]) === 'A') { setAceChoice(staged); return; }
+    // An ace played as your last card keeps its own suit (ruling 34), so there is nothing to choose.
+    if (rank(staged[0]) === 'A' && staged.length < hand.length) { setAceChoice(staged); return; }
     if (!isLegalTablePlay(game, { type: 'play', cards: staged })) {
       refuse([...staged], 'Those cards cannot be played in that order. Try a different order, or play fewer cards.');
       return;

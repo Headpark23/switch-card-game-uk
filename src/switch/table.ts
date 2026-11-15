@@ -1,4 +1,4 @@
-import { createShoe, isBlackKing, rankOf, suitOf } from "./cards";
+import { createShoe, isBlackKing, isRedKing, rankOf, suitOf } from "./cards";
 import { forcesPickup, isLegalPlayFor, legalActionsFor, type TableOptions } from "./rules";
 import type { CardId, GameAction, PendingPenalty, RandomSource, Suit } from "./types";
 
@@ -227,6 +227,7 @@ export function applyTableAction(state: TableState, action: GameAction): TableSt
   const lastCard = played.at(-1) as CardId;
   const playedRank = rankOf(lastCard);
   let pendingPenalty: PendingPenalty | null = null;
+  let selfPickup = 0;
 
   if (playedRank === "2") {
     const previous = state.pendingPenalty?.kind === "draw-two" ? state.pendingPenalty.cards : 0;
@@ -240,7 +241,9 @@ export function applyTableAction(state: TableState, action: GameAction): TableSt
       if (isBlackKing(card)) units = Math.min(2, units + 1);
       else units = Math.max(0, units - 1);
     }
-    if (units > 0) pendingPenalty = { kind: "black-king", units: units as 1 | 2, cards: (units * 5) as 5 | 10 };
+    // Revised 15 Nov 2026: a red king only reduces the pile-up. Whoever lays it picks up what is left themselves.
+    if (units > 0 && isRedKing(lastCard)) selfPickup = units * 5;
+    else if (units > 0) pendingPenalty = { kind: "black-king", units: units as 1 | 2, cards: (units * 5) as 5 | 10 };
   }
 
   let direction = state.direction;
@@ -270,14 +273,18 @@ export function applyTableAction(state: TableState, action: GameAction): TableSt
     ...state,
     hands,
     discardPile: [...state.discardPile, ...played],
-    currentSuit: playedRank === "A" ? (action.chosenSuit as Suit) : suitOf(lastCard),
+    // Ruling 34: an ace played as the last card keeps its own suit.
+    currentSuit: playedRank === "A" && remaining.length > 0 ? (action.chosenSuit as Suit) : suitOf(lastCard),
     turn: pickupInstead ? stepFrom(state.hands.length, state.out, actor, state.direction) : turn,
     direction: pickupInstead ? state.direction : direction,
     pendingPenalty,
     move: state.move + 1,
   };
   if (pickupInstead) return dealTo({ ...base, status: "playing", winner: null }, actor, 1);
-  if (!emptied) return { ...base, status: "playing", winner: null };
+  if (!emptied) {
+    const playing: TableState = { ...base, status: "playing", winner: null };
+    return selfPickup > 0 ? dealTo(playing, actor, selfPickup) : playing;
+  }
   if (!state.playOn) return { ...base, status: "won", winner: actor };
 
   // A play-on game: this player is out. If at least two others still hold cards, they carry on without them.

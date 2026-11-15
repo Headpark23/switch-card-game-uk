@@ -139,7 +139,10 @@ function orderings(cards) {
 /** Every legal action for one hand. A set of matching cards is listed once, in a canonical order. */
 function legalActionsFor(hand, context, options = TWO_PLAYER_OPTIONS) {
 	const playable = hand.filter((card) => isPlayableDuringPenalty(card, context));
-	const actions = playable.flatMap(playActionsFor);
+	const actions = playable.flatMap((card) => hand.length === 1 ? [{
+		type: "play",
+		cards: [card]
+	}] : playActionsFor(card));
 	for (const rank of new Set(hand.map(rankOf))) {
 		const matchingCards = hand.filter((card) => rankOf(card) === rank);
 		if (matchingCards.length < 2) continue;
@@ -157,7 +160,7 @@ function legalActionsFor(hand, context, options = TWO_PLAYER_OPTIONS) {
 				continue;
 			}
 			const cards = [firstLegal, ...subset.filter((card) => card !== firstLegal)];
-			if (rank === "A") for (const chosenSuit of SUITS) actions.push({
+			if (rank === "A" && subset.length < hand.length) for (const chosenSuit of SUITS) actions.push({
 				type: "play",
 				cards,
 				chosenSuit
@@ -185,7 +188,10 @@ function isLegalPlayFor(hand, context, action, options = TWO_PLAYER_OPTIONS) {
 	const rank = rankOf(cards[0]);
 	if (!cards.every((card) => rankOf(card) === rank)) return false;
 	if (!isPlayableDuringPenalty(cards[0], context)) return false;
-	if (rank === "A") return action.chosenSuit !== void 0 && SUITS.includes(action.chosenSuit);
+	if (rank === "A") {
+		if (cards.length === hand.length) return action.chosenSuit === void 0 || SUITS.includes(action.chosenSuit);
+		return action.chosenSuit !== void 0 && SUITS.includes(action.chosenSuit);
+	}
 	return action.chosenSuit === void 0;
 }
 //#endregion
@@ -380,6 +386,7 @@ function applyTableAction(state, action) {
 	const lastCard = played.at(-1);
 	const playedRank = rankOf(lastCard);
 	let pendingPenalty = null;
+	let selfPickup = 0;
 	if (playedRank === "2") pendingPenalty = {
 		kind: "draw-two",
 		cards: (state.pendingPenalty?.kind === "draw-two" ? state.pendingPenalty.cards : 0) + played.length * 2
@@ -389,7 +396,8 @@ function applyTableAction(state, action) {
 		let units = state.pendingPenalty?.kind === "black-king" ? state.pendingPenalty.units : 0;
 		for (const card of played) if (isBlackKing(card)) units = Math.min(2, units + 1);
 		else units = Math.max(0, units - 1);
-		if (units > 0) pendingPenalty = {
+		if (units > 0 && isRedKing(lastCard)) selfPickup = units * 5;
+		else if (units > 0) pendingPenalty = {
 			kind: "black-king",
 			units,
 			cards: units * 5
@@ -412,7 +420,7 @@ function applyTableAction(state, action) {
 		...state,
 		hands,
 		discardPile: [...state.discardPile, ...played],
-		currentSuit: playedRank === "A" ? action.chosenSuit : suitOf(lastCard),
+		currentSuit: playedRank === "A" && remaining.length > 0 ? action.chosenSuit : suitOf(lastCard),
 		turn: pickupInstead ? stepFrom(state.hands.length, state.out, actor, state.direction) : turn,
 		direction: pickupInstead ? state.direction : direction,
 		pendingPenalty,
@@ -423,11 +431,14 @@ function applyTableAction(state, action) {
 		status: "playing",
 		winner: null
 	}, actor, 1);
-	if (!emptied) return {
-		...base,
-		status: "playing",
-		winner: null
-	};
+	if (!emptied) {
+		const playing = {
+			...base,
+			status: "playing",
+			winner: null
+		};
+		return selfPickup > 0 ? dealTo(playing, actor, selfPickup) : playing;
+	}
 	if (!state.playOn) return {
 		...base,
 		status: "won",

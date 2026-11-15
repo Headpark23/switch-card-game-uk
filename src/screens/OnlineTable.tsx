@@ -386,7 +386,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
 
   function playStaged() {
     if (!staged.length || busy.current) return;
-    if (rank(staged[0]) === 'A') { setAceChoice(staged); return; }
+    if (rank(staged[0]) === 'A' && staged.length < game.hands[0].length) { setAceChoice(staged); return; }
     if (!isLegalTablePlay(game, { type: 'play', cards: staged })) { refuse([...staged], 'Those cards cannot be played in that order. Try a different order, or play fewer cards.'); return; }
     commit(staged);
   }

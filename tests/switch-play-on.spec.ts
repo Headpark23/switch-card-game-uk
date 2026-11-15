@@ -165,3 +165,22 @@ test("play-off knockouts: 4 play on and the last holding cards is out, then 3, t
   expect(out.log.every((entry) => entry.lastOut)).toBe(true);
   expect(out.outcomeSize).toBe(8);
 });
+
+// Ruling 34: an ace played as the last card keeps its own suit, so the next player must match that suit.
+test("an ace that takes a player out keeps its own suit and offers no suit choice", async ({ page }) => {
+  await page.goto("/");
+  const out = await page.evaluate(async () => {
+    const table = await import("/src/switch/table.ts");
+    const start = table.createTable(3, () => 0.3, 2, { playOn: true });
+    const base = { ...start, hands: [["AS"], ["5H", "9C"], ["6D", "9D"]], discardPile: ["3H"], currentSuit: "H", turn: 0, direction: 1, pendingPenalty: null };
+    const legal = table.tableLegalMoves(base, 0).filter((m: any) => m.type === "play");
+    const after = table.applyTableAction(base, { type: "play", cards: ["AS"] });
+    const ignored = table.applyTableAction(base, { type: "play", cards: ["AS"], chosenSuit: "H" });
+    return { legal, suit: after.currentSuit, ignoredSuit: ignored.currentSuit, out: after.out, turn: after.turn };
+  });
+  expect(out.legal).toEqual([{ type: "play", cards: ["AS"] }]);
+  expect(out.suit).toBe("S");
+  expect(out.ignoredSuit).toBe("S");
+  expect(out.out).toEqual([0]);
+  expect(out.turn).toBe(1);
+});

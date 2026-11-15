@@ -76,7 +76,8 @@ export function legalActionsFor(
   options: TableOptions = TWO_PLAYER_OPTIONS,
 ): GameAction[] {
   const playable = hand.filter((card) => isPlayableDuringPenalty(card, context));
-  const actions = playable.flatMap(playActionsFor);
+  // Ruling 34: an ace that is your last card keeps its own suit, so there is no suit to choose.
+  const actions = playable.flatMap((card) => (hand.length === 1 ? [{ type: "play" as const, cards: [card] }] : playActionsFor(card)));
 
   for (const rank of new Set(hand.map(rankOf))) {
     const matchingCards = hand.filter((card) => rankOf(card) === rank);
@@ -94,7 +95,7 @@ export function legalActionsFor(
         continue;
       }
       const cards = [firstLegal, ...subset.filter((card) => card !== firstLegal)];
-      if (rank === "A") {
+      if (rank === "A" && subset.length < hand.length) {
         for (const chosenSuit of SUITS) actions.push({ type: "play", cards, chosenSuit });
       } else {
         actions.push({ type: "play", cards });
@@ -170,7 +171,11 @@ export function isLegalPlayFor(
   const rank = rankOf(cards[0]);
   if (!cards.every((card) => rankOf(card) === rank)) return false;
   if (!isPlayableDuringPenalty(cards[0], context)) return false;
-  if (rank === "A") return action.chosenSuit !== undefined && SUITS.includes(action.chosenSuit);
+  if (rank === "A") {
+    // Ruling 34: an ace that empties the hand has no suit choice; any suit sent with it is ignored.
+    if (cards.length === hand.length) return action.chosenSuit === undefined || SUITS.includes(action.chosenSuit);
+    return action.chosenSuit !== undefined && SUITS.includes(action.chosenSuit);
+  }
   return action.chosenSuit === undefined;
 }
 
@@ -217,6 +222,7 @@ export function applyAction(state: GameState, action: GameAction): GameState {
   const pickupInstead = remaining.length === 0 && forcesPickup(played, handFor(state, actor));
   const winner = remaining.length === 0 && !pickupInstead ? actor : null;
   let pendingPenalty: GameState["pendingPenalty"] = null;
+  let selfPickup = 0;
 
   if (playedRank === "2") {
     const previousCards = state.pendingPenalty?.kind === "draw-two" ? state.pendingPenalty.cards : 0;
@@ -234,7 +240,11 @@ export function applyAction(state: GameState, action: GameAction): GameState {
       if (isBlackKing(card)) units = Math.min(2, units + 1);
       else units = Math.max(0, units - 1);
     }
-    if (units > 0) {
+    if (units > 0 && isRedKing(lastCard)) {
+      // Ruling 14 (revised 15 Nov 2026): a red king only reduces the pile-up. Whoever lays it still picks up what is
+      // left, and the turn passes on with no penalty. The penalty only moves on when the top card is a black king.
+      selfPickup = units * 5;
+    } else if (units > 0) {
       pendingPenalty = {
         kind: "black-king",
         units: units as 1 | 2,
@@ -251,7 +261,7 @@ export function applyAction(state: GameState, action: GameAction): GameState {
     playerHand: actor === "player" ? remaining : [...state.playerHand],
     computerHand: actor === "computer" ? remaining : [...state.computerHand],
     discardPile: [...state.discardPile, ...played],
-    currentSuit: playedRank === "A" ? (action.chosenSuit as Suit) : suitOf(lastCard),
+    currentSuit: playedRank === "A" && remaining.length > 0 ? (action.chosenSuit as Suit) : suitOf(lastCard),
     turn: keepsTurn && !pickupInstead ? actor : otherTurn(actor),
     pendingPenalty,
     status: winner ? "won" : "playing",
@@ -259,7 +269,8 @@ export function applyAction(state: GameState, action: GameAction): GameState {
     move: state.move + 1,
   };
   // Ruling 19: the last cards were a seven or jacks, so the game goes on. One card from the deck, and the turn ends.
-  return pickupInstead ? drawCards(afterPlay, 1, actor) : afterPlay;
+  if (pickupInstead) return drawCards(afterPlay, 1, actor);
+  return selfPickup > 0 && !winner ? drawCards(afterPlay, selfPickup, actor) : afterPlay;
 }
 
 const POWER_RANKS = new Set(["A", "2", "7", "8", "J", "K"]);

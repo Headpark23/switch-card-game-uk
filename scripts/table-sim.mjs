@@ -67,7 +67,7 @@ export function legalPlays(g, p = g.cur) {
         const lead = set.find((c) => c !== last && playable(g, c)) ?? (playable(g, last) ? last : null);
         if (!lead) continue;
         const order = [lead, ...set.filter((c) => c !== lead && c !== last), ...(last !== lead ? [last] : [])];
-        if (rank === "A") { for (const s of SUITS) out.push({ cards: order, suit: s }); break; }
+        if (rank === "A") { if (order.length === hand.length) out.push({ cards: order, suit: undefined }); else for (const s of SUITS) out.push({ cards: order, suit: s }); break; } // ruling 34: a last-card ace has no suit to call
         out.push({ cards: order, suit: suitOf(last) });
       }
     }
@@ -112,7 +112,7 @@ export function step(g, decision) {
   const rank = rankOf(cards[0]);
   g.hands[p] = g.hands[p].filter((c) => !cards.includes(c));
   g.discard.push(...cards);
-  g.suit = rank === "A" ? suit : suitOf(cards.at(-1));
+  g.suit = rank === "A" && g.hands[p].length > 0 ? suit : suitOf(cards.at(-1));
   const k = cards.length;
   let note = "";
   if (k > 1 && ["8", "7", "A"].includes(rank)) g.ambiguous[`${k}x${rank}`] = (g.ambiguous[`${k}x${rank}`] ?? 0) + 1;
@@ -122,7 +122,9 @@ export function step(g, decision) {
     let units = g.penalty?.kind === "king" ? g.penalty.units : 0;
     for (const c of cards) units = "SC".includes(suitOf(c)) ? Math.min(2, units + 1) : Math.max(0, units - 1);
     if (cards.some((c) => "SC".includes(suitOf(c))) && cards.some((c) => "HD".includes(suitOf(c)))) g.ambiguous["black+red king in one play"] = (g.ambiguous["black+red king in one play"] ?? 0) + 1;
-    g.penalty = units ? { kind: "king", units, cards: units * 5 } : null;
+    // Ruling 14 (revised 15 Nov): a red king on top only reduces the pile-up; the player who laid it picks up what is left.
+    if (units && !"SC".includes(suitOf(cards.at(-1))) && g.hands[p].length > 0) { drawCards(g, p, units * 5); note = ` and picks up the remaining ${units * 5}`; g.penalty = null; }
+    else g.penalty = units ? { kind: "king", units, cards: units * 5 } : null;
   } else g.penalty = null;
   let next;
   if (rank === "7") { next = p; note = " and plays again"; }
