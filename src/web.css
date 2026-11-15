@@ -325,3 +325,6 @@ input, textarea { cursor: text !important; }
 .mobile-scroll-content button, .mobile-scroll-content img, .player-hand, .game-table { user-select: none; -webkit-user-select: none; }
 @media (prefers-reduced-motion: reduce) { .home-tiles.v2 .home-tile { transition: none; } }
 }
+
+/* No tab bar on tablet/laptop, so Play selected rides near the bottom edge instead of 76px above it. */
+@media(min-width:640px){.device-screen-native .table-game .multi-action{bottom:12px}}
