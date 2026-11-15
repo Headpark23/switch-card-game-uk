@@ -147,5 +147,5 @@ Darts: first to three legs wins a set. Knock Out: whoever finishes last in a rou
 
 ## Table talk (owner decisions, 14 Nov 2026)
 - Reactions are cheeky pub banter that keeps the 4+ rating: no swearing, innuendo or drink. Ten sayings plus eight of our own card-character SVG stickers (`src/screens/ReactionSticker.tsx`); no emoji. Ids live in `src/switch/reactions.ts` and `api/_room.js` and must match.
-- You can react against the computer, and computers banter back in character (`banterFor`), at most one remark every few seconds. Computers at online tables stay quiet.
+- You can react against the computer, and computers banter back in character (`banterFor`), at most one remark every few seconds. Computers at online tables banter too, on notable events only (big pick-ups, last card, a missed Last Card, a win), at most one remark per 7 seconds per table, and never at tables with no person playing (`computerBanter` in `api/_room.js`).
 - Every reaction is logged with its game and move (`switchReactionLog`), and every game is recorded for a fast replay from Me > History (`switchGameReplays`, last 30, public information only). See ruling 31.

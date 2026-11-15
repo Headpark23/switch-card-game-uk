@@ -290,6 +290,55 @@ function finishTable(room, table, at) {
   refreshStatus(room);
 }
 
+/* ── Computer banter ── */
+
+/** Each computer's voice, mirroring `src/switch/reactions.ts`: how chatty it is and what it says in each mood. */
+const BANTER_MOODS = Object.freeze({
+  gloat: ["read-em-and-weep", "pick-up-sunshine", "smug-king", "card-shark"],
+  sulk: ["revenge-is-coming", "salty", "crying-joker", "facepalm-jack"],
+  tease: ["sweating-yet", "not-today-sweetheart", "sweating-ace"],
+  win: ["mic-drop", "read-em-and-weep", "smug-king", "seven-on-fire"],
+  lose: ["lucky-so-and-so", "salty", "crying-joker", "revenge-is-coming"],
+});
+const BANTER_CHAT = Object.freeze({ John: 0.75, Paul: 0.55, George: 0.35, Ringo: 0.5, Ziggy: 0.6, Marley: 0.45, Bowie: 0.65 });
+/** A table hears at most one computer remark in this long (a win always gets one). */
+const BANTER_GAP_MS = 7_000;
+
+/**
+ * A computer at this table may react to something of note: a big pick-up, a last card, a missed "Last Card", a win.
+ * Most moves pass in silence. Only tables with a person playing hear it, so computer-only games stay quiet.
+ */
+function computerBanter(room, table, event, at, random = secureRandom) {
+  if (!table.players.some((player) => room.seats[player].kind === "human")) return;
+  if (event.kind !== "win" && at - (table.lastBanterAt ?? -Infinity) < BANTER_GAP_MS) return;
+  const isComputer = (index) => typeof index === "number" && index >= 0 && room.seats[table.players[index]]?.kind === "computer";
+  const candidates = [];
+  if (event.kind === "penalty") {
+    if (isComputer(event.by) && event.by !== event.victim) candidates.push({ index: event.by, mood: "gloat", odds: Math.min(0.95, 0.45 + event.cards * 0.06) });
+    if (isComputer(event.victim)) candidates.push({ index: event.victim, mood: "sulk", odds: Math.min(0.9, 0.35 + event.cards * 0.05) });
+  } else if (event.kind === "spotted") {
+    if (isComputer(event.by)) candidates.push({ index: event.by, mood: "gloat", odds: 0.85 });
+  } else if (event.kind === "last-card") {
+    if (isComputer(event.seat)) candidates.push({ index: event.seat, mood: "tease", odds: 0.4 });
+  } else if (event.kind === "win") {
+    const losers = table.players.map((_, index) => index).filter((index) => isComputer(index) && index !== event.winner);
+    if (isComputer(event.winner)) candidates.push({ index: event.winner, mood: "win", odds: 0.85 });
+    losers.forEach((index, n) => candidates.push({ index, mood: "lose", odds: n === losers.length - 1 ? 0.8 : 0.7 / losers.length }));
+  }
+  for (const candidate of candidates) {
+    const player = table.players[candidate.index];
+    const seat = room.seats[player];
+    if (random() >= candidate.odds * (0.5 + (BANTER_CHAT[seat.name] ?? 0.5))) continue;
+    const pool = BANTER_MOODS[candidate.mood];
+    room.reactSeq += 1;
+    room.reactions.push({ n: room.reactSeq, player, id: pool[Math.floor(random() * pool.length) % pool.length], at });
+    if (room.reactions.length > 20) room.reactions.splice(0, room.reactions.length - 20);
+    seat.lastReactAt = at;
+    table.lastBanterAt = at;
+    return;
+  }
+}
+
 /** One action by one seat at one table: legality, the "Last Card" rule, the engine's result, and everything that follows. */
 function playAction(room, table, seat, action, { at, lastCard, auto }) {
   const game = table.game;
@@ -315,6 +364,9 @@ function playAction(room, table, seat, action, { at, lastCard, auto }) {
     other.exposedAt = after.status === "playing" && size === 1 && !other.called ? (other.exposedAt ?? at) : null;
   });
 
+  const pickedUp = after.hands[seat].length - game.hands[seat].length;
+  const lastMove = table.moves[table.moves.length - 1];
+  const penaltyFrom = action.type === "draw" && game.pendingPenalty && game.pendingPenalty.kind !== "miss-turn" && lastMove?.type === "play" ? lastMove.seat : null;
   recordMove(table, {
     seat, type: action.type, cards: action.type === "play" ? [...action.cards] : [], ...(action.chosenSuit ? { chosenSuit: action.chosenSuit } : {}),
     auto: Boolean(auto), computer: mine.kind === "computer", missedLastCard: missed, counts: after.hands.map((hand) => hand.length), at,
@@ -323,6 +375,9 @@ function playAction(room, table, seat, action, { at, lastCard, auto }) {
   table.game = after;
   table.turnAt = at;
   if (after.status === "won") finishTable(room, table, at);
+  if (action.type === "draw" && pickedUp >= 2) computerBanter(room, table, { kind: "penalty", victim: seat, by: penaltyFrom, cards: pickedUp }, at);
+  if (after.status === "won" && after.winner !== null) computerBanter(room, table, { kind: "win", winner: after.winner }, at);
+  else if (after.status === "playing" && after.hands[seat].length === 1 && game.hands[seat].length !== 1) computerBanter(room, table, { kind: "last-card", seat }, at);
 }
 
 function cleanAction(input) {
@@ -409,6 +464,7 @@ export function tick(room, now, random = secureRandom) {
       const person = seatOf(room, table, event.seat);
       table.game = dealTo(table.game, event.seat, 2);
       person.exposedAt = null;
+      computerBanter(room, table, { kind: "spotted", victim: event.seat, by: table.players.findIndex((_, index) => index !== event.seat && seatOf(room, table, index).kind === "computer") }, event.at);
       recordMove(table, { seat: event.seat, type: "spot", cards: [], auto: false, computer: false, missedLastCard: true, counts: table.game.hands.map((hand) => hand.length), at: event.at });
       continue;
     }
