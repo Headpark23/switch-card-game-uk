@@ -12,7 +12,7 @@
 - [ ] Run the full test suite and `npm run test:offline` against the production build.
 
 ## Google Play (fastest route)
-Wrap the deployed PWA as a Trusted Web Activity with Bubblewrap (`npx @bubblewrap/cli init --manifest https://<domain>/manifest.webmanifest`). Needs a Play developer account, a signing key, and a Digital Asset Links file on the domain.
+The deployed PWA is wrapped as a Trusted Web Activity with Bubblewrap in `android-twa/` (package `uk.co.switchcardgame.app`, targets API 36). See `android-twa/README.md` for the build steps, how to make your own upload key, and the Digital Asset Links file. Still needs a Play developer account, your own signing key, and `assetlinks.json` on the domain.
 
 ## Apple App Store
 Wrap with Capacitor (`npm i @capacitor/core @capacitor/cli @capacitor/ios`, `npx cap init`, `npx cap add ios`, `npm run build`, `npx cap copy`). Apple expects more than a thin website: the offline play, coach, puzzles and scorekeeper support the "minimum functionality" guideline, but state that in review notes. Needs an Apple developer account and a Mac with Xcode.

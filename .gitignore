@@ -3,3 +3,8 @@ dist/
 test-results/
 playwright-report/
 .superpowers/
+
+# Android TWA build output and signing keys (never commit keys)
+android-twa/*
+!android-twa/twa-manifest.json
+!android-twa/README.md
