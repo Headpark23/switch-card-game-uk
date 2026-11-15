@@ -75,9 +75,18 @@ type Props = { opponents: number; level: ComputerLevel; resume?: ActiveTable | n
 /** Computers keep their banter to one remark every few seconds, however much is happening. */
 const BANTER_GAP_MS = 3500;
 
+/** "You" plus `count` computers picked at random from the seven, in a random seating order. */
+function randomNames(count: number): string[] {
+  const pool = [...COMPUTER_NAMES];
+  for (let i = pool.length - 1; i > 0; i -= 1) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  return ['You', ...pool.slice(0, count)];
+}
+
 export default function TableGame({ opponents, level, resume = null, seatNames, series, onExit, onOpenCards, onStartNight, onChange, onReplay }: Props) {
   const seats = opponents + 1;
-  const names = useMemo(() => seatNames ?? ['You', ...COMPUTER_NAMES.slice(0, opponents)], [opponents, seatNames]);
+  // A single game against the computer deals you a random set of opponents; a resumed game keeps the ones it started with.
+  const [drawn, setDrawn] = useState<string[]>(() => (resume ? (resume.names && resume.names.length === opponents + 1 ? [...resume.names] : ['You', ...COMPUTER_NAMES.slice(0, opponents)]) : randomNames(opponents)));
+  const names = useMemo(() => seatNames ?? drawn, [seatNames, drawn]);
   const [gameId, setGameId] = useState(() => resume?.id ?? newTableGameId());
   const [game, setGame] = useState<TableState>(() => resume?.game ?? createTable(seats, Math.random, pickDealer(seats), { playOn: series?.playOn, powerStartChance: POWER_START_CHANCE }));
   const [showing, setShowing] = useState<Showing | null>(null);
@@ -291,7 +300,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   // An unfinished game is kept so it can be resumed; a finished one is logged once, under its own id, and forgotten.
   useEffect(() => {
     // A game inside a tournament is never saved for resuming; the tournament screen owns what happens next.
-    if (game.status === 'playing') { if (!series) saveActiveTable({ id: gameId, opponents, level, game, awaitingLastCard: false, lastCardCalled: lastCalled }); return; }
+    if (game.status === 'playing') { if (!series) saveActiveTable({ id: gameId, opponents, level, game, names: drawn, awaitingLastCard: false, lastCardCalled: lastCalled }); return; }
     if (logged.current === gameId) return;
     logged.current = gameId;
     recorder.finish(game.winner);
@@ -386,6 +395,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     setRecent([]); setStaged([]); setAceChoice(null); setHint(false); setLastCalled(false); setTalk([]);
     penaltyBy.current = null; queuedBanter.current = [];
     setGameId(newTableGameId());
+    if (!seatNames) setDrawn(randomNames(opponents));
     setGame(createTable(seats, Math.random, pickDealer(seats), { playOn: series?.playOn, powerStartChance: POWER_START_CHANCE }));
   }
 

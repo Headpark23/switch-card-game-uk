@@ -95,7 +95,7 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
     </div>
 
     <div className="lobby-table" aria-label="Your table">
-      <div className={`lobby-seats seats-${choice.opponents}`} aria-hidden="true">{Array.from({ length: choice.opponents }, (_, index) => <span key={index} className="lobby-seat"><CardImage code="back" /><i>{COMPUTER_NAMES[index]}</i></span>)}</div>
+      <div className={`lobby-seats seats-${choice.opponents}`} aria-hidden="true">{Array.from({ length: choice.opponents }, (_, index) => <span key={index} className="lobby-seat"><CardImage code="back" /><i>{singleGame ? '?' : COMPUTER_NAMES[index]}</i></span>)}</div>
       <div className="lobby-you" aria-hidden="true"><span>You</span></div>
     </div>
 
@@ -112,15 +112,6 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
     <div className="lobby-group" role="group" aria-label="Difficulty">
       <h2>How good are they?</h2>
       <div className="seg three">{LEVELS.map((entry) => <button key={entry.id} aria-pressed={choice.level === entry.id} className={choice.level === entry.id ? 'active' : ''} onClick={() => set({ level: entry.id })}><b>{entry.name}</b><small>{entry.note}</small></button>)}</div>
-    </div>
-
-    <div className="lobby-group" role="group" aria-label="Who you are playing">
-      <h2>Who you are playing</h2>
-      <ul className="personalities">{PERSONALITIES.slice(0, choice.opponents).map((personality) => <li key={personality.id}>
-        <span className="personality-top"><strong>{personality.name}</strong><em>{personality.title}</em></span>
-        <span>{personality.blurb}</span>
-        <small>{leansOn(choice.level, personality.id)}</small>
-      </li>)}</ul>
     </div>
 
     {choice.mode === 'match' && <div className="lobby-group" role="group" aria-label="Number of games">
@@ -146,6 +137,16 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
       <div className="seg four compact">{LIMIT_CHIPS.map((value) => <button key={value} aria-pressed={choice.limit === value} className={choice.limit === value ? 'active' : ''} onClick={() => set({ limit: value })}><b>{value}</b></button>)}</div>
       <p className="lobby-note">After every game the cards left in each hand add to that player's total: ace 1 up to king 13. The first to reach {choice.limit} loses. The lowest total wins.</p>
     </div>}
+
+    <div className="lobby-group" role="group" aria-label="Who you are playing">
+      <h2>{singleGame ? 'Who you might be playing' : 'Who you are playing'}</h2>
+      {singleGame && <p className="lobby-note">A single game deals you {choice.opponents === 1 ? 'one of these' : `${choice.opponents} of these`} at random.</p>}
+      <ul className="personalities">{(singleGame ? PERSONALITIES : PERSONALITIES.slice(0, choice.opponents)).map((personality) => <li key={personality.id}>
+        <span className="personality-top"><strong>{personality.name}</strong><em>{personality.title}</em></span>
+        <span>{personality.blurb}</span>
+        <small>{leansOn(choice.level, personality.id)}</small>
+      </li>)}</ul>
+    </div>
 
     </div>
     <div className="lobby-side">

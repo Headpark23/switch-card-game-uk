@@ -1106,7 +1106,7 @@ const MODES = [
 	}
 ];
 MODES.filter((entry) => entry.id !== "single");
-MODES.filter((entry) => entry.id !== "match");
+MODES.filter((entry) => entry.id !== "single");
 const modeInfo = (mode) => MODES.find((entry) => entry.id === mode);
 /** The most players a way of playing can take at an online table: tournaments split into several games at once. */
 const ONLINE_MAX_PLAYERS = {
