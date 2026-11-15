@@ -95,3 +95,4 @@ New per-device keys, outside the club document and never synced or shared:
 | `switchGameReplays` | Your last 30 finished games, move by move, as the table saw them (cards played, how many everyone held) plus every reaction sent, for Me > History > Watch the replay | Filed under the same id as the game's record in `switchComputerGames`. Never holds another player's hand or the draw pile. |
 | `switchReplayDraft` | The game in progress, recorded as it goes | Replaced by the next game; moved into `switchGameReplays` when the game ends. |
 | `switchReactionLog` | Every reaction sent or received: game id, time, move number, who, which reaction, whether it was you, a computer, online | Newest 3,000. Me > Table talk is worked out from it. |
+| `switchSpicyTalk` | `"1"` when spicy talk (swearing) is on for this phone, otherwise `"0"` or absent | Off by default (15 Nov 2026). Never synced or shared; each phone decides what it shows. |

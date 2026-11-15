@@ -310,8 +310,9 @@ test("computers play on their own, one after another, in the order of the table"
   assert.ok(t.room().seats.some((seat, index) => seat.kind === "computer" && t.room().moves.some((move) => move.seat === index && move.computer)), "a computer played");
 });
 
-test("reactions: only the 18 fixed ones, one at a time, shown to everyone", async () => {
-  assert.equal(REACTIONS.length, 18);
+test("reactions: only the 55 fixed ones, one at a time, shown to everyone", async () => {
+  assert.equal(REACTIONS.length, 55);
+  assert.equal(REACTIONS.filter((id) => id.startsWith("spicy-")).length, 37);
   const t = await table(["Ana", "Ben"], 3, { seed: 2 });
   assert.equal((await call(t.store, { code: t.code, op: "react", token: t.tokens[0], body: { id: "hello-there" } }, T0 + 10)).status, 400);
   assert.equal((await call(t.store, { code: t.code, op: "react", token: t.tokens[0], body: { id: "sweating-yet" } }, T0 + 10)).status, 200);

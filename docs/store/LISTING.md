@@ -44,7 +44,7 @@ Works offline for playing the computer, learning and scoring. Online tables, sha
 Note: "Uno" is used only on the website (page title and meta description, for Google search). Keep it out of the Play Store listing: Uno is a Mattel trademark and Google Play's metadata policy does not allow references to other products' names.
 
 **Category:** Games > Card (or Utilities > Reference if the store prefers a companion classification)
-**Age rating:** 4+ (no ads, no purchases; shared nights and clubs show only names and scores to people holding the code; online tables are private by code, with a fixed set of 18 reactions and no free-text chat. In the IARC questionnaire answer "users can interact" yes, "free-text chat" no)
+**Age rating:** NEEDS RE-ANSWERING (15 Nov 2026). It was 4+, but "spicy talk" adds thirty-seven reactions of masked swearing (F#~k, b@stard; off by default, opt-in per phone). Masked profanity still counts as profanity for most raters, so answer the IARC / Apple questionnaire honestly (say the language is censored, optional and user-enabled) and accept whatever rating comes back; do not publish as 4+ unless the questionnaire itself returns that. Otherwise: no ads, no purchases; shared nights and clubs show only names and scores to people holding the code; online tables are private by code, with a fixed set of 55 reactions (18 clean, 37 spicy) and no free-text chat. In the questionnaire answer "users can interact" yes, "free-text chat" no.
 
 **Screenshots:** `docs/store/01-home.png` to `06-referee.png` (regenerate with `node scripts/store-screenshots.mjs <url>`).
 These include the device frame; export frameless crops if a store requires raw screen captures.

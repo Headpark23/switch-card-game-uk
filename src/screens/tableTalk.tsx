@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BottomSheet } from '../mobile';
-import { SAYINGS, STICKERS, reactionOf } from '../switch/reactions';
+import { Fire } from '@phosphor-icons/react';
+import { SAYINGS, SPICY_SAYINGS, STICKERS, reactionOf, setSpicyTalk, spicyTalk } from '../switch/reactions';
 import { beginReplay, elapsed, finishReplay, readDraft, saveDraft, withEvent, type GameReplay, type ReplayMove, type ReplayReaction } from '../switch/gameReplay';
 import { Sticker } from './ReactionSticker';
 
@@ -50,12 +51,24 @@ export function Bubble({ id, name, n }: { id: string; name: string; n: number })
   </span>;
 }
 
-/** The only way to talk at the table: ten cheeky sayings and eight stickers. */
+/** Spicy talk on or off for this phone, kept in step everywhere it is shown. */
+export function useSpicy(): [boolean, (on: boolean) => void] {
+  const [on, setOn] = useState(spicyTalk);
+  return [on, (next) => { setSpicyTalk(next); setOn(next); }];
+}
+
+/** The only way to talk at the table: ten cheeky sayings, eight stickers and, if you ask for them, thirty-seven spicy ones. */
 export function ReactionSheet({ open, onOpenChange, onPick, description = 'Everyone at the table sees it for a few seconds.' }: { open: boolean; onOpenChange: (open: boolean) => void; onPick: (id: string) => void; description?: string }) {
+  const [spicy, setSpicy] = useSpicy();
   return <BottomSheet open={open} onOpenChange={onOpenChange} title="Say something" description={description} snap={0.8}>
     <div className="reaction-picker">
       <div className="reaction-stickers" role="group" aria-label="Stickers">{STICKERS.map((entry) => <button key={entry.id} onClick={() => onPick(entry.id)} data-reaction={entry.id} aria-label={entry.text}>{entry.sticker && <Sticker id={entry.sticker} size={48} />}<span>{entry.text}</span></button>)}</div>
       <div className="reaction-grid" role="group" aria-label="Sayings">{SAYINGS.map((entry) => <button key={entry.id} onClick={() => onPick(entry.id)} data-reaction={entry.id}><span>{entry.text}</span></button>)}</div>
+      <button className={'spicy-toggle' + (spicy ? ' on' : '')} role="switch" aria-checked={spicy} data-testid="spicy-toggle" onClick={() => setSpicy(!spicy)}>
+        <Fire size={20} weight="fill" aria-hidden="true" />
+        <span><b>Spicy talk {spicy ? 'on' : 'off'}</b><small>{spicy ? 'You swear and see swearing. Phones with it off see a clean version.' : 'Turn on for pub swearing, always bleeped out (F#~k, b@stard). Adults only.'}</small></span>
+      </button>
+      {spicy && <div className="reaction-grid spicy" role="group" aria-label="Spicy sayings">{SPICY_SAYINGS.map((entry) => <button key={entry.id} onClick={() => onPick(entry.id)} data-reaction={entry.id}><span>{entry.text}</span></button>)}</div>}
     </div>
   </BottomSheet>;
 }

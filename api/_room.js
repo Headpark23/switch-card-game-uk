@@ -53,10 +53,17 @@ export const TIMING = Object.freeze({
 });
 export const AWAY_AFTER = 2;
 
-/** The 18 reactions: ten cheeky sayings and eight stickers. The server keeps only the id; the words and drawings live in the app (`src/switch/reactions.ts`). */
+/**
+ * The 55 reactions: ten cheeky sayings, eight stickers and thirty-seven spicy sayings (swear words always masked). The server keeps only the id; the
+ * words and drawings live in the app (`src/switch/reactions.ts`). A spicy id is shown as its clean stand-in on any
+ * phone that has Spicy off, so the server never needs to know who wants swearing.
+ */
 export const REACTIONS = Object.freeze([
   "read-em-and-weep", "all-youve-got", "sweating-yet", "absolute-sausage", "pick-up-sunshine", "who-taught-you", "lucky-so-and-so", "not-today-sweetheart", "revenge-is-coming", "behave",
   "smug-king", "salty", "card-shark", "sweating-ace", "mic-drop", "facepalm-jack", "crying-joker", "seven-on-fire",
+  "spicy-bollocks", "spicy-bugger", "spicy-bloody-hell", "spicy-sod-off", "spicy-jammy", "spicy-cheating", "spicy-pick-up-arse", "spicy-shite-hand", "spicy-holy-shit", "spicy-piss-off", "spicy-fucking-yes", "spicy-for-fucks-sake",
+  "spicy-wanker", "spicy-prick", "spicy-arsehole", "spicy-fk-off", "spicy-what-the-f", "spicy-no-f-way", "spicy-dick-move", "spicy-twat", "spicy-crap", "spicy-damn", "spicy-hell", "spicy-git",
+  "spicy-lucky-bastard", "spicy-shitshow", "spicy-bullshit", "spicy-pissed", "spicy-f-hell", "spicy-dickhead", "spicy-bellend", "spicy-tosser", "spicy-sodding", "spicy-bloody-lucky", "spicy-piss-take", "spicy-eat-shit", "spicy-knob",
 ]);
 
 export class RoomError extends Error {
@@ -294,11 +301,11 @@ function finishTable(room, table, at) {
 
 /** Each computer's voice, mirroring `src/switch/reactions.ts`: how chatty it is and what it says in each mood. */
 const BANTER_MOODS = Object.freeze({
-  gloat: ["read-em-and-weep", "pick-up-sunshine", "smug-king", "card-shark"],
-  sulk: ["revenge-is-coming", "salty", "crying-joker", "facepalm-jack"],
-  tease: ["sweating-yet", "not-today-sweetheart", "sweating-ace"],
-  win: ["mic-drop", "read-em-and-weep", "smug-king", "seven-on-fire"],
-  lose: ["lucky-so-and-so", "salty", "crying-joker", "revenge-is-coming"],
+  gloat: ["read-em-and-weep", "pick-up-sunshine", "smug-king", "card-shark", "spicy-sod-off", "spicy-pick-up-arse", "spicy-fk-off", "spicy-eat-shit", "spicy-git", "spicy-dickhead", "spicy-tosser"],
+  sulk: ["revenge-is-coming", "salty", "crying-joker", "facepalm-jack", "spicy-bollocks", "spicy-bugger", "spicy-for-fucks-sake", "spicy-cheating", "spicy-what-the-f", "spicy-pissed", "spicy-crap", "spicy-damn", "spicy-sodding", "spicy-bullshit", "spicy-shitshow", "spicy-piss-take"],
+  tease: ["sweating-yet", "not-today-sweetheart", "sweating-ace", "spicy-holy-shit", "spicy-bloody-hell", "spicy-no-f-way", "spicy-hell"],
+  win: ["mic-drop", "read-em-and-weep", "smug-king", "seven-on-fire", "spicy-fucking-yes", "spicy-sod-off", "spicy-pick-up-arse", "spicy-eat-shit", "spicy-wanker", "spicy-fk-off"],
+  lose: ["lucky-so-and-so", "salty", "crying-joker", "revenge-is-coming", "spicy-jammy", "spicy-bloody-hell", "spicy-shite-hand", "spicy-piss-off", "spicy-bollocks", "spicy-lucky-bastard", "spicy-bloody-lucky", "spicy-shitshow", "spicy-bullshit", "spicy-crap", "spicy-f-hell"],
 });
 const BANTER_CHAT = Object.freeze({ John: 0.75, Paul: 0.55, George: 0.35, Ringo: 0.5, Ziggy: 0.6, Marley: 0.45, Bowie: 0.65 });
 /** A table hears at most one computer remark in this long (a win always gets one). */

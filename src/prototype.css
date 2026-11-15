@@ -1022,6 +1022,11 @@
 .reaction-stickers button:active,.reaction-grid button:active{scale:.95;border-color:var(--gold)}
 .reaction-picker .reaction-grid{grid-template-columns:repeat(2,1fr);padding:0}
 .reaction-picker .reaction-grid button{min-height:46px;font-size:13.5px;font-weight:700;font-style:italic}
+.spicy-toggle{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:1.5px dashed #d8c99f;border-radius:14px;background:#fffaf0;color:var(--green);text-align:left}
+.spicy-toggle span{display:grid;gap:1px}.spicy-toggle b{font-size:14px}.spicy-toggle small{font-size:12px;line-height:1.25;opacity:.8}
+.spicy-toggle.on{border-style:solid;border-color:#c0392b;background:#fdecea;color:#8c2118}
+.reaction-picker .reaction-grid.spicy button{border-color:#e3a79f;background:#fff3f0;color:#8c2118}
+.reaction-picker .reaction-grid.spicy button:active{border-color:#c0392b}
 .table-game .hand-row .react-button{margin-left:auto;min-height:38px}
 .talk-strip{list-style:none;margin:4px 0 10px;padding:0;display:grid;gap:4px;width:100%;max-width:320px}
 .talk-strip li{display:flex;gap:6px;align-items:baseline;padding:6px 10px;border-radius:12px 12px 12px 4px;background:#fffaf0;border:1px solid #e3d6b0;font-size:13px}

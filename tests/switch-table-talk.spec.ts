@@ -1,17 +1,51 @@
 import { expect, test } from "@playwright/test";
 // @ts-expect-error plain JavaScript module shared with the Vercel function
 import { REACTIONS as SERVER_REACTIONS } from "../api/_room.js";
-import { banterFor, REACTIONS, SAYINGS, STICKERS } from "../src/switch/reactions";
+import { banterFor, reactionOf, REACTIONS, SAYINGS, SPICY_SAYINGS, STICKERS } from "../src/switch/reactions";
 import { replayFrames, summariseReactions, type GameReplay } from "../src/switch/gameReplay";
 
 /**
- * Table talk (owner decision, 14 Nov 2026): cheeky banter that keeps the 4+ rating, our own stickers in place of
- * emoji, computers that answer back, every reaction kept for stats, and every game replayable at speed.
+ * Table talk (owner decisions, 14 and 15 Nov 2026): cheeky banter, optional spicy swearing with clean stand-ins for
+ * phones that have it off, our own stickers in place of emoji, computers that answer back, every reaction kept for
+ * stats, and every game replayable at speed.
  */
 
-test("eighteen reactions: ten sayings and eight of our own stickers, the same ids the server accepts, no emoji", () => {
+test("spicy talk: swearing only on phones that asked for it, a clean stand-in everywhere else", () => {
+  expect(SPICY_SAYINGS).toHaveLength(37);
+  // Every swear word is always masked (F#~k, b@stard, w8nkr, pr1k, r's-hole) so even spicy talk stays family friendly.
+  const UNMASKED = /bollocks|bugger|bloody|\bsod|bastard|\barse|shite|shit|piss|fuck|wanker|prick|dick|twat|tosser|bellend|bullshit|\bdamn|\bhell|\bcrap|\bgit\b|\bknob/i;
+  for (const entry of SPICY_SAYINGS) {
+    expect(entry.id.startsWith("spicy-")).toBe(true);
+    expect(entry.clean && entry.clean !== entry.text).toBe(true);
+    expect(reactionOf(entry.id, true)?.text).toBe(entry.text);
+    expect(reactionOf(entry.id, false)?.text).toBe(entry.clean);
+    expect(entry.text, entry.id).not.toMatch(UNMASKED);
+    expect(entry.text, entry.id).toMatch(/[#@*~!$0-9']/);
+    // Nothing that swears survives in the clean version, masked or not.
+    expect(entry.clean, entry.id).not.toMatch(UNMASKED);
+    expect(entry.clean, entry.id).not.toMatch(/[#@*~$]/);
+  }
+  // Clean sayings read the same either way.
+  expect(reactionOf("behave", false)?.text).toBe("Behave!");
+  // Computers only swear for someone who turned Spicy on.
+  const names = ["You", "John", "Paul"];
+  const clean = new Set<string>();
+  const spicy = new Set<string>();
+  for (let n = 0; n < 200; n += 1) {
+    const roll = () => (n % 100) / 100;
+    const a = banterFor({ kind: "win", winner: 0 }, names, [1, 2], () => 0, false);
+    const b = banterFor({ kind: "win", winner: 0 }, names, [1, 2], () => roll() * 0.999, true);
+    if (a) clean.add(a.id);
+    if (b) spicy.add(b.id);
+  }
+  expect([...clean].some((id) => id.startsWith("spicy-"))).toBe(false);
+  expect([...spicy].some((id) => id.startsWith("spicy-"))).toBe(true);
+});
+
+test("fifty-five reactions: ten sayings, eight of our own stickers and thirty-seven masked spicy ones, the same ids the server accepts, no emoji", () => {
   expect(SAYINGS).toHaveLength(10);
   expect(STICKERS).toHaveLength(8);
+  expect(REACTIONS).toHaveLength(55);
   expect(REACTIONS.map((entry) => entry.id).sort()).toEqual([...SERVER_REACTIONS].sort());
   expect(STICKERS.every((entry) => entry.sticker === entry.id)).toBe(true);
   for (const entry of REACTIONS) expect(entry.text).not.toMatch(/\p{Extended_Pictographic}/u);

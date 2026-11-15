@@ -17,6 +17,7 @@ import { countryName } from '../switch/places';
 import { readClub, updateClub } from '../switch/clubStore';
 import NightDetail from './NightDetail';
 import TableTalkStats from './TableTalkStats';
+import { setSpicyTalk, spicyTalk } from '../switch/reactions';
 import type { SwitchNightRecord } from '../switch/history';
 import { readSpeed, saveSpeed } from '../switch/activeTable';
 import { SPEED_NAMES, type Speed } from '../switch/presentation';
@@ -45,6 +46,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, initialSec
   useEffect(() => { const refresh = () => setExtensions(readClub()); window.addEventListener(CLUB_REFRESH, refresh); return () => window.removeEventListener(CLUB_REFRESH, refresh); }, []);
   const [section, setSection] = useState<Section>(initialSection);
   const [soundOn, setSoundOn] = useState(feedbackEnabled);
+  const [spicyOn, setSpicyOn] = useState(spicyTalk);
   const [speed, setSpeed] = useState<Speed>(readSpeed);
   const [filter, setFilter] = useState<'all' | 'nights' | 'computer'>('all');
   const [draft, setDraft] = useState('');
@@ -195,6 +197,8 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, initialSec
       <h3>Playing the computer</h3>
       <div className="seg three compact" role="group" aria-label="Computer pace">{(['quick', 'natural', 'relaxed'] as const).map((id) => <button key={id} aria-pressed={speed === id} className={speed === id ? 'active' : ''} onClick={() => { setSpeed(id); saveSpeed(id); }}><b>{SPEED_NAMES[id]}</b></button>)}</div>
       <button className="secondary" onClick={() => { const next = !soundOn; setFeedbackEnabled(next); setSoundOn(next); }}>{soundOn ? 'Mute sounds and vibration' : 'Turn on sounds and vibration'}</button>
+      <button className="secondary" role="switch" aria-checked={spicyOn} data-testid="spicy-setting" onClick={() => { const next = !spicyOn; setSpicyTalk(next); setSpicyOn(next); }}>{spicyOn ? 'Spicy talk is on: turn it off' : 'Turn on spicy talk (swearing, adults only)'}</button>
+      <p className="lobby-note">Spicy talk adds pub swearing to the reactions and lets the computers swear back. It is only ever on for this phone: friends with it off see a clean version of whatever you say.</p>
       <h3>This app</h3>
       <InstallButton />
       {onPrivacy && <button className="text-link" onClick={onPrivacy}>Privacy: what stays on your phone <ArrowRight size={16} /></button>}
