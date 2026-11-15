@@ -22,7 +22,7 @@ Both pages must be live on the production domain before submitting.
 | Shared night (`/api/night`) | Yes | Title, player first names, scores, host name, full result (format, winner, venue name and country) | Private Blob under a 6-letter code, host token hash | Yes |
 | Join a night | Yes | The chosen player name | Same file | Yes |
 | Shared club (`/api/club`) | Yes | Club name, player names and colours, saved nights and scores, seasons | Private Blob under an 8-character code. Anyone with the code can read and add. | Yes |
-| Online table with friends (`/api/room`) | Yes | Player names typed at the table, the game itself (hands, moves, scores, result), reaction ids from the fixed set of 18 (no free text), a random seat token (only its SHA-256 hash is stored) | One JSON document per table in Upstash Redis (via Vercel) under `switch:room:CODE`, deleted automatically 24 hours after the last move | Yes |
+| Online table with friends (`/api/room`) | Yes | Player names typed at the table, the game itself (hands, moves, scores, result), reaction ids from the fixed set of 55 (18 clean, 37 spicy; no free text), a random seat token (only its SHA-256 hash is stored) | One JSON document per table in Upstash Redis (via Vercel) under `switch:room:CODE`, deleted automatically 24 hours after the last move | Yes |
 | Google sign-in and backup (`/api/auth/google`, `/api/sync`) | Yes | Google ID token (verified once). Name, email, picture go in a signed HttpOnly session cookie. The backup is the club document. | Backup stored against the Google account ID | Yes |
 | Feedback | Only via the user's own email app | What the user writes | Not on our server | Yes |
 

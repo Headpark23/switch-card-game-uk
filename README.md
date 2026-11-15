@@ -18,7 +18,7 @@ Five permanent tabs: **Home | Play | Score | Club | Me**. The lit tab always mat
 | Tab | What it holds |
 |---|---|
 | **Home** | Greeting, resume cards for an unfinished game or scorecard, four launch tiles, recent activity, and links to Learn rules, Puzzles, Questions, Plan a night and Join a night |
-| **Play** | Competitive games against 1 to 4 computers at Relaxed, Standard or Sharp; pace setting; resume; your record |
+| **Play** | Competitive games against 1 to 7 computers at Easy, Medium or Hard; pace setting; resume; your record |
 | **Score** | The scorecard for every format, Quick night, Ways to play, and saved nights |
 | **Club** | Stats, Seasons, Trophies and History for the whole club |
 | **Me** | Your record, history, record against the computer, badges, Passport, trophies and Settings |

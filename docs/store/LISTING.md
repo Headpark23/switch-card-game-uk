@@ -13,7 +13,7 @@ Your game-night club, with four ways to play:
 
 **Play with friends and family online**
 - Start a private table and share a code. Friends join from their own phones, and computers fill any empty seats.
-- No accounts and no chat with strangers: just your table, and 18 fun reactions to send.
+- No accounts and no chat with strangers: just your table, and a fixed set of fun reactions to send (18 clean, plus 37 optional spicy ones with every swear word masked, off until you turn them on).
 - If someone wanders off, a countdown warns them and the computer plays their move.
 
 **Play against the computer**

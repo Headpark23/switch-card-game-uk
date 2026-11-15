@@ -1108,3 +1108,6 @@
 .news-log li{font-size:12.5px;color:var(--ink);padding:3px 0;border-top:1px solid #efe3c4}
 .news-log li:first-child{border-top:0;font-weight:600}
 .seat-row-label{margin:6px 0 4px;font-size:12px;font-weight:700;color:var(--muted)}
+/* Touch targets: keep the look, grow the hit area to 44px (Nov 2026 review) */
+.pace-button,.last-card-button,.hint-button,.turn-banner>button{position:relative}
+.pace-button::after,.last-card-button::after,.hint-button::after,.turn-banner>button::after{content:'';position:absolute;left:50%;top:50%;width:max(100%,44px);height:44px;transform:translate(-50%,-50%)}
