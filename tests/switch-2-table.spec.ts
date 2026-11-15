@@ -190,6 +190,15 @@ test("four of a kind to win: Last Card goes in before the fourth card", async ({
   await expect(page.getByText(/You won the/)).toBeVisible({ timeout: 10_000 });
 });
 
+test("with one card left, selecting it then pressing Last Card before Play still wins", async ({ page }) => {
+  await seedTable(page, { hands: [["10H"], ["3C", "4C", "8C"]], discard: ["4D", "6H"], suit: "H", turn: 0 });
+  await resume(page);
+  await page.getByRole("button", { name: /Select Ten of hearts/ }).click();
+  await page.getByTestId("last-card-button").click();
+  await page.getByRole("button", { name: "Play selected" }).click();
+  await expect(page.getByText(/You won the/)).toBeVisible({ timeout: 10_000 });
+});
+
 test("Play selected never leaves the phone: a big hand and four cards selected, scrolled to the top or the bottom", async ({ page }) => {
   const hand = ["6C", "6S", "6D", "6H", "3C", "4C", "9C", "10C", "3D", "4D", "9D", "10D", "QD", "QC"];
   const seven = ["3H", "4H", "5H", "7H", "9H", "10H", "JH"];

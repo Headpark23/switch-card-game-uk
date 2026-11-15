@@ -387,6 +387,9 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     if (game.status !== 'playing' || lastCalled) return;
     cue('good');
     setLastCalled(true);
+    // Ruling 26 (amended): with a single card left, that card is both the first and the final card, so a call made
+    // while it is selected, before Play is pressed, still counts.
+    if (hand.length === 1) calledBeforeFinalRef.current = true;
   }
 
   function again() {
