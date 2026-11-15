@@ -7,7 +7,7 @@ import { explainUnplayable } from '../switch/coach';
 import { isLegalTablePlay, openingNote, tableLegalMoves, tablePlaces, type TableState } from '../switch/table';
 import type { CardId, GameAction, GameState, Suit } from '../switch/types';
 import { cue } from '../feedback';
-import { logComputerGame, logSeriesResult } from '../switch/logGame';
+import { logComputerGame, logOnlineNight, logSeriesResult } from '../switch/logGame';
 import { getComputerGames } from '../switch/computerLog';
 import { readClub } from '../switch/clubStore';
 import { drawTiming, planTurn, REDUCED, SPEEDS, stepDuration, visibleAt, type Step } from '../switch/presentation';
@@ -17,6 +17,7 @@ import { clearSeat, loadSeat, onlineModeBlurb, reactionOf, tableInvite, useRoom,
 import { logReaction } from '../switch/gameReplay';
 import { beginReplay, Bubble, ReactionSheet, useReplayRecorder } from './tableTalk';
 import { sortHand } from '../switch/sortHand';
+import { HahaBanner, hahaText, type Haha } from './HahaBanner';
 import { CardImage, CardShower, FeltHeader, rank, suitNames, suitSymbols } from '../ui';
 import { describe, ordinal } from './TableGame';
 import RealCards from './RealCards';
@@ -86,6 +87,7 @@ function useOnlineRecord(view: RoomView | null) {
         online: { code: view.code, humans, autoMoves: entry.seats[0].autoMoves },
         ...(entry.seriesId ? { mode: view.mode, seriesId: entry.seriesId } : {}),
       });
+      logOnlineNight({ gameId: entry.gameId, code: view.code, mode: view.mode, finishedAt: entry.finishedAt, seats: entry.seats });
     }
   }, [latest, view?.history.length]);
   const result = view?.result ?? null;
@@ -187,7 +189,12 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
 
   const visible = showing ? visibleAt(showing.before, showing.after, showing.steps, showing.at) : visibleAt(game, game, [], 0);
   const yourMove = !watching && !showing && game.status === 'playing' && game.turn === 0;
-  const hand = watching ? [] : showing && showing.before.turn === 0 && showing.action.type === 'draw' ? showing.before.hands[0] : game.hands[0];
+  const rawHand = watching ? [] : showing && showing.before.turn === 0 && showing.action.type === 'draw' ? showing.before.hands[0] : game.hands[0];
+  // Sort is a setting, not a one-off: while it is on, the hand is shown sorted and new cards slot straight in.
+  const [haha, setHaha] = useState<Haha>(null);
+  const shout = (name: string) => setHaha((current) => ({ id: (current?.id ?? 0) + 1, text: hahaText(name) }));
+  const [sortOn, setSortOn] = useState(false);
+  const hand = useMemo(() => (sortOn ? sortHand(rawHand) : rawHand), [sortOn, rawHand]);
   const pending = game.pendingPenalty;
   const missTurn = pending?.kind === 'miss-turn';
   const pendingDraw = pickups(game);
@@ -206,6 +213,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
     const steps = planTurn(before, action, after, names, { think: false, missedCall, called: saidLast });
     let line = describe(before, after, names[before.turn], action);
     if (names[before.turn] !== 'You' && saidLast[before.turn] && after.status === 'playing' && after.hands[before.turn].length === 1) line += ` ${names[before.turn]} says "Last Card".`;
+    if (missedCall) shout(names[before.turn]);
     if (missedCall) line += `${names[before.turn] === 'You' ? ' You had' : ` ${names[before.turn]} had`} not said "Last Card", so two cards are picked up.`;
     if (auto) line += ' The computer played this move for them.';
     setGame(after);
@@ -226,7 +234,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
       const action: GameAction = move.type === 'play' ? { type: 'play', cards: [...move.cards], ...(move.chosenSuit ? { chosenSuit: move.chosenSuit } : {}) } : move.type === 'draw' ? { type: 'draw' } : { type: 'accept-missed-turn' };
       show(before, action, view.game, move.missedLastCard, move.auto);
     } else {
-      if (fresh.length === 1 && move.type === 'spot') { cue('penalty'); push(`${names[move.seat]} did not say "Last Card" in time, so ${names[move.seat] === 'You' ? 'you pick' : 'they pick'} up two cards.`); }
+      if (fresh.length === 1 && move.type === 'spot') { cue('penalty'); shout(names[move.seat]); push(`${names[move.seat]} did not say "Last Card" in time, so ${names[move.seat] === 'You' ? 'you pick' : 'they pick'} up two cards.`); }
       else push(`${fresh.length} moves were played.`);
       busy.current = false;
       setGame(view.game);
@@ -456,6 +464,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
   const others = watching ? names.map((name, seatIndex) => ({ name, seatIndex })) : names.slice(1).map((name, index) => ({ name, seatIndex: index + 1 }));
 
   return <section ref={sectionRef} className={'tutorial game-tutorial table-game online-game' + (watching ? ' watching' : '')} aria-label={`Online table ${view.code}`} data-active-seat={visible.active} data-showing={showing ? 'yes' : 'no'}>
+    <HahaBanner haha={haha} />
     <div className={'turn-banner ' + (yourMove || activeName === 'You' ? 'you' : 'computer')}>
       <span className="turn-dot" aria-hidden="true" />
       <span className="turn-status" aria-live="polite" data-testid="turn-status">{status}</span>
@@ -508,7 +517,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
         {yourMove && missTurn && <div className="miss-turn-action"><strong>An eight was played</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you miss this turn.'}</p><button className="primary" onClick={pickUp}>Accept missed turn <ArrowRight size={18} /></button></div>}
         {youOutAt > 0 && <div className="out-panel" role="status" data-testid="you-are-out"><strong>You are out: {ordinal(youOutAt)} place.</strong><p>The others play on for the places still to be decided.</p></div>}
         {youOutAt === 0 && <>
-          {staged.length === 0 ? <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!yourMove}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={() => setReactOpen(true)} aria-label="Send a reaction"><Smiley size={16} />React</button><button className="pace-button sort-button" onClick={() => setGame((current) => ({ ...current, hands: current.hands.map((cards, seatIndex) => (seatIndex === 0 ? sortHand(cards) : cards)) }))}><SortAscending size={16} />Sort</button></div> : aceChoice ? SUIT_CHOOSER : MULTI_ACTION}
+          {staged.length === 0 ? <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!yourMove}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={() => setReactOpen(true)} aria-label="Send a reaction"><Smiley size={16} />React</button><button className="pace-button sort-button" onClick={() => setSortOn((on) => !on)} aria-pressed={sortOn}><SortAscending size={16} weight={sortOn ? 'fill' : 'regular'} />{sortOn ? 'Sorted' : 'Sort'}</button></div> : aceChoice ? SUIT_CHOOSER : MULTI_ACTION}
           {hint && yourMove && <p className="game-hint"><Lightbulb size={17} />{hintText}</p>}
           <div className="hand-row"><span>{hand.length} in hand</span><button className={'last-card-button' + (lastCalled ? ' called' : hand.length > 3 ? ' idle' : ' due')} onClick={callLastCard} aria-pressed={lastCalled} data-testid="last-card-button" aria-label={lastCalled ? 'Last Card called' : 'Call Last Card'}><HandPalm size={20} weight={lastCalled ? 'fill' : 'regular'} /><span>{lastCalled ? 'Called' : 'Last Card'}</span></button></div>
           <div className={'player-hand' + (hand.length > 10 ? ' dense' : '') + (hand.length > 5 ? ' two-rows' : '')} style={{ '--n': hand.length, '--per': Math.ceil(hand.length / 2) } as CSSProperties} aria-label="Your hand">

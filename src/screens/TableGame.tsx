@@ -17,6 +17,7 @@ import { CardImage, CardShower, rank, suit, suitNames, suitSymbols } from '../ui
 import RealCards from './RealCards';
 import type { PlayMode } from '../switch/series';
 import { sortHand } from '../switch/sortHand';
+import { HahaBanner, hahaText, type Haha } from './HahaBanner';
 import { banterFor, reactionOf, type TableEvent } from '../switch/reactions';
 import { logReaction, type ReplayMove } from '../switch/gameReplay';
 import { beginReplay, Bubble, ReactionSheet, useBubbles, useReplayRecorder } from './tableTalk';
@@ -118,7 +119,12 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   const visible = shown;
   const yourMove = !showing && game.status === 'playing' && game.turn === 0;
   const canAct = yourMove;
-  const hand = showing && showing.before.turn === 0 && showing.action.type === 'draw' ? showing.before.hands[0] : game.hands[0];
+  const rawHand = showing && showing.before.turn === 0 && showing.action.type === 'draw' ? showing.before.hands[0] : game.hands[0];
+  // Sort is a setting, not a one-off: while it is on, the hand is shown sorted and new cards slot straight in.
+  const [sortOn, setSortOn] = useState(false);
+  const [haha, setHaha] = useState<Haha>(null);
+  const shout = (name: string) => setHaha((current) => ({ id: (current?.id ?? 0) + 1, text: hahaText(name) }));
+  const hand = useMemo(() => (sortOn ? sortHand(rawHand) : rawHand), [sortOn, rawHand]);
   const pending = game.pendingPenalty;
   const missTurn = pending?.kind === 'miss-turn';
   const pendingDraw = pickups(game);
@@ -268,6 +274,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
       let spotted = false;
       if (before.hands[0].length === 1 && !calledRef.current) {
         spotted = true;
+        shout('You');
         cue('penalty');
         before = dealTo(before, 0, 2);
         setGame(before);
@@ -336,7 +343,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     // Playing out your last cards (two tens to win, or a seven that cannot) needs "Last Card" first.
     const emptied = cards.length === before.hands[0].length;
     const missed = emptied && !calledBeforeFinalRef.current;
-    if (missed) { cue('penalty'); after = penaliseMissedLastCard(after, 0); }
+    if (missed) { cue('penalty'); shout('You'); after = penaliseMissedLastCard(after, 0); }
     // The call is used up by an emptied hand (a pickup means saying it again) and by any play that leaves two or more.
     if (emptied || after.hands[0].length > 1) setLastCalled(false);
     show(before, action, after, false, missed);
@@ -463,6 +470,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     : yourMove ? (recent.length === 0 ? (openingNote(game, names) ?? `${names[game.dealer]} dealt.`) + (game.turn === game.dealer ? " You play." : " You play first.") : recent[recent.length - 1]) : recent[recent.length - 1] ?? openingNote(game, names) ?? `${names[game.dealer]} dealt.`);
 
   return <section ref={sectionRef} className="tutorial game-tutorial table-game" aria-label={series ? series.title : `Game against ${opponents === 1 ? 'the computer' : `${opponents} computers`}`} data-active-seat={visible.active} data-showing={showing ? 'yes' : 'no'}>
+    <HahaBanner haha={haha} />
     <div className={'turn-banner ' + (visible.active === 0 ? 'you' : 'computer')}>
       <span className="turn-dot" aria-hidden="true" />
       <span className="turn-status" aria-live="polite" data-testid="turn-status">{status}</span>
@@ -505,7 +513,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
       {yourMove && missTurn && <div className="miss-turn-action"><strong>An eight was played</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you miss this turn.'}</p><button className="primary" onClick={pickUp}>Accept missed turn <ArrowRight size={18} /></button></div>}
       {youOutAt > 0 && <div className="out-panel" role="status" data-testid="you-are-out"><strong>You are out: {ordinal(youOutAt)} place.</strong><p>The others play on for the places still to be decided.</p><button className="secondary" onClick={skipToResult}>Skip to the result <ArrowRight size={18} /></button></div>}
       {youOutAt === 0 && <>
-          {staged.length === 0 ? <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!canAct}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={cycleSpeed} aria-label={`Computer pace: ${SPEED_NAMES[speed]}. Tap to change`}><Timer size={16} />{SPEED_NAMES[speed]}</button><button className="pace-button sort-button" onClick={() => setGame((current) => ({ ...current, hands: current.hands.map((cards, seat) => (seat === 0 ? sortHand(cards) : cards)) }))}><SortAscending size={16} />Sort</button></div> : aceChoice ? SUIT_CHOOSER : MULTI_ACTION}
+          {staged.length === 0 ? <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!canAct}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={cycleSpeed} aria-label={`Computer pace: ${SPEED_NAMES[speed]}. Tap to change`}><Timer size={16} />{SPEED_NAMES[speed]}</button><button className="pace-button sort-button" onClick={() => setSortOn((on) => !on)} aria-pressed={sortOn}><SortAscending size={16} weight={sortOn ? 'fill' : 'regular'} />{sortOn ? 'Sorted' : 'Sort'}</button></div> : aceChoice ? SUIT_CHOOSER : MULTI_ACTION}
           {hint && yourMove && <p className="game-hint"><Lightbulb size={17} />{hintText}</p>}
           <div className="hand-row"><span>{hand.length} in hand</span><button className="pace-button react-button" onClick={() => setReactOpen(true)} aria-label="Send a reaction" data-testid="react-button"><ChatCircleText size={17} />React</button><button className={'last-card-button' + (lastCalled ? ' called' : hand.length > 3 ? ' idle' : ' due')} onClick={callLastCard} aria-pressed={lastCalled} data-testid="last-card-button" aria-label={lastCalled ? 'Last Card called' : 'Call Last Card'}><HandPalm size={20} weight={lastCalled ? 'fill' : 'regular'} /><span>{lastCalled ? 'Called' : 'Last Card'}</span></button></div>
           <div className={'player-hand' + (hand.length > 10 ? ' dense' : '') + (hand.length > 5 ? ' two-rows' : '')} style={{ '--n': hand.length, '--per': Math.ceil(hand.length / 2) } as CSSProperties} aria-label="Your hand">

@@ -230,6 +230,7 @@ test("you have five seconds to say Last Card before a computer spots it", async 
   await expect(page.locator(".player-hand button")).toHaveCount(1);
   // By about six seconds the computer has spotted it and you pick up two.
   await expect(page.locator(".player-hand button")).toHaveCount(3, { timeout: 4000 });
+  await expect(page.getByTestId("haha-banner")).toContainText("HAHA - you never said Last Card");
 });
 
 test("saying Last Card inside the five seconds means nothing is spotted", async ({ page }) => {
@@ -360,4 +361,22 @@ test("moving around every section leaves saved records untouched", async ({ page
   expect(after.extensions.switchComputerGames).toEqual(before.extensions.switchComputerGames);
   expect(after.extensions.switchProfiles).toEqual(before.extensions.switchProfiles);
   expect(after.extensions.futureField).toEqual({ keep: true });
+});
+
+test("Sort stays on: cards you pick up slot in sorted", async ({ page }) => {
+  test.setTimeout(40_000);
+  await seedTable(page, { hands: [["KC", "2D", "KH", "9S", "2S"], ["3C", "4C", "8C"]], discard: ["4D", "6C"], suit: "C", turn: 0 });
+  await resume(page);
+  const order = () => page.locator(".player-hand button").evaluateAll((els) => els.map((el) => el.getAttribute("data-card")));
+  await page.locator(".sort-button").click();
+  const sorted = await order();
+  expect(sorted.slice(0, 2).sort()).toEqual(["2D", "2S"]);
+  // Picking up adds a card; the hand must stay sorted rather than put it on the end.
+  await page.getByRole("button", { name: /pick up/i }).first().click();
+  await page.waitForTimeout(6000);
+  const after = await order();
+  expect(after.length).toBeGreaterThan(sorted.length);
+  const rank = (c: string) => "A23456789TJQK".indexOf(c.slice(0, -1) === "10" ? "T" : c.slice(0, -1));
+  const pairs = after.filter((c) => after.filter((d) => rank(d) === rank(c)).length > 1);
+  expect(after.slice(0, pairs.length)).toEqual(pairs);
 });

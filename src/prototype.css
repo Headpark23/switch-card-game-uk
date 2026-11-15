@@ -1248,3 +1248,8 @@
 .seat:first-child .reaction-bubble:not(.sticker){left:0;translate:0 0}
 .seat:last-child .reaction-bubble:not(.sticker){left:auto;right:0;translate:0 0}
 .seat:only-child .reaction-bubble:not(.sticker){left:50%;right:auto;translate:-50% 0}
+
+/* "HAHA - you never said Last Card": a red banner that pops over the table, never blocks taps, fades by itself. */
+.game-tutorial .haha-banner{position:absolute;left:50%;top:38%;z-index:30;max-width:88%;transform:translateX(-50%) rotate(-3deg);padding:10px 18px;border-radius:14px;background:#c8281c;color:#fff;font-size:19px;font-weight:800;line-height:1.15;text-align:center;letter-spacing:.2px;pointer-events:none;box-shadow:0 6px 18px #0007;border:2px solid #fff;opacity:0;animation:haha-pop 3s ease-out both}
+@keyframes haha-pop{0%{opacity:0;transform:translateX(-50%) rotate(-8deg) scale(.5)}10%{opacity:1;transform:translateX(-50%) rotate(-3deg) scale(1.15)}18%{transform:translateX(-50%) rotate(-3deg) scale(1)}80%{opacity:1}100%{opacity:0;transform:translateX(-50%) rotate(-3deg) scale(1)}}
+@media(prefers-reduced-motion:reduce){@keyframes haha-pop{0%,100%{opacity:0}10%,80%{opacity:1}}}
