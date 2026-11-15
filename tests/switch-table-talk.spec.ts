@@ -42,10 +42,10 @@ test("spicy talk: swearing only on phones that asked for it, a clean stand-in ev
   expect([...spicy].some((id) => id.startsWith("spicy-"))).toBe(true);
 });
 
-test("fifty-five reactions: ten sayings, eight of our own stickers and thirty-seven masked spicy ones, the same ids the server accepts, no emoji", () => {
+test("eighty-five reactions: ten sayings, eight of our own stickers, thirty-seven masked spicy ones and thirty favourites the computers send, the same ids the server accepts, no emoji", () => {
   expect(SAYINGS).toHaveLength(10);
   expect(STICKERS).toHaveLength(8);
-  expect(REACTIONS).toHaveLength(55);
+  expect(REACTIONS).toHaveLength(85);
   expect(REACTIONS.map((entry) => entry.id).sort()).toEqual([...SERVER_REACTIONS].sort());
   expect(STICKERS.every((entry) => entry.sticker === entry.id)).toBe(true);
   for (const entry of REACTIONS) expect(entry.text).not.toMatch(/\p{Extended_Pictographic}/u);

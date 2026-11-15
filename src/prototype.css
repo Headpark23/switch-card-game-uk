@@ -1238,3 +1238,13 @@
 .seat .reaction-bubble.sticker{white-space:nowrap}
 @media(max-width:639px){.game-tutorial .game-table{min-height:150px}.table-game .move-log li:not(:last-child){display:none}}
 .device-screen:not(.device-screen-native) .table-game .move-log li:not(:last-child){display:none}
+/* Speech bubbles size to their words, never to the narrow seat they sit on: every saying wraps inside its bubble (15 Nov 2026). */
+.reaction-bubble,.seat .reaction-bubble,.your-seat .reaction-bubble,.replay-seat .reaction-bubble{box-sizing:border-box;width:max-content;max-width:min(176px,56vw);white-space:normal;overflow-wrap:anywhere;word-break:normal;text-wrap:balance;text-align:center;line-height:1.18;font-size:13.5px;padding:6px 11px}
+.reaction-bubble.sticker,.seat .reaction-bubble.sticker,.your-seat .reaction-bubble.sticker,.replay-seat .reaction-bubble.sticker{width:auto;max-width:none;white-space:nowrap;padding:3px}
+.replay-seat .reaction-bubble{font-size:12px}
+/* A remark grows down over the seat it belongs to, and the first and last seats keep it on screen. */
+.seat .reaction-bubble:not(.sticker){top:6px;translate:-50% 0}
+.seat .reaction-bubble.sticker{top:14px;translate:-50% -50%}
+.seat:first-child .reaction-bubble:not(.sticker){left:0;translate:0 0}
+.seat:last-child .reaction-bubble:not(.sticker){left:auto;right:0;translate:0 0}
+.seat:only-child .reaction-bubble:not(.sticker){left:50%;right:auto;translate:-50% 0}

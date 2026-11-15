@@ -18,7 +18,7 @@ const phone = { width: 430, height: 932 };
 
 test("the reactions the app offers are exactly the ones the server accepts", () => {
   expect(REACTIONS.map((entry) => entry.id).sort()).toEqual([...SERVER_REACTIONS].sort());
-  expect(REACTIONS).toHaveLength(55);
+  expect(REACTIONS).toHaveLength(85);
 });
 
 async function openFriends(page: Page) {

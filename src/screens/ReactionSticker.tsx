@@ -9,6 +9,9 @@ const GOLD = '#c8961c';
 const DEEP_GOLD = '#ac7b26';
 const RED = '#b33426';
 const SWEAT = '#7fc4d8';
+const SUB_YELLOW = '#f4c430';
+const MEANIE_BLUE = '#3d6fb8';
+const RASTA_GREEN = '#2e8b4f';
 
 /** A playing card body to hang a face on. */
 const Card = ({ x = 14, y = 10, w = 36, h = 48, tilt = 0 }: { x?: number; y?: number; w?: number; h?: number; tilt?: number }) =>
@@ -91,6 +94,69 @@ const ART: Record<StickerId, ReactNode> = {
     <path d="M20 56 Q15 46 22 38 Q24 44 28 44 Q26 34 34 26 Q34 36 42 40 Q48 46 44 56 Z" fill={GOLD} />
     <rect x={21} y={30} width={22} height={28} rx={4} fill={CREAM} stroke={GREEN} strokeWidth={2.5} />
     <text x={32} y={52} textAnchor="middle" fontSize={21} fontWeight={800} fill={RED} fontFamily="Georgia,serif">7</text>
+  </>,
+  // The Beatles: a yellow submarine, porthole faces and all.
+  'yellow-submarine': <>
+    <path d="M30 12 V20 M30 12 H38" fill="none" stroke={GREEN} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+    <rect x={26} y={18} width={14} height={8} rx={3} fill={SUB_YELLOW} stroke={GREEN} strokeWidth={2.2} />
+    <ellipse cx={30} cy={36} rx={22} ry={13} fill={SUB_YELLOW} stroke={GREEN} strokeWidth={2.5} />
+    <circle cx={21} cy={35} r={4} fill={CREAM} stroke={GREEN} strokeWidth={2} /><circle cx={32} cy={35} r={4} fill={CREAM} stroke={GREEN} strokeWidth={2} /><circle cx={43} cy={35} r={4} fill={CREAM} stroke={GREEN} strokeWidth={2} />
+    <path d="M8 30 L3 24 L3 46 L8 40 Z" fill={SUB_YELLOW} stroke={GREEN} strokeWidth={2.2} strokeLinejoin="round" />
+    <path d="M4 56 Q10 51 16 56 T28 56 T40 56 T52 56 T61 55" fill="none" stroke={MEANIE_BLUE} strokeWidth={3} strokeLinecap="round" />
+  </>,
+  // I am the walrus: goo goo g'joob.
+  walrus: <>
+    <ellipse cx={32} cy={32} rx={22} ry={20} fill="#b89572" stroke={GREEN} strokeWidth={2.5} />
+    <circle cx={22} cy={25} r={6.5} fill={CREAM} stroke={GREEN} strokeWidth={2.2} /><circle cx={42} cy={25} r={6.5} fill={CREAM} stroke={GREEN} strokeWidth={2.2} /><path d="M28.5 25 H35.5" stroke={GREEN} strokeWidth={2.2} />
+    <circle cx={23} cy={26} r={2} fill={GREEN} /><circle cx={41} cy={26} r={2} fill={GREEN} />
+    <path d="M14 40 Q20 34 32 38 Q44 34 50 40 Q44 47 32 45 Q20 47 14 40 Z" fill="#5a4129" stroke={GREEN} strokeWidth={2} strokeLinejoin="round" />
+    <path d="M25 44 V58 M39 44 V58" stroke={CREAM} strokeWidth={5} strokeLinecap="round" /><path d="M25 44 V58 M39 44 V58" stroke={GREEN} strokeWidth={1.5} strokeLinecap="round" fill="none" opacity={0.6} />
+  </>,
+  // The Blue Meanie: grumpy, pointy and fanged.
+  'blue-meanie': <>
+    <path d="M14 22 L8 4 L24 14 Z M50 22 L56 4 L40 14 Z" fill={MEANIE_BLUE} stroke={GREEN} strokeWidth={2.2} strokeLinejoin="round" />
+    <circle cx={32} cy={34} r={22} fill={MEANIE_BLUE} stroke={GREEN} strokeWidth={2.5} />
+    <path d="M17 26 L28 31 M47 26 L36 31" stroke={GREEN} strokeWidth={3} strokeLinecap="round" />
+    <circle cx={24} cy={35} r={3.6} fill={CREAM} /><circle cx={40} cy={35} r={3.6} fill={CREAM} /><circle cx={25} cy={36} r={1.6} fill={GREEN} /><circle cx={39} cy={36} r={1.6} fill={GREEN} />
+    <path d="M19 46 Q32 54 45 46 Q32 49 19 46 Z" fill={GREEN} stroke={GREEN} strokeWidth={1.5} strokeLinejoin="round" />
+    <path d="M24 47 L26 51 L28 48 M36 48 L38 51 L40 47" fill={CREAM} stroke={CREAM} strokeWidth={1.5} strokeLinejoin="round" />
+  </>,
+  // Ziggy Stardust: the face with the lightning flash.
+  'ziggy-bolt': <>
+    <path d="M12 26 L8 14 L18 18 L20 6 L28 14 L34 4 L40 14 L48 8 L48 20 L56 22 L50 30 Z" fill={RED} stroke={GREEN} strokeWidth={2} strokeLinejoin="round" />
+    <ellipse cx={32} cy={38} rx={17} ry={20} fill={CREAM} stroke={GREEN} strokeWidth={2.5} />
+    <path d="M38 18 L26 36 H34 L25 56 L44 32 H35 L42 18 Z" fill={MEANIE_BLUE} stroke={RED} strokeWidth={2} strokeLinejoin="round" />
+    <circle cx={24} cy={36} r={2.2} fill={GREEN} /><path d="M24 48 Q31 52 38 47" fill="none" stroke={RED} strokeWidth={2.5} strokeLinecap="round" />
+  </>,
+  // I'm a Starman, waiting in the sky.
+  starman: <>
+    <path d="M32 6 L38.5 23 L56 24 L42 35 L47 53 L32 43 L17 53 L22 35 L8 24 L25.5 23 Z" fill={GOLD} stroke={GREEN} strokeWidth={2.5} strokeLinejoin="round" />
+    <circle cx={26} cy={30} r={2} fill={GREEN} /><circle cx={38} cy={30} r={2} fill={GREEN} /><path d="M27 36 Q32 40 37 36" fill="none" stroke={GREEN} strokeWidth={2.2} strokeLinecap="round" />
+    <path d="M4 10 H14 M2 16 H10 M54 52 H62 M50 58 H60" stroke={DEEP_GOLD} strokeWidth={2.5} strokeLinecap="round" />
+  </>,
+  // Major Tom, floating in a most peculiar way.
+  'major-tom': <>
+    <path d="M32 14 V6" stroke={GREEN} strokeWidth={2.5} strokeLinecap="round" /><circle cx={32} cy={5} r={3} fill={RED} stroke={GREEN} strokeWidth={1.5} />
+    <circle cx={32} cy={34} r={22} fill={CREAM} stroke={GREEN} strokeWidth={2.5} />
+    <rect x={15} y={22} width={34} height={24} rx={11} fill={GREEN} />
+    <path d="M22 28 Q26 25 31 26" fill="none" stroke={CREAM} strokeWidth={2.2} strokeLinecap="round" opacity={0.75} />
+    <path d="M40 40 L41.5 36 L43 40 L47 41.5 L43 43 L41.5 47 L40 43 L36 41.5 Z" fill={GOLD} />
+    <path d="M12 52 H52" stroke={DEEP_GOLD} strokeWidth={3} strokeLinecap="round" /><circle cx={20} cy={58} r={1.6} fill={DEEP_GOLD} /><circle cx={44} cy={58} r={1.6} fill={DEEP_GOLD} />
+  </>,
+  // The Lion of Judah, mane and all.
+  lion: <>
+    <circle cx={32} cy={33} r={27} fill={DEEP_GOLD} stroke={GREEN} strokeWidth={2.5} />
+    <path d="M32 8 L36 14 L42 10 L43 17 L50 16 L47 23 L55 26 L48 31 L55 37 L47 40 L50 48 L42 47 L40 54 L34 49 L30 56 L26 49 L20 54 L18 47 L10 48 L14 40 L8 36 L14 30 L9 25 L17 23 L14 16 L22 17 L23 10 L28 14 Z" fill={GOLD} stroke={GREEN} strokeWidth={1.8} strokeLinejoin="round" />
+    <circle cx={32} cy={36} r={16} fill="#f6d98a" stroke={GREEN} strokeWidth={2.2} />
+    <circle cx={26} cy={32} r={2.2} fill={GREEN} /><circle cx={38} cy={32} r={2.2} fill={GREEN} />
+    <path d="M29 38 H35 L32 42 Z" fill={GREEN} stroke={GREEN} strokeWidth={1.5} strokeLinejoin="round" /><path d="M32 42 Q28 47 24 44 M32 42 Q36 47 40 44" fill="none" stroke={GREEN} strokeWidth={2} strokeLinecap="round" />
+  </>,
+  // One love: a heart in red, gold and green.
+  'one-love': <>
+    <clipPath id="one-love-heart"><path d="M32 56 Q6 38 8 22 Q10 10 21 10 Q29 10 32 18 Q35 10 43 10 Q54 10 56 22 Q58 38 32 56 Z" /></clipPath>
+    <g clipPath="url(#one-love-heart)"><rect x={0} y={0} width={64} height={26} fill={RED} /><rect x={0} y={26} width={64} height={14} fill={GOLD} /><rect x={0} y={40} width={64} height={24} fill={RASTA_GREEN} /></g>
+    <path d="M32 56 Q6 38 8 22 Q10 10 21 10 Q29 10 32 18 Q35 10 43 10 Q54 10 56 22 Q58 38 32 56 Z" fill="none" stroke={GREEN} strokeWidth={2.5} strokeLinejoin="round" />
+    <path d="M32 24 L33.8 29 L39 29 L34.8 32 L36.4 37 L32 34 L27.6 37 L29.2 32 L25 29 L30.2 29 Z" fill={GREEN} />
   </>,
 };
 

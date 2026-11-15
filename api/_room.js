@@ -54,7 +54,7 @@ export const TIMING = Object.freeze({
 export const AWAY_AFTER = 2;
 
 /**
- * The 55 reactions: ten cheeky sayings, eight stickers and thirty-seven spicy sayings (swear words always masked). The server keeps only the id; the
+ * The 85 reactions: ten cheeky sayings, eight stickers, thirty-seven spicy sayings (swear words always masked) and thirty favourites the computers send (Beatles, Bowie, Marley). The server keeps only the id; the
  * words and drawings live in the app (`src/switch/reactions.ts`). A spicy id is shown as its clean stand-in on any
  * phone that has Spicy off, so the server never needs to know who wants swearing.
  */
@@ -64,6 +64,11 @@ export const REACTIONS = Object.freeze([
   "spicy-bollocks", "spicy-bugger", "spicy-bloody-hell", "spicy-sod-off", "spicy-jammy", "spicy-cheating", "spicy-pick-up-arse", "spicy-shite-hand", "spicy-holy-shit", "spicy-piss-off", "spicy-fucking-yes", "spicy-for-fucks-sake",
   "spicy-wanker", "spicy-prick", "spicy-arsehole", "spicy-fk-off", "spicy-what-the-f", "spicy-no-f-way", "spicy-dick-move", "spicy-twat", "spicy-crap", "spicy-damn", "spicy-hell", "spicy-git",
   "spicy-lucky-bastard", "spicy-shitshow", "spicy-bullshit", "spicy-pissed", "spicy-f-hell", "spicy-dickhead", "spicy-bellend", "spicy-tosser", "spicy-sodding", "spicy-bloody-lucky", "spicy-piss-take", "spicy-eat-shit", "spicy-knob",
+  // The computers' favourites: Beatles, Bowie and Marley stickers and sayings (mirrors CHARACTER_STICKERS and CHARACTER_SAYINGS).
+  "yellow-submarine", "walrus", "blue-meanie", "ziggy-bolt", "starman", "major-tom", "lion", "one-love",
+  "get-back", "let-it-be", "help", "dont-let-me-down", "come-together", "all-you-need", "twist-and-shout", "goo-goo", "hey-jude", "here-comes-the-sun", "little-help",
+  "lets-dance", "ground-control", "im-a-starman", "rebel-rebel", "changes",
+  "buffalo-soldier", "redemption", "get-up-stand-up", "one-love-saying", "every-little-thing", "jammin",
 ]);
 
 export class RoomError extends Error {
@@ -307,6 +312,13 @@ const BANTER_MOODS = Object.freeze({
   win: ["mic-drop", "read-em-and-weep", "smug-king", "seven-on-fire", "spicy-fucking-yes", "spicy-sod-off", "spicy-pick-up-arse", "spicy-eat-shit", "spicy-wanker", "spicy-fk-off"],
   lose: ["lucky-so-and-so", "salty", "crying-joker", "revenge-is-coming", "spicy-jammy", "spicy-bloody-hell", "spicy-shite-hand", "spicy-piss-off", "spicy-bollocks", "spicy-lucky-bastard", "spicy-bloody-lucky", "spicy-shitshow", "spicy-bullshit", "spicy-crap", "spicy-f-hell"],
 });
+/** What the Beatles, Bowie and Marley computers add in each mood, mirroring `THEMES` in `src/switch/reactions.ts`. */
+const BANTER_THEMES = Object.freeze({
+  beatles: { gloat: ["get-back", "yellow-submarine", "walrus", "come-together"], sulk: ["help", "dont-let-me-down", "blue-meanie", "let-it-be"], tease: ["twist-and-shout", "come-together", "yellow-submarine"], win: ["all-you-need", "twist-and-shout", "yellow-submarine", "here-comes-the-sun"], lose: ["let-it-be", "help", "dont-let-me-down", "blue-meanie"] },
+  bowie: { gloat: ["lets-dance", "im-a-starman", "ziggy-bolt", "rebel-rebel"], sulk: ["ground-control", "major-tom", "changes"], tease: ["starman", "lets-dance", "im-a-starman"], win: ["im-a-starman", "ziggy-bolt", "lets-dance", "starman"], lose: ["ground-control", "major-tom", "changes", "rebel-rebel"] },
+  marley: { gloat: ["buffalo-soldier", "lion", "get-up-stand-up"], sulk: ["redemption", "every-little-thing", "one-love"], tease: ["jammin", "buffalo-soldier", "lion"], win: ["jammin", "lion", "get-up-stand-up", "one-love-saying"], lose: ["redemption", "every-little-thing", "one-love-saying", "one-love"] },
+});
+const BANTER_BAND = Object.freeze({ John: "beatles", Paul: "beatles", George: "beatles", Ringo: "beatles", Ziggy: "bowie", Bowie: "bowie", Marley: "marley" });
 const BANTER_CHAT = Object.freeze({ John: 0.75, Paul: 0.55, George: 0.35, Ringo: 0.5, Ziggy: 0.6, Marley: 0.45, Bowie: 0.65 });
 /** A table hears at most one computer remark in this long (a win always gets one). */
 const BANTER_GAP_MS = 7_000;
@@ -336,7 +348,7 @@ function computerBanter(room, table, event, at, random = secureRandom) {
     const player = table.players[candidate.index];
     const seat = room.seats[player];
     if (random() >= candidate.odds * (0.5 + (BANTER_CHAT[seat.name] ?? 0.5))) continue;
-    const pool = BANTER_MOODS[candidate.mood];
+    const pool = [...BANTER_MOODS[candidate.mood], ...(BANTER_THEMES[BANTER_BAND[seat.name]]?.[candidate.mood] ?? [])];
     room.reactSeq += 1;
     room.reactions.push({ n: room.reactSeq, player, id: pool[Math.floor(random() * pool.length) % pool.length], at });
     if (room.reactions.length > 20) room.reactions.splice(0, room.reactions.length - 20);
