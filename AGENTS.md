@@ -164,3 +164,6 @@ Darts: first to three legs wins a set. Knock Out: whoever finishes last in a rou
 - Opening your own table invitation again returns you to your seat; it never tries to join twice.
 - A signed-in account is one person on every device (`switchAccountMe`, see `docs/STORAGE-KEYS.md`). Sync runs on open and when the app returns to view.
 - Tapped links only open the Android app if `https://switchcardgame.co.uk/.well-known/assetlinks.json` lists the Play signing key: run `node scripts/make-assetlinks.mjs <SHA-256>` and deploy.
+
+## Online "Games" (owner decision, 15 Nov 2026)
+- At a table of friends, "Single game" is replaced by "Games": First to N wins (1 to 5) or Best of N games (1, 3, 5, 7, 9). One game is just an ordinary single game. Best of N ends early once nobody can catch the leader; if players are level after N games, deciding games are dealt until someone leads. Everyone plays every game, up to 8 seats; every game is recorded like any other online game. Mode id `match` (`series.ts`, `api/_room.js`); playing the computer in PLAY still offers Single game. Tests: `tests/switch-match.spec.ts`.

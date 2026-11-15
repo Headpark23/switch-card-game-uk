@@ -13,7 +13,7 @@ import { readClub } from '../switch/clubStore';
 import { drawTiming, planTurn, REDUCED, SPEEDS, stepDuration, visibleAt, type Step } from '../switch/presentation';
 import { readSpeed } from '../switch/activeTable';
 import { modeInfo, pendingGames, seriesPlayerName, standings } from '../switch/series';
-import { clearSeat, loadSeat, onlineModeBlurb, reactionOf, tableInvite, useRoom, type RoomView } from '../switch/onlineRoom';
+import { clearSeat, loadSeat, onlineModeBlurb, reactionOf, tableInvite, tableName, useRoom, type RoomView } from '../switch/onlineRoom';
 import { logReaction } from '../switch/gameReplay';
 import { beginReplay, Bubble, ReactionSheet, useReplayRecorder } from './tableTalk';
 import { sortHand } from '../switch/sortHand';
@@ -26,7 +26,7 @@ type Showing = { id: number; before: TableState; after: TableState; action: Game
 
 const reduced = () => { try { return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false; } catch { return false; } };
 const pickups = (state: TableState) => (state.pendingPenalty && state.pendingPenalty.kind !== 'miss-turn' ? state.pendingPenalty.cards : 0);
-const modeName = (view: RoomView) => modeInfo(view.mode).name;
+const modeName = (view: RoomView) => view.mode === 'match' ? 'Match' : modeInfo(view.mode).name;
 
 type Props = { onLeave: () => void; onOpenCards: () => void; onStartNight: () => void; onReplay?: (gameId: string) => void };
 
@@ -115,7 +115,7 @@ function WaitingRoom({ view, room, onLeave }: { view: RoomView; room: Room; onLe
   const host = view.seats.find((entry) => entry.host)?.name ?? 'Someone';
   const people = view.seats.filter((entry) => entry.kind === 'human');
   const free = view.capacity - view.seats.length;
-  const what = view.mode === 'single' ? 'a game of Switch' : `a game of Switch: ${modeName(view)}`;
+  const what = view.mode === 'single' ? 'a game of Switch' : view.mode === 'match' ? `a game of Switch: ${tableName(view.mode, view.setup, 'Match').toLowerCase()}` : `a game of Switch: ${modeName(view)}`;
   const invite = tableInvite(view.code, host, what);
 
   async function share() {
@@ -134,7 +134,7 @@ function WaitingRoom({ view, room, onLeave }: { view: RoomView; room: Room; onLe
   return <section className="friends-table waiting-room" aria-labelledby="waiting-title">
     <FeltHeader compact id="waiting-title" title={view.you.host ? 'Your table is ready.' : `You are at ${host}’s table.`} intro="Share the code. When everyone is here, the host deals." cards={['QH', 'KS']} />
     <div className="table-code" aria-label={`Table code ${view.code.split('').join(' ')}`}><small>Table code</small><b data-testid="table-code">{view.code}</b></div>
-    <p className="table-mode" data-testid="table-mode"><strong>{modeName(view)}</strong>{view.setup.setsToWin ? ` · first to ${view.setup.setsToWin} sets` : ''}{view.setup.limit ? ` · first to ${view.setup.limit} loses` : ''}<span>{onlineModeBlurb(view.mode)}</span></p>
+    <p className="table-mode" data-testid="table-mode"><strong>{tableName(view.mode, view.setup, modeName(view))}</strong>{view.setup.setsToWin ? ` · first to ${view.setup.setsToWin} sets` : ''}{view.setup.limit ? ` · first to ${view.setup.limit} loses` : ''}<span>{onlineModeBlurb(view.mode, view.setup)}</span></p>
     <button className="secondary share-button" onClick={share}><ShareNetwork size={18} weight="bold" />Invite friends</button>
     <ul className="waiting-seats" aria-label="Who is here">
       {people.map((entry, index) => <li key={index} className={entry.you ? 'me' : ''}><strong>{entry.you ? `${entry.name} (you)` : entry.name}</strong>{entry.host && <em>Host</em>}</li>)}

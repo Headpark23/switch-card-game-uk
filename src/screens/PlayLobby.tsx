@@ -16,7 +16,7 @@ function leansOn(level: ComputerLevel, personality: string): string {
 import { getComputerGames, getMeId, summariseComputerGames } from '../switch/computerLog';
 import { readClub } from '../switch/clubStore';
 import { loadSeat } from '../switch/onlineRoom';
-import { MODES, modeInfo, validateSetup, type PlayMode, type SeriesSetup } from '../switch/series';
+import { COMPUTER_MODES, modeInfo, validateSetup, type PlayMode, type SeriesSetup } from '../switch/series';
 import { CardImage, FeltHeader, MiniFan } from '../ui';
 
 const LEVELS: readonly { id: ComputerLevel; name: string; note: string }[] = [
@@ -28,7 +28,7 @@ const KEY = 'switchTable';
 
 type Choice = { opponents: number; level: ComputerLevel; mode: PlayMode; setsToWin: 3 | 5; limit: number };
 const DEFAULT_CHOICE: Choice = { opponents: 1, level: 'standard', mode: 'single', setsToWin: 3, limit: 100 };
-const MODE_CARDS: Record<PlayMode, string[]> = { single: ['AS', 'KH'], knockout: ['KS', 'KC'], group: ['QH', 'QD', 'JS'], cup: ['10H', '10S'], darts: ['7S', '7H'], dominoes: ['6C', '6D', '6S'] };
+const MODE_CARDS: Record<PlayMode, string[]> = { single: ['AS', 'KH'], match: ['AS', 'AH', 'AD'], knockout: ['KS', 'KC'], group: ['QH', 'QD', 'JS'], cup: ['10H', '10S'], darts: ['7S', '7H'], dominoes: ['6C', '6D', '6S'] };
 const LIMIT_CHIPS = [50, 100, 150, 200];
 
 /** The fewest computers a way of playing needs, so the picker never offers a table it cannot run. */
@@ -37,7 +37,7 @@ const fewestComputers = (mode: PlayMode) => modeInfo(mode).minPlayers - 1;
 export function loadTableChoice(): Choice {
   try {
     const saved = JSON.parse(window.localStorage.getItem(KEY) || 'null') as Partial<Choice> | null;
-    const mode = MODES.find((entry) => entry.id === saved?.mode)?.id ?? 'single';
+    const mode = COMPUTER_MODES.find((entry) => entry.id === saved?.mode)?.id ?? 'single';
     const opponents = saved && Number.isInteger(saved.opponents) && saved.opponents! >= 1 && saved.opponents! <= 7 ? Math.max(saved.opponents!, fewestComputers(mode)) : Math.max(1, fewestComputers(mode));
     const level = LEVELS.find((entry) => entry.id === saved?.level)?.id ?? 'standard';
     const limit = Number.isInteger(saved?.limit) && saved!.limit! >= 10 && saved!.limit! <= 999 ? saved!.limit! : DEFAULT_CHOICE.limit;
@@ -83,7 +83,7 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
     <div className="lobby-setup">
     <div className="lobby-group" role="group" aria-label="Game type">
       <h2>What are we playing?</h2>
-      <div className="mode-grid">{MODES.map((entry) => <button key={entry.id} aria-pressed={choice.mode === entry.id} className={choice.mode === entry.id ? 'active' : ''} onClick={() => set({ mode: entry.id })}><MiniFan codes={MODE_CARDS[entry.id]} /><b>{entry.name}</b></button>)}</div>
+      <div className="mode-grid">{COMPUTER_MODES.map((entry) => <button key={entry.id} aria-pressed={choice.mode === entry.id} className={choice.mode === entry.id ? 'active' : ''} onClick={() => set({ mode: entry.id })}><MiniFan codes={MODE_CARDS[entry.id]} /><b>{entry.name}</b></button>)}</div>
       <p className="lobby-note" data-testid="mode-note">{modeInfo(choice.mode).blurb}</p>
     </div>
 

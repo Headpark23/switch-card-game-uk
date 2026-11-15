@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ComputerLevel } from "./ai";
 import type { TableState } from "./table";
-import type { PlayMode, SeriesOutcome, SeriesState } from "./series";
+import { matchLabel, type MatchType, type PlayMode, type SeriesOutcome, type SeriesState } from "./series";
 import type { CardId, Suit } from "./types";
 
 /**
@@ -49,7 +49,7 @@ export interface RoomResult {
 }
 
 /** What the host chose: the way to play and its settings (Darts sets, Dominoes number). */
-export interface RoomSetup { readonly mode: PlayMode; readonly setsToWin?: number; readonly limit?: number }
+export interface RoomSetup { readonly mode: PlayMode; readonly setsToWin?: number; readonly limit?: number; readonly matchType?: MatchType; readonly games?: number }
 
 /** A tournament or match at the table. Player ids are "p0", "p1"…; `me` is yours. Its games run side by side. */
 export interface RoomSeries {
@@ -176,18 +176,26 @@ export function clearSeat(): void {
 }
 
 /** Each way to play is shown by its own little hand of cards, as in the Play lobby. */
-export const ONLINE_MODE_CARDS: Record<PlayMode, string[]> = { single: ["AS", "KH"], knockout: ["KS", "KC"], group: ["QH", "QD", "JS"], cup: ["10H", "10S"], darts: ["7S", "7H"], dominoes: ["6C", "6D", "6S"] };
+export const ONLINE_MODE_CARDS: Record<PlayMode, string[]> = { single: ["AS", "KH"], match: ["AS", "AH", "AD"], knockout: ["KS", "KC"], group: ["QH", "QD", "JS"], cup: ["10H", "10S"], darts: ["7S", "7H"], dominoes: ["6C", "6D", "6S"] };
 
 /** What each way to play means at a table of friends. Knock Out here is the game-night version (ruling 11). */
-export function onlineModeBlurb(mode: PlayMode): string {
+export function onlineModeBlurb(mode: PlayMode, setup?: RoomSetup): string {
   switch (mode) {
     case "single": return "One game of Switch. First out wins.";
+    case "match": return setup?.matchType === "best"
+      ? `Best of ${setup.games ?? 3} games: most wins takes it, and it ends as soon as nobody can catch the leader. Level at the end? Play on until someone is ahead.`
+      : `First to ${setup?.games ?? 3} wins takes the match. Every game is ordinary Switch.`;
     case "knockout": return "Everyone plays each round; more than eight are split across tables. Whoever is left holding cards at a table is out, until one player is left.";
     case "cup": return "Head-to-head matches, drawn at random, all played at the same time. Win yours to go through.";
     case "group": return "Two leagues playing side by side, then the championship and plate play-offs. For 6 to 16 players.";
     case "darts": return "Each game is a leg. Three legs win a set; first to the sets wins the match.";
     case "dominoes": return "Cards left in hand add up after every game. First to the number loses.";
   }
+}
+
+/** What a table is called on screen: "Best of 5 games", "First to 3 wins", or the way to play. */
+export function tableName(mode: PlayMode, setup: RoomSetup | undefined, fallback: string): string {
+  return mode === "match" ? matchLabel(setup?.matchType, setup?.games) : fallback;
 }
 
 export const cleanTableCode = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);

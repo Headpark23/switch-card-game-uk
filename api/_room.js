@@ -23,8 +23,8 @@ const SUITS = ["S", "H", "D", "C"];
 /** The seven computers of the Play lobby first, then more for big tables. */
 const COMPUTER_NAMES = ["John", "Paul", "George", "Ringo", "Ziggy", "Marley", "Bowie", "Elton", "Freddie", "Dolly", "Stevie", "Cher", "Prince", "Adele", "Elvis"];
 /** The ways to play at an online table. Knock Out with friends is "last one out leaves" (ruling 11; owner decision, 14 Nov 2026). */
-export const MODES = Object.freeze(["single", "knockout", "cup", "group", "darts", "dominoes"]);
-const MODE_NAMES = { single: "game", knockout: "Knock Out", cup: "Switch Cup", group: "Group Play", darts: "Darts match", dominoes: "Dominoes match" };
+export const MODES = Object.freeze(["single", "match", "knockout", "cup", "group", "darts", "dominoes"]);
+const MODE_NAMES = { single: "game", match: "match", knockout: "Knock Out", cup: "Switch Cup", group: "Group Play", darts: "Darts match", dominoes: "Dominoes match" };
 /** The most people at one online table (ruling 32). */
 export const MAX_PLAYERS = 16;
 
@@ -93,25 +93,27 @@ function humanSeat(name, token, now, host = false) {
 }
 
 /** What the host chose: the way to play and its settings. Anything a tournament needs is checked by the app's own rules. */
-function cleanSetup({ mode, setsToWin, limit }, capacity, level) {
+function cleanSetup({ mode, setsToWin, limit, matchType, games }, capacity, level) {
   const chosen = mode === undefined ? "single" : mode;
   if (!MODES.includes(chosen)) throw new RoomError("That way to play is not recognised.");
   if (capacity > ONLINE_MAX_PLAYERS[chosen]) throw new RoomError(chosen === "single" ? `A single game is for up to ${MAX_SEATS} players.` : `${MODE_NAMES[chosen]} is for up to ${ONLINE_MAX_PLAYERS[chosen]} players.`);
   if (chosen === "single") return { mode: "single" };
+  // "Games": first to N wins or best of N. One game is just a single game, played the ordinary way.
+  if (chosen === "match" && Number(games ?? 1) === 1) return { mode: "single" };
   const setup = { mode: chosen, opponents: capacity - 1, level, knockout: "last-out",
-    ...(chosen === "darts" ? { setsToWin: Number(setsToWin ?? 3) } : {}), ...(chosen === "dominoes" ? { limit: Number(limit ?? 100) } : {}) };
+    ...(chosen === "match" ? { matchType, games: Number(games) } : {}), ...(chosen === "darts" ? { setsToWin: Number(setsToWin ?? 3) } : {}), ...(chosen === "dominoes" ? { limit: Number(limit ?? 100) } : {}) };
   const problem = validateSetup(setup, ONLINE_MAX_PLAYERS[chosen]);
   if (problem) throw new RoomError(problem.replace(/, so at least \d+ computers?\./, "."));
   return setup;
 }
 
-export function createRoom({ seats, level, name, mode, setsToWin, limit }, token, now) {
+export function createRoom({ seats, level, name, mode, setsToWin, limit, matchType, games }, token, now) {
   const capacity = Number(seats);
   if (!Number.isInteger(capacity) || capacity < 2 || capacity > MAX_PLAYERS) throw new RoomError(`A table is for 2 to ${MAX_PLAYERS} players.`);
   const chosen = level === undefined ? "standard" : level;
   if (!LEVELS.includes(chosen)) throw new RoomError("Pick relaxed, standard or sharp computers.");
   return {
-    v: 3, rev: 0, createdAt: now, updatedAt: now, status: "lobby", capacity, level: chosen, setup: cleanSetup({ mode, setsToWin, limit }, capacity, chosen),
+    v: 3, rev: 0, createdAt: now, updatedAt: now, status: "lobby", capacity, level: chosen, setup: cleanSetup({ mode, setsToWin, limit, matchType, games }, capacity, chosen),
     gameNo: 0, reactSeq: 0, newsSeq: 0, seriesNo: 0,
     seats: [humanSeat(cleanName(name), token, now, true)], tables: [], reactions: [], news: [], history: [],
     series: null, ready: {},
@@ -201,6 +203,7 @@ export function startRoom(room, seatIndex, now, random = secureRandom) {
 
 /* ── Tournaments and matches: many games, several at once ── */
 
+const matchText = (setup) => (setup.matchType === "best" ? `best of ${setup.games} games` : `first to ${setup.games} wins`);
 const keyOf = (room, key) => `${room.seriesNo}:${key}`;
 
 function beginSeries(room, now, random) {
@@ -208,7 +211,7 @@ function beginSeries(room, now, random) {
   const players = room.seats.map((seat, index) => ({ id: sid(index), name: seat.name }));
   room.series = startSeries({ ...room.setup, opponents: room.seats.length - 1, level: room.level }, random, `${room.code ?? "room"}-series-${room.seriesNo}`, players);
   room.ready = {};
-  news(room, `The ${MODE_NAMES[room.setup.mode]} begins: ${room.seats.length} players.`, now);
+  news(room, room.setup.mode === "match" ? `The match begins (${matchText(room.setup)}): ${room.seats.length} players.` : `The ${MODE_NAMES[room.setup.mode]} begins: ${room.seats.length} players.`, now);
   scheduleSeries(room, now, 0);
   dealDue(room, now, random);
 }
@@ -669,7 +672,7 @@ async function route(request, store, now, random) {
 
   if (!code) {
     const seatToken = randomBytes(18).toString("hex");
-    const room = createRoom({ seats: body.seats, level: body.level, name: body.name, mode: body.mode, setsToWin: body.setsToWin, limit: body.limit }, seatToken, now);
+    const room = createRoom({ seats: body.seats, level: body.level, name: body.name, mode: body.mode, setsToWin: body.setsToWin, limit: body.limit, matchType: body.matchType, games: body.games }, seatToken, now);
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const fresh = newCode();
       room.code = fresh;

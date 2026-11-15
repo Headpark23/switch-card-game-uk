@@ -11,7 +11,7 @@ test("every game type finishes for every table size it allows, with a clean fini
     const runs: Record<string, number> = {};
     for (const info of series.MODES.filter((mode) => mode.id !== "single")) {
       for (let players = info.minPlayers; players <= info.maxPlayers; players += 1) {
-        const setup = { mode: info.id, opponents: players - 1, level: "standard", setsToWin: 3, limit: 60 };
+        const setup = { mode: info.id, opponents: players - 1, level: "standard", setsToWin: 3, limit: 60, matchType: "best", games: 3 };
         let state = series.startSeries(setup, Math.random);
         let guard = 0;
         while (!series.isSeriesOver(state) && guard < 400) {

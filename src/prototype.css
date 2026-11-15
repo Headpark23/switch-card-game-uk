@@ -912,7 +912,7 @@
 .mode-grid button .mini-fan{flex:none;transform:scale(.9);transform-origin:left center}
 .mode-grid button.active{background:linear-gradient(180deg,#0d4a37,#053527);border-color:#e6c97f;color:#fff;box-shadow:0 5px 12px -5px #05352788}
 .seg.seven{grid-template-columns:repeat(7,1fr);gap:4px}.seg.seven button{min-height:46px;padding:6px 0}.seg.seven button b{font-size:17px}
-.seg.four{grid-template-columns:repeat(4,1fr)}
+.seg.four{grid-template-columns:repeat(4,1fr)}.seg.two{grid-template-columns:repeat(2,1fr)}.seg.five{grid-template-columns:repeat(5,1fr)}.seg.two button b{font-size:14px;font-family:'DM Sans',sans-serif;font-weight:700}
 .seg button:disabled{opacity:.38}
 .lobby-seats.seats-5,.lobby-seats.seats-6,.lobby-seats.seats-7{gap:5px}
 .lobby-seats.seats-5 .playing-card,.lobby-seats.seats-6 .playing-card,.lobby-seats.seats-7 .playing-card{width:30px}

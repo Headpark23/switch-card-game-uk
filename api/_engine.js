@@ -1057,6 +1057,14 @@ const MODES = [
 		maxPlayers: 8
 	},
 	{
+		id: "match",
+		name: "Games",
+		short: "Games",
+		blurb: "Play a set number of games. Best of 3, 5 or more, or first to a number of wins.",
+		minPlayers: 2,
+		maxPlayers: 8
+	},
+	{
 		id: "knockout",
 		name: "Knock Out",
 		short: "Knock Out",
@@ -1097,10 +1105,13 @@ const MODES = [
 		maxPlayers: 8
 	}
 ];
+MODES.filter((entry) => entry.id !== "single");
+MODES.filter((entry) => entry.id !== "match");
 const modeInfo = (mode) => MODES.find((entry) => entry.id === mode);
 /** The most players a way of playing can take at an online table: tournaments split into several games at once. */
 const ONLINE_MAX_PLAYERS = {
 	single: 8,
+	match: 8,
 	darts: 8,
 	dominoes: 8,
 	knockout: 16,
@@ -1112,8 +1123,14 @@ function validateSetup(setup, maxPlayers = 8) {
 	const info = modeInfo(setup.mode);
 	const players = setup.opponents + 1;
 	if (!Number.isInteger(setup.opponents) || setup.opponents < 1 || players > maxPlayers) return maxPlayers === 8 ? "Choose 1 to 7 computers." : `${info.name} is for up to ${maxPlayers} players.`;
-	if (players > 8 && (setup.mode === "darts" || setup.mode === "dominoes")) return `${info.name} is for up to 8 players: everyone plays in every game.`;
+	if (players > 8 && (setup.mode === "darts" || setup.mode === "dominoes" || setup.mode === "match")) return `${info.name} is for up to 8 players: everyone plays in every game.`;
 	if (players < info.minPlayers) return `${info.name} needs at least ${info.minPlayers} players, so at least ${info.minPlayers - 1} computers.`;
+	if (setup.mode === "match") {
+		const games = setup.games;
+		if (setup.matchType !== "first" && setup.matchType !== "best") return "Choose best of or first to.";
+		if (!(Number.isInteger(games) && games >= 1 && games <= 15)) return "Choose 1 to 15 games.";
+		if (setup.matchType === "best" && games % 2 === 0) return "Best of needs an odd number of games.";
+	}
 	if (setup.mode === "darts" && setup.setsToWin !== 3 && setup.setsToWin !== 5) return "Play to 3 or 5 sets.";
 	if (setup.mode === "dominoes" && !(Number.isInteger(setup.limit) && setup.limit >= 10 && setup.limit <= 999)) return "Choose a number from 10 to 999.";
 	return null;
@@ -1217,6 +1234,14 @@ function startSeries(setup, random, id = `series-${Date.now()}-${Math.floor(rand
 			base,
 			cup: createCup(players, random)
 		};
+		case "match": return {
+			kind: "match",
+			base,
+			wins: Object.fromEntries(ids.map((entry) => [entry, 0])),
+			matchType: setup.matchType,
+			games: setup.games,
+			winnerId: null
+		};
 		case "darts": return {
 			kind: "darts",
 			base,
@@ -1317,6 +1342,11 @@ function koOrder(part) {
 }
 function pendingGames(state) {
 	switch (state.kind) {
+		case "match": return state.winnerId ? [] : [{
+			key: `match-${state.base.games + 1}`,
+			title: matchGameTitle(state),
+			playerIds: state.base.players.map((player) => player.id)
+		}];
 		case "darts": return state.winnerId ? [] : [{
 			key: `darts-${state.base.games + 1}`,
 			title: `Game ${state.base.games + 1}`,
@@ -1357,6 +1387,19 @@ function pendingGames(state) {
 			return [...koPending(state.championship, "championship", "Championship"), ...koPending(state.plate, "plate", "Plate")];
 	}
 }
+function matchGameTitle(state) {
+	const next = state.base.games + 1;
+	if (state.matchType === "first") return `Game ${next}`;
+	return next > state.games ? "Deciding game" : `Game ${next} of ${state.games}`;
+}
+/** First to N: someone reaches N wins. Best of N: someone leads by more than the games left, or after N games is simply ahead. */
+function matchWinner(state, wins, played) {
+	const ranked = Object.entries(wins).sort((a, b) => b[1] - a[1]);
+	if (!ranked.length) return null;
+	if (state.matchType === "first") return ranked[0][1] >= state.games ? ranked[0][0] : null;
+	const left = Math.max(0, state.games - played);
+	return ranked[0][1] - (ranked[1]?.[1] ?? 0) > left ? ranked[0][0] : null;
+}
 function leagueOf(slot) {
 	const named = (id) => ({
 		id,
@@ -1388,6 +1431,18 @@ function submitGame(state, key, result) {
 	if (!pending) throw new Error("That game is not waiting to be played.");
 	const base = withGame(state, result, pending.playerIds);
 	switch (state.kind) {
+		case "match": {
+			const wins = {
+				...state.wins,
+				[result.winnerId]: state.wins[result.winnerId] + 1
+			};
+			return {
+				...state,
+				base,
+				wins,
+				winnerId: matchWinner(state, wins, base.games)
+			};
+		}
 		case "darts": {
 			const legs = {
 				...state.legs,
@@ -1504,6 +1559,7 @@ function isSeriesOver(state) {
 		case "lastout": return koFinished(state.part);
 		case "knockout":
 		case "cup": return state.cup.championId !== null;
+		case "match":
 		case "darts": return state.winnerId !== null;
 		case "dominoes": return state.loserId !== null;
 		case "group": return state.phase === "playoffs" && koFinished(state.championship) && koFinished(state.plate);
@@ -1528,6 +1584,13 @@ function seriesOutcome(state) {
 			return {
 				winnerId: champion,
 				order: [champion, ...ids.filter((id) => id !== champion).sort((a, b) => exitRound(b) - exitRound(a) || ids.indexOf(a) - ids.indexOf(b))]
+			};
+		}
+		case "match": {
+			const winnerId = state.winnerId;
+			return {
+				winnerId,
+				order: [...ids].sort((a, b) => (a === winnerId ? -1 : b === winnerId ? 1 : 0) || state.wins[b] - state.wins[a] || ids.indexOf(a) - ids.indexOf(b))
 			};
 		}
 		case "darts": {
