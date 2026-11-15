@@ -57,7 +57,7 @@ const games = (page: Page) => page.evaluate(() => {
 test("the picker offers every game type, 1 to 7 computers, and never a table a type cannot run", async ({ page }) => {
   await openPlay(page, {});
   const types = page.getByRole("group", { name: "Game type" });
-  for (const name of ["Single game", "Knock Out", "Group Play", "Switch Cup", "Darts scoring", "Dominoes scoring"]) await expect(types.getByRole("button", { name })).toBeVisible();
+  for (const name of ["Games", "Knock Out", "Group Play", "Switch Cup", "Darts scoring", "Dominoes scoring"]) await expect(types.getByRole("button", { name })).toBeVisible();
   const opponents = page.getByRole("group", { name: "Computer opponents" });
   await expect(opponents.getByRole("button")).toHaveCount(7);
   await types.getByRole("button", { name: "Group Play" }).click();
@@ -115,4 +115,37 @@ test("Knock Out is 1 v 1 games: win yours to go through, until one player is lef
   expect(list.find((game) => game.series)?.series?.players).toBe(3);
   // Every game you played was head to head.
   expect(list.filter((game) => !game.series).every((game) => game.opponents === 1)).toBe(true);
+});
+
+test("against the computer, Games replaces Single game: First to / Best of and a count, one game being a single game", async ({ page }) => {
+  await openPlay(page, {});
+  await expect(page.getByRole("group", { name: "Game type" }).getByRole("button", { name: "Single game" })).toHaveCount(0);
+  const count = page.getByRole("group", { name: "Number of games" });
+  // The default is one game, dealt exactly as before.
+  await expect(page.getByTestId("match-note")).toContainText("Single game");
+  await expect(page.getByRole("button", { name: /Deal me in/ })).toBeVisible();
+  await count.getByRole("button", { name: "Best of" }).click();
+  await expect(count.getByRole("button", { name: "Best of 3" })).toBeVisible();
+  await count.getByRole("button", { name: "Best of 5" }).click();
+  await expect(page.getByTestId("match-note")).toContainText("Best of 5 games");
+  await expect(page.getByRole("button", { name: "Start Best of 5 games" })).toBeVisible();
+  await count.getByRole("button", { name: "First to" }).click();
+  await expect(count.getByRole("button", { name: "First to 5" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Start First to 5 wins" })).toBeVisible();
+});
+
+test("a First to 2 match against the computer is played to the end and lands in your stats as Games", async ({ page }) => {
+  test.setTimeout(300_000);
+  await openPlay(page, { mode: "match", matchType: "first", games: 2, opponents: 1, level: "relaxed" });
+  await page.getByRole("button", { name: "Start First to 2 wins" }).click();
+  for (let round = 0; round < 6; round += 1) {
+    if (await page.getByTestId("series-result").isVisible()) break;
+    await page.getByTestId("series-play").click();
+    await playUntilGameEnds(page);
+    await page.getByTestId("series-continue").click();
+  }
+  await expect(page.getByTestId("series-result")).toBeVisible();
+  const list = await games(page);
+  expect(list.every((game) => game.mode === "match")).toBe(true);
+  expect(list.filter((game) => game.series)).toHaveLength(1);
 });

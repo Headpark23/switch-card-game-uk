@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowCounterClockwise, ArrowRight, ChartBar, Trophy } from '@phosphor-icons/react';
 import { logSeriesResult } from '../switch/logGame';
 import {
-  advanceComputers, isSeriesOver, modeInfo, placeOf, resultOf, seriesOutcome, seriesPlayerName, standings, startSeries, submitGame, yourNextGame,
+  advanceComputers, isSeriesOver, matchLabel, modeInfo, placeOf, resultOf, seriesOutcome, seriesPlayerName, standings, startSeries, submitGame, yourNextGame,
   ME_ID, type PendingGame, type SeriesSetup, type SeriesState,
 } from '../switch/series';
 import { CardShower, FeltHeader } from '../ui';
@@ -39,6 +39,9 @@ export default function SeriesPlay({ setup, onTable, onExit, onChange, onMe, onO
   const next: PendingGame | null = over ? null : yourNextGame(state);
   const outcome = seriesOutcome(state);
   const info = modeInfo(setup.mode);
+  /** What this run is called on screen: "Best of 5 games" for a match, else the game type. */
+  const label = setup.mode === 'match' ? matchLabel(setup.matchType, setup.games) : info.name;
+  const noun = setup.mode === 'match' ? 'match' : info.name;
   const ids = useMemo(() => (next ? seatOrder(next.playerIds) : []), [next?.key]);
   const seatNames = useMemo(() => ids.map((id) => seriesPlayerName(state, id)), [ids, state.base.id]);
 
@@ -65,7 +68,7 @@ export default function SeriesPlay({ setup, onTable, onExit, onChange, onMe, onO
 
   if (view === 'table' && next) {
     return <TableGame key={`${state.base.id}-${next.key}-${run.deal}`} opponents={ids.length - 1} level={setup.level} seatNames={seatNames}
-      series={{ title: `${info.name} · ${next.title}`, seriesId: state.base.id, mode: setup.mode, playOn: next.playOn, onFinished: finished }}
+      series={{ title: `${label} · ${next.title}`, seriesId: state.base.id, mode: setup.mode, playOn: next.playOn, onFinished: finished }}
       onExit={() => setView('board')} onChange={onChange} onOpenCards={onOpenCards} onStartNight={onStartNight} />;
   }
 
@@ -77,22 +80,22 @@ export default function SeriesPlay({ setup, onTable, onExit, onChange, onMe, onO
     return <section className="series-board" aria-labelledby="series-title">
       <CardShower trigger={youWon ? `series-${state.base.id}` : null} />
       <FeltHeader compact id="series-title" title={youWon ? 'You won it.' : `${seriesPlayerName(state, outcome.winnerId)} won it.`}
-        intro={setup.mode === 'dominoes' && outcome.loserId ? `${seriesPlayerName(state, outcome.loserId)} reached ${setup.limit} first and loses.` : `${info.name} finished after ${state.base.games} games.`} cards={['KH', 'AS']} />
-      <p className="series-result" role="status" data-testid="series-result">{youWon ? `You won the ${info.name}.` : `You finished ${ordinal(myPlace ?? 0)} of ${state.base.players.length}.`}{youWon ? ' A trophy is in your cabinet.' : ''} Every game counts in your stats.</p>
+        intro={setup.mode === 'dominoes' && outcome.loserId ? `${seriesPlayerName(state, outcome.loserId)} reached ${setup.limit} first and loses.` : `${label} finished after ${state.base.games} games.`} cards={['KH', 'AS']} />
+      <p className="series-result" role="status" data-testid="series-result">{youWon ? `You won the ${noun}.` : `You finished ${ordinal(myPlace ?? 0)} of ${state.base.players.length}.`}{youWon ? ' A trophy is in your cabinet.' : ''} Every game counts in your stats.</p>
       <ol className="place-list" aria-label="Final places">{outcome.order.map((id, index) => <li key={id} className={id === ME_ID ? 'me' : ''}><b>{ordinal(index + 1)}</b><span>{seriesPlayerName(state, id)}</span><em>{id === outcome.loserId ? 'reached the number' : id === outcome.winnerId ? 'winner' : ''}</em></li>)}</ol>
       {tables.map((table) => <StandingsTable key={table.heading} heading={table.heading} rows={table.rows} />)}
-      <button className="primary" onClick={again}><ArrowCounterClockwise size={18} />Play {info.name} again</button>
+      <button className="primary" onClick={again}><ArrowCounterClockwise size={18} />Play {label} again</button>
       <button className="secondary" onClick={onChange}>Change the game type</button>
       <button className="secondary" onClick={onMe}><ChartBar size={18} />See my stats and trophies</button>
     </section>;
   }
 
   return <section className="series-board" aria-labelledby="series-title">
-    <FeltHeader compact id="series-title" title={info.name} intro={next?.title} cards={['KS', 'QH']} />
+    <FeltHeader compact id="series-title" title={label} intro={next?.title} cards={['KS', 'QH']} />
     {log.length > 0 && <div className="series-log" aria-label="What the computers played" role="status"><strong>Meanwhile</strong><ul>{log.slice(-6).map((line, index) => <li key={index}>{line}</li>)}</ul></div>}
     {tables.map((table) => <StandingsTable key={table.heading} heading={table.heading} rows={table.rows} />)}
     {next && <button className="primary deal-button" data-testid="series-play" onClick={() => setView('table')}><Trophy size={20} weight="fill" />Play: {next.title}</button>}
-    <button className="text-link" onClick={onExit}>Leave this {info.name}. Games already played still count.</button>
+    <button className="text-link" onClick={onExit}>Leave this {noun}. Games already played still count.</button>
   </section>;
 }
 

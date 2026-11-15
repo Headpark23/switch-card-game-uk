@@ -16,7 +16,7 @@ function leansOn(level: ComputerLevel, personality: string): string {
 import { getComputerGames, getMeId, summariseComputerGames } from '../switch/computerLog';
 import { readClub } from '../switch/clubStore';
 import { loadSeat } from '../switch/onlineRoom';
-import { COMPUTER_MODES, modeInfo, validateSetup, type PlayMode, type SeriesSetup } from '../switch/series';
+import { COMPUTER_MODES, MATCH_BEST_OF, MATCH_FIRST_TO, matchCountFor, matchLabel, modeInfo, validateSetup, type MatchType, type PlayMode, type SeriesSetup } from '../switch/series';
 import { CardImage, FeltHeader, MiniFan } from '../ui';
 
 const LEVELS: readonly { id: ComputerLevel; name: string; note: string }[] = [
@@ -26,8 +26,9 @@ const LEVELS: readonly { id: ComputerLevel; name: string; note: string }[] = [
 ];
 const KEY = 'switchTable';
 
-type Choice = { opponents: number; level: ComputerLevel; mode: PlayMode; setsToWin: 3 | 5; limit: number };
-const DEFAULT_CHOICE: Choice = { opponents: 1, level: 'standard', mode: 'single', setsToWin: 3, limit: 100 };
+type Choice = { opponents: number; level: ComputerLevel; mode: PlayMode; setsToWin: 3 | 5; limit: number; matchType: MatchType; games: number };
+/** "Games" with one game is an ordinary single game: the default, and what an older saved "single" becomes. */
+const DEFAULT_CHOICE: Choice = { opponents: 1, level: 'standard', mode: 'match', setsToWin: 3, limit: 100, matchType: 'first', games: 1 };
 const MODE_CARDS: Record<PlayMode, string[]> = { single: ['AS', 'KH'], match: ['AS', 'AH', 'AD'], knockout: ['KS', 'KC'], group: ['QH', 'QD', 'JS'], cup: ['10H', '10S'], darts: ['7S', '7H'], dominoes: ['6C', '6D', '6S'] };
 const LIMIT_CHIPS = [50, 100, 150, 200];
 
@@ -37,11 +38,13 @@ const fewestComputers = (mode: PlayMode) => modeInfo(mode).minPlayers - 1;
 export function loadTableChoice(): Choice {
   try {
     const saved = JSON.parse(window.localStorage.getItem(KEY) || 'null') as Partial<Choice> | null;
-    const mode = COMPUTER_MODES.find((entry) => entry.id === saved?.mode)?.id ?? 'single';
+    const mode = COMPUTER_MODES.find((entry) => entry.id === saved?.mode)?.id ?? 'match';
+    const matchType: MatchType = saved?.matchType === 'best' ? 'best' : 'first';
+    const games = matchCountFor(matchType, Number.isInteger(saved?.games) ? saved!.games! : 1);
     const opponents = saved && Number.isInteger(saved.opponents) && saved.opponents! >= 1 && saved.opponents! <= 7 ? Math.max(saved.opponents!, fewestComputers(mode)) : Math.max(1, fewestComputers(mode));
     const level = LEVELS.find((entry) => entry.id === saved?.level)?.id ?? 'standard';
     const limit = Number.isInteger(saved?.limit) && saved!.limit! >= 10 && saved!.limit! <= 999 ? saved!.limit! : DEFAULT_CHOICE.limit;
-    return { opponents, level, mode, setsToWin: saved?.setsToWin === 5 ? 5 : 3, limit };
+    return { opponents, level, mode, setsToWin: saved?.setsToWin === 5 ? 5 : 3, limit, matchType, games };
   } catch { return DEFAULT_CHOICE; }
 }
 
@@ -69,8 +72,12 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
     try { window.localStorage.setItem(KEY, JSON.stringify(merged)); window.localStorage.setItem('switchComputerLevel', merged.level); } catch { /* the choice lasts for this visit */ }
   };
   const pace = (next: Speed) => { setSpeed(next); saveSpeed(next); };
-  const setup: SeriesSetup | null = choice.mode === 'single' ? null : { mode: choice.mode, opponents: choice.opponents, level: choice.level, setsToWin: choice.setsToWin, limit: choice.limit };
+  const singleGame = choice.mode === 'match' && choice.games === 1;
+  const setup: SeriesSetup | null = singleGame || choice.mode === 'single' ? null
+    : { mode: choice.mode as SeriesSetup['mode'], opponents: choice.opponents, level: choice.level, setsToWin: choice.setsToWin, limit: choice.limit, ...(choice.mode === 'match' ? { matchType: choice.matchType, games: choice.games } : {}) };
   const problem = setup ? validateSetup(setup) : null;
+  const pickMatchType = (next: MatchType) => set({ matchType: next, games: matchCountFor(next, choice.games) });
+  const startLabel = choice.mode === 'match' ? matchLabel(choice.matchType, choice.games) : modeInfo(choice.mode).name;
 
   return <section className="play-lobby" aria-labelledby="play-title">
     <FeltHeader compact id="play-title" title="Take a seat." intro="Play Switch against up to seven computers, as a single game or a whole tournament. Every game counts towards your record." cards={['AS', 'KH']} />
@@ -116,6 +123,13 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
       </li>)}</ul>
     </div>
 
+    {choice.mode === 'match' && <div className="lobby-group" role="group" aria-label="Number of games">
+      <h2>How many games?</h2>
+      <div className="seg two compact">{([['first', 'First to'], ['best', 'Best of']] as const).map(([id, label]) => <button key={id} aria-pressed={choice.matchType === id} className={choice.matchType === id ? 'active' : ''} onClick={() => pickMatchType(id)}><b>{label}</b></button>)}</div>
+      <div className="seg five compact">{(choice.matchType === 'best' ? MATCH_BEST_OF : MATCH_FIRST_TO).map((count) => <button key={count} aria-pressed={choice.games === count} className={choice.games === count ? 'active' : ''} onClick={() => set({ games: count })} aria-label={`${choice.matchType === 'best' ? 'Best of' : 'First to'} ${count}`}><b>{count}</b></button>)}</div>
+      <p className="lobby-note" data-testid="match-note">{matchLabel(choice.matchType, choice.games)}.{choice.games === 1 ? ' One game of Switch: first out wins.' : choice.matchType === 'best' ? ' Most wins takes it, and it stops as soon as nobody can catch the leader.' : ' Every game is ordinary Switch.'}</p>
+    </div>}
+
     {choice.mode === 'darts' && <div className="lobby-group" role="group" aria-label="Sets to win">
       <h2>Sets to win the match</h2>
       <div className="seg three compact">{([3, 5] as const).map((sets) => <button key={sets} aria-pressed={choice.setsToWin === sets} className={choice.setsToWin === sets ? 'active' : ''} onClick={() => set({ setsToWin: sets })}><b>First to {sets}</b></button>)}</div>
@@ -136,7 +150,7 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
     </div>
     <div className="lobby-side">
     {problem && <p className="lobby-note center" role="alert">{problem}</p>}
-    <button className="primary deal-button" disabled={!!problem} onClick={() => (setup ? onStartSeries(setup) : onDeal(choice.opponents, choice.level))}><Lightning size={20} weight="fill" />{setup ? `Start ${modeInfo(choice.mode).name}` : active ? 'Deal a new game' : 'Deal me in'}</button>
+    <button className="primary deal-button" disabled={!!problem} onClick={() => (setup ? onStartSeries(setup) : onDeal(choice.opponents, choice.level))}><Lightning size={20} weight="fill" />{setup ? `Start ${startLabel}` : active ? 'Deal a new game' : 'Deal me in'}</button>
     {active && <p className="lobby-note center">Dealing a new game drops the unfinished one without counting it.</p>}
 
     <div className="lobby-group" role="group" aria-label="Computer pace">

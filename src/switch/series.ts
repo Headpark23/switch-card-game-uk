@@ -40,13 +40,18 @@ export const MODES: readonly ModeInfo[] = [
 
 /** The ways to play at an online table: the same list, with "Games" (best of / first to) in place of a single game. */
 export const ONLINE_MODES: readonly ModeInfo[] = MODES.filter((entry) => entry.id !== "single");
-/** The ways to play against the computer: "Games" is for tables of friends. */
-export const COMPUTER_MODES: readonly ModeInfo[] = MODES.filter((entry) => entry.id !== "match");
+/** The ways to play against the computer: "Games" (first to N, best of N; one game is a single game) in place of a single game. */
+export const COMPUTER_MODES: readonly ModeInfo[] = MODES.filter((entry) => entry.id !== "single");
 
 export type MatchType = "first" | "best";
 /** Wins needed in "first to N", or the most games in "best of N". */
 export const MATCH_FIRST_TO = [1, 2, 3, 4, 5] as const;
 export const MATCH_BEST_OF = [1, 3, 5, 7, 9] as const;
+/** Keeps a sensible count when switching between "first to" and "best of" (best of needs an odd number). */
+export function matchCountFor(matchType: MatchType, current: number): number {
+  if (matchType === "best") return (MATCH_BEST_OF as readonly number[]).includes(current) ? current : 3;
+  return (MATCH_FIRST_TO as readonly number[]).includes(current) ? current : Math.min(5, Math.ceil(current / 2));
+}
 /** "Best of 5", "First to 3 wins". Games of one are just a single game. */
 export function matchLabel(matchType: MatchType | undefined, games: number | undefined): string {
   const count = games ?? 1;
