@@ -12,7 +12,7 @@ import {
 } from "react";
 import { motion } from "motion/react";
 import { mobileAssets } from "./assets";
-import { useMobileDevice } from "./Device";
+import { hasPhysicalKeyboard, useMobileDevice } from "./Device";
 
 type KeyboardContextValue = {
   visible: boolean;
@@ -57,6 +57,11 @@ export function KeyboardProvider({ children }: PropsWithChildren) {
       setDragOffset,
       setDragging,
       show: (element) => {
+        // On a laptop or desktop the real keyboard is used: nothing slides up and the layout does not shift.
+        if (device.id === "native" && hasPhysicalKeyboard()) {
+          setFocusedElement(element ?? null);
+          return;
+        }
         setRawDragOffset(0);
         setDragging(false);
         setFocusedElement(element ?? null);
@@ -69,7 +74,7 @@ export function KeyboardProvider({ children }: PropsWithChildren) {
         setVisible(false);
       },
     }),
-    [dragOffset, focusedElement, fullHeight, isDragging, visible],
+    [device.id, dragOffset, focusedElement, fullHeight, isDragging, visible],
   );
 
   return <KeyboardContext.Provider value={value}>{children}</KeyboardContext.Provider>;

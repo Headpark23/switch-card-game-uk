@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useState } from 'react';
-import { ArrowRight, House, Cards, Club, MagnifyingGlass, X, DownloadSimple, CheckCircle, Lightbulb, UserCircle, UsersThree, ListNumbers, PuzzlePiece, Question, CaretLeft } from '@phosphor-icons/react';
+import { ArrowRight, House, Cards, Club, MagnifyingGlass, X, DownloadSimple, CheckCircle, Lightbulb, UserCircle, UsersThree, ListNumbers, PuzzlePiece, Question, CaretLeft, GraduationCap, CalendarPlus, Broadcast, ShieldCheck } from '@phosphor-icons/react';
 import { readActiveTable } from './switch/activeTable';
 import { loadSeat } from './switch/onlineRoom';
 import { readClub, updateClub } from './switch/clubStore';
@@ -283,10 +283,20 @@ export default function Prototype() {
     </MobileScroll>
     {/* While typing, the keyboard needs the room: the tab bar steps aside and returns when it closes. */}
     {!isKeyboardVisible && <nav className="bottom-tabs v2" aria-label="Main navigation" style={{ bottom: bottomInset, ['--nav-extend' as string]: `${bottomInset}px` }}>
+      <button className="side-brand" onClick={() => openTab('Home')} aria-label="Switch home"><Club weight="fill" size={26} /><span><b>SWITCH</b><i>Your game-night club</i></span></button>
       {TABS.map(({ tab, label, Icon, pip }) => {
         const active = section === tab;
         return <button key={tab} className={active ? 'active' : ''} data-tab={tab} aria-current={active ? 'page' : undefined} onClick={() => openTab(tab)}><span className="tab-card"><i className={'pip' + (pip === '♥' || pip === '♦' ? ' red' : '')} aria-hidden="true">{pip}</i><Icon weight={active ? 'fill' : 'bold'} size={19} /></span><span className="tab-label">{label}</span></button>;
       })}
+      <div className="side-more" role="group" aria-label="Learn and join">
+        <p>Learn &amp; join</p>
+        <button onClick={openRules}><GraduationCap size={18} weight="bold" />Learn the rules</button>
+        <button onClick={() => go('Puzzles')}><PuzzlePiece size={18} weight="bold" />Rules puzzles</button>
+        <button onClick={() => go('Questions')}><Question size={18} weight="bold" />Questions</button>
+        <button onClick={() => setPlanOpen(true)}><CalendarPlus size={18} weight="bold" />Plan a night</button>
+        <button onClick={() => go('Watch')}><Broadcast size={18} weight="bold" />Join a night</button>
+        <button onClick={() => go('Privacy')}><ShieldCheck size={18} weight="bold" />Privacy</button>
+      </div>
     </nav>}
     {page === 'Learn' && <InstallBanner bottom={bottomInset + 92} />}
     <NightReminder open={planOpen} onOpenChange={setPlanOpen} />

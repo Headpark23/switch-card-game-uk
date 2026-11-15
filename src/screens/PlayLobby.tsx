@@ -79,6 +79,8 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
 
     <button className="friends-entry" onClick={onFriends} data-testid="play-friends"><UsersThree size={24} weight="fill" /><span><strong>{kept ? `Back to your table (${kept.code})` : 'Play with friends'}</strong><small>{kept ? 'Your friends and family are waiting.' : 'A private table for family and friends, anywhere. Start one or join with a code.'}</small></span><ArrowRight size={16} /></button>
 
+    <div className="lobby-cols">
+    <div className="lobby-setup">
     <div className="lobby-group" role="group" aria-label="Game type">
       <h2>What are we playing?</h2>
       <div className="mode-grid">{MODES.map((entry) => <button key={entry.id} aria-pressed={choice.mode === entry.id} className={choice.mode === entry.id ? 'active' : ''} onClick={() => set({ mode: entry.id })}><MiniFan codes={MODE_CARDS[entry.id]} /><b>{entry.name}</b></button>)}</div>
@@ -131,6 +133,8 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
       <p className="lobby-note">After every game the cards left in each hand add to that player's total: ace 1 up to king 13. The first to reach {choice.limit} loses. The lowest total wins.</p>
     </div>}
 
+    </div>
+    <div className="lobby-side">
     {problem && <p className="lobby-note center" role="alert">{problem}</p>}
     <button className="primary deal-button" disabled={!!problem} onClick={() => (setup ? onStartSeries(setup) : onDeal(choice.opponents, choice.level))}><Lightning size={20} weight="fill" />{setup ? `Start ${modeInfo(choice.mode).name}` : active ? 'Deal a new game' : 'Deal me in'}</button>
     {active && <p className="lobby-note center">Dealing a new game drops the unfinished one without counting it.</p>}
@@ -144,5 +148,7 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
     <button className="record-strip" onClick={onMe} aria-label={record.games ? `Your record against the computer: ${record.wins} wins from ${record.games} games` : 'Your record against the computer'}><Robot size={20} weight="fill" /><span><strong>{record.games ? `${record.wins} won of ${record.games}` : 'No games yet'}</strong><small>{record.games ? `${Math.round(record.winRate * 100)}% against the computer${record.currentStreak > 1 ? ` · ${record.currentStreak} in a row` : ''} · best run ${record.bestStreak}` : 'Your wins, streaks and form will appear here.'}</small></span><ArrowRight size={16} /></button>
 
     <button className="learn-aside" onClick={onLearn}><BookOpen size={18} weight="bold" /><span><strong>Still learning?</strong><small>Practise with hints in Learn the Rules. Practice games are never counted.</small></span><ArrowRight size={14} /></button>
+    </div>
+    </div>
   </section>;
 }

@@ -6,6 +6,7 @@ import {
   type CSSProperties,
   type PropsWithChildren,
 } from "react";
+import { hasPhysicalKeyboard, useMobileDevice } from "./Device";
 import { useKeyboardInsets } from "./Keyboard";
 
 type MobileScrollProps = PropsWithChildren<{
@@ -48,6 +49,9 @@ type DragSession = {
 
 export function MobileScroll({ className, children }: MobileScrollProps) {
   const { isKeyboardVisible, keyboardHeight, keyboardDragging } = useKeyboardInsets();
+  const { device } = useMobileDevice();
+  // On the open web a mouse scrolls with its wheel and selects text; only touch and the framed preview drag-scroll.
+  const wheelOnly = device.id === "native" && hasPhysicalKeyboard();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const hideTimerRef = useRef<number | null>(null);
   const inertiaFrameRef = useRef<number | null>(null);
@@ -354,6 +358,7 @@ export function MobileScroll({ className, children }: MobileScrollProps) {
     const scroll = scrollRef.current;
     if (!scroll || scroll.scrollHeight <= scroll.clientHeight) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (wheelOnly && event.pointerType === "mouse") return;
 
     stopInertia();
     if (shouldIgnoreScrollDrag(event.target)) {
@@ -375,7 +380,7 @@ export function MobileScroll({ className, children }: MobileScrollProps) {
       startScrollTop: scroll.scrollTop,
       hasDragged: false,
     };
-  }, [pushDragSample, setRubberBand, stopInertia]);
+  }, [pushDragSample, setRubberBand, stopInertia, wheelOnly]);
 
   const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     const scroll = scrollRef.current;

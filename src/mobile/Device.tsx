@@ -19,16 +19,27 @@ type MobileDevicePreset = {
   };
 };
 
-/** True on a real phone (touch + small screen) or with ?native=1; ?frame=1 forces the framed preview. */
+/**
+ * The app is a website first: it fills the browser on phones, tablets and laptops.
+ * The framed phone preview is kept only for ?frame=1 (and for the automated runtime tests, which build with VITE_SWITCH_FRAME=1).
+ */
 export function detectNativePhone(): boolean {
   if (typeof window === "undefined") return false;
   try {
     const params = new URLSearchParams(window.location.search);
     if (params.get("frame") === "1") return false;
-    if (params.get("native") === "1") return true;
-    const touch = window.matchMedia("(pointer: coarse)").matches;
-    const small = Math.min(window.innerWidth, window.innerHeight) <= 820;
-    return touch && small;
+    if (params.get("native") === "1" || params.get("web") === "1") return true;
+    if (import.meta.env.VITE_SWITCH_FRAME === "1") return false;
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+/** True when a person types on a real keyboard (laptop or desktop), so no simulated keyboard is wanted. */
+export function hasPhysicalKeyboard(): boolean {
+  try {
+    return !window.matchMedia("(pointer: coarse)").matches;
   } catch {
     return false;
   }

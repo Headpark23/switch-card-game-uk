@@ -15,5 +15,7 @@ export default defineConfig({
     command: `npm run dev -- --port ${testPort}`,
     url: `http://127.0.0.1:${testPort}/tests/runtime-fixture.html`,
     reuseExistingServer: process.env.MOBILE_RUNTIME_TEST_PORT == null,
+    // The existing suite exercises the phone-sized layout inside the framed preview; the website layout has its own spec (?web=1).
+    env: { VITE_SWITCH_FRAME: "1" },
   },
 });

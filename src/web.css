@@ -1,0 +1,327 @@
+/*
+  Switch as a website (owner decision, 15 Nov 2026).
+  The phone layout in prototype.css stays the base for screens under 640px wide. From there up the app grows:
+    640px and up   a slim navigation rail on the left, wider content, grids instead of single columns
+    1000px and up  a full sidebar (brand, five destinations, learn and join links) and a roomy content column
+    1500px and up  a larger reading size and a wider content column
+  Everything is scoped to .switch-app, and nothing here applies inside the framed phone preview.
+*/
+/* Sidebar-only extras stay hidden everywhere except the website layout (including the framed phone preview). */
+.switch-app .bottom-tabs.v2 .side-brand,
+.switch-app .bottom-tabs.v2 .side-more { display: none !important; }
+
+/* Every rule below lives inside .device-screen-native (CSS nesting), so the framed phone preview and the test suite keep the phone layout even in a wide window. */
+.device-screen-native {
+
+.switch-app .side-brand,
+.switch-app .side-more { display: none; }
+
+
+@media (min-width: 640px) {
+  & { background: #f4efe2; }
+  .switch-app { --side: 96px; background: #f4efe2; }
+
+  /* ---------- Navigation rail ---------- */
+  .switch-app .switch-scroll { left: var(--side); }
+  .switch-app .bottom-tabs.v2 {
+    position: absolute !important;
+    top: 0; bottom: 0 !important; left: 0; right: auto;
+    width: var(--side); height: auto; min-height: 0;
+    display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
+    gap: 6px; padding: 18px 10px 14px;
+    border-top: 0; border-right: 2px solid var(--gold);
+    box-shadow: 10px 0 30px #05352722, inset -1px 0 0 #ffe9a855;
+    overflow-y: auto; overflow-x: hidden; z-index: 20;
+  }
+  .switch-app .bottom-tabs.v2::after { display: none; }
+  .switch-app .bottom-tabs.v2 button:not(.side-brand) {
+    flex: 0 0 auto; display: grid; justify-items: center; align-content: center; gap: 4px;
+    min-height: 66px; padding: 8px 4px; border-radius: 14px; border: 1px solid transparent;
+    background: transparent; color: #cfe0d3; transition: background .18s, border-color .18s, color .18s;
+  }
+  .switch-app .bottom-tabs.v2 button:not(.side-brand):hover { background: #ffffff14; color: #fff; }
+  .switch-app .bottom-tabs.v2 button.active { background: #ffffff1c; border-color: #e6c97f66; color: #fff; }
+  .switch-app .bottom-tabs.v2 .tab-card { transform: none !important; }
+  .switch-app .bottom-tabs.v2 .active .tab-card { transform: translateY(-2px) !important; }
+  .switch-app .bottom-tabs.v2 .tab-label { font-size: 11.5px; letter-spacing: .3px; }
+
+  /* ---------- Content column ---------- */
+  .switch-content { max-width: 920px; margin-inline: auto; }
+  .switch-content.interior { padding-inline: 32px; }
+}
+
+@media (min-width: 1100px) {
+  .switch-app { --side: 268px; }
+  .switch-app .bottom-tabs.v2 { padding: 22px 16px 18px; gap: 4px; }
+
+  .switch-app .side-brand {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    margin: 0 0 18px; padding: 6px 8px 18px; border: 0; border-bottom: 1px solid #ffe9a83d;
+    background: none; text-align: left; color: #fbf8f0; flex: 0 0 auto;
+  }
+  .switch-app .side-brand svg { color: #e6c97f; flex: none; }
+  .switch-app .side-brand span { display: grid; gap: 1px; }
+  .switch-app .side-brand b { font: 400 28px/1 'DM Serif Display', Georgia, serif; letter-spacing: -.5px; }
+  .switch-app .side-brand i { font-style: normal; font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; color: #bcd2c3; font-weight: 600; }
+
+  .switch-app .bottom-tabs.v2 button:not(.side-brand) {
+    grid-template-columns: 34px 1fr; justify-items: start; align-items: center; gap: 12px;
+    min-height: 54px; padding: 9px 12px; text-align: left;
+  }
+  .switch-app .bottom-tabs.v2 .tab-card { grid-column: 1; grid-row: 1; }
+  .switch-app .bottom-tabs.v2 .tab-label { grid-column: 2; font-size: 16px; font-weight: 600; letter-spacing: .1px; }
+
+  .switch-app .side-more { display: grid; gap: 2px; margin-top: auto; padding-top: 18px; border-top: 1px solid #ffe9a83d; }
+  .switch-app .side-more p { margin: 0 0 6px 12px; font-size: 10.5px; letter-spacing: 1.6px; text-transform: uppercase; font-weight: 600; color: #9fbfae; }
+  .switch-app .bottom-tabs.v2 .side-more button {
+    display: flex !important; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 6px 12px;
+    border: 0; border-radius: 10px; background: none; color: #d3e3d7; font-size: 14.5px; font-weight: 500; text-align: left;
+  }
+  .switch-app .bottom-tabs.v2 .side-more button svg { color: #e6c97f; flex: none; }
+  .switch-app .bottom-tabs.v2 .side-more button:hover { background: #ffffff14; color: #fff; }
+
+  .switch-content { max-width: 1160px; }
+  .switch-content.interior { padding-inline: 44px; }
+}
+
+@media (min-width: 1500px) {
+  .switch-app { --side: 288px; font-size: 17px; }
+  .switch-content { max-width: 1280px; }
+}
+
+/* ---------- Sidebar fixes: the phone tab-bar rules set every button to a centred grid ---------- */
+@media (min-width: 1100px) {
+  .switch-app .bottom-tabs.v2 .side-brand { display: flex !important; flex-direction: row !important; justify-items: initial; align-items: center; min-height: 0; padding: 6px 8px 18px; border-radius: 0; }
+  .switch-app .bottom-tabs.v2 .side-more button { flex-direction: row !important; justify-content: flex-start !important; justify-items: start; }
+  .switch-app .bottom-tabs.v2 .side-more button:hover { filter: none; }
+}
+
+/* ---------- Install banner floats as a card instead of spanning the window ---------- */
+@media (min-width: 640px) {
+  .switch-app .install-banner { left: auto; right: 24px; bottom: 24px !important; width: min(420px, calc(100% - var(--side) - 48px)); }
+}
+
+/* ---------- Home ---------- */
+@media (min-width: 1100px) {
+  .switch-content.home { max-width: 1240px; padding: 28px 44px 56px; }
+  .home-hub.v2 {
+    padding: 52px 56px 48px; border-radius: 30px; overflow: hidden; border: 1px solid #e3d8bd;
+    background:
+      linear-gradient(90deg, #f4efe3 0%, #f4efe3f2 46%, #f4efe300 68%),
+      url('/images/hero.webp') right top / auto 140% no-repeat #f4efe3;
+    box-shadow: 0 26px 50px -30px #173a2b66, 0 2px 6px #173a2b14;
+  }
+  .home-hub.v2::after { display: none; }
+  .home-hub.v2 .home-mark { font-size: 30px; }
+  .home-hub.v2 .home-mark svg { width: 20px; height: 20px; }
+  .home-hub.v2 .home-tagline { font-size: 11px; }
+  .home-hub.v2 h1 { font-size: 60px; letter-spacing: -1.6px; margin: 30px 0 10px; max-width: 640px; }
+  .home-hub.v2 .home-sub { font-size: 19px; max-width: 520px; margin: 0 0 28px !important; }
+  .home-hub.v2 .resume-stack { max-width: 640px; margin-bottom: 22px; }
+  .home-hub.v2 .resume-card { padding: 14px 18px; }
+  .home-hub.v2 .resume-card strong { font-size: 16px; }
+  .home-tiles.v2 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; max-width: 760px; }
+  .home-tiles.v2 .home-tile { min-height: 116px; padding: 18px 16px 16px 44px; border-radius: 16px; transition: transform .18s, box-shadow .18s; }
+  .home-tiles.v2 .home-tile:hover { transform: translateY(-4px); box-shadow: 0 18px 28px -14px #173a2b77; }
+  .home-tiles.v2 .home-tile strong { font-size: 20px; }
+  .home-tiles.v2 .home-tile small { font-size: 12.5px; }
+  .home-tiles.v2 .tile-index { left: 14px; top: 14px; }
+
+  .home-lower { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 22px; padding: 26px 0 0; align-items: start; }
+  .home-lower > .home-discover, .home-lower > .home-daily { grid-column: 1 / -1; }
+  .home-welcome, .home-daily.v2 { padding: 16px 20px; border-radius: 18px; }
+  .home-welcome strong, .home-daily.v2 strong { font-size: 24px; }
+  .home-welcome em, .home-daily.v2 em { font-size: 14px; }
+  .home-welcome .card-fan, .home-daily.v2 .card-fan { width: 110px; height: 76px; }
+  .home-welcome .card-fan .playing-card, .home-daily.v2 .card-fan .playing-card { width: 48px; }
+  .home-section-head h2 { font-size: 28px !important; }
+  .home-recent li button { padding: 12px 6px; min-height: 60px; }
+  .home-recent li strong { font-size: 16px; }
+  .home-recent li small { font-size: 13.5px; }
+  .home-discover { display: flex; flex-wrap: wrap; gap: 10px; }
+  .home-discover button { min-height: 46px; padding: 0 20px; font-size: 15px; }
+}
+
+@media (min-width: 640px) and (max-width: 1099px) {
+  .switch-content.home { padding: 20px 28px 40px; }
+  .home-hub.v2 {
+    padding: 40px 36px 34px; border-radius: 26px; overflow: hidden; border: 1px solid #e3d8bd;
+    background:
+      linear-gradient(90deg, #f4efe3 0%, #f4efe3f2 50%, #f4efe300 80%),
+      url('/images/hero.webp') right top / auto 125% no-repeat #f4efe3;
+  }
+  .home-hub.v2::after { display: none; }
+  .home-hub.v2 h1 { font-size: 46px; max-width: 520px; }
+  .home-hub.v2 .home-sub { font-size: 16.5px; max-width: 420px; }
+  .home-tiles.v2 { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 480px; }
+  .home-lower { padding: 22px 0 0; grid-template-columns: 1fr; }
+}
+@media (min-width: 640px) {
+  .switch-app .bottom-tabs.v2 .side-brand { flex: 0 0 auto !important; }
+  .home-hub.v2 .home-sub, .home-hub.v2 h1 { text-wrap: balance; }
+}
+
+/* ---------- Shared page frame ---------- */
+.lobby-cols, .lobby-setup, .lobby-side { display: contents; }
+
+@media (min-width: 640px) {
+  .switch-content { width: 100%; }
+  .switch-app .mobile-scroll-content { background: linear-gradient(180deg, #ece3cb 0, #f4efe2 340px); }
+  .switch-content.interior::before { display: none; }
+  .switch-content.interior .app-footer { margin-inline: 0; }
+  .switch-content.interior { padding-top: 26px; padding-bottom: 40px; }
+  .switch-content .felt-header.compact { padding: 18px 24px; border-radius: 20px; margin-bottom: 16px; }
+  .switch-content .felt-header.compact h1 { font-size: 30px; }
+  .switch-content .felt-header.compact p { font-size: 15px; }
+  .switch-content .felt-header:not(.compact) { margin-top: 6px; padding: 30px 32px; }
+  .switch-content .felt-header:not(.compact) h1 { font-size: 44px; }
+  .switch-content .felt-header:not(.compact) p { font-size: 16.5px; }
+}
+
+@media (min-width: 1100px) {
+  .small-brand { display: none; }
+  .switch-content.interior { padding-top: 34px; padding-bottom: 56px; }
+  .switch-content .felt-header.compact { padding: 24px 32px; border-radius: 24px; margin-bottom: 22px; }
+  .switch-content .felt-header.compact h1 { font-size: 38px; }
+  .switch-content .felt-header.compact p { font-size: 16.5px; max-width: 640px; }
+
+  /* ---------- Play lobby: set the table on the left, deal on the right ---------- */
+  .play-lobby { gap: 16px; }
+  .lobby-cols { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 30px; align-items: start; }
+  .lobby-setup { display: grid; gap: 22px; min-width: 0; }
+  .lobby-side {
+    display: grid; gap: 14px; position: sticky; top: 24px; padding: 22px; border-radius: 24px;
+    background: #fffdf7; border: 1px solid #e3d8bd; box-shadow: 0 24px 44px -28px #173a2b66, 0 2px 6px #173a2b12;
+  }
+  .lobby-group h2 { font-size: 15px; margin-bottom: 10px; }
+  .lobby-note { font-size: 14px; }
+  .lobby-table { height: 168px; }
+  .mode-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .personalities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .lobby-side .deal-button { min-height: 62px; font-size: 19px; }
+  .lobby-side .lobby-group { margin: 0; }
+}
+
+/* ---------- Scorekeeper setup: form on the left, shortcuts beside it ---------- */
+@media (min-width: 1100px) {
+  .scorekeeper:has(> .format-grid) { display: grid; grid-template-columns: minmax(0, 780px) minmax(240px, 1fr); column-gap: 32px; align-content: start; }
+  .scorekeeper:has(> .format-grid) > .scorekeeper-head,
+  .scorekeeper:has(> .format-grid) > .club-tabs { grid-column: 1 / -1; }
+  .scorekeeper:has(> .format-grid) > .score-shortcuts {
+    grid-column: 2; grid-row: 3 / span 8; align-self: start; display: grid; gap: 10px; margin: 0; padding: 20px; border: 1px solid #e3d8bd;
+    border-radius: 20px; background: #fffdf7; box-shadow: 0 24px 44px -30px #173a2b55;
+  }
+  .scorekeeper:has(> .format-grid) > .score-shortcuts .text-link { justify-content: space-between; min-height: 44px; font-size: 15px; }
+  .format-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .switch-app .mobile-scroll-content { min-height: 100%; }
+}
+
+/* ---------- The card table: bigger cards, roomier felt ---------- */
+@media (min-width: 900px) {
+  .switch-app .table-game, .switch-app .game-tutorial { --tc: 96px; }
+}
+@media (min-width: 1200px) {
+  .switch-app .table-game, .switch-app .game-tutorial { --tc: 112px; }
+}
+@media (min-width: 1600px) {
+  .switch-app .table-game, .switch-app .game-tutorial { --tc: 128px; }
+}
+@media (min-width: 900px) {
+  .switch-content.tutorial-page { padding-top: 22px; }
+  .switch-app .table-game .turn-banner { min-height: 52px; padding-inline: 20px; font-size: 14px; border-radius: 14px; }
+  .switch-app .table-game .seat-row { justify-content: center; gap: 16px; padding-bottom: 12px; }
+  .switch-app .table-game .seat { max-width: 168px; min-width: 132px; padding: 8px 10px; }
+  .switch-app .table-game .seat-row.seats-1 .seat { max-width: 200px; }
+  .switch-app .table-game .seat-name { font-size: 15px; }
+  .switch-app .table-game .seat strong { font-size: 13px; }
+  .switch-app .table-game .seat-fan .playing-card { width: 32px; }
+  .switch-app .table-game .game-table, .switch-app .game-tutorial .game-table {
+    min-height: calc(var(--tc) * 2.5); gap: calc(var(--tc) * .9); padding: 28px; border-radius: 40px;
+  }
+  .switch-app .table-game .draw-pile, .switch-app .game-tutorial .draw-pile { width: auto; height: auto; }
+  .switch-app .table-game .game-table .playing-card, .switch-app .game-tutorial .game-table .playing-card { width: var(--tc); }
+  .switch-app .table-game .pile-wrap { width: var(--tc); height: calc(var(--tc) * 1.45); }
+  .switch-app .table-game .pile-wrap .pile-card .playing-card { width: calc(var(--tc) * .94); }
+  .switch-app .table-game .draw-pile span, .switch-app .table-game .discard-pile > span { font-size: 13px; letter-spacing: .8px; }
+  .switch-app .table-game .game-notice { font-size: 17px; min-height: 44px; }
+  .switch-app .table-game .your-seat { padding: 14px 16px 16px; border-radius: 26px; }
+  .switch-app .table-game .game-actions button, .switch-app .table-game .hand-row button { min-height: 42px; font-size: 14px; }
+  .switch-app .table-game .hand-row > span { font-size: 14px; }
+  .switch-app .table-game .player-hand, .switch-app .game-tutorial .player-hand {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 10px; min-height: calc(var(--tc) * 1.6); padding: 8px 4px 4px;
+  }
+  .switch-app .table-game .player-hand button, .switch-app .game-tutorial .player-hand button { width: calc(var(--tc) + 10px); padding: 5px; border-radius: 12px; }
+  .switch-app .table-game .player-hand .playing-card, .switch-app .game-tutorial .player-hand .playing-card { width: 100%; }
+}
+@media (min-width: 900px) {
+  .switch-app .table-game .seat { display: grid; justify-items: center; gap: 4px; }
+  .switch-app .table-game .seat-fan { display: flex; justify-content: center; height: auto; width: auto; padding: 2px 0 4px; }
+  .switch-app .table-game .seat-fan .playing-card { width: 30px; margin-left: -14px; }
+  .switch-app .table-game .seat-fan .playing-card:first-child { margin-left: 0; }
+}
+
+/* The brand and learn links only appear in the full sidebar. These rules out-rank the phone tab-bar button styles. */
+.switch-app .bottom-tabs.v2 .side-brand,
+.switch-app .bottom-tabs.v2 .side-more { display: none !important; }
+@media (min-width: 1100px) {
+  .switch-app .bottom-tabs.v2 .side-brand { display: flex !important; }
+  .switch-app .bottom-tabs.v2 .side-more { display: grid !important; }
+}
+@media (min-width: 640px) {
+  .switch-app .mobile-scroll { background: #f4efe2; }
+  .switch-app .mobile-scroll-content { min-height: 100%; }
+}
+
+/* Rail: the brand is just the club mark; the small SWITCH header the phone shows above each page is not needed. */
+@media (min-width: 640px) {
+  .small-brand { display: none; }
+  .switch-app .bottom-tabs.v2 .side-brand { display: grid !important; place-items: center; min-height: 48px; padding: 4px; margin-bottom: 6px; border: 0; background: none; color: #fbf8f0; flex: 0 0 auto; }
+  .switch-app .bottom-tabs.v2 .side-brand span { display: none; }
+  .switch-app .bottom-tabs.v2 .side-brand svg { color: #e6c97f; width: 30px; height: 30px; }
+}
+@media (min-width: 1100px) {
+  .switch-app .bottom-tabs.v2 .side-brand span { display: grid; }
+  .scorekeeper:has(> .format-grid) { grid-template-columns: minmax(0, 780px) 300px; }
+  .scorekeeper:has(> .format-grid) > .score-shortcuts .text-link { white-space: normal; text-align: left; }
+}
+
+/* ---------- Sheets become centred dialogs on a wide screen ---------- */
+@media (min-width: 700px) {
+  .bottom-sheet {
+    left: 50% !important; right: auto !important; top: 50% !important; bottom: auto !important;
+    translate: -50% -50%; width: min(640px, calc(100% - 64px)); min-height: 0; max-height: min(86%, 820px) !important;
+    border-radius: 28px; box-shadow: 0 40px 90px -20px #02150f88, 0 0 0 1px #ac7b2633;
+  }
+  .sheet-overlay { background: #02150f8c; backdrop-filter: blur(3px); }
+  .sheet-handle-zone { display: none; }
+  .sheet-header { padding: 26px 30px 14px; }
+  .sheet-title { font-size: 24px; letter-spacing: -.3px; }
+  .sheet-description { font-size: 15px; }
+  .sheet-content { padding: 0 30px 30px; }
+}
+
+@media (min-width: 1100px) {
+  .switch-app .bottom-tabs.v2 .side-brand { display: flex !important; place-items: initial; justify-content: flex-start; padding: 6px 8px 18px; margin-bottom: 18px; min-height: 0; }
+  .switch-app .bottom-tabs.v2 .side-brand svg { width: 26px; height: 26px; }
+}
+
+/* ---------- Club stats, footer ---------- */
+@media (min-width: 1100px) {
+  .dashboard { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .dashboard > * { min-height: 104px; }
+  .app-footer { max-width: 640px; margin-inline: auto; }
+}
+@media (min-width: 640px) {
+  .app-footer { max-width: 640px; margin-inline: auto; }
+  .switch-app button.share-app { max-width: 480px; margin-inline: auto; }
+}
+
+/* ---------- Behaves like a website: pointer cursors, visible keyboard focus, selectable text ---------- */
+button, [role="button"], a, summary, label[for], select, .sheet-overlay { cursor: pointer !important; }
+button:disabled { cursor: not-allowed !important; }
+input, textarea { cursor: text !important; }
+*:focus-visible { outline: 3px solid #ac7b26 !important; outline-offset: 3px !important; box-shadow: none !important; }
+.mobile-scroll-content { user-select: text; -webkit-user-select: text; }
+.mobile-scroll-content button, .mobile-scroll-content img, .player-hand, .game-table { user-select: none; -webkit-user-select: none; }
+@media (prefers-reduced-motion: reduce) { .home-tiles.v2 .home-tile { transition: none; } }
+}
