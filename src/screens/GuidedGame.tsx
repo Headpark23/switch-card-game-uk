@@ -15,7 +15,7 @@ const LEVELS: ComputerLevel[] = ['relaxed', 'standard', 'sharp'];
 const LEVEL_NOTE: Record<ComputerLevel, string> = { relaxed: 'makes friendly mistakes', standard: 'plays sensibly with a few tactics', sharp: 'plays to beat you with every tactic' };
 function readLevel(): ComputerLevel { try { const v = localStorage.getItem('switchComputerLevel'); return LEVELS.includes(v as ComputerLevel) ? v as ComputerLevel : 'standard'; } catch { return 'standard'; } }
 let computerLevel: ComputerLevel = readLevel();
-import { cardIdLabel } from '../switch/cards';
+import { cardIdLabel, isBlackKing, rankOf, SUIT_META } from '../switch/cards';
 import { applyAction, createInitialGame, drawCards, legalMoves, isLegalPlay } from '../switch/rules';
 import type { CardId, GameState, Suit } from '../switch/types';
 import { drawTiming, REDUCED, SPEEDS } from '../switch/presentation';
@@ -58,15 +58,34 @@ function guidanceDefault(): boolean {
   try { return window.localStorage.getItem(GUIDE_KEY) === 'on'; } catch { return false; }
 }
 
+/** What the dealer's turned-up card did before play began (ruling 33), or an empty string for an ordinary starter. */
+function openingLine(engine: GameState, dealer: 'you' | 'computer'): string {
+  if (engine.move !== 0 || engine.discardPile.length !== 1) return '';
+  const card = engine.discardPile[0];
+  const rank = rankOf(card);
+  const who = dealer === 'you' ? 'You' : 'The computer';
+  const again = dealer === 'you' ? 'you play again' : 'the computer plays again';
+  const victim = engine.turn === 'player' ? 'you' : 'the computer';
+  switch (rank) {
+    case '2': return `${who} turned up a 2, so ${victim} pick${victim === 'you' ? '' : 's'} up 2 unless a 2 is played. `;
+    case '8': return `${who} turned up an 8, so ${victim} miss${victim === 'you' ? '' : 'es'} a turn unless an 8 is played. `;
+    case 'K': return isBlackKing(card) ? `${who} turned up a black king, so ${victim} pick${victim === 'you' ? '' : 's'} up 5 unless a king is played. ` : '';
+    case '7': return `${who} turned up a 7, so ${again}. `;
+    case 'J': return `${who} turned up a jack: with two players play comes straight back, so ${again}. `;
+    case 'A': return `${who} turned up an ace, so play starts in ${SUIT_META[engine.currentSuit].name.toLowerCase()}. `;
+    default: return '';
+  }
+}
+
 function openingView(): View {
   const fixed = import.meta.env.DEV ? testGameFromUrl() : null;
   const dealer: 'you' | 'computer' = fixed ? (fixed.turn === 'player' ? 'computer' : 'you') : lastDealer ? (lastDealer === 'you' ? 'computer' : 'you') : Math.random() < 0.5 ? 'you' : 'computer';
   lastDealer = dealer;
-  const engine = fixed ?? createInitialGame(Math.random, dealer === 'you' ? 'computer' : 'player');
+  const engine = fixed ?? createInitialGame(Math.random, dealer === 'you' ? 'computer' : 'player', { powerStartChance: 0.2 });
   return {
     engine,
     dealer,
-    notice: (dealer === 'you' ? 'You dealt. ' : 'The computer dealt. ') + (engine.turn === 'player' ? YOUR_TURN_NOTICE : 'The computer goes first.'),
+    notice: (dealer === 'you' ? 'You dealt. ' : 'The computer dealt. ') + openingLine(engine, dealer) + (engine.turn === 'player' ? YOUR_TURN_NOTICE : engine.move === 0 && engine.turn === (dealer === 'you' ? 'player' : 'computer') ? 'The computer plays.' : 'The computer goes first.'),
     meaning: null,
     lesson: explainStart(engine, engine.turn === 'player' ? 'you' : 'computer'),
     hint: false,

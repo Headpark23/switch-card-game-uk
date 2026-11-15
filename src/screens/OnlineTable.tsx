@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useScreenPortal } from '../mobile';
 import { cardIdLabel } from '../switch/cards';
 import { explainUnplayable } from '../switch/coach';
-import { isLegalTablePlay, tableLegalMoves, tablePlaces, type TableState } from '../switch/table';
+import { isLegalTablePlay, openingNote, tableLegalMoves, tablePlaces, type TableState } from '../switch/table';
 import type { CardId, GameAction, GameState, Suit } from '../switch/types';
 import { cue } from '../feedback';
 import { logComputerGame, logSeriesResult } from '../switch/logGame';
@@ -447,7 +447,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
   const notice = warn || (visible.announce ? visible.announce.text + '.'
     : visible.flying ? `${activeName === 'You' ? 'You play' : `${activeName} plays`} ${cardIdLabel(visible.flying.card)}${visible.flying.count > 1 ? ` (${visible.flying.index + 1} of ${visible.flying.count})` : ''}.`
     : visible.drawing ? `${activeName === 'You' ? 'You pick' : `${activeName} picks`} up ${visible.drawing.count} card${visible.drawing.count === 1 ? '' : 's'}.`
-    : yourMove ? (recent.length === 0 ? `${names[game.dealer]} dealt. It is your move.` : recent[recent.length - 1]) : recent[recent.length - 1] ?? `${names[game.dealer]} dealt.`);
+    : yourMove ? (recent.length === 0 ? (openingNote(game, names) ?? `${names[game.dealer]} dealt.`) + " It is your move." : recent[recent.length - 1]) : recent[recent.length - 1] ?? openingNote(game, names) ?? `${names[game.dealer]} dealt.`);
   // Watching, every seat is someone else's, so all of them sit along the top.
   const others = watching ? names.map((name, seatIndex) => ({ name, seatIndex })) : names.slice(1).map((name, index) => ({ name, seatIndex: index + 1 }));
 

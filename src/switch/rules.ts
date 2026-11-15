@@ -276,7 +276,25 @@ function ordinaryStarterIndex(deck: readonly CardId[]): number {
   return deck.length - 1;
 }
 
-export function createInitialGame(random: RandomSource, firstTurn: Turn = "player"): GameState {
+export interface InitialGameOptions {
+  /** Chance (0 to 1) that the dealer turns the starter honestly, so a power card can open the game (ruling 33). Default 0. */
+  readonly powerStartChance?: number;
+}
+
+/** The two-player version of ruling 33: the turned-up card counts as the dealer's own play. The dealer is whoever does not go first. */
+function openingState(starter: CardId, firstTurn: Turn, dealerHand: readonly CardId[]): Pick<GameState, "currentSuit" | "turn" | "pendingPenalty"> {
+  const rank = rankOf(starter);
+  const currentSuit = suitOf(starter);
+  let turn: Turn = firstTurn;
+  let pendingPenalty: GameState["pendingPenalty"] = null;
+  if (rank === "2") pendingPenalty = { kind: "draw-two", cards: 2 };
+  else if (rank === "8") pendingPenalty = { kind: "miss-turn" };
+  else if (rank === "K" && isBlackKing(starter)) pendingPenalty = { kind: "black-king", units: 1, cards: 5 };
+  else if (rank === "7" || rank === "J") turn = otherTurn(firstTurn);
+  return { currentSuit, turn, pendingPenalty };
+}
+
+export function createInitialGame(random: RandomSource, firstTurn: Turn = "player", options: InitialGameOptions = {}): GameState {
   const deck = createDeck().map((card) => card.id);
 
   for (let index = deck.length - 1; index > 0; index -= 1) {
@@ -291,17 +309,19 @@ export function createInitialGame(random: RandomSource, firstTurn: Turn = "playe
     computerHand.push(deck.pop() as CardId);
   }
 
-  const starterIndex = ordinaryStarterIndex(deck);
+  const honest = options.powerStartChance !== undefined && random() < options.powerStartChance;
+  const starterIndex = honest ? deck.length - 1 : ordinaryStarterIndex(deck);
   [deck[starterIndex], deck[deck.length - 1]] = [deck[deck.length - 1], deck[starterIndex]];
   const starter = deck.pop() as CardId;
+  const open = openingState(starter, firstTurn, firstTurn === "player" ? computerHand : playerHand);
   return {
     playerHand,
     computerHand,
     drawPile: deck,
     discardPile: [starter],
-    currentSuit: suitOf(starter),
-    turn: firstTurn,
-    pendingPenalty: null,
+    currentSuit: open.currentSuit,
+    turn: open.turn,
+    pendingPenalty: open.pendingPenalty,
     status: "playing",
     winner: null,
     move: 0,

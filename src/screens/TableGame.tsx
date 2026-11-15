@@ -3,7 +3,7 @@ import { ArrowClockwise, ArrowCounterClockwise, ArrowRight, ChatCircleText, Chec
 import type { ComputerLevel } from '../switch/ai';
 import { cardIdLabel } from '../switch/cards';
 import { explainUnplayable } from '../switch/coach';
-import { applyTableAction, createTable, dealTo, isLegalTablePlay, penaliseMissedLastCard, tableLegalMoves, tablePlaces, wentOut, type TableState } from '../switch/table';
+import { applyTableAction, createTable, dealTo, isLegalTablePlay, openingNote, penaliseMissedLastCard, POWER_START_CHANCE, tableLegalMoves, tablePlaces, wentOut, type TableState } from '../switch/table';
 import { chooseTableAction } from '../switch/tableAi';
 import type { CardId, GameAction, GameState, Suit } from '../switch/types';
 import { cue } from '../feedback';
@@ -78,7 +78,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   const seats = opponents + 1;
   const names = useMemo(() => seatNames ?? ['You', ...COMPUTER_NAMES.slice(0, opponents)], [opponents, seatNames]);
   const [gameId, setGameId] = useState(() => resume?.id ?? newTableGameId());
-  const [game, setGame] = useState<TableState>(() => resume?.game ?? createTable(seats, Math.random, pickDealer(seats), { playOn: series?.playOn }));
+  const [game, setGame] = useState<TableState>(() => resume?.game ?? createTable(seats, Math.random, pickDealer(seats), { playOn: series?.playOn, powerStartChance: POWER_START_CHANCE }));
   const [showing, setShowing] = useState<Showing | null>(null);
   const [recent, setRecent] = useState<string[]>(() => (resume ? ['Game resumed where you left it.'] : []));
   const [staged, setStaged] = useState<CardId[]>([]);
@@ -378,7 +378,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     setRecent([]); setStaged([]); setAceChoice(null); setHint(false); setLastCalled(false); setTalk([]);
     penaltyBy.current = null; queuedBanter.current = [];
     setGameId(newTableGameId());
-    setGame(createTable(seats, Math.random, pickDealer(seats), { playOn: series?.playOn }));
+    setGame(createTable(seats, Math.random, pickDealer(seats), { playOn: series?.playOn, powerStartChance: POWER_START_CHANCE }));
   }
 
   /** You are out and only the computers are left: play the rest of the round out in an instant. */
@@ -455,7 +455,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     : visible.thinking ? `${activeName} is choosing a move…`
     : visible.flying ? `${activeName === 'You' ? 'You play' : `${activeName} plays`} ${cardIdLabel(visible.flying.card)}${visible.flying.count > 1 ? ` (${visible.flying.index + 1} of ${visible.flying.count})` : ''}.`
     : visible.drawing ? `${activeName === 'You' ? 'You pick' : `${activeName} picks`} up ${visible.drawing.count} card${visible.drawing.count === 1 ? '' : 's'}.`
-    : yourMove ? (recent.length === 0 ? `${names[game.dealer]} dealt. You play first.` : recent[recent.length - 1]) : recent[recent.length - 1] ?? `${names[game.dealer]} dealt.`);
+    : yourMove ? (recent.length === 0 ? (openingNote(game, names) ?? `${names[game.dealer]} dealt.`) + (game.turn === game.dealer ? " You play." : " You play first.") : recent[recent.length - 1]) : recent[recent.length - 1] ?? openingNote(game, names) ?? `${names[game.dealer]} dealt.`);
 
   return <section ref={sectionRef} className="tutorial game-tutorial table-game" aria-label={series ? series.title : `Game against ${opponents === 1 ? 'the computer' : `${opponents} computers`}`} data-active-seat={visible.active} data-showing={showing ? 'yes' : 'no'}>
     <div className={'turn-banner ' + (visible.active === 0 ? 'you' : 'computer')}>

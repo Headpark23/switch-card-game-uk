@@ -2,7 +2,7 @@ import type { ComputerLevel } from "./ai";
 import { rankOf } from "./cards";
 import { createCup, drawNextCupRound, selectCupWinner, type CupState } from "./cup";
 import { rankLeague, tiedGroups, type League } from "./leagues";
-import { applyTableAction, createTable, finishingOrder, type TableState } from "./table";
+import { applyTableAction, createTable, finishingOrder, POWER_START_CHANCE, type TableState } from "./table";
 import { chooseTableAction } from "./tableAi";
 import type { CardId, Player, RandomSource } from "./types";
 
@@ -109,7 +109,7 @@ export function resultOf(table: TableState, ids: readonly string[]): GameResult 
 
 /** Plays a whole game between computers, instantly. Used for every game you are not in. */
 export function simulateGame(ids: readonly string[], level: ComputerLevel, random: RandomSource, playOn = false): GameResult {
-  let table = createTable(ids.length, random, Math.floor(random() * ids.length), { playOn });
+  let table = createTable(ids.length, random, Math.floor(random() * ids.length), { playOn, powerStartChance: POWER_START_CHANCE });
   let guard = 0;
   while (table.status === "playing" && guard < 3000) {
     table = applyTableAction(table, chooseTableAction(table, random, level));

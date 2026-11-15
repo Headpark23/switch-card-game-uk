@@ -11,7 +11,7 @@
 // spotted, the next game being dealt), then does what it was asked.
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import {
-  applyTableAction, chooseTableAction, createTable, dealTo, isLegalTablePlay, isSeriesOver, MAX_SEATS, ONLINE_MAX_PLAYERS, pendingGames,
+  applyTableAction, chooseTableAction, createTable, dealTo, isLegalTablePlay, isSeriesOver, MAX_SEATS, ONLINE_MAX_PLAYERS, pendingGames, POWER_START_CHANCE,
   penaliseMissedLastCard, resultOf, seriesOutcome, startSeries, submitGame, tablePlaces, validateSetup,
 } from "./_engine.js";
 
@@ -163,7 +163,7 @@ function dealTable(room, players, now, random, { key = null, title = null, playO
   for (const player of players) Object.assign(room.seats[player], { called: room.seats[player].kind === "computer", exposedAt: null, autoStreak: 0, autoTotal: 0 });
   room.tables.push({
     id: `t${room.gameNo}`, no: room.gameNo, gameId: `${room.code ?? "room"}-${room.gameNo}`, key, title, playOn, players: [...players],
-    game: createTable(players.length, random, Math.floor(random() * players.length), playOn ? { playOn: true } : undefined),
+    game: createTable(players.length, random, Math.floor(random() * players.length), { ...(playOn ? { playOn: true } : {}), powerStartChance: POWER_START_CHANCE }),
     turnAt: now, seq: 0, moves: [], result: null, finishedAt: null,
   });
   // A finished game is kept while it is still someone's latest, so its result can be shown to them.

@@ -190,6 +190,8 @@ function isLegalPlayFor(hand, context, action, options = TWO_PLAYER_OPTIONS) {
 }
 //#endregion
 //#region src/switch/table.ts
+/** Ruling 33: about one deal in five turns the starter honestly, so a power card sometimes opens the game. */
+const POWER_START_CHANCE = .2;
 /** You plus seven computers. */
 const MAX_SEATS = 8;
 /** Ruling 21: one deck deals seven each to six players; seven or eight players play with two decks. */
@@ -228,7 +230,64 @@ function nextSeat(state, seat) {
 function wentOut(after, seat) {
 	return (after.out?.includes(seat) ?? false) || after.status === "won" && after.winner === seat;
 }
-/** Shuffles, deals seven each one card at a time, and turns an ordinary starter. The seat after the dealer plays first. */
+/**
+* Ruling 33: the card the dealer turns up counts as the dealer's own play, so every power card does what it always does.
+* Seven: the dealer plays again. Jack: play reverses (with two players the dealer plays again). Two, black king, eight:
+* the next player faces the penalty. Red king and ordinary cards do nothing. An ace is not played by anyone, so play starts in the ace's own suit.
+*/
+function openingEffect(starter, dealerSeat, _dealerHand, seats) {
+	const rank = rankOf(starter);
+	const suit = suitOf(starter);
+	let turn = wrap(dealerSeat + 1, seats);
+	let direction = 1;
+	let pendingPenalty = null;
+	if (rank === "2") pendingPenalty = {
+		kind: "draw-two",
+		cards: 2
+	};
+	else if (rank === "8") pendingPenalty = { kind: "miss-turn" };
+	else if (rank === "K" && isBlackKing(starter)) pendingPenalty = {
+		kind: "black-king",
+		units: 1,
+		cards: 5
+	};
+	else if (rank === "7") turn = dealerSeat;
+	else if (rank === "J") if (seats === 2) turn = dealerSeat;
+	else {
+		direction = -1;
+		turn = wrap(dealerSeat - 1, seats);
+	}
+	return {
+		suit,
+		turn,
+		direction,
+		pendingPenalty
+	};
+}
+/** What the dealer's turned-up card did before anyone played, said out loud. Null for an ordinary starter. */
+function openingNote(state, names) {
+	if (state.move !== 0 || state.discardPile.length !== 1) return null;
+	const starter = state.discardPile[0];
+	const dealer = names[state.dealer] ?? "The dealer";
+	const first = names[state.turn] ?? "The next player";
+	const you = first === "You";
+	const SUIT_NAMES = {
+		S: "spades",
+		H: "hearts",
+		D: "diamonds",
+		C: "clubs"
+	};
+	switch (rankOf(starter)) {
+		case "2": return `${dealer} turned up a 2: ${first} ${you ? "pick up 2 unless you play" : "picks up 2 unless they play"} a 2.`;
+		case "8": return `${dealer} turned up an 8: ${first} ${you ? "miss a turn unless you play" : "misses a turn unless they play"} an 8.`;
+		case "K": return isBlackKing(starter) ? `${dealer} turned up a black king: ${first} ${you ? "pick up 5 unless you play" : "picks up 5 unless they play"} a king.` : null;
+		case "7": return `${dealer} turned up a 7, so ${dealer} plays again.`;
+		case "J": return state.turn === state.dealer ? `${dealer} turned up a jack, so play comes straight back to ${dealer}.` : `${dealer} turned up a jack: play reverses and ${first} goes first.`;
+		case "A": return `${dealer} turned up an ace, so play starts in ${SUIT_NAMES[state.currentSuit]}.`;
+		default: return null;
+	}
+}
+/** Shuffles, deals seven each one card at a time, and turns a starter (an ordinary card, or now and then a power card). */
 function createTable(seats, random, dealer = 0, setup = {}) {
 	if (!Number.isInteger(seats) || seats < 2 || seats > 8) throw new Error(`Switch is for 2 to 8 players.`);
 	const deck = createShoe(decksFor(seats));
@@ -238,19 +297,21 @@ function createTable(seats, random, dealer = 0, setup = {}) {
 	}
 	const hands = Array.from({ length: seats }, () => []);
 	for (let round = 0; round < 7; round += 1) for (let seat = 0; seat < seats; seat += 1) hands[seat].push(deck.pop());
+	const honest = setup.powerStart === true || setup.powerStartChance !== void 0 && random() < setup.powerStartChance;
 	let starterIndex = deck.length - 1;
-	while (starterIndex > 0 && POWER_RANKS.has(rankOf(deck[starterIndex]))) starterIndex -= 1;
+	if (!honest) while (starterIndex > 0 && POWER_RANKS.has(rankOf(deck[starterIndex]))) starterIndex -= 1;
 	const starter = deck.splice(starterIndex, 1)[0];
 	const dealerSeat = wrap(dealer, seats);
+	const open = openingEffect(starter, dealerSeat, hands[dealerSeat], seats);
 	return {
 		hands,
 		drawPile: deck,
 		discardPile: [starter],
-		currentSuit: suitOf(starter),
-		turn: wrap(dealerSeat + 1, seats),
-		direction: 1,
+		currentSuit: open.suit,
+		turn: open.turn,
+		direction: open.direction,
 		dealer: dealerSeat,
-		pendingPenalty: null,
+		pendingPenalty: open.pendingPenalty,
 		status: "playing",
 		winner: null,
 		move: 0,
@@ -1485,4 +1546,4 @@ function seriesOutcome(state) {
 	}
 }
 //#endregion
-export { MAX_SEATS, ONLINE_MAX_PLAYERS, applyTableAction, chooseTableAction, createTable, dealTo, isLegalTablePlay, isSeriesOver, penaliseMissedLastCard, pendingGames, rankOf, resultOf, seriesOutcome, startSeries, submitGame, tableLegalMoves, tablePlaces, validateSetup };
+export { MAX_SEATS, ONLINE_MAX_PLAYERS, POWER_START_CHANCE, applyTableAction, chooseTableAction, createTable, dealTo, isLegalTablePlay, isSeriesOver, openingNote, penaliseMissedLastCard, pendingGames, rankOf, resultOf, seriesOutcome, startSeries, submitGame, tableLegalMoves, tablePlaces, validateSetup };
