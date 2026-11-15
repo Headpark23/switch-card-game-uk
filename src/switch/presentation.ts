@@ -112,7 +112,12 @@ export function effectText(before: TableState, after: TableState, cards: readonl
   if (rank === "2" && pending?.kind === "draw-two") return `Twos: ${names[after.turn]} faces ${plural(pending.cards, "card")}`;
   if (rank === "K") {
     if (pending?.kind === "black-king") return `Black king: ${names[after.turn]} faces ${plural(pending.cards, "card")}`;
-    if (before.pendingPenalty?.kind === "black-king") return "Red king cancels the penalty";
+    if (before.pendingPenalty?.kind === "black-king") {
+      // A red king only reduces the pile-up. Whoever lays it picks up what is left (nothing, if it was all taken off).
+      const gained = after.hands[actor].length - (before.hands[actor].length - cards.length);
+      if (gained > 0) return `Red king takes 5 off: ${names[actor]} still pick${names[actor] === "You" ? "" : "s"} up ${gained}`;
+      return "Red king cancels the penalty";
+    }
     return null;
   }
   if (rank === "8" && pending?.kind === "miss-turn") return `Eight: ${names[after.turn]} misses a turn unless they hold an eight`;
@@ -158,6 +163,16 @@ export function planTurn(before: TableState, action: GameAction, after: TableSta
     steps.push({ kind: "draw", seat, count: after.hands[seat].length, ...(options.missedCall ? { penalty: true } : {}) });
     if (after.discardPile.length < before.discardPile.length + action.cards.length) {
       steps.push({ kind: "announce", seat, text: "Deck empty: the played pile is turned over to make a new deck", tone: "info" });
+    }
+  }
+  // A red king on a black-king pile-up takes 5 off, and the player who laid it picks up what is left.
+  if (rankOf(action.cards[action.cards.length - 1]) === "K" && before.pendingPenalty?.kind === "black-king" && !wentOut(after, seat)) {
+    const gained = after.hands[seat].length - (before.hands[seat].length - action.cards.length);
+    if (gained > 0) {
+      steps.push({ kind: "draw", seat, count: gained, penalty: true, ouch: before.hands[seat].length - action.cards.length === 1 });
+      if (after.discardPile.length < before.discardPile.length + action.cards.length) {
+        steps.push({ kind: "announce", seat, text: "Deck empty: the played pile is turned over to make a new deck", tone: "info" });
+      }
     }
   }
   // A play-on game: this player is out with a place, and everyone else carries on.

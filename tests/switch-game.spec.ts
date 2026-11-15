@@ -77,7 +77,7 @@ test("black kings stack and the computer picks up the full penalty", async ({ pa
   await expect(page.getByText("16 cards", { exact: true })).toBeVisible();
 });
 
-test("one red king leaves five cards from a ten-card black-king stack", async ({ page }) => {
+test("a red king on a ten-card black-king stack: you still pick up the five that are left", async ({ page }) => {
   await page.goto("/?testDeck=partialKing");
   await page.getByRole("button", { name: "Learn rules" }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
@@ -86,9 +86,9 @@ test("one red king leaves five cards from a ten-card black-king stack", async ({
   await waitForPlayer(page);
   await play(page, "KH");
 
-  await expect(page.getByText(/The red king cancels five cards. 5 are still at stake for the computer/)).toBeVisible();
-  await expect(page.getByText("The computer picks up 5 cards. Your turn.")).toBeVisible({ timeout: 9_000 });
-  await expect(page.getByText("11 cards", { exact: true })).toBeVisible();
+  // The red king only takes 5 off. The player who laid it picks up the rest; it never passes on to the computer.
+  await expect(page.getByText(/The red king takes (five|5) off, but you still pick up the other 5/)).toBeVisible();
+  await expect(page.getByText("The computer picks up 5 cards. Your turn.")).toHaveCount(0);
 });
 
 test("leaving during a computer turn cannot move a replacement game", async ({ page }) => {

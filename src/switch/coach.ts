@@ -58,10 +58,14 @@ export function explainEffect(before: GameState, after: GameState, cards: readon
   if (penalty?.kind === "draw-two") {
     return `${subject(side)} played a two, so ${next} must pick up ${penalty.cards} cards unless ${next === "you" ? "you stack" : "they stack"} another two.`;
   }
+  if (wasBlackKingStack && rank === "K" && !isBlackKing(cards[cards.length - 1])) {
+    const handAfter = side === "you" ? after.playerHand : after.computerHand;
+    const handBefore = side === "you" ? before.playerHand : before.computerHand;
+    const gained = handAfter.length - (handBefore.length - cards.length);
+    if (gained > 0) return `The red king takes five off, but ${side === "you" ? "you still pick" : "the computer still picks"} up the other ${gained}. The penalty does not pass on.`;
+  }
   if (penalty?.kind === "black-king") {
-    return wasBlackKingStack && cards.some((card) => !isBlackKing(card))
-      ? `The red king cancels five cards. ${penalty.cards} are still at stake for ${next}.`
-      : `Black king: ${next} must pick up ${penalty.cards} cards, unless ${next === "you" ? "you add" : "they add"} another black king or cancel it with a red king.`;
+    return `Black king: ${next} must pick up ${penalty.cards} cards, unless ${next === "you" ? "you add" : "they add"} another black king or take 5 off with a red king.`;
   }
   if (penalty?.kind === "miss-turn") {
     return `Eight: ${next === "you" ? "you miss" : "the computer misses"} a turn unless ${next === "you" ? "you play" : "it plays"} an eight to pass it on.`;
@@ -109,7 +113,7 @@ export function explainOptions(state: GameState): CoachOption[] {
     const black = playable.filter(isBlackKing);
     const red = playable.filter((card) => rankOf(card) === "K" && !isBlackKing(card));
     if (black.length) options.push({ kind: "counter", label: "Play a black king", cards: black, detail: `Adds 5 and passes it on, now ${penalty.cards + 5}.` });
-    if (red.length) options.push({ kind: "counter", label: "Play a red king", cards: red, detail: "Cancels 5 cards of the penalty." });
+    if (red.length) options.push({ kind: "counter", label: "Play a red king", cards: red, detail: "Takes 5 off the pile-up, but you still pick up what is left. It does not pass on." });
     options.push({ kind: "pickup", label: `Pick up ${penalty.cards}`, cards: [], detail: "Takes the penalty and ends your turn." });
     return options;
   }

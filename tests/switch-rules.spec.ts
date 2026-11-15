@@ -280,6 +280,7 @@ test("king penalties cancel one five-card unit per red king", async ({ page }) =
     return {
       oneAgainstOne: oneAgainstOne.pendingPenalty,
       oneAgainstTwo: oneAgainstTwo.pendingPenalty,
+      oneAgainstTwoHand: oneAgainstTwo.playerHand.length,
       pairIsLegal,
       twoAgainstTwo: twoAgainstTwo.pendingPenalty,
       drewFiveCount: drewFive.playerHand.length,
@@ -290,7 +291,9 @@ test("king penalties cancel one five-card unit per red king", async ({ page }) =
   });
 
   expect(result.oneAgainstOne).toBeNull();
-  expect(result.oneAgainstTwo).toEqual({ kind: "black-king", units: 1, cards: 5 });
+  // A red king on a ten-card stack takes five off and the player who laid it picks up the rest: nothing passes on.
+  expect(result.oneAgainstTwo).toBeNull();
+  expect(result.oneAgainstTwoHand).toBe(2 - 1 + 5);
   expect(result.pairIsLegal).toContainEqual({ type: "play", cards: ["KH", "KD"] });
   expect(result.twoAgainstTwo).toBeNull();
   expect(result.drewFiveCount).toBe(7);
@@ -311,9 +314,14 @@ test("kings count card by card in the order played (owner ruling 14)", async ({ 
     const owed = (hand: string[], units: number, cards: string[]) => {
       try { return rules.applyAction(state(hand, units), { type: "play", cards }).pendingPenalty?.cards ?? 0; } catch { return "illegal"; }
     };
+    const picked = (hand: string[], units: number, cards: string[]) => {
+      try { return rules.applyAction(state(hand, units), { type: "play", cards }).playerHand.length - (hand.length + 1 - cards.length); } catch { return "illegal"; }
+    };
     return {
       oneBlack: owed(["KC"], 0, ["KC"]),
       blackOnFive: owed(["KS"], 1, ["KS"]),
+      // Ruling 14 (revised 15 Nov): a red king on top only reduces the stack, and its player picks up what is left, so
+      // nothing passes on (0). The player's own pick-up is checked in `picked` below.
       redOnTen: owed(["KH"], 2, ["KH"]),
       twoRedsOnTen: owed(["KH", "KD"], 2, ["KH", "KD"]),
       blackThenRed: owed(["KS", "KH"], 0, ["KS", "KH"]),
@@ -323,10 +331,17 @@ test("kings count card by card in the order played (owner ruling 14)", async ({ 
       twoRedsOneBlack: owed(["KH", "KD", "KS"], 0, ["KH", "KD", "KS"]),
       twoBlacksTwoReds: owed(["KS", "KC", "KH", "KD"], 0, ["KC", "KS", "KH", "KD"]),
       loneRedNoPenalty: owed(["KH"], 0, ["KH"]),
+      // Cards the player themselves picks up after laying the kings.
+      pickedRedOnTen: picked(["KH"], 2, ["KH"]),
+      pickedRedOnFive: picked(["KH"], 1, ["KH"]),
+      pickedTwoRedsOnTen: picked(["KH", "KD"], 2, ["KH", "KD"]),
+      pickedBlackOnFive: picked(["KS"], 1, ["KS"]),
+      pickedRedThenBlack: picked(["KH", "KS"], 0, ["KH", "KS"]),
     };
   });
   expect(result).toEqual({
-    oneBlack: 5, blackOnFive: 10, redOnTen: 5, twoRedsOnTen: 0, blackThenRed: 0, redThenBlack: 5,
+    pickedRedOnTen: 5, pickedRedOnFive: 0, pickedTwoRedsOnTen: 0, pickedBlackOnFive: 0, pickedRedThenBlack: 0,
+    oneBlack: 5, blackOnFive: 10, redOnTen: 0, twoRedsOnTen: 0, blackThenRed: 0, redThenBlack: 5,
     twoRedsTwoBlacks: 10, oneRedTwoBlacks: 10, twoRedsOneBlack: 5, twoBlacksTwoReds: 0, loneRedNoPenalty: 0,
   });
 });

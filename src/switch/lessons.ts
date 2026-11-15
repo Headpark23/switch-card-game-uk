@@ -71,11 +71,11 @@ export function explainLesson(before: GameState, after: GameState, cards: readon
       title: black ? "A black king: pick up five" : "A red king: cancel a black king",
       rule: black
         ? "A black king makes the next player pick up 5 cards. Another black king passes it on and adds 5 more."
-        : "A red king cancels one black king, which takes 5 cards off the penalty. You need one red king for each black king.",
+        : "A red king takes 5 cards off a black-king penalty, but you still pick up whatever is left. It never passes the penalty on.",
       why: penalty?.kind === "black-king" ? `${penalty.cards} cards are now waiting for ${next} to pick up.` : "With the penalty cancelled, play goes back to normal.",
       tip: black
         ? "Black kings are the heaviest cards in the game. Save them for when the other player is close to winning."
-        : "Hold a red king as insurance. It turns a painful penalty into nothing.",
+        : "Hold a red king to halve a double black-king penalty. Against a single black king it saves you the whole 5.",
     };
   }
   if (rank === "8") {
