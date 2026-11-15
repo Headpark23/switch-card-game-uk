@@ -40,7 +40,7 @@ type ReadyPlayoffs = {
 const HISTORY_KEY = "switchNightHistory";
 const FORMAT_LABELS: Record<ScoreFormat, string> = {
   "head-to-head": "One v One",
-  domino: "Domino",
+  domino: "Dominoes",
   darts: "Darts",
   league: "Group Play",
   knockout: "Knock Out",

@@ -11,11 +11,13 @@ test("a host shares live scores and updates reach the shared code", async ({ pag
   await page.goto("/");
   await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Keep every score straight." })).toBeVisible();
+  await page.getByRole("button", { name: "Dominoes", exact: true }).click();
   const names = page.getByPlaceholder("Enter name");
   for (let i = 0; i < await names.count(); i += 1) await names.nth(i).fill("Player " + (i + 1));
   await page.getByLabel("Target score").fill("250");
-  await page.getByRole("button", { name: "Start Domino" }).click();
+  await page.getByRole("button", { name: "Start Dominoes" }).click();
   await expect(page.getByLabel("Score for Player 1")).toBeVisible();
+  await page.getByText("Invite friends to follow on their phones").click();
   await page.getByRole("button", { name: /^Send (to Player 1|the link)$/ }).click();
   await expect(page.getByText("ABC234").first()).toBeVisible();
   await page.getByLabel("Score for Player 1").fill("40");

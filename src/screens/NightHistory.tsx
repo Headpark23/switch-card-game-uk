@@ -10,9 +10,9 @@ import { loadScorekeeper, saveScorekeeper, SCOREKEEPER_STORAGE_KEY } from '../sw
 import { useConfirm } from '../Confirm';
 
 type Extensions = Record<string, unknown>;
-type Props = { extensions: Extensions; onChange: (next: Extensions) => void };
+type Props = { extensions: Extensions; onChange: (next: Extensions) => void; startMode?: 'share' | 'join' };
 
-export default function NightHistory({ extensions, onChange }: Props) {
+export default function NightHistory({ extensions, onChange, startMode }: Props) {
   const nights = getHistory(extensions);
   const [confirm, confirmSheet] = useConfirm();
   const [backupMessage, setBackupMessage] = useState('');
@@ -59,7 +59,7 @@ export default function NightHistory({ extensions, onChange }: Props) {
   }
 
   return <section className="night-history" aria-labelledby="night-history-title">
-    <ClubSharing />
+    <ClubSharing startMode={startMode} />
     <div className="history-heading">
       <div><h2 id="night-history-title">Switch Night history</h2></div>
       {nights.length > 0 && <button className="secondary" onClick={downloadHistory}><DownloadSimple size={16} />Export history</button>}

@@ -59,5 +59,6 @@ export default function NightDetail({ night, game, meId, profiles, onClose, onRe
         <p className="dash-note">{record.online ? 'Games played online count towards your record, streaks and badges.' : 'Games against the computer count towards your record, streaks and badges.'}</p>
       </div>;
     })()}
+    <button className="secondary night-done" onClick={onClose}>Done</button>
   </BottomSheet>;
 }

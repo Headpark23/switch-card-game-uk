@@ -1,4 +1,6 @@
+import { getProfiles, putProfiles, type LocalProfile } from "./profiles";
 import { loadScorekeeper, saveScorekeeper, SCOREKEEPER_STORAGE_KEY } from "./storage";
+import type { Player } from "./types";
 
 type Extensions = Record<string, unknown>;
 
@@ -31,4 +33,22 @@ export function updateClub(change: (extensions: Extensions) => Extensions): Exte
   } catch {
     return {};
   }
+}
+
+/**
+ * Typed names are not club players until a night with them is saved. Starts a night with the new profiles held back:
+ * `ensured` is the result of ensureProfiles, `known` the profiles the club had before it.
+ */
+export function withoutNewProfiles(ensured: Extensions, known: readonly LocalProfile[]): Extensions {
+  const have = new Set(known.map((profile) => profile.id));
+  return putProfiles(ensured, getProfiles(ensured).filter((profile) => have.has(profile.id)));
+}
+
+/** Saving a night is what puts its players on the club roster: adds a profile (same id) for any player the club does not hold yet. */
+export function withNightProfiles(extensions: Extensions, list: readonly Player[]): Extensions {
+  const have = getProfiles(extensions);
+  const colours: LocalProfile["colour"][] = ["forest", "gold", "clay", "navy"];
+  const missing = list.filter((player) => player.name.trim() && !have.some((profile) => profile.id === player.id));
+  if (!missing.length) return extensions;
+  return putProfiles(extensions, [...have, ...missing.map((player, index): LocalProfile => ({ version: 1, id: player.id, name: player.name.trim(), colour: colours[(have.length + index) % colours.length], createdAt: new Date().toISOString(), archived: false }))]);
 }

@@ -31,7 +31,7 @@ function buildBoard(input: { club?: string; host?: string; session: ScoreSession
       value: darts ? `${session.darts?.sets[player.id] ?? 0} sets · ${session.darts?.legs[player.id] ?? 0} legs` : `${session.scores[player.id] ?? 0} ${isGameMatch(session) ? "games" : "points"}`,
       lead: winner === player.id,
     }));
-    const name = session.format === "domino" ? "Domino" : session.format === "darts" ? "Darts" : "One v One";
+    const name = session.format === "domino" ? "Dominoes" : session.format === "darts" ? "Darts" : "One v One";
     return { title, format: session.format, status: winner ? `${session.players.find((p) => p.id === winner)?.name} wins the match` : darts ? `First to ${session.darts?.setsToWin ?? 3} sets` : isGameMatch(session) ? `${name} · first to ${session.target} games` : `${name} · first to ${session.target}`, lines };
   }
   if (knockout) {

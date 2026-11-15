@@ -142,13 +142,14 @@ export function explainOptions(state: GameState): CoachOption[] {
 /** The reason a tapped card cannot be played. */
 export function explainUnplayable(card: CardId, state: GameState): string {
   const rank = rankOf(card);
+  const plain = `the ${RANK_WORDS[rank]} of ${SUIT_NAMES[suitOf(card)]}`;
   const penalty = state.pendingPenalty;
   const top = state.discardPile[state.discardPile.length - 1];
   if (rank === "A" && penalty) return "An ace is wild on ordinary cards, but cannot interrupt a black king, two or eight.";
-  if (penalty?.kind === "draw-two") return `Twos are stacking, so only another two can answer. ${card} cannot follow the current card.`;
-  if (penalty?.kind === "black-king") return `A black king is active, so only a king can answer. ${card} cannot follow the current card.`;
-  if (penalty?.kind === "miss-turn") return `An eight is active, so only another eight can answer. ${card} cannot follow the current card.`;
+  if (penalty?.kind === "draw-two") return `Twos are stacking, so only another two can answer. ${plain[0].toUpperCase()}${plain.slice(1)} cannot follow the current card.`;
+  if (penalty?.kind === "black-king") return `A black king is active, so only a king can answer. ${plain[0].toUpperCase()}${plain.slice(1)} cannot follow the current card.`;
+  if (penalty?.kind === "miss-turn") return `An eight is active, so only another eight can answer. ${plain[0].toUpperCase()}${plain.slice(1)} cannot follow the current card.`;
   const topRank = RANK_WORDS[rankOf(top)];
   const article = /^[aeiou]/i.test(topRank) ? "an" : "a";
-  return `That card cannot follow the current card. ${card} is a ${RANK_WORDS[rank]} of ${SUIT_NAMES[suitOf(card)]}, and the pile needs ${SUIT_NAMES[state.currentSuit]} or ${article} ${topRank}.`;
+  return `That card cannot follow the current card. It is ${plain}, and the pile needs ${SUIT_NAMES[state.currentSuit]} or ${article} ${topRank}.`;
 }

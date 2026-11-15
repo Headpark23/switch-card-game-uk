@@ -814,7 +814,7 @@
 .home-hub.v2 .home-tiles.v2 .home-tile:hover{transform:translateY(-1px)}
 .home-hub.v2 .home-tiles.v2 .home-tile:active{transform:scale(.98)}
 .home-hub.v2 .home-tiles.v2 .home-tile strong{font-size:17.5px}
-.home-hub.v2 .home-tiles.v2 .home-tile small{font-size:11px}
+.home-hub.v2 .home-tiles.v2 .home-tile small{font-size:12px}
 @media (max-height:700px){.home-hub.v2 .home-tiles.v2 .home-tile{min-height:64px;padding-top:8px;padding-bottom:8px}}
 .switch-app .scorekeeper-head>.back-link{display:none}
 .score-shortcuts{margin:18px 0 6px;padding-top:12px;border-top:1px solid var(--line)}
@@ -1112,3 +1112,129 @@
 /* Touch targets: keep the look, grow the hit area to 44px (Nov 2026 review) */
 .pace-button,.last-card-button,.hint-button,.turn-banner>button{position:relative}
 .pace-button::after,.last-card-button::after,.hint-button::after,.turn-banner>button::after{content:'';position:absolute;left:50%;top:50%;width:max(100%,44px);height:44px;transform:translate(-50%,-50%)}
+
+/* === score and club fixes === */
+/* Segmented chips: the chosen one is filled green like the game-type tiles */
+.scorekeeper .count-control:has(button[aria-pressed]){grid-template-columns:1fr auto auto;gap:6px}
+.scorekeeper .count-control button[aria-pressed]{width:auto;min-width:56px;padding:0 16px;border-radius:999px;font-weight:600;background:#fffdf7;color:var(--green);border:1px solid #c8bea9}
+.scorekeeper .count-control button[aria-pressed=true]{background:var(--green);color:#fbf8f0;border-color:var(--green);font-weight:700;box-shadow:inset 0 0 0 1px #e6c97f66}
+/* Switch Cup: the winner reads clearly, never as disabled */
+.cup-fixture button.winner,.cup-fixture button.winner:disabled{display:flex;align-items:center;justify-content:center;gap:6px;background:#cfe3cf;color:#053527;border:2px solid var(--green);font-weight:700;opacity:1}
+.cup-fixture button.winner svg{flex:none;color:#0b5239}
+/* Round scores, so a mistaken one is visible */
+.round-log{list-style:none;margin:8px 0 4px;padding:0;display:grid;gap:3px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.round-log li{padding:4px 10px;border-radius:8px;background:#f6efdb}
+.score-error[role=alert]{margin:4px 0 8px!important}
+/* Invitation folded away so the scores come first */
+.share-fold{margin:14px 0 6px;border:1px dashed #b89b52;border-radius:12px;background:#fbf4de}
+.share-fold>summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;cursor:pointer;font-weight:600;font-size:13.5px;color:var(--green);list-style:none}
+.share-fold>summary::-webkit-details-marker{display:none}
+.share-fold[open]>summary{border-bottom:1px dashed #d8c99f}
+.share-fold .share-night{margin:0;border:0;background:none}
+.share-night button:not(.text-link),.share-night .share-send,.share-people .share-send{min-height:44px}
+/* Tap targets */
+.dealer-bar button,.dealer-bar .dealer-pick button{min-height:44px}
+.scorekeeper .club-tabs button{min-height:44px}
+.league-actions .text-link,.playoff-needed .text-link{min-height:44px}
+/* Compact dealer card, below the players */
+.active-score .dealer-bar{margin:12px 0 4px;padding:6px 10px}
+.score-status strong{white-space:nowrap}
+.sample-bar .text-link{white-space:nowrap;flex:none}
+/* Fields that were plain browser inputs */
+.venue-fields input,.watch-who input,.club-sharing .field input{width:100%;min-width:0;height:46px;border:1px solid #c9bfaa;border-radius:10px;background:#fffdf9;padding:10px 12px;font:inherit;color:var(--ink)}
+.venue-fields label>span,.watch-who label>span{font-size:11px;font-weight:600;color:var(--muted)}
+.venue-fields select{border-color:#c9bfaa;background:#fffdf9}
+.watch-who label{display:grid;gap:5px}
+.switch-app input[aria-invalid=true]{border-color:#b1342b!important;background:#fff6f4!important;box-shadow:0 0 0 2px #b1342b33}
+/* The card shower falls behind sheets, never over their inputs */
+.card-shower{z-index:19}
+.club-panel .intro{font-size:14px;line-height:1.5}
+.score-shortcuts .text-link{max-width:100%}
+
+/* === shell and me fixes === */
+/* Install banner: a slim bar that reserves its own room, so it never covers the page. */
+.install-banner{padding:4px 2px 4px 12px;gap:8px;border-radius:14px}
+.install-banner>svg{width:22px;height:22px}
+.install-banner small{font-size:12px}
+.install-banner .install-go{min-height:44px;min-width:44px;font-size:14px}
+.install-banner .install-x{width:44px;height:44px}
+.switch-app[data-install-banner] .switch-content.home{padding-bottom:calc(var(--mobile-safe-area-height) + 90px + 72px)}
+/* 44px hit areas */
+.home-discover button{min-height:44px;padding:0 14px;font-size:13px!important}
+.install-phone{min-height:56px}
+.install-phone small{font-size:12px}
+/* Skip link: first thing a keyboard user reaches, visible only on focus */
+.skip-link{position:absolute;z-index:60;left:12px;top:-60px;padding:12px 18px;border-radius:10px;background:var(--green);color:#fff;font-weight:600;font-size:14px;text-decoration:none}
+.skip-link:focus{top:12px;outline:3px solid var(--gold);outline-offset:2px}
+#main-content:focus{outline:none}
+/* Puzzles: a plain count line, and a hint for the disabled button */
+.puzzle-count{margin:-6px 0 0;font-size:13px;font-weight:600;color:var(--muted)}
+.puzzle-hint{margin:-4px 0 0;text-align:center;font-size:13px;color:var(--muted)}
+/* Learn the rules: no tan block stopping short of the hero image */
+.rules-page .rule-narrative{background:transparent}
+/* Name gate: the fan of cards stays clear of the intro text */
+.felt-header.has-fan:not(.compact) .felt-header-text p{padding-right:96px}
+.me-page .back-link{margin-bottom:6px}
+/* Contrast: disabled buttons, field labels and badge captions */
+.switch-app button.primary:disabled{opacity:1!important;background:#dde6dd!important;color:#33403a!important;border:1px solid #8fa396}
+.switch-app button.primary:disabled svg{color:#33403a}
+.target-field>span,.player-fields label>span{font-size:13px;letter-spacing:.2px;color:#3f4742;font-weight:500}
+.badge-wall .badge small,.badge-category header span{font-size:12px;color:#454c47}
+.badge-wall .badge.locked strong{color:#454c47}
+.badge-preview{margin-top:10px}
+.badge-preview h3{margin:0 0 4px}
+
+/* === play fixes === */
+/* Selection bar and suit chooser sit directly above the hand, in the flow, so they never cover a card. */
+.table-game .multi-action,.game-tutorial .multi-action{position:static;box-shadow:none;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:4px 10px;padding:8px 10px;margin:0 0 6px;min-height:48px}
+.multi-action p{margin:0;display:grid;gap:1px;min-width:0}
+.multi-action p b{font-size:13px;font-weight:700;color:var(--green)}
+.multi-action p small{font-size:10.5px;line-height:1.25;color:var(--muted)}
+.multi-action .primary{min-height:40px;padding:6px 14px;font-size:13px;white-space:nowrap}
+.multi-action .text-link{grid-column:auto;margin:0;font-size:12px;min-height:40px;padding:2px 6px;white-space:nowrap}
+.game-tutorial .suit-choice,.table-game .suit-choice{position:static;left:auto;right:auto;top:auto;z-index:auto;display:grid;gap:6px;padding:10px 10px 6px;margin:0 0 6px;border-radius:12px;border:1px solid #e6c97f;box-shadow:0 0 0 2px #e6c97f44}
+.game-tutorial .suit-choice>p,.table-game .suit-choice>p{font-size:17px;margin:0!important}
+.game-tutorial .suit-choice>div button,.table-game .suit-choice>div button{min-height:52px;font-size:24px;justify-content:center}
+.game-tutorial .suit-choice>div span,.table-game .suit-choice>div span{font-size:13px;font-weight:600;color:var(--ink)}
+.game-tutorial .suit-choice>.text-link,.table-game .suit-choice>.text-link{font-size:13px;min-height:36px;margin:0 auto}
+/* Last Card: loud only when it can matter (three cards or fewer); otherwise a quiet, still-working button. */
+.table-game .last-card-button.idle{background:transparent;border-color:#d8c99f;color:var(--muted);box-shadow:none;font-weight:600}
+/* The hand: more than five cards go in two rows so every card shows its corner and has a full-size tap target. */
+.game-tutorial .player-hand:not(.two-rows){min-height:112px}
+.game-tutorial .player-hand.two-rows{justify-items:center;row-gap:10px;padding:12px 8px 10px}
+/* The "eight was played" panel is one compact row, so the hand stays on screen. */
+.game-tutorial .miss-turn-action{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:0 10px;padding:8px 10px;margin:0 0 6px}
+.game-tutorial .miss-turn-action>strong,.game-tutorial .miss-turn-action>p{grid-column:1;margin-top:0;margin-bottom:0!important}
+.game-tutorial .miss-turn-action>.primary{grid-column:2;grid-row:1/span 2;white-space:nowrap}
+/* A remark sits on the name and cards of a seat, never on its card count. */
+.seat .reaction-bubble{top:4px;translate:-50% -50%}
+.seat .reaction-bubble.sticker{top:14px}
+/* Lobby: the Deal button stays on screen however long the table list is. */
+@media(max-width:1099px){.play-lobby .lobby-side .deal-button{position:sticky;bottom:calc(72px + var(--mobile-safe-area-height,0px));z-index:30}}
+.lobby-seat i{font-size:11px;color:#fff3cf;font-weight:700}
+.lobby-seats.seats-7 i,.lobby-seats.seats-6 i{font-size:10.5px}
+/* The coach sheet never grows wider than the screen. */
+.lesson{grid-template-columns:minmax(0,1fr);max-width:100%;box-sizing:border-box}
+.lesson>*{min-width:0;max-width:100%;box-sizing:border-box}
+.lesson-pick,.lesson-cards{max-width:100%;box-sizing:border-box}
+.lesson-cards{flex-wrap:wrap}
+.lesson p,.lesson li{overflow-wrap:anywhere}
+.lesson .lesson-done{max-width:100%}
+.night-done{width:100%;margin-top:14px}
+.confirm-sheet .primary:not(.destructive){background:#053527}
+/* The suit chooser keeps its title and Cancel on one line, so it takes less room above the hand. */
+.game-tutorial .suit-choice,.table-game .suit-choice{grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:8px 10px;gap:4px 8px}
+.game-tutorial .suit-choice>div,.table-game .suit-choice>div{grid-column:1/-1}
+.game-tutorial .suit-choice>p,.table-game .suit-choice>p{font-size:16px;text-align:left}
+.game-tutorial .suit-choice>div button,.table-game .suit-choice>div button{min-height:46px;padding:5px 4px}
+.game-tutorial .suit-choice>.text-link,.table-game .suit-choice>.text-link{margin:0}
+.game-tutorial .suit-choice>.text-link,.table-game .suit-choice>.text-link{grid-column:2;grid-row:1}
+.game-tutorial .suit-choice>div,.table-game .suit-choice>div{grid-row:2}
+.game-tutorial .miss-turn-action>strong{font-size:16px}
+.game-tutorial .miss-turn-action>p{font-size:12px;line-height:1.3}
+.game-tutorial .miss-turn-action>.primary{min-height:40px;padding:6px 12px;font-size:13px;width:auto}
+.game-tutorial .miss-turn-action~.game-actions{display:none}
+.seat .reaction-bubble{max-width:128px;white-space:normal;text-align:center;line-height:1.15;font-size:13px}
+.seat .reaction-bubble.sticker{white-space:nowrap}
+@media(max-width:639px){.game-tutorial .game-table{min-height:150px}.table-game .move-log li:not(:last-child){display:none}}
+.device-screen:not(.device-screen-native) .table-game .move-log li:not(:last-child){display:none}

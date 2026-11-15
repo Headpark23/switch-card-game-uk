@@ -12,7 +12,7 @@ import { getProfiles, resolveHistoryPlayerId } from '../switch/profiles';
 import { powers } from '../content';
 import { Fan } from '../ui';
 
-const FORMAT_NAMES: Record<string, string> = { 'head-to-head': 'One v One', domino: 'Domino', darts: 'Darts', league: 'Group Play', knockout: 'Knock Out', cup: 'Switch Cup' };
+const FORMAT_NAMES: Record<string, string> = { 'head-to-head': 'One v One', domino: 'Dominoes', darts: 'Darts', league: 'Group Play', knockout: 'Knock Out', cup: 'Switch Cup' };
 const LEVEL_NAMES: Record<string, string> = { relaxed: 'Easy', standard: 'Medium', sharp: 'Hard' };
 
 /** The corner index of a playing card, so each launch tile reads as an ace dealt onto the table. */
@@ -39,6 +39,7 @@ type Props = {
   onResumeTable: () => void;
   onScore: () => void;
   onClub: () => void;
+  onShareClub: () => void;
   onAchievements: () => void;
   onRules: () => void;
   onPuzzles: () => void;
@@ -108,7 +109,7 @@ export default function HomeHub(props: Props) {
 
     <section className="home-lower" aria-label="More from Switch">
       {fresh
-        ? <button className="home-welcome" onClick={props.onRules}><Fan codes={['AS', '8D', '2H']} /><span><strong>New to Switch?</strong><em>Learn the rules in five moves, then practise with a guided game.</em></span><ArrowRight size={17} /></button>
+        ? <button className="home-welcome" onClick={props.onRules}><Fan codes={['AS', '8D', '2H']} /><span><strong>New to Switch?</strong><em>Open Learn the rules: five moves, then a guided practice game.</em></span><ArrowRight size={17} /></button>
         : <div className="home-recent">
           <div className="home-section-head"><h2>Recent</h2><button className="text-link" onClick={props.onHistory}><ClockCounterClockwise size={15} weight="bold" />All history</button></div>
           <ul>{recent.map((row) => <li key={row.key}><button onClick={row.open}><i className={row.won ? 'won' : ''} aria-hidden="true">{row.won ? '♥' : '♣'}</i><span><strong>{row.title}</strong><small>{row.detail}</small></span><em>{when(row.at)}</em></button></li>)}</ul>
@@ -116,10 +117,10 @@ export default function HomeHub(props: Props) {
 
       {loadLink()
         ? <button className="home-club-card linked" onClick={props.onClub}><UsersThree size={24} weight="fill" /><span><strong>Your club is shared</strong><em>Scores, players and leagues sync automatically. Tap to invite a friend.</em></span><ArrowRight size={15} /></button>
-        : <div className="home-club-card"><UsersThree size={24} weight="fill" /><span><strong>Playing with friends? Share your club</strong><em>Everyone's scores, leagues and stats in one place, updating by themselves.</em><span className="home-club-actions"><button className="primary" onClick={props.onClub}>Share my club</button><button className="secondary" onClick={() => { wantJoinForm(); props.onJoinClub(); }}>Join a club</button></span></span></div>}
+        : <div className="home-club-card"><UsersThree size={24} weight="fill" /><span><strong>Playing with friends? Share your club</strong><em>Everyone's scores, leagues and stats in one place, updating by themselves.</em><span className="home-club-actions"><button className="primary" onClick={props.onShareClub}>Share my club</button><button className="secondary" onClick={() => { wantJoinForm(); props.onJoinClub(); }}>Join a club</button></span></span></div>}
       <nav className="home-discover" aria-label="Discover">
-        <button onClick={props.onRules}><GraduationCap size={18} weight="bold" />Learn rules</button>
-        <button onClick={props.onPuzzles}><PuzzlePiece size={18} weight="bold" />Puzzles</button>
+        <button onClick={props.onRules}><GraduationCap size={18} weight="bold" />Learn the rules</button>
+        <button onClick={props.onPuzzles}><PuzzlePiece size={18} weight="bold" />Rules puzzles</button>
         <button onClick={props.onQuestions}><Question size={18} weight="bold" />Questions</button>
         <button onClick={props.onPlan}><CalendarPlus size={18} weight="bold" />Plan a night</button>
         <button onClick={props.onJoin}><Broadcast size={18} weight="bold" />Join a night</button>

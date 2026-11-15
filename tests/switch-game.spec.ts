@@ -4,7 +4,7 @@ test.describe.configure({ timeout: 60_000 });
 
 test("the shuffled pack contains all 52 unique card faces", async ({ page, request }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
   await expect(page.getByRole("region", { name: "52-card game with 52 unique cards" })).toBeVisible();
 
@@ -17,7 +17,7 @@ test("the shuffled pack contains all 52 unique card faces", async ({ page, reque
 
 async function startGame(page: Page) {
   await page.goto("/?testDeck=1");
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
   await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible();
   await expect(page.getByRole("region", { name: "52-card game with 52 unique cards" })).toBeVisible();
@@ -41,7 +41,7 @@ test("hints identify legal cards and an illegal move explains the rule", async (
   await startGame(page);
   await page.getByRole("button", { name: "Show hint" }).click();
 
-  await expect(page.getByText(/You can play 9H, 3C, 7H, KH, AS, JH/)).toBeVisible();
+  await expect(page.getByText(/You can play the nine of hearts, the three of clubs, the seven of hearts, the king of hearts, the ace of spades, the jack of hearts/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Select Nine of hearts, legal move" })).toHaveClass(/playable/);
   await page.getByRole("button", { name: "Select Two of clubs, not currently playable" }).click();
   await expect(page.getByText(/cannot follow the current card/)).toBeVisible();
@@ -63,7 +63,7 @@ test("an off-suit ace is playable on an ordinary card and changes suit", async (
 
 test("black kings stack and the computer picks up the full penalty", async ({ page }) => {
   await page.goto("/?testDeck=blackKingChain");
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
 
   await play(page, "AS");
@@ -79,7 +79,7 @@ test("black kings stack and the computer picks up the full penalty", async ({ pa
 
 test("a red king on a ten-card black-king stack: you still pick up the five that are left", async ({ page }) => {
   await page.goto("/?testDeck=partialKing");
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
 
   await play(page, "KS");
@@ -96,6 +96,7 @@ test("leaving during a computer turn cannot move a replacement game", async ({ p
   await play(page, "9H");
   await expect(page.getByText("GUIDED GAME · COMPUTER TURN")).toBeVisible();
   await page.getByRole("button", { name: "Exit game" }).click();
+  await page.getByRole("button", { name: "Leave game" }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
 
   await page.waitForTimeout(900);
@@ -133,7 +134,7 @@ test("a player without an eight can clearly accept the missed turn", async ({ pa
 test("the main rules story teaches the complete game in five interactive steps", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /^Good (morning|afternoon|evening)/ })).toBeVisible();
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Deal everyone in." })).toBeVisible();
   await expect(page.getByText(/When the deck runs out/)).toBeVisible();
 
@@ -165,8 +166,8 @@ test("a guided match follows power-card and last-card rules through a win", asyn
   await waitForPlayer(page);
   await play(page, "7H"); // seven: play again
   await play(page, "9H");
-  await expect(page.getByRole("button", { name: "Draw a card" })).toBeEnabled({ timeout: 9_000 });
-  await page.getByRole("button", { name: "Draw a card" }).click();
+  await expect(page.getByRole("button", { name: "Pick up a card" })).toBeEnabled({ timeout: 9_000 });
+  await page.getByRole("button", { name: "Pick up a card" }).click();
   await waitForPlayer(page);
   await play(page, "AC");
   await page.getByRole("dialog", { name: "Choose a suit" }).getByRole("button", { name: /clubs/i }).click();
@@ -204,7 +205,7 @@ for (const device of ["iPhone", "Pixel 10"]) {
       await page.getByRole("button", { name: /Preview device/ }).click();
       await page.getByText("Pixel 10").click();
     }
-    await page.getByRole("button", { name: "Learn rules" }).click();
+    await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
     await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible();
     await expect(page.locator(".turn-banner.you")).toBeVisible();

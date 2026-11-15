@@ -12,7 +12,7 @@ import { deriveDashboard } from '../switch/dashboard';
 import { archiveProfile, getProfiles, renameProfile } from '../switch/profiles';
 
 type Extensions = Record<string, unknown>;
-type Props = { extensions: Extensions; onChange: (next: Extensions) => void };
+type Props = { extensions: Extensions; onChange: (next: Extensions) => void; startMode?: 'share' | 'join' };
 
 const MILESTONES: Record<MilestoneId, { label: string; hint: string }> = {
   'first-night': { label: 'First night', hint: 'Played a saved night' },
@@ -24,7 +24,7 @@ const MILESTONES: Record<MilestoneId, { label: string; hint: string }> = {
 };
 
 const FORMAT_NAMES: Record<string, string> = {
-  'head-to-head': 'One v One', domino: 'Domino', darts: 'Darts', league: 'Group Play', knockout: 'Knock Out', cup: 'Switch Cup',
+  'head-to-head': 'One v One', domino: 'Dominoes', darts: 'Darts', league: 'Group Play', knockout: 'Knock Out', cup: 'Switch Cup',
 };
 
 function WinDial({ rate }: { rate: number }) {
@@ -36,7 +36,7 @@ function WinDial({ rate }: { rate: number }) {
   </svg>;
 }
 
-export default function ClubhouseStats({ extensions, onChange }: Props) {
+export default function ClubhouseStats({ extensions, onChange, startMode }: Props) {
   const keyboard = useKeyboard();
   const [confirm, confirmSheet] = useConfirm();
   const allProfiles = getProfiles(extensions);
@@ -49,7 +49,7 @@ export default function ClubhouseStats({ extensions, onChange }: Props) {
 
   if (!profiles.length || !nights.length) {
     return <section className="club-panel" aria-labelledby="stats-title">
-      <ClubSharing />
+      <ClubSharing startMode={startMode} />
 <h2 id="stats-title">Stats appear after your first saved night.</h2>
       <p className="history-empty">Start a score session with your regular players, finish it and save the night. Every number here comes from real saved results, never made-up ones.</p>
       <SampleDataBar offer extensions={extensions} onChange={onChange} />
@@ -78,7 +78,7 @@ export default function ClubhouseStats({ extensions, onChange }: Props) {
 
   return <section className="club-panel" aria-labelledby="stats-title">
     <SampleDataBar extensions={extensions} onChange={onChange} />
-    <ClubSharing />
+    <ClubSharing startMode={startMode} />
     
     <section className="dashboard" aria-label="Club dashboard">
       <div className="dash-tiles">

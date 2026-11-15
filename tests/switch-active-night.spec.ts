@@ -50,8 +50,9 @@ test("an unfinished Domino match resumes after refresh with undo history", async
   })));
   await page.reload();
   await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
+  await page.getByRole("button", { name: "Dominoes", exact: true }).click();
   await page.getByLabel("Target score").fill("250");
-  await page.getByRole("button", { name: "Start Domino" }).click();
+  await page.getByRole("button", { name: "Start Dominoes" }).click();
   await page.getByLabel("Score for Player 1").fill("37");
   await page.getByRole("button", { name: "Add" }).first().click();
 

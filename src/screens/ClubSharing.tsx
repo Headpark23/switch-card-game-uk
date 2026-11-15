@@ -14,13 +14,13 @@ const ago = (time?: number) => {
 };
 
 /** Share this club with friends, or join theirs: one shared club, the same players, nights, leagues and stats on every phone. */
-export default function ClubSharing() {
+export default function ClubSharing({ startMode }: { startMode?: 'share' | 'join' } = {}) {
   const keyboard = useKeyboard();
   const iosTab = inIosBrowserTab();
   const [confirm, confirmSheet] = useConfirm();
   const [link, setLink] = useState<ClubLink | null>(loadLink);
   const urlCode = (() => { try { return cleanClubCode(new URLSearchParams(window.location.search).get('club') || ''); } catch { return ''; } })();
-  const [joining, setJoining] = useState(() => (Boolean(urlCode) || takeJoinRequest()) && !loadLink());
+  const [joining, setJoining] = useState(() => (Boolean(urlCode) || takeJoinRequest() || startMode === 'join') && !loadLink());
   const [code, setCode] = useState(urlCode);
   const [found, setFound] = useState<{ name: string; players: string[]; nights: number } | null>(null);
   const [newName, setNewName] = useState('');
@@ -93,14 +93,14 @@ export default function ClubSharing() {
     <div className="club-sharing-head"><UsersThree size={22} weight="fill" /><div><strong>Join a club</strong><span>Enter the club code a friend gave you.</span></div></div>
     {iosTab && <p className="club-ios-note" role="note"><strong>Using the Switch app on your iPhone?</strong> Open the app instead, tap Join a club on Home and enter this code{code ? <> <b>{code}</b></> : ''}. A browser tab and the app keep their own scores, so join where you play.</p>}
     {!found && <form className="join-form" onSubmit={(event) => { event.preventDefault(); void look(); }}>
-      <label><span>Club code</span><KeyboardInput aria-label="Club code" autoCapitalize="characters" maxLength={8} placeholder="e.g. K7M2QXH4" value={code} onChange={(event) => setCode(cleanClubCode(event.target.value))} /></label>
+      <label><span>Club code</span><KeyboardInput aria-label="Club code" autoFocus autoCapitalize="characters" maxLength={8} placeholder="e.g. K7M2QXH4" value={code} onChange={(event) => setCode(cleanClubCode(event.target.value))} /></label>
       <button className="primary" type="submit" disabled={busy || code.length < 8}>{busy ? 'Looking…' : 'Find club'}</button>
     </form>}
     {found && <div className="watch-who" role="group" aria-label="Which player are you?">
       <strong>{found.name ? `${found.name}: which one are you?` : 'Which one are you?'}</strong>
-      <span>{found.nights} saved night{found.nights === 1 ? '' : 's'} will join your history. Pick your name so your wins and losses count as yours.</span>
+      <span>{found.nights > 0 ? `${found.nights} saved night${found.nights === 1 ? '' : 's'} will join your history.` : 'This club has no saved nights yet.'} Pick your name so your wins and losses count as yours.</span>
       <div className="player-tokens">{found.players.map((name) => <button key={name} disabled={busy} onClick={() => join(name)}>{name}</button>)}</div>
-      <label><span>Not on the list? Type your name</span><KeyboardInput aria-label="Your name" value={newName} placeholder="Your name" onChange={(event) => setNewName(event.target.value)} /></label>
+      <label className="field"><span>Not on the list? Type your name</span><KeyboardInput className="text-field" aria-label="Your name" value={newName} placeholder="Your name" onChange={(event) => setNewName(event.target.value)} /></label>
       <button className="secondary" disabled={busy || !newName.trim()} onClick={() => {
         // A name already on the club's list belongs to someone: they tap it above, nobody else can type it.
         if (found.players.some((name) => name.trim().toLowerCase() === newName.trim().toLowerCase())) { setError(`${newName.trim()} is taken. Pick another name. (If that is you, tap your name in the list above.)`); return; }

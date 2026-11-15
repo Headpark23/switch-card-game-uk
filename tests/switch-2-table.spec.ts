@@ -312,7 +312,7 @@ test("guided practice is unranked: it never writes a competitive result", async 
   const source = await (await request.get("/src/screens/GuidedGame.tsx")).text();
   expect(source).not.toContain("logComputerGame(");
   await page.goto("/");
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
   await expect(page.getByText(/GUIDED GAME/)).toBeVisible();
   await expect(page.getByRole("navigation").getByRole("button", { name: "Home", exact: true })).toHaveAttribute("aria-current", "page");

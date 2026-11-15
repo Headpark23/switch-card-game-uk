@@ -4,7 +4,7 @@ import { useState } from 'react';
 const steps = [
   'Find a standard 52-card pack. No jokers.',
   'Shuffle once and deal 7 cards to every player (2 to 6 people).',
-  'Turn over one card to start the pile. If it is an ace, 2, 7, 8, jack or king, tuck it back and turn another.',
+  'Turn over one card to start the pile. If it is an ace, 2, 7, 8, jack or king, usually tuck it back and turn another. (Now and then, agree to let a power card stand as the dealer’s own play.)',
   'The player after the dealer goes first. Say "Last Card" when you are down to one!',
 ];
 

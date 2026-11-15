@@ -14,8 +14,8 @@ test("every puzzle has at least one legal card and a correct answer is accepted 
 
 test("puzzles score a right answer, explain a wrong one and track the streak", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Puzzles", exact: true }).click();
-  await expect(page.getByText("PUZZLE 1 OF 12")).toBeVisible();
+  await page.getByRole("button", { name: "Rules puzzles", exact: true }).click();
+  await expect(page.getByText("Puzzle 1 of 12")).toBeVisible();
   for (const card of ["3H", "7C", "2H"]) await page.getByRole("button", { name: card, exact: true }).click();
   await page.getByRole("button", { name: "Check my answer" }).click();
   await expect(page.getByText("Spot on.")).toBeVisible();
@@ -32,7 +32,7 @@ test("quick night: names, tap round winners, finish, and it lands in history", a
   await page.getByRole("button", { name: /Quick night/ }).click();
   const names = page.getByPlaceholder("Enter name");
   await names.nth(0).fill("Ann"); await names.nth(1).fill("Ben");
-  await page.getByRole("button", { name: "Deal the cards" }).click();
+  await page.getByRole("button", { name: "Start the night" }).click();
   await page.getByRole("button", { name: "Ann won the round" }).click();
   await page.getByRole("button", { name: "Ann won the round" }).click();
   await page.getByRole("button", { name: "Ben won the round" }).click();
