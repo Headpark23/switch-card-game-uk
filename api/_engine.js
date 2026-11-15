@@ -885,7 +885,7 @@ function createRound(ids, number, random) {
 	};
 }
 function createCup(players, random) {
-	if (players.length < 2 || players.length > 10) throw new Error("Switch Cup supports two to ten players.");
+	if (players.length < 2 || players.length > 16) throw new Error("Switch Cup supports two to sixteen players.");
 	return {
 		players: [...players],
 		rounds: [createRound(players.map((player) => player.id), 1, random)],
@@ -1026,10 +1026,21 @@ const MODES = [
 	}
 ];
 const modeInfo = (mode) => MODES.find((entry) => entry.id === mode);
-function validateSetup(setup) {
+/** The most players a way of playing can take at an online table: tournaments split into several games at once. */
+const ONLINE_MAX_PLAYERS = {
+	single: 8,
+	darts: 8,
+	dominoes: 8,
+	knockout: 16,
+	cup: 16,
+	group: 16
+};
+/** `maxPlayers` is 8 against the computer; an online table allows more for tournaments (ONLINE_MAX_PLAYERS). */
+function validateSetup(setup, maxPlayers = 8) {
 	const info = modeInfo(setup.mode);
 	const players = setup.opponents + 1;
-	if (!Number.isInteger(setup.opponents) || setup.opponents < 1 || setup.opponents > 7) return "Choose 1 to 7 computers.";
+	if (!Number.isInteger(setup.opponents) || setup.opponents < 1 || players > maxPlayers) return maxPlayers === 8 ? "Choose 1 to 7 computers." : `${info.name} is for up to ${maxPlayers} players.`;
+	if (players > 8 && (setup.mode === "darts" || setup.mode === "dominoes")) return `${info.name} is for up to 8 players: everyone plays in every game.`;
 	if (players < info.minPlayers) return `${info.name} needs at least ${info.minPlayers} players, so at least ${info.minPlayers - 1} computers.`;
 	if (setup.mode === "darts" && setup.setsToWin !== 3 && setup.setsToWin !== 5) return "Play to 3 or 5 sets.";
 	if (setup.mode === "dominoes" && !(Number.isInteger(setup.limit) && setup.limit >= 10 && setup.limit <= 999)) return "Choose a number from 10 to 999.";
@@ -1069,35 +1080,24 @@ function resultOf(table, ids) {
 		moves: table.move
 	};
 }
-/** Plays a whole game between computers, instantly. Used for every game you are not in. */
-function simulateGame(ids, level, random, playOn = false) {
-	let table = createTable(ids.length, random, Math.floor(random() * ids.length), { playOn });
-	let guard = 0;
-	while (table.status === "playing" && guard < 3e3) {
-		table = applyTableAction(table, chooseTableAction(table, random, level));
-		guard += 1;
-	}
-	if (table.status === "playing") {
-		const sizes = table.hands.map((hand) => hand.length);
-		if (table.playOn) {
-			const out = [...table.out ?? []];
-			for (const seat of sizes.map((size, index) => ({
-				size,
-				index
-			})).filter((entry) => !out.includes(entry.index)).sort((a, b) => a.size - b.size || a.index - b.index).map((entry) => entry.index)) out.push(seat);
-			table = {
-				...table,
-				out,
-				status: "won",
-				winner: out[0]
-			};
-		} else table = {
-			...table,
-			status: "won",
-			winner: sizes.indexOf(Math.min(...sizes))
-		};
-	}
-	return resultOf(table, ids);
+/** The most players at one game of Switch: two decks (ruling 21). */
+const TABLE_MAX = 8;
+/** Splits players as evenly as possible onto the fewest tables of up to 8. */
+function drawTables(ids, random) {
+	const order = shuffled(ids, random);
+	const count = Math.ceil(order.length / TABLE_MAX);
+	return Array.from({ length: count }, (_, table) => order.filter((_, index) => index % count === table));
+}
+function koStart(ids, random = Math.random, round = 1, out = []) {
+	const heats = ids.length > TABLE_MAX ? drawTables(ids, random) : null;
+	return {
+		remaining: ids,
+		out,
+		championId: ids.length === 1 ? ids[0] : null,
+		heats,
+		heatLosers: heats ? heats.map(() => null) : [],
+		round
+	};
 }
 function shuffled(items, random) {
 	const result = [...items];
@@ -1117,7 +1117,7 @@ function leagueSizes(players) {
 * everyone, the host included, is drawn into the leagues at random.
 */
 function startSeries(setup, random, id = `series-${Date.now()}-${Math.floor(random() * 1e6).toString(36)}`, given) {
-	const problem = validateSetup(setup);
+	const problem = validateSetup(setup, given ? ONLINE_MAX_PLAYERS[setup.mode] : 8);
 	if (problem) throw new Error(problem);
 	const players = given ? [...given] : seriesPlayers(setup.opponents);
 	if (players.length !== setup.opponents + 1) throw new Error("The players do not match the table.");
@@ -1134,11 +1134,7 @@ function startSeries(setup, random, id = `series-${Date.now()}-${Math.floor(rand
 		case "knockout": return setup.knockout === "last-out" ? {
 			kind: "lastout",
 			base,
-			part: {
-				remaining: ids,
-				out: [],
-				championId: null
-			}
+			part: koStart(ids, random)
 		} : {
 			kind: "knockout",
 			base,
@@ -1200,6 +1196,15 @@ const koFinished = (part) => !part || part.championId !== null;
 */
 function koPending(part, key, label) {
 	if (!part || part.championId !== null || part.remaining.length < 2) return [];
+	if (part.heats) {
+		const round = part.round ?? 1;
+		return part.heats.flatMap((heat, index) => part.heatLosers?.[index] ? [] : [{
+			key: `${key}-r${round}-h${index + 1}`,
+			title: `${label ? `${label} round` : "Round"} ${round} · table ${index + 1} of ${part.heats?.length}`,
+			playerIds: heat,
+			playOn: heat.length > 2
+		}]);
+	}
 	const left = part.remaining.length;
 	const title = left === 2 ? `${label} final · 1 v 1` : `${label} knock out · ${left} players`;
 	return [{
@@ -1209,13 +1214,29 @@ function koPending(part, key, label) {
 		playOn: left > 2
 	}];
 }
-function koApply(part, result) {
+function koApply(part, result, key = "") {
+	if (part.heats) {
+		const at = Number(/-h(\d+)$/.exec(key)?.[1] ?? 0) - 1;
+		const heat = part.heats[at];
+		if (!heat) throw new Error("That table is not in this round.");
+		const loser = [...result.order].reverse().find((id) => heat.includes(id));
+		const heatLosers = (part.heatLosers ?? part.heats.map(() => null)).map((entry, index) => index === at ? loser : entry);
+		if (heatLosers.some((entry) => !entry)) return {
+			...part,
+			heatLosers
+		};
+		const gone = heatLosers;
+		return koStart(part.remaining.filter((id) => !gone.includes(id)), Math.random, (part.round ?? 1) + 1, [...part.out, ...gone]);
+	}
 	const loser = [...result.order].reverse().find((id) => part.remaining.includes(id));
 	const remaining = part.remaining.filter((id) => id !== loser);
 	return {
 		remaining,
 		out: [...part.out, loser],
-		championId: remaining.length === 1 ? remaining[0] : null
+		championId: remaining.length === 1 ? remaining[0] : null,
+		heats: null,
+		heatLosers: [],
+		round: (part.round ?? part.out.length + 1) + 1
 	};
 }
 /** Everyone in a knockout part from the winner down: champion, then the last one out, and so on. */
@@ -1234,9 +1255,9 @@ function pendingGames(state) {
 			title: `Game ${state.base.games + 1}`,
 			playerIds: state.base.players.map((player) => player.id)
 		}];
-		case "lastout": return koPending(state.part, "ko", "Knock Out").map((game) => ({
+		case "lastout": return state.part.heats ? koPending(state.part, "ko", "") : koPending(state.part, "ko", "Knock Out").map((game) => ({
 			...game,
-			title: state.part.remaining.length === 2 ? "Final · 1 v 1" : `Round ${state.part.out.length + 1} · ${state.part.remaining.length} players`
+			title: state.part.remaining.length === 2 ? "Final · 1 v 1" : `Round ${state.part.round ?? state.part.out.length + 1} · ${state.part.remaining.length} players`
 		}));
 		case "knockout":
 		case "cup": {
@@ -1328,7 +1349,7 @@ function submitGame(state, key, result) {
 		case "lastout": return {
 			...state,
 			base,
-			part: koApply(state.part, result)
+			part: koApply(state.part, result, key)
 		};
 		case "knockout":
 		case "cup": {
@@ -1388,8 +1409,8 @@ function submitGroup(state, key, result, ids) {
 	const isChampionship = key.startsWith("championship");
 	return {
 		...state,
-		championship: isChampionship && state.championship ? koApply(state.championship, result) : state.championship,
-		plate: !isChampionship && state.plate ? koApply(state.plate, result) : state.plate
+		championship: isChampionship && state.championship ? koApply(state.championship, result, key) : state.championship,
+		plate: !isChampionship && state.plate ? koApply(state.plate, result, key) : state.plate
 	};
 }
 /** Once the leagues are finished and no one is level, the playoffs are drawn: top two of each league v everyone else. */
@@ -1402,16 +1423,8 @@ function settle(state) {
 	return {
 		...state,
 		phase: "playoffs",
-		championship: {
-			remaining: championshipIds,
-			out: [],
-			championId: championshipIds.length === 1 ? championshipIds[0] : null
-		},
-		plate: plateIds.length === 0 ? null : {
-			remaining: plateIds,
-			out: [],
-			championId: plateIds.length === 1 ? plateIds[0] : null
-		}
+		championship: koStart(championshipIds),
+		plate: plateIds.length === 0 ? null : koStart(plateIds)
 	};
 }
 function isSeriesOver(state) {
@@ -1472,4 +1485,4 @@ function seriesOutcome(state) {
 	}
 }
 //#endregion
-export { MAX_SEATS, applyTableAction, chooseTableAction, createTable, dealTo, isLegalTablePlay, isSeriesOver, penaliseMissedLastCard, pendingGames, rankOf, resultOf, seriesOutcome, simulateGame, startSeries, submitGame, tableLegalMoves, tablePlaces, validateSetup };
+export { MAX_SEATS, ONLINE_MAX_PLAYERS, applyTableAction, chooseTableAction, createTable, dealTo, isLegalTablePlay, isSeriesOver, penaliseMissedLastCard, pendingGames, rankOf, resultOf, seriesOutcome, startSeries, submitGame, tableLegalMoves, tablePlaces, validateSetup };

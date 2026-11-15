@@ -3,4 +3,4 @@
 export { applyTableAction, createTable, dealTo, isLegalTablePlay, MAX_SEATS, penaliseMissedLastCard, tableLegalMoves, tablePlaces } from "../src/switch/table";
 export { chooseTableAction } from "../src/switch/tableAi";
 export { rankOf } from "../src/switch/cards";
-export { isSeriesOver, pendingGames, resultOf, seriesOutcome, simulateGame, startSeries, submitGame, validateSetup } from "../src/switch/series";
+export { isSeriesOver, ONLINE_MAX_PLAYERS, pendingGames, resultOf, seriesOutcome, startSeries, submitGame, validateSetup } from "../src/switch/series";

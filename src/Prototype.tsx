@@ -43,6 +43,7 @@ const SeriesPlay = lazy(() => import('./screens/SeriesPlay'));
 const FriendsTable = lazy(() => import('./screens/FriendsTable'));
 const OnlineTable = lazy(() => import('./screens/OnlineTable'));
 const MePage = lazy(() => import('./screens/MePage'));
+const ReplayScreen = lazy(() => import('./screens/ReplayScreen'));
 
 /** Each way to play gets its own little hand of cards in place of a number or an icon. */
 const MODE_CARDS: Record<string, string[]> = {
@@ -54,7 +55,7 @@ const MODE_CARDS: Record<string, string[]> = {
   'Switch Cup': ['KH', 'KD'],
 };
 
-type Page = 'Learn' | 'Rules' | 'Cards' | 'Modes' | 'Watch' | 'Questions' | 'Tutorial' | 'Score' | 'Club' | 'Quick' | 'Puzzles' | 'Privacy' | 'Play' | 'Table' | 'Series' | 'Friends' | 'Online' | 'Me';
+type Page = 'Learn' | 'Rules' | 'Cards' | 'Modes' | 'Watch' | 'Questions' | 'Tutorial' | 'Score' | 'Club' | 'Quick' | 'Puzzles' | 'Privacy' | 'Play' | 'Table' | 'Series' | 'Friends' | 'Online' | 'Me' | 'Replay';
 type ScoreView = 'score' | 'stats' | 'leagues' | 'trophies' | 'history';
 type Tab = 'Home' | 'Play' | 'Score' | 'Club' | 'Me';
 
@@ -64,7 +65,7 @@ const SECTION: Record<Page, Tab> = {
   Play: 'Play', Table: 'Play', Series: 'Play', Friends: 'Play', Online: 'Play',
   Score: 'Score', Quick: 'Score', Modes: 'Score',
   Club: 'Club',
-  Me: 'Me', Privacy: 'Me',
+  Me: 'Me', Privacy: 'Me', Replay: 'Me',
 };
 
 function downloadRules() {
@@ -110,6 +111,8 @@ export default function Prototype() {
   const [table, setTable] = useState<{ opponents: number; level: ComputerLevel; resume: boolean; deal: number }>({ opponents: 2, level: 'standard', resume: false, deal: 0 });
   /** Where a learning page goes back to: the rules guide, or Home when it was opened from Home. */
   const [learnBack, setLearnBack] = useState<'Learn' | 'Rules'>('Learn');
+  /** The game being replayed, and the screen to go back to afterwards. */
+  const [replayOf, setReplayOf] = useState<{ id: string; back: Page } | null>(null);
   const keyboard = useKeyboard();
   useEffect(() => { trackView(page); }, [page]);
   const { bottomInset, isKeyboardVisible } = useKeyboardInsets();
@@ -181,6 +184,7 @@ export default function Prototype() {
     else if (tab === 'Club') openClub();
     else openMe('overview');
   };
+  const openReplay = (id: string) => { setReplayOf({ id, back: page }); go('Replay'); };
   const section = SECTION[page];
   const learnBackLink = <button className="text-link back-link" onClick={() => go(learnBack)}><CaretLeft size={15} weight="bold" />{learnBack === 'Rules' ? 'Learn the rules' : 'Home'}</button>;
 
@@ -262,10 +266,11 @@ export default function Prototype() {
             {page === 'Club' && <SwitchScorekeeper key={shownClubTick} section="club" onBack={() => go('Learn')} backLabel="Home" initialView={clubView} onView={setClubView} />}
             {page === 'Play' && <PlayLobby onDeal={dealMeIn} onStartSeries={startSeriesPlay} onResume={resumeTable} onMe={() => openMe('overview')} onLearn={openRules} onFriends={() => go(loadSeat() ? 'Online' : 'Friends')} />}
             {page === 'Friends' && <FriendsTable initialCode={inviteCode} onBack={() => { setInviteCode(''); go('Play'); }} onSeated={() => { setInviteCode(''); go('Online'); }} />}
-            {page === 'Online' && <OnlineTable onLeave={() => go('Play')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} />}
-            {page === 'Table' && <TableGame key={table.deal} opponents={table.opponents} level={table.level} resume={table.resume ? readActiveTable() : null} onExit={() => go('Play')} onChange={() => go('Play')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} />}
+            {page === 'Online' && <OnlineTable onLeave={() => go('Play')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onReplay={openReplay} />}
+            {page === 'Table' && <TableGame key={table.deal} opponents={table.opponents} level={table.level} resume={table.resume ? readActiveTable() : null} onExit={() => go('Play')} onChange={() => go('Play')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onReplay={openReplay} />}
             {page === 'Series' && seriesRun && <SeriesPlay key={seriesRun.run} setup={seriesRun.setup} onTable={setSeriesAtTable} onExit={() => go('Play')} onChange={() => go('Play')} onMe={() => openMe('overview')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} />}
-            {page === 'Me' && <MePage key={meSection} initialSection={meSection} onPlay={() => go('Play')} onClub={() => openClub('stats')} onPrivacy={() => go('Privacy')} />}
+            {page === 'Me' && <MePage key={meSection} initialSection={meSection} onPlay={() => go('Play')} onClub={() => openClub('stats')} onPrivacy={() => go('Privacy')} onReplay={openReplay} />}
+            {page === 'Replay' && replayOf && <ReplayScreen gameId={replayOf.id} onBack={() => (replayOf.back === 'Me' ? openMe('overview') : go(replayOf.back))} />}
             {page === 'Tutorial' && <GuidedGame onExit={() => go('Rules')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onOpenPuzzles={() => go('Puzzles')} onPlayForReal={() => go('Play')} onStatusChange={onGameStatus} />}
             {page === 'Quick' && <QuickNight onBack={() => openScore('score')} onHistory={() => openClub('history')} />}
             {page === 'Watch' && <WatchNight initialCode={urlNight} initialAs={urlAs} onBack={() => go('Learn')} />}

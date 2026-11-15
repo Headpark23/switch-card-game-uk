@@ -1,18 +1,20 @@
 import { useState } from 'react';
-import { CalendarBlank, MapPin, Robot, Trophy, Users } from '@phosphor-icons/react';
+import { CalendarBlank, FilmStrip, MapPin, Robot, Trophy, Users } from '@phosphor-icons/react';
 import { BottomSheet } from '../mobile';
 import type { ComputerGame } from '../switch/computerLog';
 import type { SwitchNightRecord } from '../switch/history';
 import { countryName } from '../switch/places';
 import { resolveHistoryPlayerId, type LocalProfile } from '../switch/profiles';
+import { getReactionLog, getReplay } from '../switch/gameReplay';
+import { reactionOf } from '../switch/reactions';
 
 const LEVEL_NAMES: Record<string, string> = { relaxed: 'Easy', standard: 'Medium', sharp: 'Hard' };
 const ordinal = (place: number) => `${place}${['st', 'nd', 'rd'][place - 1] ?? 'th'}`;
 const longDate = (iso: string) => new Date(iso).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 /** The full record of one game you played: when, where, who, and every score along the way. */
-export default function NightDetail({ night, game, meId, profiles, onClose }: {
-  night: SwitchNightRecord | null; game: ComputerGame | null; meId: string; profiles: readonly LocalProfile[]; onClose: () => void;
+export default function NightDetail({ night, game, meId, profiles, onClose, onReplay }: {
+  night: SwitchNightRecord | null; game: ComputerGame | null; meId: string; profiles: readonly LocalProfile[]; onClose: () => void; onReplay?: (gameId: string) => void;
 }) {
   // Kept after closing so the sheet does not go blank while it slides away.
   const [shown, setShown] = useState<{ night: SwitchNightRecord | null; game: ComputerGame | null }>({ night, game });
@@ -41,6 +43,8 @@ export default function NightDetail({ night, game, meId, profiles, onClose }: {
     })()}
     {!shown.night && shown.game && (() => {
       const record = shown.game;
+      const replay = getReplay(record.id);
+      const said = getReactionLog().filter((entry) => entry.gameId === record.id).reverse();
       return <div className="night-detail">
         <p className={'night-result ' + (record.won ? 'win' : 'loss')}>{record.won ? 'You won' : `You finished ${ordinal(record.place)}`}</p>
         <ul className="night-facts">
@@ -49,6 +53,8 @@ export default function NightDetail({ night, game, meId, profiles, onClose }: {
           <li><Trophy size={17} weight="bold" /><span>Finished {ordinal(record.place)} of {record.opponents + 1} · {record.moves} moves</span></li>
         </ul>
         {record.rivals && record.rivals.length > 0 && <section className="night-section"><h4>{record.online ? 'How everyone finished' : 'How the computers finished'}</h4><ol>{[{ name: 'You', place: record.place }, ...record.rivals].sort((a, b) => a.place - b.place).map((entry) => <li key={entry.name}>{ordinal(entry.place)} · {entry.name}</li>)}</ol></section>}
+        {said.length > 0 && <section className="night-section"><h4>Table talk</h4><ol>{said.slice(0, 12).map((entry, index) => <li key={index}>Move {entry.move} · {entry.from}: {reactionOf(entry.id)?.text ?? 'a reaction'}</li>)}</ol></section>}
+        {replay && onReplay && <button className="primary" onClick={() => onReplay(record.id)} data-testid="open-replay"><FilmStrip size={18} />Watch the replay</button>}
         {record.online && record.online.autoMoves > 0 && <p className="dash-note">The computer played {record.online.autoMoves} move{record.online.autoMoves === 1 ? '' : 's'} for you when the clock ran out.</p>}
         <p className="dash-note">{record.online ? 'Games played online count towards your record, streaks and badges.' : 'Games against the computer count towards your record, streaks and badges.'}</p>
       </div>;

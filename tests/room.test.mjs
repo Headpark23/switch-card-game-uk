@@ -40,7 +40,8 @@ async function table(names, capacity, { seed = 1, level = "standard" } = {}) {
   }
   const started = await call(store, { code, op: "start", token: tokens[0] }, T0, random);
   assert.equal(started.status, 200, JSON.stringify(started.body));
-  const room = () => store.rows.get(code);
+  // One game at a time here: "the game" is the room's latest table, seen through the room for these tests.
+  const room = () => { const row = store.rows.get(code); const latest = row.tables?.at(-1); return latest ? { ...row, game: latest.game, seq: latest.seq, moves: latest.moves, table: latest.players } : row; };
   const view = async (who, now) => (await call(store, { method: "GET", code, token: tokens[who] }, now, random)).body;
   const seatOf = (who) => room().seats.findIndex((seat) => seat.name === names[who]);
   return { store, code, tokens, random, room, view, seatOf, names };
@@ -165,7 +166,7 @@ test("moves are checked: wrong seat, stale view, illegal cards and strangers are
 /** Puts a table in a chosen position so a rule can be tried in one move. */
 async function staged(hand, { others = 3, spare = ["9H", "9S"] } = {}) {
   const t = await table(["Ana", "Ben"], 2, { seed: 9 });
-  const row = t.room();
+  const row = t.store.rows.get(t.code).tables.at(-1);
   const seat = row.game.turn;
   row.game.hands = row.game.hands.map((current, index) => (index === seat ? hand : spare.slice(0, others)));
   row.game.discardPile = ["5S"];
@@ -313,15 +314,15 @@ test("reactions: only the 18 fixed ones, one at a time, shown to everyone", asyn
   assert.equal(REACTIONS.length, 18);
   const t = await table(["Ana", "Ben"], 3, { seed: 2 });
   assert.equal((await call(t.store, { code: t.code, op: "react", token: t.tokens[0], body: { id: "hello-there" } }, T0 + 10)).status, 400);
-  assert.equal((await call(t.store, { code: t.code, op: "react", token: t.tokens[0], body: { id: "nice-one" } }, T0 + 10)).status, 200);
-  assert.equal((await call(t.store, { code: t.code, op: "react", token: t.tokens[0], body: { id: "fire" } }, T0 + 500)).status, 429);
-  assert.equal((await call(t.store, { code: t.code, op: "react", token: t.tokens[0], body: { id: "fire" } }, T0 + 2_100)).status, 200);
+  assert.equal((await call(t.store, { code: t.code, op: "react", token: t.tokens[0], body: { id: "sweating-yet" } }, T0 + 10)).status, 200);
+  assert.equal((await call(t.store, { code: t.code, op: "react", token: t.tokens[0], body: { id: "seven-on-fire" } }, T0 + 500)).status, 429);
+  assert.equal((await call(t.store, { code: t.code, op: "react", token: t.tokens[0], body: { id: "seven-on-fire" } }, T0 + 2_100)).status, 200);
   const view = await t.view(1, T0 + 2_200);
-  assert.deepEqual(view.reactions.map((entry) => entry.id), ["nice-one", "fire"]);
+  assert.deepEqual(view.reactions.map((entry) => entry.id), ["sweating-yet", "seven-on-fire"]);
   assert.equal(view.reactions[0].seat, (t.seatOf(0) - t.seatOf(1) + 3) % 3);
-  for (let n = 0; n < 30; n += 1) await call(t.store, { code: t.code, op: "react", token: t.tokens[1], body: { id: "cheers" } }, T0 + 5_000 + n * 2_100);
+  for (let n = 0; n < 30; n += 1) await call(t.store, { code: t.code, op: "react", token: t.tokens[1], body: { id: "behave" } }, T0 + 5_000 + n * 2_100);
   assert.ok(t.room().reactions.length <= 20);
-  assert.ok(JSON.stringify(t.room()).includes("cheers") && !JSON.stringify(t.room()).includes("<"));
+  assert.ok(JSON.stringify(t.room()).includes("behave") && !JSON.stringify(t.room()).includes("<"));
 });
 
 test("the host can deal again after a game; nobody else can", async () => {
@@ -348,11 +349,11 @@ test("two requests that collide are both applied; a table that is always contend
   const t = await table(["Ana", "Ben"], 2, { seed: 4 });
   let failures = 1;
   const flaky = { read: (code) => t.store.read(code), create: (...args) => t.store.create(...args), cas: async (...args) => (failures-- > 0 ? false : t.store.cas(...args)) };
-  const reacted = await call(flaky, { code: t.code, op: "react", token: t.tokens[0], body: { id: "clap" } }, T0 + 10);
+  const reacted = await call(flaky, { code: t.code, op: "react", token: t.tokens[0], body: { id: "smug-king" } }, T0 + 10);
   assert.equal(reacted.status, 200);
   assert.equal(t.room().reactions.length, 1);
   const stuck = { read: (code) => t.store.read(code), create: () => false, cas: async () => false };
-  assert.equal((await call(stuck, { code: t.code, op: "react", token: t.tokens[0], body: { id: "clap" } }, T0 + 5_000)).status, 503);
+  assert.equal((await call(stuck, { code: t.code, op: "react", token: t.tokens[0], body: { id: "smug-king" } }, T0 + 5_000)).status, 503);
 });
 
 test("Redis: the commands are the right shape, namespaced and always expiring", async () => {
@@ -431,6 +432,7 @@ async function playSeries(mode, capacity, extra = {}, seed = 5) {
   let now = T0;
   let games = 0;
   let watched = 0;
+  let maxLive = 0;
   let over = false;
   for (let step = 0; step < 20000 && !over; step += 1) {
     for (const token of tokens) {
@@ -442,24 +444,25 @@ async function playSeries(mode, capacity, extra = {}, seed = 5) {
       if (view.you.watching) {
         watched += 1;
         assert.equal(view.seats.some((seat) => seat.you), false);
-        if (view.status === "playing") assert.equal((await call(store, { code, op: "move", token, body: { action: { type: "draw" } } }, now, random)).status, 409, "a watcher cannot move");
+        if (view.table?.playing) assert.equal((await call(store, { code, op: "move", token, body: { action: { type: "draw" } } }, now, random)).status, 409, "a watcher cannot move");
       }
     }
     const r = room();
     if (over) break;
-    if (r.status === "playing") {
-      const player = r.table[r.game.turn];
-      if (r.seats[player].kind === "human") {
-        const token = tokens[r.seats[player].name === "Ana" ? 0 : 1];
-        const action = chooseTableAction(r.game, random, "standard");
-        const moved = await call(store, { code, op: "move", token, body: { action, lastCard: true } }, now, random);
-        assert.equal(moved.status, 200, JSON.stringify(moved.body));
-        if (room().status === "finished") games += 1;
-        now += 50;
-      } else now += 2_100;
-    } else now += TIMING.betweenMs + 10;
+    const live = r.tables.filter((table) => table.game.status === "playing");
+    maxLive = Math.max(maxLive, live.length);
+    const mine = live.find((table) => r.seats[table.players[table.game.turn]].kind === "human");
+    if (mine) {
+      const player = mine.players[mine.game.turn];
+      const token = tokens[r.seats[player].name === "Ana" ? 0 : 1];
+      const action = chooseTableAction(mine.game, random, "standard");
+      const moved = await call(store, { code, op: "move", token, body: { action, lastCard: true } }, now, random);
+      assert.equal(moved.status, 200, JSON.stringify(moved.body));
+      games += 1;
+      now += 50;
+    } else now += live.length ? 2_100 : TIMING.betweenMs + 10;
   }
-  return { room: room(), games, watched, view: async (who) => (await call(store, { method: "GET", code, token: tokens[who] }, now, random)).body };
+  return { room: room(), games, watched, maxLive, view: async (who) => (await call(store, { method: "GET", code, token: tokens[who] }, now, random)).body };
 }
 
 for (const [mode, capacity, extra] of [["darts", 3, { setsToWin: 3 }], ["dominoes", 4, { limit: 30 }], ["knockout", 4, {}], ["cup", 4, {}], ["group", 6, {}]]) {
@@ -475,6 +478,20 @@ for (const [mode, capacity, extra] of [["darts", 3, { setsToWin: 3 }], ["dominoe
   });
 }
 
+test("a big table plays its games at the same time: every Cup match of a round, both leagues, Knock Out split across tables", async () => {
+  for (const [mode, capacity, tables] of [["cup", 12, 6], ["group", 12, 2], ["knockout", 12, 2], ["cup", 16, 8], ["group", 16, 3], ["knockout", 16, 2]]) {
+    const played = await playSeries(mode, capacity, {}, 3);
+    assert.equal(played.maxLive, tables, `${mode} with ${capacity}: ${tables} games at once`);
+    const final = await played.view(0);
+    assert.equal(final.series.over, true, `${mode} with ${capacity} reaches its end`);
+    assert.equal(final.series.outcome.order.length, capacity);
+    assert.ok(final.news.some((entry) => / won\./.test(entry.text)), "finished games are announced");
+    assert.ok(final.news.some((entry) => / out\./.test(entry.text)), "knock-outs are announced");
+    assert.ok(final.news.at(-1).text.includes("wins"), "the winner is announced");
+    assert.ok(final.history.length >= 1, "your own games are in your history");
+  }
+});
+
 test("online Knock Out: whoever is left holding cards is out, and the people who are out watch the rest", async () => {
   const played = await playSeries("knockout", 5, {}, 9);
   assert.ok(played.watched > 0 || played.room.series.part.out.slice(0, -1).every((id) => played.room.seats[Number(id.slice(1))].kind === "computer"), "a person knocked out early watches");
@@ -489,4 +506,8 @@ test("a tournament needs enough players: Group Play needs six, Knock Out three",
   assert.equal((await call(store, { body: { seats: 2, name: "Ana", mode: "knockout" } }, T0)).status, 400);
   assert.equal((await call(store, { body: { seats: 6, name: "Ana", mode: "group" } }, T0)).status, 201);
   assert.equal((await call(store, { body: { seats: 3, name: "Ana", mode: "chess" } }, T0)).status, 400);
+  assert.equal((await call(store, { body: { seats: 16, name: "Ana", mode: "cup" } }, T0)).status, 201, "a Cup for sixteen");
+  assert.equal((await call(store, { body: { seats: 17, name: "Ana", mode: "cup" } }, T0)).status, 400, "no more than sixteen");
+  assert.equal((await call(store, { body: { seats: 9, name: "Ana", mode: "darts" } }, T0)).status, 400, "Darts is everyone in one game: eight at most");
+  assert.equal((await call(store, { body: { seats: 9, name: "Ana" } }, T0)).status, 400, "a single game: eight at most");
 });

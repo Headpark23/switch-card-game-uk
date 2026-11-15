@@ -7,7 +7,7 @@ import { readClub } from '../switch/clubStore';
 import { getMeId } from '../switch/computerLog';
 import { getProfiles } from '../switch/profiles';
 import { FeltHeader, MiniFan } from '../ui';
-import { MODES, modeInfo, type PlayMode } from '../switch/series';
+import { MODES, modeInfo, ONLINE_MAX_PLAYERS, type PlayMode } from '../switch/series';
 import { onlineModeBlurb, ONLINE_MODE_CARDS } from '../switch/onlineRoom';
 
 const LEVELS: readonly ComputerLevel[] = ['relaxed', 'standard', 'sharp'];
@@ -43,7 +43,8 @@ export default function FriendsTable({ initialCode = '', onBack, onSeated }: Pro
   const [setsToWin, setSetsToWin] = useState<3 | 5>(3);
   const [limit, setLimit] = useState(100);
   const fewest = modeInfo(mode).minPlayers;
-  const pickMode = (next: PlayMode) => { setMode(next); setSeats((current) => Math.max(current, modeInfo(next).minPlayers)); };
+  const most = ONLINE_MAX_PLAYERS[mode];
+  const pickMode = (next: PlayMode) => { setMode(next); setSeats((current) => Math.min(ONLINE_MAX_PLAYERS[next], Math.max(current, modeInfo(next).minPlayers))); };
   const [code, setCode] = useState(cleanTableCode(initialCode));
   const [found, setFound] = useState<RoomSummary | null>(null);
   const [busy, setBusy] = useState(false);
@@ -118,7 +119,8 @@ export default function FriendsTable({ initialCode = '', onBack, onSeated }: Pro
       <div className="lobby-group" role="group" aria-label="Seats at the table">
         <h2>How many seats?</h2>
         <div className="seg seven">{[2, 3, 4, 5, 6, 7, 8].map((count) => <button key={count} aria-pressed={seats === count} className={seats === count ? 'active' : ''} disabled={count < fewest} onClick={() => setSeats(count)} aria-label={`${count} seats`}><b>{count}</b></button>)}</div>
-        <p className="lobby-note">{fewest > 2 ? `${modeInfo(mode).name} needs at least ${fewest} seats. ` : ''}Your guests take seats as they join. Any seat still empty when you start is played by a computer.{seats >= 7 ? ' Seven or eight players use two decks.' : ''}</p>
+        {most > 8 && <><p className="seat-row-label">Bigger nights</p><div className="seg four compact">{[10, 12, 14, 16].map((count) => <button key={count} aria-pressed={seats === count} className={seats === count ? 'active' : ''} onClick={() => setSeats(count)} aria-label={`${count} seats`}><b>{count}</b></button>)}</div></>}
+        <p className="lobby-note">{fewest > 2 ? `${modeInfo(mode).name} needs at least ${fewest} seats. ` : ''}{most > 8 ? 'Up to 16: the games are played at the same time, on several tables. ' : 'Up to 8, everyone in one game. '}Your guests take seats as they join. Any seat still empty when you start is played by a computer.{seats >= 7 && seats <= 8 ? ' Seven or eight at one game use two decks.' : ''}</p>
       </div>
       <div className="lobby-group" role="group" aria-label="Computer level">
         <h2>How good are the computers?</h2>

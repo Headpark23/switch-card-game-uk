@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { ArrowClockwise, ArrowCounterClockwise, ArrowRight, CheckCircle, HandPalm, Lightbulb, SortAscending, Timer } from '@phosphor-icons/react';
+import { ArrowClockwise, ArrowCounterClockwise, ArrowRight, ChatCircleText, CheckCircle, FilmStrip, HandPalm, Lightbulb, SortAscending, Timer } from '@phosphor-icons/react';
 import type { ComputerLevel } from '../switch/ai';
 import { cardIdLabel } from '../switch/cards';
 import { explainUnplayable } from '../switch/coach';
@@ -17,6 +17,9 @@ import { CardImage, CardShower, rank, suit, suitNames, suitSymbols } from '../ui
 import RealCards from './RealCards';
 import type { PlayMode } from '../switch/series';
 import { sortHand } from '../switch/sortHand';
+import { banterFor, reactionOf, type TableEvent } from '../switch/reactions';
+import { logReaction, type ReplayMove } from '../switch/gameReplay';
+import { beginReplay, Bubble, ReactionSheet, useBubbles, useReplayRecorder } from './tableTalk';
 
 import { COMPUTER_NAMES } from '../switch/presentation';
 export { COMPUTER_NAMES };
@@ -66,9 +69,12 @@ const callGrace = () => (paceIsHuman() ? LAST_CARD_GRACE_MS : 1600);
 /** When this game is one of a tournament's games, the series screen runs the show: it names the seats and decides what happens next. */
 export type SeriesGame = { title: string; seriesId: string; mode: PlayMode; /** League rounds: players leave as they go out and the rest play on until every place is decided (ruling 24). */ playOn?: boolean; onFinished: (table: TableState, gameId: string) => void };
 
-type Props = { opponents: number; level: ComputerLevel; resume?: ActiveTable | null; seatNames?: string[]; series?: SeriesGame; onExit: () => void; onOpenCards: () => void; onStartNight: () => void; onChange: () => void };
+type Props = { opponents: number; level: ComputerLevel; resume?: ActiveTable | null; seatNames?: string[]; series?: SeriesGame; onExit: () => void; onOpenCards: () => void; onStartNight: () => void; onChange: () => void; onReplay?: (gameId: string) => void };
 
-export default function TableGame({ opponents, level, resume = null, seatNames, series, onExit, onOpenCards, onStartNight, onChange }: Props) {
+/** Computers keep their banter to one remark every few seconds, however much is happening. */
+const BANTER_GAP_MS = 3500;
+
+export default function TableGame({ opponents, level, resume = null, seatNames, series, onExit, onOpenCards, onStartNight, onChange, onReplay }: Props) {
   const seats = opponents + 1;
   const names = useMemo(() => seatNames ?? ['You', ...COMPUTER_NAMES.slice(0, opponents)], [opponents, seatNames]);
   const [gameId, setGameId] = useState(() => resume?.id ?? newTableGameId());
@@ -98,6 +104,15 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   gameRef.current = game;
   const sectionRef = useRef<HTMLElement>(null);
   const flyRef = useRef<HTMLSpanElement>(null);
+  // Table talk: your reactions, the computers' banter, and a recording of the whole game for its replay.
+  const [reactOpen, setReactOpen] = useState(false);
+  const { bubbles, say } = useBubbles(paceIsHuman() ? 3600 : 1200);
+  const [talk, setTalk] = useState<{ seat: number; id: string }[]>([]);
+  const computers = useMemo(() => names.map((_, seat) => seat).filter((seat) => seat !== 0), [names]);
+  const recorder = useReplayRecorder(gameId, () => beginReplay(gameId, game, names, computers, false));
+  const penaltyBy = useRef<number | null>(null);
+  const queuedBanter = useRef<TableEvent[]>([]);
+  const lastBanterAt = useRef(0);
 
   const shown = showing ? visibleAt(showing.before, showing.after, showing.steps, showing.at) : visibleAt(game, game, [], 0);
   const visible = shown;
@@ -119,8 +134,50 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
 
   const push = (line: string) => setRecent((current) => [...current.slice(-3), line]);
 
+  /** Someone at the table says something: the bubble, the replay and the reaction stats all hear it. */
+  function speak(seat: number, id: string) {
+    if (!reactionOf(id)) return;
+    say(seat, id);
+    setTalk((current) => [...current.slice(-5), { seat, id }]);
+    recorder.react({ seat, from: names[seat], id });
+    logReaction({ gameId, at: new Date().toISOString(), move: gameRef.current.move, from: names[seat], mine: seat === 0, computer: seat !== 0, online: false, id });
+  }
+
+  /** A computer may pass comment on what just happened, as its personality allows and no more than one at a time. */
+  function banter(event: TableEvent) {
+    const now = Date.now();
+    if (now - lastBanterAt.current < BANTER_GAP_MS && event.kind !== 'win') return;
+    const remark = banterFor(event, names, computers);
+    if (!remark) return;
+    lastBanterAt.current = now;
+    speak(remark.seat, remark.id);
+  }
+
+  function sayQueued() {
+    const events = queuedBanter.current;
+    queuedBanter.current = [];
+    events.forEach(banter);
+  }
+
+  /** What the table saw of a move, for the replay, and anything in it worth a comment. */
+  function record(before: TableState, action: GameAction, after: TableState) {
+    const seat = before.turn;
+    const type: ReplayMove['type'] = action.type === 'play' ? 'play' : action.type === 'draw' ? 'draw' : 'miss';
+    recorder.move({ seat, type, ...(action.type === 'play' ? { cards: [...action.cards], suit: after.currentSuit } : {}), counts: after.hands.map((cards) => cards.length) });
+    const events: TableEvent[] = [];
+    if (action.type === 'draw' && pickups(before) > 0) events.push({ kind: 'penalty', victim: seat, by: penaltyBy.current, cards: after.hands[seat].length - before.hands[seat].length });
+    if (action.type === 'play') {
+      const top = action.cards[action.cards.length - 1];
+      penaltyBy.current = rank(top) === '2' || rank(top) === 'K' ? seat : null;
+    } else penaltyBy.current = null;
+    if (after.status === 'won' && after.winner !== null) events.push({ kind: 'win', winner: after.winner });
+    else if (after.status === 'playing' && after.hands[seat].length === 1 && before.hands[seat].length !== 1) events.push({ kind: 'last-card', seat });
+    queuedBanter.current.push(...events);
+  }
+
   function show(before: TableState, action: GameAction, after: TableState, think: boolean, missedCall = false) {
     stats.onMove(before, action, after);
+    record(before, action, after);
     showId.current += 1;
     const steps = planTurn(before, action, after, names, { think, missedCall });
     let line = describe(before, after, names[before.turn], action);
@@ -137,6 +194,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
       push(showing.line);
       setShowing(null);
       busy.current = false;
+      sayQueued();
       return;
     }
     const step = showing.steps[showing.at];
@@ -214,6 +272,8 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
         before = dealTo(before, 0, 2);
         setGame(before);
         push(`${names[before.turn]} spotted that you did not say "Last Card". You pick up two cards.`);
+        recorder.move({ seat: 0, type: 'spot', counts: before.hands.map((cards) => cards.length) });
+        queuedBanter.current.push({ kind: 'spotted', victim: 0, by: before.turn });
       }
       const action = chooseTableAction(before, Math.random, level, { personality: names[before.turn] });
       show(before, action, applyTableAction(before, action), !spotted);
@@ -227,6 +287,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     if (game.status === 'playing') { if (!series) saveActiveTable({ id: gameId, opponents, level, game, awaitingLastCard: false, lastCardCalled: lastCalled }); return; }
     if (logged.current === gameId) return;
     logged.current = gameId;
+    recorder.finish(game.winner);
     // Every game counts: your place in this one is logged under its game type, whatever the tournament does with it.
     logComputerGame({ id: gameId, opponents, level, won: game.winner === 0, place: tablePlaces(game)[0], moves: game.move, rivals: names.slice(1).map((name, index) => ({ name, place: tablePlaces(game)[index + 1] })), ...(series ? { mode: series.mode, seriesId: series.seriesId } : {}) });
     stats.onFinish({ won: game.winner === 0, place: tablePlaces(game)[0], moves: game.move });
@@ -314,7 +375,8 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   function again() {
     busy.current = false;
     setShowing(null);
-    setRecent([]); setStaged([]); setAceChoice(null); setHint(false); setLastCalled(false);
+    setRecent([]); setStaged([]); setAceChoice(null); setHint(false); setLastCalled(false); setTalk([]);
+    penaltyBy.current = null; queuedBanter.current = [];
     setGameId(newTableGameId());
     setGame(createTable(seats, Math.random, pickDealer(seats), { playOn: series?.playOn }));
   }
@@ -322,7 +384,15 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   /** You are out and only the computers are left: play the rest of the round out in an instant. */
   function skipToResult() {
     let table = gameRef.current;
-    for (let guard = 0; guard < 3000 && table.status === 'playing'; guard += 1) table = applyTableAction(table, chooseTableAction(table, Math.random, level, { personality: names[table.turn] }));
+    for (let guard = 0; guard < 3000 && table.status === 'playing'; guard += 1) {
+      const action = chooseTableAction(table, Math.random, level, { personality: names[table.turn] });
+      const after = applyTableAction(table, action);
+      record(table, action, after);
+      table = after;
+    }
+    // Only the last word is worth saying when the rest of the round was played in an instant.
+    queuedBanter.current = queuedBanter.current.filter((event) => event.kind === 'win');
+    sayQueued();
     if (table.status === 'playing') return;
     busy.current = false;
     setShowing(null);
@@ -348,6 +418,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
         <h1>{youWon ? <>You won<br />this game.</> : <>{names[game.winner ?? 0]} won<br />this game.</>}</h1>
         <p>{series.title}. {game.playOn ? `You finished ${ordinal(places[0])} of ${seats}.` : `You finished ${ordinal(places[0])} of ${seats} with ${hand.length} card${hand.length === 1 ? '' : 's'} left.`}</p>
         <ol className="place-list" aria-label="Places in this game">{[...game.hands.keys()].sort((a, b) => places[a] - places[b] || a - b).map((seat) => <li key={seat} className={seat === 0 ? 'me' : ''}><b>{ordinal(places[seat])}</b><span>{names[seat]}</span><em>{game.hands[seat].length === 0 ? 'Out' : `${game.hands[seat].length} left`}</em></li>)}</ol>
+        <TalkStrip talk={talk} names={names} />
         <button className="primary" data-testid="series-continue" onClick={() => series.onFinished(game, gameId)}>Continue <ArrowRight size={18} /></button>
       </div>
     </section>;
@@ -363,7 +434,9 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
         <p>{youWon ? `You beat ${opponents === 1 ? 'the computer' : `${opponents} computers`}.` : `You finished ${ordinal(places[0])} of ${seats} with ${hand.length} card${hand.length === 1 ? '' : 's'} left.`}</p>
         <ol className="place-list" aria-label="Final places">{[...game.hands.keys()].sort((a, b) => places[a] - places[b] || a - b).map((seat) => <li key={seat} className={seat === 0 ? 'me' : ''}><b>{ordinal(places[seat])}</b><span>{names[seat]}</span><em>{game.hands[seat].length === 0 ? 'Out' : `${game.hands[seat].length} left`}</em></li>)}</ol>
         {record.games > 0 && <p className="record-line" role="status">Logged. Against the computer you have won {record.wins} of {record.games} ({Math.round(record.winRate * 100)}%).</p>}
+        <TalkStrip talk={talk} names={names} />
         <button className="primary" onClick={again}><ArrowCounterClockwise size={18} />Deal again</button>
+        {onReplay && <button className="secondary" onClick={() => onReplay(gameId)} data-testid="watch-replay"><FilmStrip size={18} />Watch the replay</button>}
         <button className="secondary" onClick={onChange}>Change the table</button>
         <RealCards onStartNight={onStartNight} />
         <button className="secondary" onClick={onOpenCards}>Open card guide <ArrowRight size={18} /></button>
@@ -402,6 +475,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
           <span className="seat-fan" aria-hidden="true">{Array.from({ length: Math.min(5, count) }, (_, i) => <CardImage code="back" key={i} />)}</span>
           <strong className={count === 1 ? 'last' : ''}>{outAfter.includes(seat) ? 'Out' : `${count} card${count === 1 ? '' : 's'}`}</strong>{ouchFor(seat)}
           <span className="seat-state" aria-hidden="true">{outAfter.includes(seat) ? `Out: ${ordinal(outAfter.indexOf(seat) + 1)}` : active ? (visible.thinking ? <><i className="think-dots"><b /><b /><b /></i>Choosing</> : 'Playing') : count === 1 ? 'Last card' : ' '}</span>
+          {bubbles[seat] && <Bubble key={bubbles[seat].n} n={bubbles[seat].n} id={bubbles[seat].id} name={name} />}
         </div>;
       })}
     </div>
@@ -421,19 +495,34 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     {recent.length > 1 && <ul className="move-log" aria-label="Recent moves">{recent.slice(0, -1).map((line, index) => <li key={index}>{line}</li>)}</ul>}
     <div className={'your-seat' + (visible.active === 0 ? ' turn' : '')} data-seat="0">
       {ouchFor(0)}
+      {bubbles[0] && <Bubble key={bubbles[0].n} n={bubbles[0].n} id={bubbles[0].id} name="You" />}
       {yourMove && <span className="your-move-tag" aria-hidden="true">Your move</span>}
       {yourMove && missTurn && <div className="miss-turn-action"><strong>An eight was played</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you miss this turn.'}</p><button className="primary" onClick={pickUp}>Accept missed turn <ArrowRight size={18} /></button></div>}
       {youOutAt > 0 && <div className="out-panel" role="status" data-testid="you-are-out"><strong>You are out: {ordinal(youOutAt)} place.</strong><p>The others play on for the places still to be decided.</p><button className="secondary" onClick={skipToResult}>Skip to the result <ArrowRight size={18} /></button></div>}
       {youOutAt === 0 && <>
           {staged.length === 0 && <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!canAct}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={cycleSpeed} aria-label={`Computer pace: ${SPEED_NAMES[speed]}. Tap to change`}><Timer size={16} />{SPEED_NAMES[speed]}</button><button className="pace-button sort-button" onClick={() => setGame((current) => ({ ...current, hands: current.hands.map((cards, seat) => (seat === 0 ? sortHand(cards) : cards)) }))}><SortAscending size={16} />Sort</button></div>}
           {hint && yourMove && <p className="game-hint"><Lightbulb size={17} />{hintText}</p>}
-          <div className="hand-row"><span>{hand.length} in hand</span><button className={'last-card-button' + (lastCalled ? ' called' : '')} onClick={callLastCard} aria-pressed={lastCalled} data-testid="last-card-button" aria-label={lastCalled ? 'Last Card called' : 'Call Last Card'}><HandPalm size={20} weight={lastCalled ? 'fill' : 'regular'} /><span>{lastCalled ? 'Called' : 'Last Card'}</span></button></div>
+          <div className="hand-row"><span>{hand.length} in hand</span><button className="pace-button react-button" onClick={() => setReactOpen(true)} aria-label="Send a reaction" data-testid="react-button"><ChatCircleText size={17} />React</button><button className={'last-card-button' + (lastCalled ? ' called' : '')} onClick={callLastCard} aria-pressed={lastCalled} data-testid="last-card-button" aria-label={lastCalled ? 'Last Card called' : 'Call Last Card'}><HandPalm size={20} weight={lastCalled ? 'fill' : 'regular'} /><span>{lastCalled ? 'Called' : 'Last Card'}</span></button></div>
           <div className={'player-hand' + (hand.length > 10 ? ' dense' : '') + (hand.length > 8 ? ' two-rows' : '')} style={{ '--n': hand.length, '--per': Math.ceil(hand.length / 2) } as CSSProperties} aria-label="Your hand">
             {hand.map((card, index) => <button key={card} style={{ '--i': 0, zIndex: index + 1 } as CSSProperties} data-card={card} onClick={() => chooseCard(card)} className={(hint && yourMove && canPlay(card) ? 'playable ' : '') + (staged.includes(card) ? 'selected ' : '') + (flash.includes(card) ? 'illegal' : '')} disabled={!canAct} aria-label={staged.includes(card) ? `Deselect ${cardIdLabel(card)}` : `Select ${cardIdLabel(card)}${canPlay(card) ? ', legal move' : ', not currently playable'}`}><CardImage code={card} />{staged.includes(card) && <i className="order-badge" aria-hidden="true">{staged.indexOf(card) + 1}</i>}</button>)}
           </div>
           {staged.length > 0 && <div className="multi-action"><p>{staged.length === 1 ? '1 card selected' : `${staged.length} cards selected. They land in the order you tapped them, and the last one sets the suit.`}</p><button className="primary" onClick={playStaged} disabled={!canAct}>Play selected</button><button className="text-link" onClick={() => setStaged([])}>Clear selection</button></div>}
         </>}
     </div>
+    <ReactionSheet open={reactOpen} onOpenChange={setReactOpen} description="The computers hear it, and some of them answer back." onPick={(id) => {
+      setReactOpen(false);
+      speak(0, id);
+      // A computer may answer back once the table is quiet.
+      queuedBanter.current.push({ kind: 'reply', to: 0 });
+      lastBanterAt.current = 0;
+      window.setTimeout(() => { if (!busy.current) sayQueued(); }, paceIsHuman() ? 1400 : 200);
+    }} />
     {aceChoice && <div className="suit-choice" role="dialog" aria-label="Choose a suit"><p>Choose the suit for your ace</p><div>{(['S', 'H', 'D', 'C'] as Suit[]).map((chosen) => <button key={chosen} className={chosen === 'H' || chosen === 'D' ? 'red' : ''} onClick={() => { const cards = aceChoice; setAceChoice(null); commit(cards, chosen); }}>{suitSymbols[chosen]}<span>{suitNames[chosen]}</span></button>)}</div><button className="text-link" onClick={() => setAceChoice(null)}>Cancel</button></div>}
   </section>;
+}
+
+/** The last few remarks of the game, under the result. */
+function TalkStrip({ talk, names }: { talk: readonly { seat: number; id: string }[]; names: readonly string[] }) {
+  if (!talk.length) return null;
+  return <ul className="talk-strip" aria-label="Table talk">{talk.slice(-3).map((entry, index) => <li key={index}><b>{names[entry.seat]}</b><span>{reactionOf(entry.id)?.text}</span></li>)}</ul>;
 }

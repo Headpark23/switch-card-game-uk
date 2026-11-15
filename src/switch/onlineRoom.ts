@@ -51,30 +51,61 @@ export interface RoomResult {
 /** What the host chose: the way to play and its settings (Darts sets, Dominoes number). */
 export interface RoomSetup { readonly mode: PlayMode; readonly setsToWin?: number; readonly limit?: number }
 
-/** A tournament or match at the table. Player ids are "p0", "p1"…; `me` is yours. */
+/** A tournament or match at the table. Player ids are "p0", "p1"…; `me` is yours. Its games run side by side. */
 export interface RoomSeries {
   readonly setup: RoomSetup;
   readonly state: SeriesState;
-  /** The game being played now, or just finished. */
-  readonly title: string | null;
   readonly over: boolean;
   readonly outcome: SeriesOutcome | null;
-  /** Between games: when the next one is dealt if the host does not deal it sooner. */
-  readonly nextAt: number | null;
-  readonly log: readonly string[];
   readonly me: string;
+  /** Your next game, once you are between games: who is in it and when it is dealt. */
+  readonly next: { readonly title: string; readonly players: readonly string[]; readonly readyAt: number | null } | null;
+  /** Games drawn and waiting to be dealt (the host can deal them at once). */
+  readonly waiting: number;
+  /** Games being played right now. */
+  readonly live: number;
+}
+
+/** One game in the room, for the list of games being played. No cards: who is there and how many each holds. */
+export interface RoomTableSummary {
+  readonly id: string;
+  readonly title: string | null;
+  readonly playing: boolean;
+  readonly you: boolean;
+  readonly players: readonly { readonly name: string; readonly kind: "human" | "computer"; readonly cards: number; readonly out: boolean }[];
+  readonly turn: string | null;
+  readonly winner: string | null;
+}
+
+/** A game you played, as the server keeps it, turned so you are first. Used to save every one of your games. */
+export interface RoomHistoryEntry {
+  readonly gameId: string;
+  readonly title: string | null;
+  readonly finishedAt: number;
+  readonly moves: number;
+  readonly seriesId: string | null;
+  readonly winner: number;
+  readonly seats: RoomResult["seats"];
 }
 
 export interface RoomView {
   readonly code: string;
   readonly rev: number;
-  readonly status: "lobby" | "playing" | "finished";
+  /** "between": a tournament with no game being played this moment. */
+  readonly status: "lobby" | "playing" | "between" | "finished";
   readonly level: ComputerLevel;
   readonly mode: PlayMode;
   readonly setup: RoomSetup;
   readonly capacity: number;
-  readonly gameNo: number;
-  readonly seq: number;
+  /** The game being shown: yours while you play, else the one you chose to watch, else your last. */
+  readonly table: { readonly id: string; readonly title: string | null; readonly gameId: string; readonly playing: boolean } | null;
+  /** That game's number; `${code}-${gameNo}` is the id it is saved under. */
+  readonly gameNo?: number;
+  readonly seq?: number;
+  readonly tables: readonly RoomTableSummary[];
+  /** Announcements to everyone: games won, players knocked out, the winner. */
+  readonly news: readonly { readonly n: number; readonly at: number; readonly text: string }[];
+  readonly history: readonly RoomHistoryEntry[];
   readonly serverNow: number;
   /** The players in the game being played, turned so you are first if you are in it. Before the first deal, everyone. */
   readonly seats: readonly RoomSeat[];
@@ -104,17 +135,8 @@ export interface RoomSummary {
   readonly open: boolean;
 }
 
-/** The 18 reactions. The ids match api/_room.js, which only ever stores the id. */
-export const REACTIONS: readonly { readonly id: string; readonly text: string; readonly emoji?: string }[] = [
-  { id: "good-game", text: "Good game!" }, { id: "nice-one", text: "Nice one!" }, { id: "well-played", text: "Well played" },
-  { id: "ouch", text: "Ouch!" }, { id: "bad-luck", text: "Bad luck" }, { id: "phew", text: "Phew!" },
-  { id: "your-turn", text: "Your turn!" }, { id: "take-your-time", text: "Take your time" }, { id: "rematch", text: "Rematch?" },
-  { id: "cheers", text: "Cheers!" },
-  { id: "clap", text: "Clap", emoji: "👏" }, { id: "laugh", text: "Laughing", emoji: "😂" }, { id: "wow", text: "Wow", emoji: "😮" },
-  { id: "grimace", text: "Yikes", emoji: "😬" }, { id: "sad", text: "Sad", emoji: "😢" }, { id: "fire", text: "On fire", emoji: "🔥" },
-  { id: "party", text: "Party", emoji: "🎉" }, { id: "cool", text: "Cool", emoji: "😎" },
-];
-export const reactionOf = (id: string) => REACTIONS.find((entry) => entry.id === id);
+/** The 18 reactions live in `reactions.ts`; the ids match api/_room.js, which only ever stores the id. */
+export { REACTIONS, reactionOf } from "./reactions";
 
 export class RoomApiError extends Error {
   constructor(message: string, readonly status: number) { super(message); }
@@ -160,9 +182,9 @@ export const ONLINE_MODE_CARDS: Record<PlayMode, string[]> = { single: ["AS", "K
 export function onlineModeBlurb(mode: PlayMode): string {
   switch (mode) {
     case "single": return "One game of Switch. First out wins.";
-    case "knockout": return "Everyone plays each game. Whoever is left holding cards at the end is out, until one player is left.";
-    case "cup": return "Head-to-head matches, drawn at random. Win yours to go through. While others play, you watch.";
-    case "group": return "Two leagues, then the championship and plate play-offs. Needs six to eight players.";
+    case "knockout": return "Everyone plays each round; more than eight are split across tables. Whoever is left holding cards at a table is out, until one player is left.";
+    case "cup": return "Head-to-head matches, drawn at random, all played at the same time. Win yours to go through.";
+    case "group": return "Two leagues playing side by side, then the championship and plate play-offs. For 6 to 16 players.";
     case "darts": return "Each game is a leg. Three legs win a set; first to the sets wins the match.";
     case "dominoes": return "Cards left in hand add up after every game. First to the number loses.";
   }
@@ -181,11 +203,13 @@ export async function lookupTable(code: string): Promise<RoomSummary> {
 export async function joinTable(code: string, name: string): Promise<{ code: string; token: string; view: RoomView }> {
   return request("POST", { code, op: "join" }, null, { name });
 }
-export async function sendToTable(seat: SavedSeat, op: "start" | "move" | "call" | "react" | "again", body?: unknown): Promise<RoomView> {
-  return request("POST", { code: seat.code, op }, seat.token, body);
+export async function sendToTable(seat: SavedSeat, op: "start" | "move" | "call" | "react" | "again", body?: unknown, watch: string | null = null): Promise<RoomView> {
+  return request("POST", { code: seat.code, op, ...(watch ? { watch } : {}) }, seat.token, body);
 }
 
 const POLL_MS = 1500;
+/** Between your games, or watching, the table is looked at less often: a big night must not run up the server. */
+const IDLE_POLL_MS = 3000;
 const ERROR_POLL_MS = 4000;
 
 /**
@@ -193,18 +217,23 @@ const ERROR_POLL_MS = 4000;
  * your own moves is used straight away. A view older than the one already held is ignored, so nothing ever goes backwards.
  * `gone` is true when the table has ended or this seat is no longer valid.
  */
-export function useRoom(seat: SavedSeat | null) {
+export function useRoom(seat: SavedSeat | null, watch: string | null = null) {
   const [view, setView] = useState<RoomView | null>(null);
   const [error, setError] = useState("");
   const [gone, setGone] = useState(false);
   const revRef = useRef(-1);
   /** How far the server's clock is ahead of this phone's, so the countdown is the server's even if the phone's clock is wrong. */
   const skew = useRef(0);
+  const watchRef = useRef(watch);
+  watchRef.current = watch;
+  const playingRef = useRef(false);
+  const pollNow = useRef<() => void>(() => {});
 
   const accept = useCallback((next: RoomView) => {
     skew.current = next.serverNow - Date.now();
     if (next.rev < revRef.current) return;
     revRef.current = next.rev;
+    playingRef.current = Boolean(next.table?.playing && !next.you.watching);
     setView(next);
     setError("");
   }, []);
@@ -216,9 +245,9 @@ export function useRoom(seat: SavedSeat | null) {
     revRef.current = -1;
     setView(null); setGone(false);
     const poll = async () => {
-      let wait = POLL_MS;
+      let wait = playingRef.current ? POLL_MS : IDLE_POLL_MS;
       if (document.visibilityState === "visible") {
-        try { accept(await request<RoomView>("GET", { code: seat.code }, seat.token)); }
+        try { accept(await request<RoomView>("GET", { code: seat.code, ...(watchRef.current ? { watch: watchRef.current } : {}) }, seat.token)); }
         catch (reason) {
           const status = reason instanceof RoomApiError ? reason.status : 0;
           if (status === 404 || status === 403) { if (alive) setGone(true); return; }
@@ -229,14 +258,18 @@ export function useRoom(seat: SavedSeat | null) {
       if (alive) timer = window.setTimeout(poll, wait);
     };
     void poll();
+    pollNow.current = () => { window.clearTimeout(timer); void poll(); };
     const onVisible = () => { if (document.visibilityState === "visible") { window.clearTimeout(timer); void poll(); } };
     document.addEventListener("visibilitychange", onVisible);
     return () => { alive = false; window.clearTimeout(timer); document.removeEventListener("visibilitychange", onVisible); };
   }, [seat?.code, seat?.token, accept]);
 
+  // Choosing another game to watch shows it straight away.
+  useEffect(() => { pollNow.current(); }, [watch]);
+
   const send = useCallback(async (op: "start" | "move" | "call" | "react" | "again", body?: unknown) => {
     if (!seat) throw new RoomApiError("No table.", 0);
-    const next = await sendToTable(seat, op, body);
+    const next = await sendToTable(seat, op, body, watchRef.current);
     accept(next);
     return next;
   }, [seat, accept]);

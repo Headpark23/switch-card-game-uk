@@ -24,7 +24,8 @@ function createRound(ids: readonly string[], number: number, random: RandomSourc
 }
 
 export function createCup(players: readonly Player[], random: RandomSource): CupState {
-  if (players.length < 2 || players.length > 10) throw new Error("Switch Cup supports two to ten players.");
+  // Ten at a real table with the scorekeeper; an online table can hold sixteen (ruling 32).
+  if (players.length < 2 || players.length > 16) throw new Error("Switch Cup supports two to sixteen players.");
   return { players: [...players], rounds: [createRound(players.map((player) => player.id), 1, random)], championId: null };
 }
 

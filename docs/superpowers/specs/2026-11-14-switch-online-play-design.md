@@ -64,9 +64,11 @@ Server-authoritative. Each turn records `turnStartedAt` when it begins. The view
 
 Fixed ids, nothing typed. The server stores only the id, the seat and the time, so no text can be injected. They appear as a bubble by the seat for about 3 seconds, one per seat every 2 seconds, and can be switched off in the table settings.
 
-Sayings (10): Good game! · Nice one! · Well played · Ouch! · Bad luck · Phew! · Your turn! · Take your time · Rematch? · Cheers!
+Replaced on 14 Nov 2026 by cheeky banter and our own stickers (ruling 31, `src/switch/reactions.ts`).
 
-Emoji (8): 👏 😂 😮 😬 😢 🔥 🎉 😎
+Sayings (10): Read 'em and weep · Is that all you've got? · Sweating yet? · Oh, you absolute sausage · Pick up, sunshine · Who taught you to play? · Lucky so-and-so · Not today, sweetheart · Revenge is coming · Behave!
+
+Stickers (8): Smug King · Salty · Card shark · Sweating ace · Mic drop · Facepalm jack · Crying joker · Seven on fire
 
 The reaction picker is one button at the side of the table, next to Last Card. The emoji are message content, not icons, so this does not break the rule against emoji as icons; the button itself is a Phosphor icon.
 
@@ -155,3 +157,12 @@ Done and tested, not deployed and with no screens yet.
 - Fixed on the way: Last Card's 5 seconds could be cut short by another phone checking in at exactly 5 seconds; the table now allows a second for the call to travel, whoever is looking.
 - Tests: `tests/room.test.mjs` plays a whole tournament of each type with two people and computers, checking nobody ever sees another hand and a watcher cannot move; `tests/switch-online-play.spec.ts` runs Darts across two games and a Cup game with one person watching on two real browser phones.
 - Simplification to know about: games of a tournament are played one at a time, never side by side, so in a big Cup or Group Play people may watch for a while.
+
+## Built so far: games at the same time (14 Nov 2026)
+
+- Owner decisions (ruling 32): up to 16 at a table; two bigger leagues; a Knock Out of more than 8 split onto tables; computer-only games in real time.
+- Server: a room is now `seats` (everyone) plus `tables` (one game each, with its own cards, clock, moves and move counter). Every request catches up on the next event anywhere in the room, in time order: a missed Last Card spotted, a move played for a computer or an absent person, or a waiting game dealt. Each waiting game has its own deal time (`ready`), 20 seconds after the game that led to it. `news` holds the announcements; `history` keeps every finished game so each person's games are saved even if their phone was closed when it ended.
+- View: your own live game always comes first; otherwise the game you chose to watch (`&watch=tableId`), else your last game. `tables` lists every game with card counts only. Polling slows to every 3 seconds while you are not playing, to keep the Redis free tier comfortable on a big night.
+- Screens: "Bigger nights" seat buttons (10, 12, 14, 16) for Knock Out, Cup and Group Play; announcements slide in at the top on every screen; between games, your next game with its countdown, "Playing now" with a Watch button per game, both leagues' standings and the night's announcements.
+- Old tables (one game per room) are refused with a message to start a new one.
+- Cost to know about: a big night means many phones polling. Each poll is one Redis command; 16 phones at 1.5 to 3 seconds is roughly 20,000 to 40,000 commands an hour. Upstash's free tier allows 500,000 a month, so a few big nights a month fit; more would need the paid tier.

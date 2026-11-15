@@ -85,3 +85,13 @@ No new key. Each record in `switchComputerGames` gains an optional `rivals` list
 | `switchOnlineName` | The name you last used at a table | A convenience so the name field is already filled in. |
 
 Finished online games are saved in `switchComputerGames` like every other game: each record gains an optional `online` (`{ code, humans, autoMoves }`) and its `rivals` may carry `human: true`. Games saved before this carry neither and are unaffected.
+
+## Table talk and replays (14 Nov 2026)
+
+New per-device keys, outside the club document and never synced or shared:
+
+| Key | Purpose | Notes |
+|---|---|---|
+| `switchGameReplays` | Your last 30 finished games, move by move, as the table saw them (cards played, how many everyone held) plus every reaction sent, for Me > History > Watch the replay | Filed under the same id as the game's record in `switchComputerGames`. Never holds another player's hand or the draw pile. |
+| `switchReplayDraft` | The game in progress, recorded as it goes | Replaced by the next game; moved into `switchGameReplays` when the game ends. |
+| `switchReactionLog` | Every reaction sent or received: game id, time, move number, who, which reaction, whether it was you, a computer, online | Newest 3,000. Me > Table talk is worked out from it. |

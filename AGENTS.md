@@ -138,8 +138,14 @@ Darts: first to three legs wins a set. Knock Out: whoever finishes last in a rou
 
 - Every way to play is offered online (ruling 30). Knock Out with friends is "last one out leaves" (ruling 11), not the 1 v 1 rounds used against the computer. Tournament games are played one at a time; anyone not in the current game watches it live with every hand face down. Owner decision, 14 Nov 2026.
 - Last Card online: you always get the full 5 seconds; the server allows one extra second for the call to travel, whoever is looking.
+- Big online nights (ruling 32): up to 16 at a table for Knock Out, Cup and Group Play. Tournament games run at the same time on several tables, never one at a time; computer-only games play in real time; every result, knock-out and the winner is announced to everyone. Between games you can watch any game. Owner decision, 14 Nov 2026.
 
 ## Computer players: levels, tactics, personalities (owner decisions, 14 Nov 2026)
 - Levels are called Easy, Medium and Hard (ids relaxed, standard, sharp). Easy: no tactics. Medium: tempo, shield, aces. Hard: all seven. Each computer (John, Paul, George, Ringo, Ziggy, Marley, Bowie) has a personality that weights the tactics its level allows; the Play lobby shows them. Ruling 29, `src/switch/computerTactics.ts`.
 - A computer playing for an absent human uses no tactics (`api/_room.js`). A computer with one legal move makes it quickly; only moves with a choice take the 5 second think time (`FORCED_THINK_MS`).
 - Measure any tactic change with `node scripts/ai-selfplay.mjs 600` (add `ablate` for one tactic at a time) and rebuild the online engine with `npm run build:engine`.
+
+## Table talk (owner decisions, 14 Nov 2026)
+- Reactions are cheeky pub banter that keeps the 4+ rating: no swearing, innuendo or drink. Ten sayings plus eight of our own card-character SVG stickers (`src/screens/ReactionSticker.tsx`); no emoji. Ids live in `src/switch/reactions.ts` and `api/_room.js` and must match.
+- You can react against the computer, and computers banter back in character (`banterFor`), at most one remark every few seconds. Computers at online tables stay quiet.
+- Every reaction is logged with its game and move (`switchReactionLog`), and every game is recorded for a fast replay from Me > History (`switchGameReplays`, last 30, public information only). See ruling 31.

@@ -59,7 +59,7 @@ Decisions to confirm when filling in the form:
 - **Ads:** No. (`AdSlot` in `src/ui.tsx` is a demo placeholder that is not rendered anywhere; keep it that way in the Android build.)
 - **Advertising ID:** not used. Declare "No".
 - **Target audience:** choose 13+ (or adults), not children. Targeting children brings in the Families policy, which does not fit Google sign-in and club sharing. The privacy policy still says children should not sign in without a parent.
-- **Content rating (IARC):** no gambling or simulated gambling, no violence, no free-text chat. Users can interact at private online tables (joined by code only, no public matchmaking) using a fixed set of 18 reactions. Shared names and scores are the only user-generated content.
+- **Content rating (IARC):** no gambling or simulated gambling, no violence, no free-text chat. Users can interact at private online tables (joined by code only, no public matchmaking) using a fixed set of 18 reactions. The reactions are light-hearted teasing with no swearing, innuendo or references to alcohol, so no crude-humour or language descriptor applies. Shared names and scores are the only user-generated content.
 - **Account deletion:** in-app "Delete my cloud copy" plus the web URL above.
 
 ## Known gaps to close in code (not done here)

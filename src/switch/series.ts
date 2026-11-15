@@ -54,10 +54,15 @@ export interface SeriesSetup {
   readonly knockout?: "pairs" | "last-out";
 }
 
-export function validateSetup(setup: SeriesSetup): string | null {
+/** The most players a way of playing can take at an online table: tournaments split into several games at once. */
+export const ONLINE_MAX_PLAYERS: Readonly<Record<PlayMode, number>> = { single: 8, darts: 8, dominoes: 8, knockout: 16, cup: 16, group: 16 };
+
+/** `maxPlayers` is 8 against the computer; an online table allows more for tournaments (ONLINE_MAX_PLAYERS). */
+export function validateSetup(setup: SeriesSetup, maxPlayers = MAX_COMPUTERS + 1): string | null {
   const info = modeInfo(setup.mode);
   const players = setup.opponents + 1;
-  if (!Number.isInteger(setup.opponents) || setup.opponents < 1 || setup.opponents > MAX_COMPUTERS) return "Choose 1 to 7 computers.";
+  if (!Number.isInteger(setup.opponents) || setup.opponents < 1 || players > maxPlayers) return maxPlayers === MAX_COMPUTERS + 1 ? "Choose 1 to 7 computers." : `${info.name} is for up to ${maxPlayers} players.`;
+  if (players > 8 && (setup.mode === "darts" || setup.mode === "dominoes")) return `${info.name} is for up to 8 players: everyone plays in every game.`;
   if (players < info.minPlayers) return `${info.name} needs at least ${info.minPlayers} players, so at least ${info.minPlayers - 1} computers.`;
   if (setup.mode === "darts" && setup.setsToWin !== 3 && setup.setsToWin !== 5) return "Play to 3 or 5 sets.";
   if (setup.mode === "dominoes" && !(Number.isInteger(setup.limit) && (setup.limit as number) >= 10 && (setup.limit as number) <= 999)) return "Choose a number from 10 to 999.";
@@ -134,7 +139,33 @@ export interface PendingGame {
   readonly playOn?: boolean;
 }
 
-interface KnockoutPart { readonly remaining: readonly string[]; readonly out: readonly string[]; readonly championId: string | null }
+interface KnockoutPart {
+  readonly remaining: readonly string[];
+  readonly out: readonly string[];
+  readonly championId: string | null;
+  /**
+   * More than 8 left cannot sit at one game (ruling 32): they are drawn onto tables of up to 8 that play at the same
+   * time, and the last one holding cards at each table is out. `heats` are those tables; `heatLosers` who went at each.
+   */
+  readonly heats?: readonly (readonly string[])[] | null;
+  readonly heatLosers?: readonly (string | null)[];
+  readonly round?: number;
+}
+
+/** The most players at one game of Switch: two decks (ruling 21). */
+const TABLE_MAX = 8;
+
+/** Splits players as evenly as possible onto the fewest tables of up to 8. */
+function drawTables(ids: readonly string[], random: RandomSource): string[][] {
+  const order = shuffled(ids, random);
+  const count = Math.ceil(order.length / TABLE_MAX);
+  return Array.from({ length: count }, (_, table) => order.filter((_, index) => index % count === table));
+}
+
+function koStart(ids: readonly string[], random: RandomSource = Math.random, round = 1, out: readonly string[] = []): KnockoutPart {
+  const heats = ids.length > TABLE_MAX ? drawTables(ids, random) : null;
+  return { remaining: ids, out, championId: ids.length === 1 ? ids[0] : null, heats, heatLosers: heats ? heats.map(() => null) : [], round };
+}
 interface LeagueSlot { readonly id: string; readonly name: string; readonly ids: readonly string[]; readonly played: number; readonly points: Readonly<Record<string, number>>; readonly wins: Readonly<Record<string, number>>; readonly playoffOrder: readonly string[]; readonly deciders: readonly (readonly string[])[] }
 
 export type SeriesState =
@@ -180,7 +211,7 @@ export function leagueSizes(players: number): [number, number] {
  * everyone, the host included, is drawn into the leagues at random.
  */
 export function startSeries(setup: SeriesSetup, random: RandomSource, id = `series-${Date.now()}-${Math.floor(random() * 1e6).toString(36)}`, given?: readonly Player[]): SeriesState {
-  const problem = validateSetup(setup);
+  const problem = validateSetup(setup, given ? ONLINE_MAX_PLAYERS[setup.mode] : MAX_COMPUTERS + 1);
   if (problem) throw new Error(problem);
   const players = given ? [...given] : seriesPlayers(setup.opponents);
   if (players.length !== setup.opponents + 1) throw new Error("The players do not match the table.");
@@ -188,7 +219,7 @@ export function startSeries(setup: SeriesSetup, random: RandomSource, id = `seri
   const base: SeriesBase = { id, setup, players, games: 0, yourGames: 0, yourWins: 0 };
   switch (setup.mode) {
     case "knockout": return setup.knockout === "last-out"
-      ? { kind: "lastout", base, part: { remaining: ids, out: [], championId: null } }
+      ? { kind: "lastout", base, part: koStart(ids, random) }
       : { kind: "knockout", base, cup: createCup(players, random) };
     case "cup": return { kind: "cup", base, cup: createCup(players, random) };
     case "darts": return { kind: "darts", base, legs: Object.fromEntries(ids.map((entry) => [entry, 0])), sets: Object.fromEntries(ids.map((entry) => [entry, 0])), setsToWin: setup.setsToWin as number, winnerId: null };
@@ -216,15 +247,30 @@ const koFinished = (part: KnockoutPart | null) => !part || part.championId !== n
  */
 function koPending(part: KnockoutPart | null, key: string, label: string): PendingGame[] {
   if (!part || part.championId !== null || part.remaining.length < 2) return [];
+  if (part.heats) {
+    const round = part.round ?? 1;
+    return part.heats.flatMap((heat, index) => (part.heatLosers?.[index] ? [] : [{ key: `${key}-r${round}-h${index + 1}`, title: `${label ? `${label} round` : "Round"} ${round} · table ${index + 1} of ${part.heats?.length}`, playerIds: heat, playOn: heat.length > 2 }]));
+  }
   const left = part.remaining.length;
   const title = left === 2 ? `${label} final · 1 v 1` : `${label} knock out · ${left} players`;
   return [{ key: `${key}-${part.out.length + 1}`, title, playerIds: part.remaining, playOn: left > 2 }];
 }
 
-function koApply(part: KnockoutPart, result: GameResult): KnockoutPart {
+function koApply(part: KnockoutPart, result: GameResult, key = ""): KnockoutPart {
+  if (part.heats) {
+    const at = Number(/-h(\d+)$/.exec(key)?.[1] ?? 0) - 1;
+    const heat = part.heats[at];
+    if (!heat) throw new Error("That table is not in this round.");
+    const loser = [...result.order].reverse().find((id) => heat.includes(id)) as string;
+    const heatLosers = (part.heatLosers ?? part.heats.map(() => null)).map((entry, index) => (index === at ? loser : entry));
+    if (heatLosers.some((entry) => !entry)) return { ...part, heatLosers };
+    // Every table has finished: everyone left holding cards at a table is out, and the rest are drawn again.
+    const gone = heatLosers as string[];
+    return koStart(part.remaining.filter((id) => !gone.includes(id)), Math.random, (part.round ?? 1) + 1, [...part.out, ...gone]);
+  }
   const loser = [...result.order].reverse().find((id) => part.remaining.includes(id)) as string;
   const remaining = part.remaining.filter((id) => id !== loser);
-  return { remaining, out: [...part.out, loser], championId: remaining.length === 1 ? remaining[0] : null };
+  return { remaining, out: [...part.out, loser], championId: remaining.length === 1 ? remaining[0] : null, heats: null, heatLosers: [], round: (part.round ?? part.out.length + 1) + 1 };
 }
 
 /** Everyone in a knockout part from the winner down: champion, then the last one out, and so on. */
@@ -236,7 +282,9 @@ export function pendingGames(state: SeriesState): PendingGame[] {
   switch (state.kind) {
     case "darts": return state.winnerId ? [] : [{ key: `darts-${state.base.games + 1}`, title: `Game ${state.base.games + 1}`, playerIds: state.base.players.map((player) => player.id) }];
     case "dominoes": return state.loserId ? [] : [{ key: `dominoes-${state.base.games + 1}`, title: `Game ${state.base.games + 1}`, playerIds: state.base.players.map((player) => player.id) }];
-    case "lastout": return koPending(state.part, "ko", "Knock Out").map((game) => ({ ...game, title: state.part.remaining.length === 2 ? "Final · 1 v 1" : `Round ${state.part.out.length + 1} · ${state.part.remaining.length} players` }));
+    case "lastout": return state.part.heats
+      ? koPending(state.part, "ko", "")
+      : koPending(state.part, "ko", "Knock Out").map((game) => ({ ...game, title: state.part.remaining.length === 2 ? "Final · 1 v 1" : `Round ${state.part.round ?? state.part.out.length + 1} · ${state.part.remaining.length} players` }));
     case "knockout":
     case "cup": {
       if (state.cup.championId) return [];
@@ -288,7 +336,7 @@ export function submitGame(state: SeriesState, key: string, result: GameResult):
       const loserId = over.length ? over.sort((a, b) => b[1] - a[1] || (result.points[b[0]] ?? 0) - (result.points[a[0]] ?? 0) || state.base.players.findIndex((p) => p.id === b[0]) - state.base.players.findIndex((p) => p.id === a[0]))[0][0] : null;
       return { ...state, base, totals, loserId, last: result.points };
     }
-    case "lastout": return { ...state, base, part: koApply(state.part, result) };
+    case "lastout": return { ...state, base, part: koApply(state.part, result, key) };
     case "knockout":
     case "cup": {
       let cup = selectCupWinner(state.cup, key, result.winnerId);
@@ -325,8 +373,8 @@ function submitGroup(state: Extract<SeriesState, { kind: "group" }>, key: string
   const isChampionship = key.startsWith("championship");
   return {
     ...state,
-    championship: isChampionship && state.championship ? koApply(state.championship, result) : state.championship,
-    plate: !isChampionship && state.plate ? koApply(state.plate, result) : state.plate,
+    championship: isChampionship && state.championship ? koApply(state.championship, result, key) : state.championship,
+    plate: !isChampionship && state.plate ? koApply(state.plate, result, key) : state.plate,
   };
 }
 
@@ -341,8 +389,8 @@ function settle(state: Extract<SeriesState, { kind: "group" }>): SeriesState {
   return {
     ...state,
     phase: "playoffs",
-    championship: { remaining: championshipIds, out: [], championId: championshipIds.length === 1 ? championshipIds[0] : null },
-    plate: plateIds.length === 0 ? null : { remaining: plateIds, out: [], championId: plateIds.length === 1 ? plateIds[0] : null },
+    championship: koStart(championshipIds),
+    plate: plateIds.length === 0 ? null : koStart(plateIds),
   };
 }
 

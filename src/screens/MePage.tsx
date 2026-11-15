@@ -16,6 +16,7 @@ import { ensureProfiles, getProfiles, isNameTaken, nameTakenMessage, renameProfi
 import { countryName } from '../switch/places';
 import { readClub, updateClub } from '../switch/clubStore';
 import NightDetail from './NightDetail';
+import TableTalkStats from './TableTalkStats';
 import type { SwitchNightRecord } from '../switch/history';
 import { readSpeed, saveSpeed } from '../switch/activeTable';
 import { SPEED_NAMES, type Speed } from '../switch/presentation';
@@ -37,7 +38,7 @@ function Bar({ label, value, total }: { label: string; value: number; total: num
 function percent(rate: number) { return `${Math.round(rate * 100)}%`; }
 
 /** Your own corner: who you are, every night and computer game you have played, your badges and passport. */
-export default function MePage({ onPlay, onClub, onPrivacy, initialSection = 'overview' }: { onPlay: () => void; onClub: () => void; onPrivacy?: () => void; initialSection?: Section }) {
+export default function MePage({ onPlay, onClub, onPrivacy, onReplay, initialSection = 'overview' }: { onPlay: () => void; onClub: () => void; onPrivacy?: () => void; onReplay?: (gameId: string) => void; initialSection?: Section }) {
   const keyboard = useKeyboard();
   const [extensions, setExtensions] = useState(readClub);
   // A shared club changed under this screen: show the new players and nights without losing the tab you are on.
@@ -122,6 +123,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, initialSection = 'ov
         <div><b>{stamps.length}</b><span>Countries</span></div>
       </div>
       {summary.form.length > 0 && <div className="me-form" aria-label="Recent games against the computer"><span>Lately v computer</span>{summary.form.map((result, index) => <i key={index} className={result === 'W' ? 'win' : 'loss'}>{result}</i>)}</div>}
+      <TableTalkStats />
       <button className="primary" onClick={onPlay}><Robot size={19} weight="bold" />Play the computer</button>
       {nextUp.length > 0 && <><h3>Next badges</h3><ul className="next-badges">{nextUp.map((badge) => <li key={badge.id}><BadgeButton badge={badge} size={46} onOpen={setOpenBadge}><span><strong>{badge.label}</strong><small>{badge.hint}</small></span><em>{badge.have}/{badge.need}</em></BadgeButton></li>)}</ul></>}
       {earned.length > 0 && <><h3>Latest badges</h3><div className="chip-row" aria-label="Badges earned">{earned.slice(-6).reverse().map((badge) => <BadgeButton key={badge.id} badge={badge} size={46} onOpen={setOpenBadge} />)}</div></>}
@@ -181,7 +183,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, initialSection = 'ov
         </>}
     </>}
 
-    <NightDetail night={openNight} game={openGame} meId={me.id} profiles={allProfiles} onClose={() => { setOpenNight(null); setOpenGame(null); }} />
+    <NightDetail night={openNight} game={openGame} meId={me.id} profiles={allProfiles} onClose={() => { setOpenNight(null); setOpenGame(null); }} onReplay={onReplay ? (id) => { setOpenGame(null); onReplay(id); } : undefined} />
     {confirmSheet}
     {section === 'badges' && <BadgeWall badges={badges} />}
     {section === 'passport' && <PassportBook stamps={stamps} nights={myNights} name={me.name} />}

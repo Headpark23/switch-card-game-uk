@@ -1,20 +1,32 @@
-// Online play: a private table for friends and family. The server owns the game, so nobody can see another seat's
+// Online play: a private table for friends and family. The server owns the games, so nobody can see another seat's
 // cards. It deals, checks every move with the same engine the app uses (api/_engine.js is built from src/switch),
-// plays for computers and for absent people, and sends each seat a view with only that seat's own hand in it.
+// plays for computers and for absent people, and sends each person a view with only their own hand in it.
 //
-// Time is handled lazily: there are no timers on the server. Every request first catches up on anything that was due
-// (a computer's move, an absent player's move, a missed "Last Card" being spotted), then does what it was asked.
+// A table of up to 16 people can play a tournament, and its games run at the same time, as at a real card night:
+// two leagues side by side, every Cup match of a round at once, a big Knock Out split across tables. Each game is a
+// "table" with its own cards, clock and moves. Finished games and knock-outs are announced to everyone.
+//
+// Time is handled lazily: there are no timers on the server. Every request first catches up on anything that was due,
+// at every table and in the order it happened (a computer's move, an absent player's move, a missed "Last Card" being
+// spotted, the next game being dealt), then does what it was asked.
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
-import { applyTableAction, chooseTableAction, createTable, dealTo, isLegalTablePlay, isSeriesOver, MAX_SEATS, pendingGames, penaliseMissedLastCard, resultOf, seriesOutcome, simulateGame, startSeries, submitGame, tablePlaces, validateSetup } from "./_engine.js";
+import {
+  applyTableAction, chooseTableAction, createTable, dealTo, isLegalTablePlay, isSeriesOver, MAX_SEATS, ONLINE_MAX_PLAYERS, pendingGames,
+  penaliseMissedLastCard, resultOf, seriesOutcome, startSeries, submitGame, tablePlaces, validateSetup,
+} from "./_engine.js";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const CODE = /^[A-Z2-9]{6}$/;
 const CARD = /^(?:A|10|[2-9]|J|Q|K)[SHDC]'?$/;
 const LEVELS = ["relaxed", "standard", "sharp"];
 const SUITS = ["S", "H", "D", "C"];
-const COMPUTER_NAMES = ["John", "Paul", "George", "Ringo", "Ziggy", "Marley", "Bowie"];
+/** The seven computers of the Play lobby first, then more for big tables. */
+const COMPUTER_NAMES = ["John", "Paul", "George", "Ringo", "Ziggy", "Marley", "Bowie", "Elton", "Freddie", "Dolly", "Stevie", "Cher", "Prince", "Adele", "Elvis"];
 /** The ways to play at an online table. Knock Out with friends is "last one out leaves" (ruling 11; owner decision, 14 Nov 2026). */
 export const MODES = Object.freeze(["single", "knockout", "cup", "group", "darts", "dominoes"]);
+const MODE_NAMES = { single: "game", knockout: "Knock Out", cup: "Switch Cup", group: "Group Play", darts: "Darts match", dominoes: "Dominoes match" };
+/** The most people at one online table (ruling 32). */
+export const MAX_PLAYERS = 16;
 
 /** Owner decision (14 Nov 2026): told at 30 s that the computer plays in 10 s; plays at 40 s. */
 export const TIMING = Object.freeze({
@@ -24,7 +36,7 @@ export const TIMING = Object.freeze({
   autoMs: 40_000,
   /** A person who has been played for twice running is "away": the computer plays for them after this. */
   awayMs: 5_000,
-  /** The pause before a computer seat plays. */
+  /** The pause before a computer seat plays. Games with only computers play at this pace too, in real time. */
   computerMs: 2_000,
   /** How long someone holding one card has to say "Last Card" before the table spots it. */
   spotMs: 5_000,
@@ -35,16 +47,16 @@ export const TIMING = Object.freeze({
   /** How often a person's "last seen" is written. Polling must not turn every read into a write. */
   seenEveryMs: 10_000,
   reactionGapMs: 2_000,
-  /** In a tournament, the next game is dealt this long after the last one ends, unless the host deals it sooner. */
+  /** In a tournament, a game is dealt this long after the game it follows on from ends, unless the host deals it sooner. */
   betweenMs: 20_000,
   ttlMs: 24 * 3_600_000,
 });
 export const AWAY_AFTER = 2;
 
-/** The 18 reactions. The server keeps only the id; the words and emoji live in the app. */
+/** The 18 reactions: ten cheeky sayings and eight stickers. The server keeps only the id; the words and drawings live in the app (`src/switch/reactions.ts`). */
 export const REACTIONS = Object.freeze([
-  "good-game", "nice-one", "well-played", "ouch", "bad-luck", "phew", "your-turn", "take-your-time", "rematch", "cheers",
-  "clap", "laugh", "wow", "grimace", "sad", "fire", "party", "cool",
+  "read-em-and-weep", "all-youve-got", "sweating-yet", "absolute-sausage", "pick-up-sunshine", "who-taught-you", "lucky-so-and-so", "not-today-sweetheart", "revenge-is-coming", "behave",
+  "smug-king", "salty", "card-shark", "sweating-ace", "mic-drop", "facepalm-jack", "crying-joker", "seven-on-fire",
 ]);
 
 export class RoomError extends Error {
@@ -72,34 +84,27 @@ function humanSeat(name, token, now, host = false) {
 function cleanSetup({ mode, setsToWin, limit }, capacity, level) {
   const chosen = mode === undefined ? "single" : mode;
   if (!MODES.includes(chosen)) throw new RoomError("That way to play is not recognised.");
+  if (capacity > ONLINE_MAX_PLAYERS[chosen]) throw new RoomError(chosen === "single" ? `A single game is for up to ${MAX_SEATS} players.` : `${MODE_NAMES[chosen]} is for up to ${ONLINE_MAX_PLAYERS[chosen]} players.`);
   if (chosen === "single") return { mode: "single" };
   const setup = { mode: chosen, opponents: capacity - 1, level, knockout: "last-out",
     ...(chosen === "darts" ? { setsToWin: Number(setsToWin ?? 3) } : {}), ...(chosen === "dominoes" ? { limit: Number(limit ?? 100) } : {}) };
-  const problem = validateSetup(setup);
-  if (problem) throw new RoomError(problem.replace(/, so at least d+ computers?./, "."));
+  const problem = validateSetup(setup, ONLINE_MAX_PLAYERS[chosen]);
+  if (problem) throw new RoomError(problem.replace(/, so at least \d+ computers?\./, "."));
   return setup;
 }
 
 export function createRoom({ seats, level, name, mode, setsToWin, limit }, token, now) {
   const capacity = Number(seats);
-  if (!Number.isInteger(capacity) || capacity < 2 || capacity > MAX_SEATS) throw new RoomError(`A table is for 2 to ${MAX_SEATS} players.`);
+  if (!Number.isInteger(capacity) || capacity < 2 || capacity > MAX_PLAYERS) throw new RoomError(`A table is for 2 to ${MAX_PLAYERS} players.`);
   const chosen = level === undefined ? "standard" : level;
   if (!LEVELS.includes(chosen)) throw new RoomError("Pick relaxed, standard or sharp computers.");
   return {
-    v: 2, rev: 0, createdAt: now, updatedAt: now, status: "lobby", capacity, level: chosen, setup: cleanSetup({ mode, setsToWin, limit }, capacity, chosen),
-    gameNo: 0, seq: 0, reactSeq: 0, seriesNo: 0,
-    seats: [humanSeat(cleanName(name), token, now, true)], table: null, game: null, turnAt: null, moves: [], reactions: [], result: null,
-    series: null, pending: null, nextAt: null, seriesLog: [],
+    v: 3, rev: 0, createdAt: now, updatedAt: now, status: "lobby", capacity, level: chosen, setup: cleanSetup({ mode, setsToWin, limit }, capacity, chosen),
+    gameNo: 0, reactSeq: 0, newsSeq: 0, seriesNo: 0,
+    seats: [humanSeat(cleanName(name), token, now, true)], tables: [], reactions: [], news: [], history: [],
+    series: null, ready: {},
   };
 }
-
-/* ── Who sits in the current game ── */
-
-/** `room.seats` is everyone at the table; `room.table` lists who plays in the game being played, by their place in `seats`. */
-const tableOf = (room) => room.table ?? room.seats.map((_, index) => index);
-const playerAt = (room, seat) => room.seats[tableOf(room)[seat]];
-const sid = (index) => `p${index}`;
-const indexOf = (id) => Number(id.slice(1));
 
 export function joinRoom(room, name, token, now) {
   if (room.status !== "lobby") throw new RoomError("That game has already started.", 409);
@@ -128,6 +133,44 @@ function shuffled(list, random) {
   return out;
 }
 
+/* ── Tables: one game each ── */
+
+const sid = (index) => `p${index}`;
+const indexOf = (id) => Number(id.slice(1));
+const active = (table) => table.game.status === "playing";
+/** The game a person is playing in right now, if any. A person is only ever in one. */
+const activeTableOf = (room, player) => room.tables.find((table) => active(table) && table.players.includes(player)) ?? null;
+/** The most recent game a person sat in, playing or finished. */
+const latestTableOf = (room, player) => room.tables.filter((table) => table.players.includes(player)).sort((a, b) => b.no - a.no)[0] ?? null;
+const seatOf = (room, table, seat) => room.seats[table.players[seat]];
+
+function news(room, text, at) {
+  room.newsSeq = (room.newsSeq ?? 0) + 1;
+  room.news.push({ n: room.newsSeq, at, text });
+  if (room.news.length > 30) room.news.splice(0, room.news.length - 30);
+}
+
+/** Deals a fresh game to the players listed (by their place in `seats`). */
+function dealTable(room, players, now, random, { key = null, title = null, playOn = false } = {}) {
+  room.gameNo += 1;
+  for (const player of players) Object.assign(room.seats[player], { called: room.seats[player].kind === "computer", exposedAt: null, autoStreak: 0, autoTotal: 0 });
+  room.tables.push({
+    id: `t${room.gameNo}`, no: room.gameNo, gameId: `${room.code ?? "room"}-${room.gameNo}`, key, title, playOn, players: [...players],
+    game: createTable(players.length, random, Math.floor(random() * players.length), playOn ? { playOn: true } : undefined),
+    turnAt: now, seq: 0, moves: [], result: null, finishedAt: null,
+  });
+  // A finished game is kept while it is still someone's latest, so its result can be shown to them.
+  room.tables = room.tables.filter((table) => active(table) || table.players.some((player) => latestTableOf(room, player) === table));
+  refreshStatus(room);
+}
+
+function refreshStatus(room) {
+  if (room.status === "lobby") return;
+  if (room.tables.some(active)) room.status = "playing";
+  else if (room.series && !isSeriesOver(room.series)) room.status = "between";
+  else room.status = "finished";
+}
+
 export function startRoom(room, seatIndex, now, random = secureRandom) {
   if (!room.seats[seatIndex]?.host) throw new RoomError("Only the person who made the table can start it.", 403);
   if (room.status !== "lobby") throw new RoomError("The game has already started.", 409);
@@ -139,85 +182,118 @@ export function startRoom(room, seatIndex, now, random = secureRandom) {
   }));
   // Humans and computers are seated in a random order, so the computers are not all in a row.
   room.seats = shuffled([...humans, ...computers], random);
-  if (room.setup?.mode && room.setup.mode !== "single") beginSeries(room, now, random);
-  else dealGame(room, room.seats.map((_, index) => index), now, random);
-}
-
-/** Deals a fresh game to the players listed (by their place in `seats`). */
-function dealGame(room, table, now, random, playOn = false) {
-  room.table = table;
-  for (const seat of room.seats) { seat.called = seat.kind === "computer"; seat.exposedAt = null; seat.autoStreak = 0; seat.autoTotal = 0; }
-  room.game = createTable(table.length, random, Math.floor(random() * table.length), playOn ? { playOn: true } : undefined);
-  room.gameNo += 1;
   room.status = "playing";
-  room.result = null;
-  room.moves = [];
-  room.turnAt = now;
-  room.nextAt = null;
+  if (room.setup?.mode && room.setup.mode !== "single") beginSeries(room, now, random);
+  else dealTable(room, room.seats.map((_, index) => index), now, random);
 }
 
-/* ── Tournaments and matches: a run of ordinary games, one at a time ── */
+/* ── Tournaments and matches: many games, several at once ── */
+
+const keyOf = (room, key) => `${room.seriesNo}:${key}`;
 
 function beginSeries(room, now, random) {
   room.seriesNo = (room.seriesNo ?? 0) + 1;
   const players = room.seats.map((seat, index) => ({ id: sid(index), name: seat.name }));
   room.series = startSeries({ ...room.setup, opponents: room.seats.length - 1, level: room.level }, random, `${room.code ?? "room"}-series-${room.seriesNo}`, players);
-  room.seriesLog = [];
-  dealSeriesGame(room, now, random);
+  room.ready = {};
+  news(room, `The ${MODE_NAMES[room.setup.mode]} begins: ${room.seats.length} players.`, now);
+  scheduleSeries(room, now, 0);
+  dealDue(room, now, random);
 }
 
-/** Plays, in a blink, every waiting game with no person in it, as the app does at home. */
-function advanceSeries(room, random) {
-  for (let guard = 0; guard < 200 && !isSeriesOver(room.series); guard += 1) {
-    const games = pendingGames(room.series);
-    if (games.some((game) => game.playerIds.some((id) => room.seats[indexOf(id)].kind === "human"))) return;
-    const game = games[0];
-    if (!game) return;
-    const result = simulateGame(game.playerIds, room.level, random, game.playOn === true);
-    room.series = submitGame(room.series, game.key, result);
-    room.seriesLog = [...(room.seriesLog ?? []), `${game.title}: ${room.seats[indexOf(result.winnerId)].name} won.`].slice(-8);
+/**
+ * Notes when each waiting game may be dealt: straight away at the start, or `gap` after the game that led to it.
+ * Every game of a round, or both leagues' next games, get their own time, so one slow table never holds up another.
+ */
+function scheduleSeries(room, at, gap) {
+  if (!room.series || isSeriesOver(room.series)) return;
+  const dealt = new Set(room.tables.map((table) => table.key));
+  for (const game of pendingGames(room.series)) {
+    const key = keyOf(room, game.key);
+    if (!dealt.has(key) && room.ready[key] === undefined) room.ready[key] = at + gap;
   }
 }
 
-/** Deals the next game that has a person in it. Everyone not in it watches. */
-function dealSeriesGame(room, now, random) {
-  advanceSeries(room, random);
-  const game = isSeriesOver(room.series) ? null : pendingGames(room.series).find((entry) => entry.playerIds.some((id) => room.seats[indexOf(id)].kind === "human"));
-  if (!game) { room.status = "finished"; room.pending = null; room.nextAt = null; return; }
-  room.pending = { key: game.key, title: game.title, playOn: game.playOn === true };
-  dealGame(room, game.playerIds.map(indexOf).sort((a, b) => a - b), now, random, game.playOn === true);
+/** Waiting games whose time is set, earliest first. */
+function waitingGames(room) {
+  if (!room.series || isSeriesOver(room.series)) return [];
+  const dealt = new Set(room.tables.map((table) => table.key));
+  return pendingGames(room.series).map((game) => ({ game, key: keyOf(room, game.key) }))
+    .filter((entry) => !dealt.has(entry.key) && room.ready[entry.key] !== undefined)
+    .sort((a, b) => room.ready[a.key] - room.ready[b.key]);
 }
 
-/** The host deals again: the next game of a tournament, a new tournament once one is over, or another single game. */
+function dealDue(room, now, random) {
+  for (const { game, key } of waitingGames(room)) {
+    if (room.ready[key] > now) continue;
+    dealTable(room, game.playerIds.map(indexOf).sort((a, b) => a - b), room.ready[key], random, { key, title: game.title, playOn: game.playOn === true });
+  }
+}
+
+/** Who has been knocked out so far: Knock Out, the play-offs, and every Cup match lost. */
+function knockedOut(series) {
+  if (!series) return [];
+  if (series.kind === "lastout") return [...series.part.out];
+  if (series.kind === "group") return [...(series.championship?.out ?? []), ...(series.plate?.out ?? [])];
+  if (series.kind === "cup" || series.kind === "knockout") return series.cup.rounds.flatMap((round) => round.fixtures.filter((fixture) => fixture.winnerId).flatMap((fixture) => fixture.playerIds.filter((id) => id !== fixture.winnerId)));
+  return [];
+}
+
+/** The host deals again: every waiting game of a tournament now, a new tournament once one is over, or another single game. */
 export function againRoom(room, seatIndex, now, random = secureRandom) {
   if (!room.seats[seatIndex]?.host) throw new RoomError("Only the person who made the table can deal again.", 403);
-  if (room.status !== "finished") throw new RoomError("The game is not over yet.", 409);
-  if (!room.series) dealGame(room, room.seats.map((_, index) => index), now, random);
-  else if (isSeriesOver(room.series)) beginSeries(room, now, random);
-  else dealSeriesGame(room, now, random);
+  if (!room.series) {
+    if (room.tables.some(active)) throw new RoomError("The game is not over yet.", 409);
+    dealTable(room, room.seats.map((_, index) => index), now, random);
+    return;
+  }
+  if (isSeriesOver(room.series)) { beginSeries(room, now, random); return; }
+  const waiting = waitingGames(room);
+  if (!waiting.length) throw new RoomError("Nothing is waiting to be dealt.", 409);
+  for (const { key } of waiting) room.ready[key] = Math.min(room.ready[key], now);
+  dealDue(room, now, random);
 }
 export const rematchRoom = againRoom;
 
 /* ── Playing a move ── */
 
-function recordMove(room, entry) {
-  room.seq += 1;
-  room.moves.push({ n: room.seq, ...entry });
-  if (room.moves.length > 40) room.moves.splice(0, room.moves.length - 40);
+function recordMove(table, entry) {
+  table.seq += 1;
+  table.moves.push({ n: table.seq, ...entry });
+  if (table.moves.length > 30) table.moves.splice(0, table.moves.length - 30);
 }
 
-function buildResult(room, at) {
-  const places = tablePlaces(room.game);
-  return {
-    gameId: `${room.code ?? "room"}-${room.gameNo}`, finishedAt: at, winner: room.game.winner,
-    seats: tableOf(room).map((player, index) => { const seat = room.seats[player]; return { name: seat.name, kind: seat.kind, place: places[index], cardsLeft: room.game.hands[index].length, autoMoves: seat.autoTotal }; }),
+function finishTable(room, table, at) {
+  const places = tablePlaces(table.game);
+  table.finishedAt = at;
+  table.turnAt = null;
+  table.result = {
+    gameId: table.gameId, finishedAt: at, winner: table.game.winner,
+    seats: table.players.map((player, index) => { const seat = room.seats[player]; return { name: seat.name, kind: seat.kind, place: places[index], cardsLeft: table.game.hands[index].length, autoMoves: seat.autoTotal }; }),
   };
+  for (const player of table.players) room.seats[player].exposedAt = null;
+  room.history.push({ gameId: table.gameId, title: table.title, players: [...table.players], winner: table.game.winner, moves: table.game.move, finishedAt: at, seats: table.result.seats, seriesId: room.series?.base.id ?? null });
+  if (room.history.length > 80) room.history.splice(0, room.history.length - 80);
+  const winner = seatOf(room, table, table.game.winner ?? 0).name;
+  if (!room.series || !table.key) { news(room, `${winner} won the game.`, at); refreshStatus(room); return; }
+
+  const before = new Set(knockedOut(room.series));
+  room.series = submitGame(room.series, table.key.slice(table.key.indexOf(":") + 1), resultOf(table.game, table.players.map(sid)));
+  news(room, `${table.title}: ${winner} won.`, at);
+  const gone = knockedOut(room.series).filter((id) => !before.has(id)).map((id) => room.seats[indexOf(id)].name);
+  if (gone.length) news(room, `${gone.join(" and ")} ${gone.length === 1 ? "is" : "are"} out.`, at);
+  if (isSeriesOver(room.series)) {
+    const outcome = seriesOutcome(room.series);
+    const name = (id) => room.seats[indexOf(id)].name;
+    news(room, room.series.kind === "dominoes" && outcome.loserId ? `${name(outcome.loserId)} reached ${room.series.limit} and loses. ${name(outcome.winnerId)} wins the ${MODE_NAMES.dominoes}.` : `${name(outcome.winnerId)} wins the ${MODE_NAMES[room.setup.mode]}!`, at);
+  } else scheduleSeries(room, at, TIMING.betweenMs);
+  refreshStatus(room);
 }
 
-/** One action by one seat: legality, the "Last Card" rule, the engine's result, and everything that follows from it. */
-function playAction(room, seat, action, { at, lastCard, auto }) {
-  const game = room.game;
-  const mine = playerAt(room, seat);
+/** One action by one seat at one table: legality, the "Last Card" rule, the engine's result, and everything that follows. */
+function playAction(room, table, seat, action, { at, lastCard, auto }) {
+  const game = table.game;
+  const mine = seatOf(room, table, seat);
   if (action.type === "play" && !isLegalTablePlay(game, action)) throw new RoomError("That play is not allowed.");
   let after;
   try { after = applyTableAction(game, action); } catch { throw new RoomError("That move is not allowed right now."); }
@@ -228,7 +304,7 @@ function playAction(room, seat, action, { at, lastCard, auto }) {
   const missed = emptied && !called;
   if (missed) after = penaliseMissedLastCard(after, seat);
 
-  tableOf(room).forEach((player, index) => {
+  table.players.forEach((player, index) => {
     const other = room.seats[player];
     if (other.kind === "computer") return;
     const size = after.hands[index].length;
@@ -239,25 +315,14 @@ function playAction(room, seat, action, { at, lastCard, auto }) {
     other.exposedAt = after.status === "playing" && size === 1 && !other.called ? (other.exposedAt ?? at) : null;
   });
 
-  recordMove(room, {
+  recordMove(table, {
     seat, type: action.type, cards: action.type === "play" ? [...action.cards] : [], ...(action.chosenSuit ? { chosenSuit: action.chosenSuit } : {}),
     auto: Boolean(auto), computer: mine.kind === "computer", missedLastCard: missed, counts: after.hands.map((hand) => hand.length), at,
   });
   if (mine.kind === "human") { if (auto) { mine.autoStreak += 1; mine.autoTotal += 1; } else mine.autoStreak = 0; }
-  room.game = after;
-  room.turnAt = at;
-  if (after.status === "won") {
-    room.status = "finished";
-    room.turnAt = null;
-    room.result = buildResult(room, at);
-    for (const other of room.seats) other.exposedAt = null;
-    if (room.series && room.pending) {
-      room.series = submitGame(room.series, room.pending.key, resultOf(room.game, tableOf(room).map(sid)));
-      room.seriesLog = [...(room.seriesLog ?? []), `${room.pending.title}: ${playerAt(room, room.game.winner ?? 0).name} won.`].slice(-8);
-      advanceSeries(room, secureRandom);
-      room.nextAt = isSeriesOver(room.series) ? null : at + TIMING.betweenMs;
-    }
-  }
+  table.game = after;
+  table.turnAt = at;
+  if (after.status === "won") finishTable(room, table, at);
 }
 
 function cleanAction(input) {
@@ -271,78 +336,87 @@ function cleanAction(input) {
   return { type: "play", cards, ...(input.chosenSuit ? { chosenSuit: input.chosenSuit } : {}) };
 }
 
-export function humanMove(room, seatIndex, body, now) {
-  if (room.status !== "playing") throw new RoomError("The game is not in play.", 409);
-  const at = tableOf(room).indexOf(seatIndex);
-  if (at < 0) throw new RoomError("You are watching this game.", 409);
-  if (room.game.turn !== at) throw new RoomError("It is not your turn.", 409);
-  if (body?.expect !== undefined && body.expect !== room.seq) throw new RoomError("The table has moved on. Look again.", 409);
-  playAction(room, at, cleanAction(body?.action), { at: now, lastCard: body?.lastCard === true, auto: false });
+export function humanMove(room, player, body, now) {
+  const table = activeTableOf(room, player);
+  if (!table) throw new RoomError("You are not in a game being played right now.", 409);
+  const at = table.players.indexOf(player);
+  if (table.game.turn !== at) throw new RoomError("It is not your turn.", 409);
+  if (body?.expect !== undefined && body.expect !== table.seq) throw new RoomError("The table has moved on. Look again.", 409);
+  playAction(room, table, at, cleanAction(body?.action), { at: now, lastCard: body?.lastCard === true, auto: false });
 }
 
 /** "Last Card": said before playing the second-to-last or last cards, or while holding one. */
-export function callLastCard(room, seatIndex) {
-  if (room.status !== "playing") throw new RoomError("The game is not in play.", 409);
-  if (!tableOf(room).includes(seatIndex)) throw new RoomError("You are watching this game.", 409);
-  const seat = room.seats[seatIndex];
+export function callLastCard(room, player) {
+  if (!activeTableOf(room, player)) throw new RoomError("You are not in a game being played right now.", 409);
+  const seat = room.seats[player];
   seat.called = true;
   seat.exposedAt = null;
 }
 
-export function react(room, seatIndex, id, now) {
+export function react(room, player, id, now) {
   if (!REACTIONS.includes(id)) throw new RoomError("That reaction is not recognised.");
-  const seat = room.seats[seatIndex];
+  const seat = room.seats[player];
   if (now - seat.lastReactAt < TIMING.reactionGapMs) throw new RoomError("Easy there. One reaction at a time.", 429);
   seat.lastReactAt = now;
   room.reactSeq += 1;
-  room.reactions.push({ n: room.reactSeq, player: seatIndex, id, at: now });
+  room.reactions.push({ n: room.reactSeq, player, id, at: now });
   if (room.reactions.length > 20) room.reactions.splice(0, room.reactions.length - 20);
 }
 
 /* ── Catching up on time ── */
 
-/** When a seat's turn is due to be played for them, and whether that is a person being covered. */
-function dueFor(room) {
-  const seat = playerAt(room, room.game.turn);
-  if (seat.kind === "computer") return { at: room.turnAt + TIMING.computerMs, auto: false };
+/** When the move at a table is due to be played for its seat, and whether that is a person being covered. */
+function dueFor(room, table) {
+  const seat = seatOf(room, table, table.game.turn);
+  if (seat.kind === "computer") return { at: table.turnAt + TIMING.computerMs, auto: false };
   const wait = seat.autoStreak >= AWAY_AFTER ? TIMING.awayMs : TIMING.autoMs;
-  return { at: room.turnAt + TIMING.graceMs + wait, auto: true };
+  return { at: table.turnAt + TIMING.graceMs + wait, auto: true };
+}
+
+/** Five seconds to say "Last Card" from when the move reached the table, plus a second for the call to travel, whoever is looking. */
+const SPOT_AFTER = TIMING.spotMs + TIMING.leniencyMs;
+
+/** The next thing due anywhere in the room: a missed "Last Card" spotted, a move played for someone, or a game dealt. */
+function nextEvent(room) {
+  let best = null;
+  const consider = (event) => { if (!best || event.at < best.at) best = event; };
+  for (const table of room.tables) {
+    if (!active(table)) continue;
+    table.players.forEach((player, seat) => {
+      const person = room.seats[player];
+      if (person.exposedAt !== null && person.exposedAt !== undefined && !person.called && table.game.hands[seat].length === 1) consider({ kind: "spot", at: person.exposedAt + SPOT_AFTER, table, seat });
+    });
+    const due = dueFor(room, table);
+    consider({ kind: "move", at: due.at, auto: due.auto, table });
+  }
+  for (const { key } of waitingGames(room)) consider({ kind: "deal", at: room.ready[key], key });
+  return best;
 }
 
 /**
- * Plays everything that was due by `now`, in order, as if it had been done on time: computers, people who ran out of
- * time, and missed "Last Card" calls being spotted. Returns true if anything changed.
+ * Plays everything that was due by `now`, in the order it fell due, as if it had been done on time, at every table.
+ * Returns true if anything changed.
  */
 export function tick(room, now, random = secureRandom) {
   let changed = false;
-  // Between the games of a tournament: the next one is dealt when its time comes, if the host has not dealt it already.
-  if (room.status === "finished" && room.series && room.nextAt && now >= room.nextAt && !isSeriesOver(room.series)) {
-    dealSeriesGame(room, room.nextAt, random);
+  for (let guard = 0; guard < 6000; guard += 1) {
+    const event = nextEvent(room);
+    if (!event || event.at > now) break;
     changed = true;
-  }
-  const table = tableOf(room);
-  for (let guard = 0; guard < 80 && room.status === "playing"; guard += 1) {
-    // Five seconds to say "Last Card", counted from when the move reached the table, plus a second for the call to travel.
-    // The extra second applies whoever is looking, so another phone checking in at exactly five seconds cannot cut it short.
-    const spotAfter = TIMING.spotMs + TIMING.leniencyMs;
-    const spotted = table.findIndex((player, index) => { const seat = room.seats[player]; return seat.exposedAt !== null && now - seat.exposedAt >= spotAfter && room.game.hands[index].length === 1 && !seat.called; });
-    if (spotted >= 0) {
-      const seat = playerAt(room, spotted);
-      const at = seat.exposedAt + spotAfter;
-      room.game = dealTo(room.game, spotted, 2);
-      seat.exposedAt = null;
-      recordMove(room, { seat: spotted, type: "spot", cards: [], auto: false, computer: false, missedLastCard: true, counts: room.game.hands.map((hand) => hand.length), at });
-      changed = true;
+    if (event.kind === "deal") { dealDue(room, event.at, random); continue; }
+    const { table } = event;
+    if (event.kind === "spot") {
+      const person = seatOf(room, table, event.seat);
+      table.game = dealTo(table.game, event.seat, 2);
+      person.exposedAt = null;
+      recordMove(table, { seat: event.seat, type: "spot", cards: [], auto: false, computer: false, missedLastCard: true, counts: table.game.hands.map((hand) => hand.length), at: event.at });
       continue;
     }
-    const due = dueFor(room);
-    if (due.at > now) break;
     // A computer seat plays as itself (its personality and tactics). When the computer plays for a person who ran out of
     // time, it plays plainly, with no tactics: it is covering for them, not out to win (owner decision, 14 Nov 2026).
-    const mover = playerAt(room, room.game.turn);
+    const mover = seatOf(room, table, table.game.turn);
     const options = mover.kind === "human" ? { tactics: false } : { personality: mover.name };
-    playAction(room, room.game.turn, chooseTableAction(room.game, random, room.level, options), { at: due.at, lastCard: true, auto: due.auto });
-    changed = true;
+    playAction(room, table, table.game.turn, chooseTableAction(table.game, random, room.level, options), { at: event.at, lastCard: true, auto: event.auto });
   }
   return changed;
 }
@@ -351,9 +425,10 @@ export function tick(room, now, random = secureRandom) {
 export function touch(room, seatIndex, now) {
   let changed = false;
   const lastSeen = Math.max(...room.seats.filter((seat) => seat.kind === "human").map((seat) => seat.seenAt));
-  if (room.status === "playing" && now - lastSeen > TIMING.pauseMs) {
-    room.turnAt = now;
-    for (const seat of room.seats) if (seat.exposedAt !== null) seat.exposedAt = now;
+  if (room.status !== "lobby" && now - lastSeen > TIMING.pauseMs) {
+    for (const table of room.tables) if (active(table)) table.turnAt = now;
+    for (const seat of room.seats) if (seat.exposedAt !== null && seat.exposedAt !== undefined) seat.exposedAt = now;
+    for (const key of Object.keys(room.ready ?? {})) if (room.ready[key] < now) room.ready[key] = now;
     changed = true;
   }
   const seat = room.seats[seatIndex];
@@ -361,50 +436,87 @@ export function touch(room, seatIndex, now) {
   return changed;
 }
 
-/* ── What each seat is allowed to see ── */
+/* ── What each person is allowed to see ── */
 
-const rotate = (list, viewer) => list.map((_, index) => list[(index + viewer) % list.length]);
-
-function clockFor(room, now) {
-  if (room.status !== "playing") return null;
-  const seat = playerAt(room, room.game.turn);
-  if (seat.kind === "computer") return { seat: room.game.turn, computer: true, now };
-  const start = room.turnAt + TIMING.graceMs;
+function clockFor(room, table, now) {
+  if (!active(table)) return null;
+  const seat = seatOf(room, table, table.game.turn);
+  if (seat.kind === "computer") return { seat: table.game.turn, computer: true, now };
+  const start = table.turnAt + TIMING.graceMs;
   const away = seat.autoStreak >= AWAY_AFTER;
-  return { seat: room.game.turn, computer: false, away, nudgeAt: away ? start : start + TIMING.nudgeMs, autoAt: start + (away ? TIMING.awayMs : TIMING.autoMs), now };
+  return { seat: table.game.turn, computer: false, away, nudgeAt: away ? start : start + TIMING.nudgeMs, autoAt: start + (away ? TIMING.awayMs : TIMING.autoMs), now };
+}
+
+/** Each table in a line, for the list of games being played. No cards, only who is there and how many they hold. */
+function tableSummary(room, table, viewer) {
+  return {
+    id: table.id, title: table.title, playing: active(table), you: table.players.includes(viewer),
+    players: table.players.map((player, seat) => ({ name: room.seats[player].name, kind: room.seats[player].kind, cards: table.game.hands[seat].length, out: (table.game.out ?? []).includes(seat) })),
+    turn: active(table) ? room.seats[table.players[table.game.turn]].name : null,
+    winner: table.game.winner === null || table.game.winner === undefined ? null : room.seats[table.players[table.game.winner]].name,
+  };
+}
+
+/** The next game you are due to play in a tournament, and when it is dealt. */
+function nextFor(room, viewer) {
+  if (!room.series || isSeriesOver(room.series) || activeTableOf(room, viewer)) return null;
+  const dealt = new Set(room.tables.map((table) => table.key));
+  const game = pendingGames(room.series).find((entry) => entry.playerIds.includes(sid(viewer)) && !dealt.has(keyOf(room, entry.key)));
+  if (!game) return null;
+  return { title: game.title, players: game.playerIds.map((id) => room.seats[indexOf(id)].name), readyAt: room.ready[keyOf(room, game.key)] ?? null };
 }
 
 /**
- * The table as one seat sees it. Seats are turned so the viewer is always seat 0, which is how the app's table screen
- * already thinks. The viewer's own cards are real; every other hand and the draw pile are the same number of backs.
+ * The room as one person sees it. Their own game, while they are playing, always comes first; otherwise the game they
+ * chose to watch, or else their last game, so they can see how it ended. Seats are turned so they are seat 0 at their
+ * own game. Their own cards are real; every other hand and the draw pile are the same number of backs.
  */
-export function viewFor(room, viewer, now) {
-  const table = tableOf(room);
-  const at = room.game ? table.indexOf(viewer) : -1;
-  // Someone not in this game of a tournament watches it: every hand face down, the table as it sits.
-  const watching = Boolean(room.game) && at < 0;
-  const shift = Math.max(0, at);
-  const count = table.length;
-  const turned = (seat) => (seat === null || seat === undefined ? seat : (seat - shift + count) % count);
-  const players = room.seats.map((seat, index) => ({ name: seat.name, kind: seat.kind, you: index === viewer, host: Boolean(seat.host), playing: Boolean(room.game) && table.includes(index) }));
+export function viewFor(room, viewer, now, watch = null) {
+  const players = room.seats.map((seat, index) => ({ name: seat.name, kind: seat.kind, you: index === viewer, host: Boolean(seat.host), playing: Boolean(activeTableOf(room, index)) }));
+  const outcome = room.series && isSeriesOver(room.series) ? seriesOutcome(room.series) : null;
   const series = room.series ? {
-    setup: room.setup, state: room.series, title: room.pending?.title ?? null, over: isSeriesOver(room.series), outcome: seriesOutcome(room.series),
-    nextAt: room.status === "finished" ? (room.nextAt ?? null) : null, log: room.seriesLog ?? [], me: sid(viewer),
+    setup: room.setup, state: room.series, over: isSeriesOver(room.series), outcome, me: sid(viewer), next: nextFor(room, viewer),
+    waiting: waitingGames(room).length, live: room.tables.filter(active).length,
   } : null;
-  const base = { code: room.code, rev: room.rev, status: room.status, level: room.level, mode: room.setup?.mode ?? "single", setup: room.setup ?? { mode: "single" }, capacity: room.capacity, gameNo: room.gameNo, seq: room.seq, serverNow: now, players, series, you: { seat: watching ? null : 0, host: Boolean(room.seats[viewer].host), watching, id: sid(viewer) } };
-  if (!room.game) return { ...base, seats: room.seats.map((seat, index) => ({ name: seat.name, kind: seat.kind, you: index === viewer, host: Boolean(seat.host), away: false, lastCardCalled: false })), canStart: Boolean(room.seats[viewer].host) && room.seats.length >= 2 };
-  const game = room.game;
-  const seatAt = (index) => (index + shift) % count;
-  const seats = Array.from({ length: count }, (_, index) => {
-    const seat = room.seats[table[seatAt(index)]];
-    return { name: seat.name, kind: seat.kind, you: !watching && index === 0, host: Boolean(seat.host), away: seat.autoStreak >= AWAY_AFTER, lastCardCalled: seat.kind === "computer" || seat.called, cards: game.hands[seatAt(index)].length };
+  const history = room.history.filter((entry) => entry.players.includes(viewer)).map((entry) => {
+    const at = entry.players.indexOf(viewer);
+    const turn = (list) => list.map((_, index) => list[(index + at) % list.length]);
+    return { gameId: entry.gameId, title: entry.title, finishedAt: entry.finishedAt, moves: entry.moves, seriesId: entry.seriesId, winner: (entry.winner - at + entry.players.length) % entry.players.length, seats: turn(entry.seats) };
   });
-  const back = (length) => Array.from({ length }, () => "back");
-  const clock = clockFor(room, now);
+  const base = {
+    code: room.code, rev: room.rev, status: room.status, level: room.level, mode: room.setup?.mode ?? "single", setup: room.setup ?? { mode: "single" }, capacity: room.capacity, serverNow: now,
+    players, series, history, news: room.news ?? [], tables: room.tables.map((table) => tableSummary(room, table, viewer)),
+  };
+  if (room.status === "lobby") {
+    return { ...base, you: { seat: 0, host: Boolean(room.seats[viewer].host), watching: false, id: sid(viewer) }, seats: room.seats.map((seat, index) => ({ name: seat.name, kind: seat.kind, you: index === viewer, host: Boolean(seat.host), away: false, lastCardCalled: false })), canStart: Boolean(room.seats[viewer].host) && room.seats.length >= 2, table: null };
+  }
+  const table = activeTableOf(room, viewer) ?? room.tables.find((entry) => entry.id === watch) ?? latestTableOf(room, viewer) ?? null;
+  const reactionsFor = (shift, count, seats) => room.reactions.map((entry) => {
+    const sitting = seats ? seats.indexOf(entry.player) : -1;
+    return { n: entry.n, id: entry.id, at: entry.at, name: room.seats[entry.player]?.name ?? "", seat: sitting < 0 ? null : (sitting - shift + count) % count };
+  });
+  if (!table) return { ...base, you: { seat: null, host: Boolean(room.seats[viewer].host), watching: true, id: sid(viewer) }, seats: [], table: null, reactions: reactionsFor(0, 1, null) };
+
+  const at = table.players.indexOf(viewer);
+  const watching = at < 0;
+  const shift = Math.max(0, at);
+  const count = table.players.length;
+  const seatAt = (index) => (index + shift) % count;
+  const turned = (seat) => (seat === null || seat === undefined ? seat : (seat - shift + count) % count);
   const rotated = (list) => Array.from({ length: count }, (_, index) => list[seatAt(index)]);
+  const game = table.game;
+  const back = (length) => Array.from({ length }, () => "back");
+  const clock = clockFor(room, table, now);
   return {
     ...base,
-    seats,
+    you: { seat: watching ? null : 0, host: Boolean(room.seats[viewer].host), watching, id: sid(viewer) },
+    table: { id: table.id, title: table.title, gameId: table.gameId, playing: active(table) },
+    gameNo: table.no,
+    seq: table.seq,
+    seats: Array.from({ length: count }, (_, index) => {
+      const seat = seatOf(room, table, seatAt(index));
+      return { name: seat.name, kind: seat.kind, you: !watching && index === 0, host: Boolean(seat.host), away: seat.autoStreak >= AWAY_AFTER, lastCardCalled: seat.kind === "computer" || seat.called, cards: game.hands[seatAt(index)].length };
+    }),
     game: {
       hands: Array.from({ length: count }, (_, index) => (index === 0 && !watching ? [...game.hands[seatAt(0)]] : back(game.hands[seatAt(index)].length))),
       drawPile: back(game.drawPile.length), discardPile: [...game.discardPile], currentSuit: game.currentSuit, turn: turned(game.turn),
@@ -412,13 +524,9 @@ export function viewFor(room, viewer, now) {
       ...(game.playOn ? { playOn: true, out: (game.out ?? []).map(turned) } : {}),
     },
     clock: clock ? { ...clock, seat: turned(clock.seat) } : null,
-    moves: room.moves.map((move) => ({ ...move, seat: turned(move.seat), counts: rotated(move.counts) })),
-    reactions: room.reactions.map((entry) => {
-      const player = entry.player ?? table[entry.seat];
-      const sitting = table.indexOf(player);
-      return { n: entry.n, id: entry.id, at: entry.at, name: room.seats[player]?.name ?? "", seat: sitting < 0 ? null : turned(sitting) };
-    }),
-    result: room.result ? { ...room.result, winner: turned(room.result.winner), seats: rotated(room.result.seats) } : null,
+    moves: table.moves.map((move) => ({ ...move, seat: turned(move.seat), counts: rotated(move.counts) })),
+    reactions: reactionsFor(shift, count, table.players),
+    result: table.result ? { ...table.result, winner: turned(table.result.winner), seats: rotated(table.result.seats) } : null,
   };
 }
 
@@ -436,6 +544,7 @@ export function publicSummary(room) {
 async function load(store, code, now) {
   const row = await store.read(code);
   if (!row || now - row.updatedAt > TIMING.ttlMs) throw new RoomError("No table found with that code. Check it with the person who made it.", 404);
+  if (!Array.isArray(row.tables)) throw new RoomError("That table was set up with an older version of the app. Start a new one.", 404);
   return row;
 }
 
@@ -461,6 +570,7 @@ async function route(request, store, now, random) {
   const url = new URL(request.url);
   const code = (url.searchParams.get("code") || "").toUpperCase();
   const op = url.searchParams.get("op") || "";
+  const watch = (url.searchParams.get("watch") || "").slice(0, 12) || null;
   const token = request.headers.get("x-seat-token") || "";
 
   if (request.method === "GET") {
@@ -473,7 +583,7 @@ async function route(request, store, now, random) {
       const touched = touch(room, seat, now);
       return room.status !== "lobby" ? tick(room, now, random) || touched : touched;
     }, row).catch((error) => { if (error instanceof RoomError && error.status === 503) return { room: { ...row, code } }; throw error; });
-    return json(viewFor(outcome.room, findSeat(outcome.room, token), now));
+    return json(viewFor(outcome.room, findSeat(outcome.room, token), now, watch));
   }
 
   if (request.method !== "POST") throw new RoomError("Method not allowed", 405);
@@ -500,9 +610,8 @@ async function route(request, store, now, random) {
     return json({ code, token: seatToken, view: viewFor(outcome.room, outcome.room.seats.length - 1, now) }, 201);
   }
 
-  let seatIndex = -1;
   const outcome = await mutate(store, code, now, (room) => {
-    seatIndex = findSeat(room, token);
+    const seatIndex = findSeat(room, token);
     if (seatIndex < 0) throw new RoomError("That seat is not yours, or the table has ended.", 403);
     touch(room, seatIndex, now);
     // Whatever was already due happens first. A move that arrives just after a deadline still beats the computer.
@@ -516,7 +625,7 @@ async function route(request, store, now, random) {
     return true;
   });
   // Starting a game shuffles the seats, so the answer is cut for wherever this token sits now, never the seat it had before.
-  return json(viewFor(outcome.room, findSeat(outcome.room, token), now));
+  return json(viewFor(outcome.room, findSeat(outcome.room, token), now, watch));
 }
 
 /** A tiny in-memory store with the same shape as the Redis one, for tests and local use. */

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { ArrowClockwise, ArrowCounterClockwise, ArrowRight, CheckCircle, Eye, HandPalm, Lightbulb, ShareNetwork, Smiley, SortAscending, Trophy } from '@phosphor-icons/react';
-import { BottomSheet } from '../mobile';
+import { ArrowClockwise, ArrowCounterClockwise, ArrowRight, CheckCircle, Eye, FilmStrip, HandPalm, Lightbulb, ShareNetwork, Smiley, SortAscending, Trophy } from '@phosphor-icons/react';
+import { createPortal } from 'react-dom';
+import { useScreenPortal } from '../mobile';
 import { cardIdLabel } from '../switch/cards';
 import { explainUnplayable } from '../switch/coach';
 import { isLegalTablePlay, tableLegalMoves, tablePlaces, type TableState } from '../switch/table';
@@ -12,7 +13,9 @@ import { readClub } from '../switch/clubStore';
 import { drawTiming, planTurn, REDUCED, SPEEDS, stepDuration, visibleAt, type Step } from '../switch/presentation';
 import { readSpeed } from '../switch/activeTable';
 import { modeInfo, pendingGames, seriesPlayerName, standings } from '../switch/series';
-import { clearSeat, loadSeat, onlineModeBlurb, REACTIONS, reactionOf, tableInvite, useRoom, type RoomView } from '../switch/onlineRoom';
+import { clearSeat, loadSeat, onlineModeBlurb, reactionOf, tableInvite, useRoom, type RoomView } from '../switch/onlineRoom';
+import { logReaction } from '../switch/gameReplay';
+import { beginReplay, Bubble, ReactionSheet, useReplayRecorder } from './tableTalk';
 import { sortHand } from '../switch/sortHand';
 import { CardImage, CardShower, FeltHeader, rank, suitNames, suitSymbols } from '../ui';
 import { describe, ordinal } from './TableGame';
@@ -24,19 +27,42 @@ const reduced = () => { try { return window.matchMedia?.('(prefers-reduced-motio
 const pickups = (state: TableState) => (state.pendingPenalty && state.pendingPenalty.kind !== 'miss-turn' ? state.pendingPenalty.cards : 0);
 const modeName = (view: RoomView) => modeInfo(view.mode).name;
 
-type Props = { onLeave: () => void; onOpenCards: () => void; onStartNight: () => void };
+type Props = { onLeave: () => void; onOpenCards: () => void; onStartNight: () => void; onReplay?: (gameId: string) => void };
 
 /** A private table with friends and family: the waiting room, the games, and the results. The server owns the game; this screen shows it. */
-export default function OnlineTable({ onLeave, onOpenCards, onStartNight }: Props) {
+export default function OnlineTable({ onLeave, onOpenCards, onStartNight, onReplay }: Props) {
   const [seat] = useState(loadSeat);
-  const room = useRoom(seat);
+  /** Between your own games you can watch any game being played. Your own game, once dealt, always comes first. */
+  const [watch, setWatch] = useState<string | null>(null);
+  const room = useRoom(seat, watch);
   const { view, gone } = room;
   useOnlineRecord(view);
+  useEffect(() => { if (view?.table?.playing && !view.you.watching) setWatch(null); }, [view?.table?.id, view?.you.watching]);
   if (!seat) return <Gone message="You are not sitting at a table." onLeave={onLeave} />;
   if (gone) return <Gone message="This table has ended, or your seat there is no longer valid." onLeave={() => { clearSeat(); onLeave(); }} />;
   if (!view) return <section className="friends-table" role="status"><FeltHeader compact title="Taking your seat." intro={`Table ${seat.code}…`} cards={['AS', 'KH']} /></section>;
-  if (view.status === 'lobby' || !view.game) return <WaitingRoom view={view} room={room} onLeave={() => { clearSeat(); onLeave(); }} />;
-  return <Game key={view.gameNo} view={view} room={room} onExit={onLeave} onLeave={() => { clearSeat(); onLeave(); }} onOpenCards={onOpenCards} onStartNight={onStartNight} />;
+  if (view.status === 'lobby') return <WaitingRoom view={view} room={room} onLeave={() => { clearSeat(); onLeave(); }} />;
+  const leave = () => { clearSeat(); onLeave(); };
+  if (!view.game) return <><NewsToasts view={view} /><Board view={view} room={room} onWatch={setWatch} onLeave={leave} /></>;
+  return <><NewsToasts view={view} /><Game key={view.gameNo} view={view} room={room} onExit={onLeave} onLeave={leave} onOpenCards={onOpenCards} onStartNight={onStartNight} onReplay={onReplay} onWatch={setWatch} /></>;
+}
+
+/** Announcements from every game in the room, wherever you are: a game won, a player knocked out, the winner. */
+function NewsToasts({ view }: { view: RoomView }) {
+  const { screenRef } = useScreenPortal();
+  const seen = useRef(Math.max(0, ...view.news.map((entry) => entry.n)));
+  const [shown, setShown] = useState<{ n: number; text: string }[]>([]);
+  const latest = view.news.at(-1)?.n ?? 0;
+  useEffect(() => {
+    const fresh = view.news.filter((entry) => entry.n > seen.current);
+    if (!fresh.length) return;
+    seen.current = fresh[fresh.length - 1].n;
+    cue('good');
+    setShown((current) => [...current, ...fresh].slice(-3));
+    fresh.forEach((entry) => window.setTimeout(() => setShown((current) => current.filter((item) => item.n !== entry.n)), 6500));
+  }, [latest]);
+  if (!shown.length || !screenRef.current) return null;
+  return createPortal(<div className="news-toasts" role="status" aria-live="polite" data-testid="news-toasts">{shown.map((entry) => <p key={entry.n}>{entry.text}</p>)}</div>, screenRef.current);
 }
 
 /**
@@ -45,17 +71,24 @@ export default function OnlineTable({ onLeave, onOpenCards, onStartNight }: Prop
  */
 function useOnlineRecord(view: RoomView | null) {
   const series = useRef<string | null>(null);
-  const result = view?.result ?? null;
+  const logged = useRef(new Set<string>());
+  // The server keeps every game you played, so one that ended while this phone was closed is still saved.
+  const latest = view?.history.at(-1)?.gameId ?? null;
   useEffect(() => {
-    if (!view || !result || view.you.watching) return;
-    const humans = result.seats.filter((entry) => entry.kind === 'human').map((entry) => entry.name);
-    logComputerGame({
-      id: result.gameId, opponents: result.seats.length - 1, level: view.level, won: result.winner === 0, place: result.seats[0].place, moves: view.game?.move ?? 0,
-      rivals: result.seats.slice(1).map((entry) => ({ name: entry.name, place: entry.place, ...(entry.kind === 'human' ? { human: true } : {}) })),
-      online: { code: view.code, humans, autoMoves: result.seats[0].autoMoves },
-      ...(view.series ? { mode: view.mode, seriesId: view.series.state.base.id } : {}),
-    });
-  }, [result?.gameId]);
+    if (!view) return;
+    for (const entry of view.history) {
+      if (logged.current.has(entry.gameId)) continue;
+      logged.current.add(entry.gameId);
+      const humans = entry.seats.filter((seat) => seat.kind === 'human').map((seat) => seat.name);
+      logComputerGame({
+        id: entry.gameId, opponents: entry.seats.length - 1, level: view.level, won: entry.winner === 0, place: entry.seats[0].place, moves: entry.moves,
+        rivals: entry.seats.slice(1).map((seat) => ({ name: seat.name, place: seat.place, ...(seat.kind === 'human' ? { human: true } : {}) })),
+        online: { code: view.code, humans, autoMoves: entry.seats[0].autoMoves },
+        ...(entry.seriesId ? { mode: view.mode, seriesId: entry.seriesId } : {}),
+      });
+    }
+  }, [latest, view?.history.length]);
+  const result = view?.result ?? null;
   useEffect(() => {
     const run = view?.series;
     if (!run?.over || !run.outcome) return;
@@ -115,9 +148,9 @@ function WaitingRoom({ view, room, onLeave }: { view: RoomView; room: Room; onLe
   </section>;
 }
 
-type GameProps = { view: RoomView; room: Room; onExit: () => void; onLeave: () => void; onOpenCards: () => void; onStartNight: () => void };
+type GameProps = { view: RoomView; room: Room; onExit: () => void; onLeave: () => void; onOpenCards: () => void; onStartNight: () => void; onReplay?: (gameId: string) => void; onWatch: (table: string | null) => void };
 
-function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GameProps) {
+function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay, onWatch }: GameProps) {
   const watching = view.you.watching;
   const names = useMemo(() => view.seats.map((entry) => (entry.you ? 'You' : entry.name)), [view.seats.map((entry) => `${entry.name}${entry.you ? '*' : ''}`).join('|')]);
   const seats = view.seats.length;
@@ -146,6 +179,9 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
   const flyRef = useRef<HTMLSpanElement>(null);
   const setCalled = (value: boolean) => { calledRef.current = value; setCalledState(value); };
   const push = (line: string) => setRecent((current) => [...current.slice(-3), line]);
+  // The game is recorded as it is seen from this seat, under the id it is logged by, so it can be replayed from History.
+  const gameId = `${view.code}-${view.gameNo}`;
+  const recorder = useReplayRecorder(gameId, () => beginReplay(gameId, view.game!, names, view.seats.flatMap((entry, seatIndex) => (entry.kind === 'computer' ? [seatIndex] : [])), true, room.serverNow()));
   /** Who has really said "Last Card": the table announces it only for them (computers always say it). */
   const saidLast = view.seats.map((entry) => entry.lastCardCalled);
 
@@ -182,6 +218,8 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
     const fresh = (view.moves ?? []).filter((move) => move.n > appliedN.current);
     if (!fresh.length) return;
     appliedN.current = fresh[fresh.length - 1].n;
+    fresh.forEach((entry) => recorder.move({ seat: entry.seat, type: entry.type === 'accept-missed-turn' ? 'miss' : entry.type, ...(entry.cards.length ? { cards: [...entry.cards] } : {}), ...(entry.chosenSuit ? { suit: entry.chosenSuit } : {}), counts: [...entry.counts], ...(entry.auto ? { auto: true } : {}) }, entry.at));
+    if (view.game.status === 'won' && !watching) recorder.finish(view.game.winner, fresh[fresh.length - 1].at);
     const before = gameRef.current;
     const move = fresh[0];
     if (fresh.length === 1 && move.type !== 'spot' && before.turn === move.seat) {
@@ -270,7 +308,13 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
     const fresh = (view.reactions ?? []).filter((entry) => entry.n > seenReaction.current);
     if (!fresh.length) return;
     seenReaction.current = fresh[fresh.length - 1].n;
-    fresh.filter((entry) => entry.seat === null).forEach((entry) => { const reaction = reactionOf(entry.id); if (reaction) push(`${entry.name} (watching): ${reaction.emoji ? `${reaction.emoji} ` : ''}${reaction.text}`); });
+    fresh.forEach((entry) => {
+      const mine = entry.seat === 0 && !watching;
+      const from = mine ? 'You' : entry.name;
+      recorder.react({ seat: entry.seat, from, id: entry.id }, entry.at);
+      logReaction({ gameId, at: new Date(entry.at).toISOString(), move: gameRef.current.move, from, mine, computer: false, online: true, id: entry.id });
+    });
+    fresh.filter((entry) => entry.seat === null).forEach((entry) => { const reaction = reactionOf(entry.id); if (reaction) push(`${entry.name} (watching): ${reaction.text}`); });
     const seated = fresh.filter((entry): entry is typeof entry & { seat: number } => entry.seat !== null);
     if (!seated.length) return;
     setBubbles((current) => { const next = { ...current }; seated.forEach((entry) => { next[entry.seat] = { n: entry.n, id: entry.id }; }); return next; });
@@ -279,11 +323,11 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
 
   // The countdowns (a slow player, the next game of a tournament) are the server's clock, shown twice a second.
   useEffect(() => {
-    const ticking = (view.clock && view.status === 'playing') || (view.series?.nextAt && view.status === 'finished');
+    const ticking = (view.clock && view.table?.playing) || view.series?.next?.readyAt;
     if (!ticking) return;
     const timer = window.setInterval(() => setTick((tick) => tick + 1), 500);
     return () => window.clearInterval(timer);
-  }, [view.clock?.seat, view.status, view.series?.nextAt]);
+  }, [view.clock?.seat, view.table?.playing, view.series?.next?.readyAt]);
 
   useEffect(() => { if (finished && !watching) cue(youWon ? 'win' : 'bad'); }, [finished, youWon]);
 
@@ -376,10 +420,10 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
   const bubbleFor = (index: number) => {
     const bubble = bubbles[index];
     const reaction = bubble ? reactionOf(bubble.id) : null;
-    return bubble && reaction ? <span key={bubble.n} className="reaction-bubble" role="status" data-testid="reaction-bubble">{reaction.emoji ?? reaction.text}<i className="sr-only">{names[index]}: {reaction.text}</i></span> : null;
+    return bubble && reaction ? <Bubble key={bubble.n} n={bubble.n} id={bubble.id} name={names[index]} /> : null;
   };
 
-  if (finished) return <Finished view={view} room={room} game={game} names={names} watching={watching} youWon={youWon} warn={warn} setWarn={setWarn} onReact={() => setReactOpen(true)} onLeave={onLeave} onOpenCards={onOpenCards} onStartNight={onStartNight}>
+  if (finished) return <Finished view={view} room={room} game={game} names={names} watching={watching} youWon={youWon} warn={warn} setWarn={setWarn} onReact={() => setReactOpen(true)} onReplay={!watching && onReplay ? () => onReplay(gameId) : undefined} onWatch={onWatch} onLeave={onLeave} onOpenCards={onOpenCards} onStartNight={onStartNight}>
     <ReactionSheet open={reactOpen} onOpenChange={setReactOpen} onPick={react} />
   </Finished>;
 
@@ -414,7 +458,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
       <em className="dealer-chip" aria-label={`Dealer: ${names[game.dealer]}`}>Dealer · {names[game.dealer]}</em>
       <button onClick={onExit}>Exit</button>
     </div>
-    {view.series && <p className="series-strip" data-testid="series-strip">{modeName(view)} · {view.series.title}</p>}
+    {view.series && <p className="series-strip" data-testid="series-strip">{modeName(view)} · {view.table?.title}</p>}
     {room.error && <p className="clock-note" role="status">Lost touch with the table. Trying again…</p>}
     {clockNote && <p className="clock-note" role="status" data-testid="clock-note">{clockNote}</p>}
     <div className={`seat-row seats-${others.length}${others.length > 4 ? ' many' : ''}`} role="list" aria-label="Players at the table">
@@ -451,6 +495,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight }: GamePr
         <Eye size={22} weight="bold" />
         <span><strong>You are watching this game</strong><small>{isOut(view) ? 'You are out of this one. Every hand is face down while you watch.' : 'You are not in this game. Every hand is face down while you watch, and your next game is dealt when it comes.'}</small></span>
         <button className="pace-button" onClick={() => setReactOpen(true)} aria-label="Send a reaction"><Smiley size={16} />React</button>
+        {view.series && <button className="pace-button" onClick={() => onWatch(null)} data-testid="stop-watching">Standings</button>}
       </div>
       : <div className={'your-seat' + (visible.active === 0 ? ' turn' : '')} data-seat="0">
         {ouchFor(0)}
@@ -480,10 +525,10 @@ function isOut(view: RoomView): boolean {
   return !pendingGames(run.state).some((game) => game.playerIds.includes(run.me)) && !run.over;
 }
 
-type FinishedProps = { view: RoomView; room: Room; game: TableState; names: readonly string[]; watching: boolean; youWon: boolean; warn: string; setWarn: (text: string) => void; onReact: () => void; onLeave: () => void; onOpenCards: () => void; onStartNight: () => void; children: React.ReactNode };
+type FinishedProps = { view: RoomView; room: Room; game: TableState; names: readonly string[]; watching: boolean; youWon: boolean; warn: string; setWarn: (text: string) => void; onReact: () => void; onReplay?: () => void; onWatch: (table: string | null) => void; onLeave: () => void; onOpenCards: () => void; onStartNight: () => void; children: React.ReactNode };
 
 /** The end of a game: who won, and in a tournament where everyone stands and what comes next. */
-function Finished({ view, room, game, names, watching, youWon, warn, setWarn, onReact, onLeave, onOpenCards, onStartNight, children }: FinishedProps) {
+function Finished({ view, room, game, names, watching, youWon, warn, setWarn, onReact, onReplay, onWatch, onLeave, onOpenCards, onStartNight, children }: FinishedProps) {
   const result = view.result;
   const places = tablePlaces(game);
   const order = [...game.hands.keys()].sort((a, b) => places[a] - places[b] || a - b);
@@ -496,6 +541,7 @@ function Finished({ view, room, game, names, watching, youWon, warn, setWarn, on
   const extras = <>
     {warn && <p className="lobby-note center" role="alert">{warn}</p>}
     <button className="secondary" onClick={onReact}><Smiley size={18} />Say something</button>
+    {onReplay && <button className="secondary" onClick={onReplay} data-testid="watch-replay"><FilmStrip size={18} />Watch the replay</button>}
     <button className="secondary" onClick={onLeave}>Leave the table</button>
   </>;
 
@@ -538,25 +584,48 @@ function Finished({ view, room, game, names, watching, youWon, warn, setWarn, on
     </section>;
   }
 
-  const secs = run.nextAt ? Math.max(0, Math.ceil((run.nextAt - room.serverNow()) / 1000)) : 0;
-  const next = pendingGames(run.state).find((entry) => entry.playerIds.some((id) => view.players[Number(id.slice(1))]?.kind === 'human'));
-  const inNext = next?.playerIds.includes(run.me) ?? false;
   return <section className="series-board online-between" aria-labelledby="online-between-title">
     <CardShower trigger={youWon ? `won-${view.code}-${view.gameNo}` : null} />
-    <FeltHeader compact id="online-between-title" title={watching ? `${names[game.winner ?? 0]} won.` : youWon ? 'You won that one.' : `${names[game.winner ?? 0]} won that one.`} intro={`${modeName(view)} · ${run.title ?? 'Game'}`} cards={['QH', 'KS']} />
+    <FeltHeader compact id="online-between-title" title={watching ? `${names[game.winner ?? 0]} won.` : youWon ? 'You won that one.' : `${names[game.winner ?? 0]} won that one.`} intro={`${modeName(view)} · ${view.table?.title ?? 'Game'}`} cards={['QH', 'KS']} />
     {!watching && placeList}
-    {board}
-    {run.log.length > 0 && <ul className="move-log series-log" aria-label="Other games">{run.log.slice(-4).map((line, index) => <li key={index}>{line}</li>)}</ul>}
-    {next && <p className="next-game" role="status" data-testid="next-game"><strong>Next: {next.title}</strong><span>{next.playerIds.map(name).join(', ')}.{inNext ? ' You are in it.' : ' You will watch.'}</span><em>Dealt in {secs} second{secs === 1 ? '' : 's'}</em></p>}
-    {deal('Deal the next game now')}
+    {watching && <button className="secondary" onClick={() => onWatch(null)}>Back to my table</button>}
+    <TournamentBoard view={view} room={room} onWatch={onWatch} />
+    {view.you.host && run.waiting > 0 && deal(run.waiting === 1 ? 'Deal the waiting game now' : `Deal the ${run.waiting} waiting games now`)}
     {extras}
     {children}
   </section>;
 }
 
-/** The only way to talk at the table: eighteen friendly reactions. */
-function ReactionSheet({ open, onOpenChange, onPick }: { open: boolean; onOpenChange: (open: boolean) => void; onPick: (id: string) => void }) {
-  return <BottomSheet open={open} onOpenChange={onOpenChange} title="Say something" description="Everyone at the table sees it for a few seconds." snap={0.75}>
-    <div className="reaction-grid" role="group" aria-label="Reactions">{REACTIONS.map((entry) => <button key={entry.id} onClick={() => onPick(entry.id)} data-reaction={entry.id}>{entry.emoji && <span className="reaction-emoji" aria-hidden="true">{entry.emoji}</span>}<span>{entry.text}</span></button>)}</div>
-  </BottomSheet>;
+/**
+ * Between your games: where everyone stands, every game being played (tap one to watch it), your next game and when
+ * it is dealt, and the night's announcements. Games run side by side, so there is always something to watch.
+ */
+function TournamentBoard({ view, room, onWatch }: { view: RoomView; room: Room; onWatch: (table: string | null) => void }) {
+  const run = view.series;
+  if (!run) return null;
+  const me = view.players.find((entry) => entry.you)?.name;
+  const who = (name: string) => (name === me ? 'You' : name);
+  const live = view.tables.filter((table) => table.playing && !table.you);
+  const next = run.next;
+  const secs = next?.readyAt ? Math.max(0, Math.ceil((next.readyAt - room.serverNow()) / 1000)) : null;
+  return <>
+    {next && <p className="next-game" role="status" data-testid="next-game"><strong>Your next game: {next.title}</strong><span>{next.players.map(who).join(', ')}.</span><em>{secs === null ? 'Dealt once the games before it finish' : secs > 0 ? `Dealt in ${secs} second${secs === 1 ? '' : 's'}` : 'Being dealt…'}</em></p>}
+    {!next && !run.over && isOut(view) && <p className="next-game" role="status"><strong>You are out of this one.</strong><span>Watch the others play on. Every result is announced.</span></p>}
+    {live.length > 0 && <div className="live-tables" data-testid="live-tables"><h2>Playing now</h2><ul>{live.map((table) => <li key={table.id}><span><strong>{table.title}</strong><small>{table.players.map((player) => `${who(player.name)} ${player.out ? 'out' : player.cards}`).join(' · ')}</small></span><button className="pace-button" onClick={() => onWatch(table.id)} aria-label={`Watch ${table.title}`}><Eye size={16} />Watch</button></li>)}</ul></div>}
+    <div className="series-tables online-standings" data-testid="online-standings">{standings(run.state).map((table) => <div key={table.heading} className="standings"><h2>{table.heading}</h2><ul>{table.rows.map((row) => <li key={row.id} className={(row.id === run.me ? 'me ' : '') + (row.out ? 'out' : '')}><span>{row.id === run.me ? 'You' : row.name}</span><b>{row.main}</b>{row.note && <small>{row.note}</small>}</li>)}</ul></div>)}</div>
+    {view.news.length > 0 && <div className="news-log"><h2>Announcements</h2><ul aria-label="Announcements">{view.news.slice(-8).reverse().map((entry) => <li key={entry.n}>{entry.text}</li>)}</ul></div>}
+  </>;
+}
+
+/** A tournament with no game to show you yet (a bye, or waiting for the first round to finish). */
+function Board({ view, room, onWatch, onLeave }: { view: RoomView; room: Room; onWatch: (table: string | null) => void; onLeave: () => void }) {
+  const [warn, setWarn] = useState('');
+  const run = view.series;
+  return <section className="series-board online-between" aria-labelledby="online-board-title">
+    <FeltHeader compact id="online-board-title" title={`${modeName(view)}.`} intro={run?.live ? `${run.live} game${run.live === 1 ? ' is' : 's are'} being played. Watch any of them while you wait.` : 'Waiting for the next games to be dealt.'} cards={['QH', 'KS']} />
+    <TournamentBoard view={view} room={room} onWatch={onWatch} />
+    {view.you.host && run && run.waiting > 0 && <button className="primary" data-testid="deal-next" onClick={() => { room.send('again').catch((reason: Error) => setWarn(reason.message)); }}><ArrowCounterClockwise size={18} />Deal the waiting games now</button>}
+    {warn && <p className="lobby-note center" role="alert">{warn}</p>}
+    <button className="secondary" onClick={onLeave}>Leave the table</button>
+  </section>;
 }

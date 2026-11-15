@@ -81,9 +81,9 @@ test("two phones: one starts a table, the other joins with the link, the host de
 
   // A reaction from the friend appears on the host's phone.
   await friend.getByRole("button", { name: "Send a reaction" }).click();
-  await friend.locator('[data-reaction="well-played"]').click();
+  await friend.locator('[data-reaction="read-em-and-weep"]').click();
   await expect(host.getByTestId("reaction-bubble")).toBeVisible({ timeout: 10_000 });
-  await expect(host.getByTestId("reaction-bubble")).toContainText("Well played");
+  await expect(host.getByTestId("reaction-bubble")).toContainText("Read 'em and weep");
 });
 
 test("a table code that does not exist says so", async ({ browser }) => {
@@ -119,12 +119,17 @@ function server(seed: number) {
     return response.json();
   };
   /** Plays the current game to its end: people's moves are sent for them, and time passes for the computers. */
-  const finishGame = async (code: string, tokens: Record<string, string>) => {
-    for (let step = 0; step < 3000; step += 1) {
+  /**
+   * Plays games to their end: people's moves are sent for them, and time passes for the computers. `only` limits it to
+   * the game that person is in; otherwise every game with a person in it is finished.
+   */
+  const finishGame = async (code: string, tokens: Record<string, string>, only?: string) => {
+    for (let step = 0; step < 4000; step += 1) {
       const room = store.rows.get(code);
-      if (room.status !== "playing") return;
-      const seat = room.seats[room.table[room.game.turn]];
-      if (seat.kind === "human") await api(code, tokens[seat.name], "move", { action: chooseTableAction(room.game, clock.random, "standard"), lastCard: true });
+      const live = room.tables.filter((table: { game: { status: string }; players: number[] }) => table.game.status === "playing" && table.players.some((index) => (only ? room.seats[index].name === only : room.seats[index].kind === "human")));
+      if (!live.length) return;
+      const ready = live.find((table: { game: { turn: number }; players: number[] }) => room.seats[table.players[table.game.turn]].kind === "human" && (!only || room.seats[table.players[table.game.turn]].name === only));
+      if (ready) { const name = room.seats[ready.players[ready.game.turn]].name; await api(code, tokens[name], "move", { action: chooseTableAction(ready.game, clock.random, "standard"), lastCard: true }); }
       else { clock.offset += 2_100; await api(code, Object.values(tokens)[0]); }
     }
     throw new Error("the game did not end");
@@ -146,7 +151,7 @@ async function setUp(browser: Parameters<Parameters<typeof test>[1]>[0]["browser
   await host.getByRole("button", { name: /Start a table/ }).click();
   await host.getByLabel("Your name at the table").fill("Mark");
   await host.getByRole("group", { name: "Way to play" }).getByRole("button", { name: mode }).click();
-  await host.getByRole("button", { name: `${seats} seats` }).click();
+  await host.getByRole("button", { name: `${seats} seats`, exact: true }).click();
   await host.getByRole("button", { name: /Set up the table/ }).click();
   await expect(host.getByTestId("table-mode")).toContainText(mode);
   const code = (await host.getByTestId("table-code").textContent())!.trim();
@@ -171,7 +176,7 @@ test("online Darts: both play, the standings show between games, and the host de
     await expect(page.getByTestId("online-standings")).toContainText("First to 3 sets");
     await expect(page.getByTestId("next-game")).toContainText("Game 2");
   }
-  await expect(friend.getByText(/Waiting for Mark to deal/)).toBeVisible();
+  await expect(friend.getByTestId("deal-next")).toHaveCount(0);
   await host.getByTestId("deal-next").click();
   for (const page of [host, friend]) await expect(page.getByTestId("series-strip")).toContainText("Game 2", { timeout: 10_000 });
   await expect(host.getByLabel("Your hand")).toBeVisible();
@@ -180,8 +185,8 @@ test("online Darts: both play, the standings show between games, and the host de
   expect(logged).toContain(`${code}-1`);
 });
 
-test("online Cup: someone not in the match being played watches it with every hand face down", async ({ browser }) => {
-  test.setTimeout(90_000);
+test("online Cup: matches are played at the same time; a finished player hears the news and can watch another match", async ({ browser }) => {
+  test.setTimeout(120_000);
   // A draw where Mark and Rebecca are in different first-round matches (found by trying seeds against the real server code).
   let chosen = 0;
   for (let seed = 1; seed < 200 && !chosen; seed += 1) {
@@ -190,18 +195,26 @@ test("online Cup: someone not in the match being played watches it with every ha
     await handleRoom(new Request(`https://example.test/api/room?code=${made.code}&op=join`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: "Rebecca" }) }), trial.store, Date.now(), trial.clock.random);
     await trial.api(made.code, made.token, "start");
     const room = trial.store.rows.get(made.code);
-    if (room.table.filter((index: number) => room.seats[index].kind === "human").length === 1) chosen = seed;
+    if (room.tables.length === 2 && room.tables.every((table: { players: number[] }) => table.players.filter((index) => room.seats[index].kind === "human").length === 1)) chosen = seed;
   }
   expect(chosen).toBeGreaterThan(0);
   const srv = server(chosen);
-  const { host, friend } = await setUp(browser, srv, "Switch Cup", 4);
-  await expect(host.getByTestId("series-strip")).toContainText("Switch Cup", { timeout: 10_000 });
-  await expect(friend.getByTestId("series-strip")).toContainText("Switch Cup", { timeout: 10_000 });
-  const watcher = (await host.getByTestId("watching").count()) ? host : friend;
-  const player = watcher === host ? friend : host;
-  await expect(watcher.getByTestId("watching")).toBeVisible();
-  await expect(watcher.getByLabel("Your hand")).toHaveCount(0);
-  await expect(watcher.locator(".seat-row .seat")).toHaveCount(2);
-  await expect(player.getByLabel("Your hand")).toBeVisible();
-  await expect(player.getByTestId("watching")).toHaveCount(0);
+  const { host, friend, code, tokens } = await setUp(browser, srv, "Switch Cup", 4);
+  // Both matches are dealt at once: both people are playing, nobody is waiting.
+  for (const page of [host, friend]) {
+    await expect(page.getByTestId("series-strip")).toContainText("Switch Cup", { timeout: 10_000 });
+    await expect(page.getByLabel("Your hand")).toBeVisible();
+    await expect(page.getByTestId("watching")).toHaveCount(0);
+  }
+  // Mark's match ends first. Rebecca, still playing, hears about it.
+  await srv.finishGame(code, tokens, "Mark");
+  await expect(friend.getByTestId("news-toasts")).toContainText("won", { timeout: 15_000 });
+  await expect(friend.getByLabel("Your hand")).toBeVisible();
+  // Mark sees the standings and Rebecca's match in "Playing now", and watches it with every hand face down.
+  await expect(host.getByTestId("live-tables")).toBeVisible({ timeout: 15_000 });
+  await host.getByTestId("live-tables").getByRole("button", { name: /Watch/ }).click();
+  await expect(host.getByTestId("watching")).toBeVisible({ timeout: 10_000 });
+  await expect(host.getByLabel("Your hand")).toHaveCount(0);
+  await expect(host.locator(".seat-row .seat")).toHaveCount(2);
+  await expect(host.locator(".seat-row")).toContainText("Rebecca");
 });
