@@ -3,6 +3,7 @@ import { ArrowRight, House, Cards, Club, MagnifyingGlass, X, DownloadSimple, Che
 import { readActiveTable } from './switch/activeTable';
 import { loadSeat } from './switch/onlineRoom';
 import { readClub, updateClub } from './switch/clubStore';
+import { loadAccount, syncNow } from './auth';
 import { recoverMyGames } from './switch/identity';
 import { syncJoinedNights } from './switch/joinedNights';
 import { flushSharedResults } from './switch/shareNight';
@@ -99,6 +100,7 @@ export default function Prototype() {
   const urlClub = (() => { try { return new URLSearchParams(window.location.search).get('club') ? true : false; } catch { return false; } })();
   const urlTable = (() => { try { return (new URLSearchParams(window.location.search).get('table') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); } catch { return ''; } })();
   const [inviteCode, setInviteCode] = useState(urlTable);
+  const [nightCode, setNightCode] = useState(urlNight);
   const [page, setPage] = useState<Page>(urlNight ? 'Watch' : urlTable ? 'Friends' : urlClub ? 'Club' : 'Learn');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<(typeof powers)[number] | null>(null);
@@ -120,6 +122,20 @@ export default function Prototype() {
   const { bottomInset, isKeyboardVisible } = useKeyboardInsets();
   // One-off repair: games left on the automatic "You" player rejoin the owner's real name.
   useState(() => { try { if (recoverMyGames(readClub())) updateClub((current) => recoverMyGames(current) ?? current); } catch { /* leave saved data alone */ } return 0; });
+  // A signed-in person's club follows them: it is brought together with the cloud copy when the app opens and whenever it comes back into view.
+  useEffect(() => {
+    let last = 0;
+    const run = () => {
+      const account = loadAccount();
+      if (!account || Date.now() - last < 120_000) return;
+      last = Date.now();
+      syncNow(account).then((outcome) => { if (outcome === 'merged' || outcome === 'downloaded') updateClub((current) => current); }).catch(() => { /* the Sync now button explains what went wrong */ });
+    };
+    const onVisible = () => { if (document.visibilityState === 'visible') run(); };
+    run();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
   // Results from nights this phone joined arrive here, even when they were saved while the app was closed.
   const [arrived, setArrived] = useState<SwitchNightRecord[]>([]);
   useEffect(() => {
@@ -164,6 +180,12 @@ export default function Prototype() {
     setQuery('');
     setScrollKey('');
   }
+  /** Any code, typed or from a link, goes to the right place: a table of friends, a scored night or a shared club. */
+  const openCode = (kind: 'table' | 'night' | 'club', code: string) => {
+    if (kind === 'table') { setInviteCode(code); go('Friends'); }
+    else if (kind === 'night') { setNightCode(code); go('Watch'); }
+    else window.location.assign(`/?club=${code}`);
+  };
   const openRules = () => { try { window.localStorage.setItem('switchWelcome', 'done'); } catch { /* storage unavailable */ } setRuleStep(0); go('Rules'); };
   const startGuidedGame = () => go('Tutorial');
   const [seriesAtTable, setSeriesAtTable] = useState(false);
@@ -285,7 +307,7 @@ export default function Prototype() {
             {page === 'Score' && <SwitchScorekeeper section="score" onBack={() => go('Learn')} backLabel="Home" initialView={scoreView} onView={setScoreView} onQuick={() => go('Quick')} onModes={() => go('Modes')} />}
             {page === 'Club' && <SwitchScorekeeper key={shownClubTick} section="club" startMode={clubMode} onBack={() => go('Learn')} backLabel="Home" initialView={clubView} onView={setClubView} />}
             {page === 'Play' && <PlayLobby onDeal={dealMeIn} onStartSeries={startSeriesPlay} onResume={resumeTable} onMe={() => openMe('overview')} onLearn={openRules} onFriends={() => go(loadSeat() ? 'Online' : 'Friends')} />}
-            {page === 'Friends' && <FriendsTable initialCode={inviteCode} onBack={() => { setInviteCode(''); go('Play'); }} onSeated={() => { setInviteCode(''); go('Online'); }} />}
+            {page === 'Friends' && <FriendsTable key={inviteCode} initialCode={inviteCode} onOpenCode={openCode} onBack={() => { setInviteCode(''); go('Play'); }} onSeated={() => { setInviteCode(''); go('Online'); }} />}
             {page === 'Online' && <OnlineTable onLeave={() => go('Play')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onReplay={openReplay} />}
             {page === 'Table' && <TableGame key={table.deal} opponents={table.opponents} level={table.level} resume={table.resume ? readActiveTable() : null} onExit={() => go('Play')} onChange={() => go('Play')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onReplay={openReplay} />}
             {page === 'Series' && seriesRun && <SeriesPlay key={seriesRun.run} setup={seriesRun.setup} onTable={setSeriesAtTable} onExit={() => go('Play')} onChange={() => go('Play')} onMe={() => openMe('overview')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} />}
@@ -293,7 +315,7 @@ export default function Prototype() {
             {page === 'Replay' && replayOf && <ReplayScreen gameId={replayOf.id} onBack={() => (replayOf.back === 'Me' ? openMe('overview') : go(replayOf.back))} />}
             {page === 'Tutorial' && <GuidedGame onExit={() => go('Rules')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onOpenPuzzles={() => go('Puzzles')} onPlayForReal={() => go('Play')} onStatusChange={onGameStatus} />}
             {page === 'Quick' && <QuickNight onBack={() => openScore('score')} onHistory={() => openClub('history')} />}
-            {page === 'Watch' && <WatchNight initialCode={urlNight} initialAs={urlAs} onBack={() => go('Learn')} />}
+            {page === 'Watch' && <WatchNight key={nightCode} initialCode={nightCode} initialAs={nightCode === urlNight ? urlAs : ''} onOpenCode={openCode} onBack={() => go('Learn')} />}
             {page === 'Puzzles' && <Puzzles backLabel={learnBack === 'Rules' ? 'Learn the rules' : 'Home'} onBack={() => go(learnBack)} onTutorial={startGuidedGame} />}
             {page === 'Privacy' && <Privacy onBack={() => openMe('overview')} />}
           </Suspense>

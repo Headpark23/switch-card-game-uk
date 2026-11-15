@@ -43,6 +43,6 @@ test("joining by code shows a friendly message for an unknown night", async ({ p
   await page.goto("/");
   await page.getByRole("button", { name: "Join a night" }).click();
   await page.getByLabel("Night code").fill("zzzzzz");
-  await page.getByRole("button", { name: "Watch" }).click();
-  await expect(page.getByRole("alert")).toContainText("No night found");
+  await page.getByRole("button", { name: "Join", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("could not find");
 });

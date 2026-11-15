@@ -192,7 +192,9 @@ export function onlineModeBlurb(mode: PlayMode): string {
 
 export const cleanTableCode = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
 export const tableLink = (code: string) => `${window.location.origin}/?table=${code}`;
-export const tableInvite = (code: string, host: string, what = "a game of Switch") => `${host} has set up ${what}. Open the Switch app, tap Play, then "Join with a code" and enter ${code}. Or open ${tableLink(code)}`;
+export const tableInvite = (code: string, host: string, what = "a game of Switch") => `${host} has set up ${what}. Tap to join:
+${tableLink(code)}
+Or open Switch, tap Play, then "Join with a code" and enter ${code}.`;
 
 export async function createTable(name: string, seats: number, level: ComputerLevel, setup: RoomSetup = { mode: "single" }): Promise<{ code: string; token: string; view: RoomView }> {
   return request("POST", {}, null, { name, seats, level, ...setup });

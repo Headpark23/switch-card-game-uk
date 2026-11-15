@@ -23,6 +23,51 @@ test("merging two phones keeps every player and night, and never drops data", as
   expect(result.differs).toBe(false);
 });
 
+const profile = (id: string, name: string) => ({ version: 1, id, name, colour: "forest", createdAt: "2026-11-01T10:00:00.000Z", archived: false });
+const game = (id: string, playerId: string, won: boolean) => ({ id, playedAt: "2026-11-10T10:00:00.000Z", playerId, opponents: 2, level: "standard", won, place: won ? 1 : 2, moves: 20 });
+
+test("two devices that each made their own 'You' end up as one player, so every device counts every game", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(async ([phone, web]) => {
+    const sync = await import("/src/switch/sync.ts");
+    const log = await import("/src/switch/computerLog.ts");
+    const countFor = (doc: { extensions: Record<string, unknown> }) => {
+      const me = log.getMeId(doc.extensions);
+      return { me, games: log.getComputerGames(doc.extensions).filter((entry) => entry.playerId === me).length, all: log.getComputerGames(doc.extensions).length };
+    };
+    // The phone syncs against the account's cloud copy, which the browser wrote.
+    const merged = sync.mergeDocuments(phone as never, web as never);
+    const mergedOtherWay = sync.mergeDocuments(web as never, phone as never);
+    // Then the browser syncs again against what the phone uploaded.
+    const browserAfter = sync.mergeDocuments(web as never, merged as never);
+    return { phone: countFor(merged as never), other: countFor(mergedOtherWay as never), browser: countFor(browserAfter as never), account: merged.extensions.switchAccountMe, sameAccount: browserAfter.extensions.switchAccountMe };
+  }, [
+    { schemaVersion: 1, extensions: { switchMe: "phone-you", switchProfiles: [profile("phone-you", "You")], switchComputerGames: [game("p1", "phone-you", true), game("p2", "phone-you", false), game("p3", "phone-you", true)] } },
+    { schemaVersion: 1, extensions: { switchMe: "web-you", switchProfiles: [profile("web-you", "You")], switchComputerGames: [game("w1", "web-you", true), game("w2", "web-you", false)] } },
+  ]);
+  expect(result.phone.games).toBe(5);
+  expect(result.phone.all).toBe(5);
+  expect(result.other.games).toBe(5);
+  expect(result.browser.games).toBe(5);
+  expect(result.sameAccount).toBe(result.account);
+});
+
+test("a real name wins over the automatic You when two devices are joined", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(async ([named, anonymous]) => {
+    const sync = await import("/src/switch/sync.ts");
+    const log = await import("/src/switch/computerLog.ts");
+    const profiles = await import("/src/switch/profiles.ts");
+    const merged = sync.mergeDocuments(named as never, anonymous as never);
+    const me = log.getMeId(merged.extensions);
+    return { name: profiles.getProfiles(merged.extensions).find((entry) => entry.id === me)?.name, games: log.getComputerGames(merged.extensions).filter((entry) => entry.playerId === me).length };
+  }, [
+    { schemaVersion: 1, extensions: { switchMe: "becky", switchProfiles: [profile("becky", "Becky")], switchComputerGames: [game("b1", "becky", true)] } },
+    { schemaVersion: 1, extensions: { switchMe: "anon", switchAccountMe: "anon", switchProfiles: [profile("anon", "You")], switchComputerGames: [game("a1", "anon", true), game("a2", "anon", true)] } },
+  ]);
+  expect(result).toEqual({ name: "Becky", games: 3 });
+});
+
 test("signing in trades the Google credential for a session and never stores the token", async ({ page }) => {
   await page.goto("/");
   const result = await page.evaluate(async () => {

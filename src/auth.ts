@@ -136,7 +136,15 @@ export async function syncNow(account: Account | null, fetcher: typeof fetch = f
   const merged = mergeDocuments(localDoc, remote);
   await put(merged);
   if (!sameClub(merged, localDoc)) {
-    window.localStorage.setItem(SCOREKEEPER_STORAGE_KEY, JSON.stringify(merged));
+    // A game can finish while the request was in flight. Look again just before writing and fold in anything new, so a sync never loses it.
+    let toWrite = merged;
+    const latestRaw = window.localStorage.getItem(SCOREKEEPER_STORAGE_KEY);
+    if (latestRaw !== rawLocal) {
+      const latest = loadScorekeeper(latestRaw);
+      if (latest.status === 'unreadable') throw new Error('The data on this phone changed while syncing, so nothing was overwritten. Try again.');
+      toWrite = mergeDocuments(JSON.parse(saveScorekeeper(latestRaw, latest.state)) as SyncDocument, merged);
+    }
+    window.localStorage.setItem(SCOREKEEPER_STORAGE_KEY, JSON.stringify(toWrite));
     return hasClubData(localDoc) ? 'merged' : 'downloaded';
   }
   return 'uploaded';

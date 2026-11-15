@@ -6,11 +6,22 @@
  * Known limit: because merging is a union, a night deleted on one phone can come
  * back from another phone that still has it.
  */
+import { getMeId, putMeId } from "./computerLog";
+import { claimMe, mergeProfiles } from "./identity";
+import { getProfiles, putProfiles } from "./profiles";
+
 type Extensions = Record<string, unknown>;
 
 const LIST_KEYS = ["switchProfiles", "switchSeasons", "switchNightHistory", "switchComputerGames"] as const;
 /** Single values where this phone wins, and a second phone fills the gap. */
-const VALUE_KEYS = ["switchClub", "switchMe", "switchLastPlace"] as const;
+const VALUE_KEYS = ["switchClub", "switchMe", "switchLastPlace", "switchAccountMe"] as const;
+/**
+ * Which saved player is "me" for the whole account. Every phone and browser makes its own "You" the first time it is
+ * used, so without this a signed-in person's games sit under a different player on each device and each device only
+ * counts its own. The first device to sync sets it; every other device folds its own "me" into it.
+ */
+const ACCOUNT_ME_KEY = "switchAccountMe";
+const isPlaceholder = (name: string) => name.trim().toLowerCase() === "you";
 
 export interface SyncDocument {
   readonly schemaVersion: 1;
@@ -52,7 +63,33 @@ export function mergeDocuments(local: SyncDocument, remote: SyncDocument): SyncD
     extensions[key] = local.extensions[key] ?? remote.extensions[key];
     if (extensions[key] === undefined) delete extensions[key];
   }
-  return { ...local, extensions };
+  return { ...local, extensions: unifyIdentity(extensions, local.extensions, remote.extensions) };
+}
+
+/**
+ * Makes the account one person. When this device's "me" and the account's "me" are different saved players, the games,
+ * nights and seasons of one are moved onto the other, so the stats on every device add up to the same total.
+ * A real name beats the automatic "You"; otherwise the account's player stays, so every device settles on the same one.
+ */
+export function unifyIdentity(merged: Extensions, local: Extensions, remote: Extensions): Extensions {
+  const localMe = getMeId(local);
+  const remoteAccount = typeof remote[ACCOUNT_ME_KEY] === "string" ? (remote[ACCOUNT_ME_KEY] as string) : getMeId(remote);
+  const profiles = getProfiles(merged);
+  const nameOf = (id: string | null) => profiles.find((profile) => profile.id === id)?.name ?? "";
+  let account = remoteAccount && profiles.some((profile) => profile.id === remoteAccount) ? remoteAccount : localMe;
+  if (!account) return merged;
+  let next: Extensions = merged;
+  if (localMe && localMe !== account) {
+    const keepLocal = isPlaceholder(nameOf(account)) && !isPlaceholder(nameOf(localMe));
+    const [from, into] = keepLocal ? [account, localMe] : [localMe, account];
+    // The player being kept must be visible, or the games would move onto someone hidden.
+    next = putProfiles(next, getProfiles(next).map((profile) => (profile.id === into && profile.archived ? { ...profile, archived: false, updatedAt: Date.now() } : profile)));
+    next = mergeProfiles(next, from, into);
+    account = into;
+  }
+  // Any other automatic "You" left behind by a third device joins the same person.
+  next = claimMe(next, account);
+  return { ...putMeId(next, account), [ACCOUNT_ME_KEY]: account };
 }
 
 export function hasClubData(doc: SyncDocument): boolean {

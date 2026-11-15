@@ -16,7 +16,7 @@
 // Each Google account can only ever read and write its own row. The Google token is
 // used once at sign-in; afterwards only an HTTP-only cookie is used.
 
-const MAX_BODY_BYTES = 1_000_000;
+const MAX_BODY_BYTES = 4_000_000; // a club with many games and replays outgrew 1 MB; Vercel allows 4.5 MB
 const COOKIE = "switch_session";
 const SESSION_SECONDS = 60 * 60 * 24 * 365; // stay signed in for a year
 const encoder = new TextEncoder();

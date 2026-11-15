@@ -9,6 +9,8 @@ import { getProfiles } from '../switch/profiles';
 import { FeltHeader, MiniFan } from '../ui';
 import { MODES, modeInfo, ONLINE_MAX_PLAYERS, type PlayMode } from '../switch/series';
 import { onlineModeBlurb, ONLINE_MODE_CARDS } from '../switch/onlineRoom';
+import { fetchShare } from '../switch/shareNight';
+import { readCode, type CodeKind } from '../switch/joinCode';
 
 const LEVELS: readonly ComputerLevel[] = ['relaxed', 'standard', 'sharp'];
 const NAME_KEY = 'switchOnlineName';
@@ -30,10 +32,12 @@ type Props = {
   onBack: () => void;
   /** A seat has been taken: go and sit at the table. */
   onSeated: () => void;
+  /** The code turned out to be a scored night or a club, not a table: go there instead. */
+  onOpenCode?: (kind: CodeKind, code: string) => void;
 };
 
 /** PLAY WITH FRIENDS: start a private table or join one with a code. Computers fill any empty seats. */
-export default function FriendsTable({ initialCode = '', onBack, onSeated }: Props) {
+export default function FriendsTable({ initialCode = '', onBack, onSeated, onOpenCode }: Props) {
   const keyboard = useKeyboard();
   const [view, setView] = useState<'menu' | 'create' | 'join'>(initialCode ? 'join' : 'menu');
   const [name, setName] = useState(rememberedName);
@@ -45,11 +49,15 @@ export default function FriendsTable({ initialCode = '', onBack, onSeated }: Pro
   const fewest = modeInfo(mode).minPlayers;
   const most = ONLINE_MAX_PLAYERS[mode];
   const pickMode = (next: PlayMode) => { setMode(next); setSeats((current) => Math.min(ONLINE_MAX_PLAYERS[next], Math.max(current, modeInfo(next).minPlayers))); };
-  const [code, setCode] = useState(cleanTableCode(initialCode));
+  const [code, setCode] = useState(readCode(initialCode).code.slice(0, 6));
   const [found, setFound] = useState<RoomSummary | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState('');
   const kept = loadSeat();
+
+  // Opening the same invitation again (a second tap on the link, or the app reopening on it) must take you back to your seat.
+  // Joining a second time would fail, because your own name is already at the table.
+  useEffect(() => { if (initialCode && kept && kept.code === readCode(initialCode).code.slice(0, 6)) onSeated(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // As soon as a full code is in, look the table up so the person can see who is already there.
   useEffect(() => {
@@ -57,7 +65,11 @@ export default function FriendsTable({ initialCode = '', onBack, onSeated }: Pro
     if (view !== 'join' || code.length !== 6) return;
     let alive = true;
     lookupTable(code).then((summary) => { if (alive) { setFound(summary); setProblem(summary.open ? '' : summary.status === 'lobby' ? 'That table is full.' : 'That game has already started.'); } })
-      .catch((reason: Error) => { if (alive) setProblem(reason.message); });
+      .catch((reason: Error) => {
+        if (!alive) return;
+        // Not a table? It may be a scored night with the same kind of code, which opens on its own screen.
+        fetchShare(code).then(() => { if (alive && onOpenCode) onOpenCode('night', code); else if (alive) setProblem(reason.message); }).catch(() => { if (alive) setProblem(reason.message); });
+      });
     return () => { alive = false; };
   }, [view, code]);
 
@@ -132,7 +144,7 @@ export default function FriendsTable({ initialCode = '', onBack, onSeated }: Pro
 
     {view === 'join' && <div className="friends-form">
       <label className="friends-field"><span>Table code</span>
-        <KeyboardInput aria-label="Table code" className="code-input" placeholder="ABC234" value={code} autoCapitalize="characters" autoCorrect="off" spellCheck={false} onChange={(event) => { setProblem(''); setCode(cleanTableCode(event.target.value)); }} /></label>
+        <KeyboardInput aria-label="Table code" className="code-input" placeholder="ABC234" value={code} autoCapitalize="characters" autoCorrect="off" spellCheck={false} onChange={(event) => { setProblem(''); const read = readCode(event.target.value); if (read.kind === 'club' && onOpenCode) { onOpenCode('club', read.code); return; } setCode(read.code.slice(0, 6)); }} /></label>
       {found && <p className="friends-found" role="status"><strong>{found.seats.filter((seat) => seat.kind === 'human').map((seat) => seat.name).join(', ')}</strong> {found.seats.filter((seat) => seat.kind === 'human').length === 1 ? 'is' : 'are'} at this table. {found.open ? `${found.capacity - found.seats.length} ${found.capacity - found.seats.length === 1 ? 'seat is' : 'seats are'} free.` : ''}</p>}
       {nameField}
       {problem && <p className="lobby-note center" role="alert">{problem}</p>}

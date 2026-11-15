@@ -84,7 +84,7 @@ export interface JoinedPlayer { readonly name: string; readonly at: number }
 export async function fetchShare(code: string): Promise<{ snapshot: NightSnapshot; results: SwitchNightRecord[]; joined: JoinedPlayer[]; updatedAt: number }> {
   const response = await fetch(`/api/night?code=${encodeURIComponent(code.trim().toUpperCase())}`, { cache: "no-store" });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.error || "Could not load that night.");
+  if (!response.ok || !body.snapshot) throw new Error(body.error || "Could not load that night.");
   return { snapshot: body.snapshot, results: Array.isArray(body.results) ? body.results : [], joined: Array.isArray(body.joined) ? body.joined : [], updatedAt: body.updatedAt };
 }
 /** Friend side: tells the host "I am Martin", so the host can see the invitation worked. Safe to repeat. */
