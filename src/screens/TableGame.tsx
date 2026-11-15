@@ -67,6 +67,19 @@ type Showing = { id: number; before: TableState; after: TableState; action: Game
 /** How long you have to say "Last Card" before a computer spots that you did not: five seconds. */
 const callGrace = () => (paceIsHuman() ? LAST_CARD_GRACE_MS : 1600);
 
+/**
+ * Now and then a computer forgets to say "Last Card" and is caught, the way people are (owner request, 15 Nov 2026).
+ * Easy forgets most, Hard hardly ever. Automated test browsers never forget unless a test sets `switchForgetLastCard` to a chance.
+ */
+const FORGET_CHANCE: Record<ComputerLevel, number> = { relaxed: 0.15, standard: 0.08, sharp: 0.03 };
+function forgetChance(level: ComputerLevel): number {
+  try {
+    const forced = window.localStorage.getItem('switchForgetLastCard');
+    if (forced !== null) return Number(forced) || 0;
+  } catch { /* storage blocked: use the normal chance */ }
+  return paceIsHuman() ? FORGET_CHANCE[level] ?? 0 : 0;
+}
+
 /** When this game is one of a tournament's games, the series screen runs the show: it names the seats and decides what happens next. */
 export type SeriesGame = { title: string; seriesId: string; mode: PlayMode; /** League rounds: players leave as they go out and the rest play on until every place is decided (ruling 24). */ playOn?: boolean; onFinished: (table: TableState, gameId: string) => void };
 
@@ -98,6 +111,8 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   // "Last Card" is the player's own job: the button is always there, nothing prompts for it, and forgetting costs two cards.
   const [lastCalled, setLastCalledState] = useState(() => resume?.lastCardCalled ?? false);
   const calledRef = useRef(lastCalled);
+  /** The computer seat that has just gone down to one card without saying "Last Card". It is caught once its move has been shown. */
+  const forgotRef = useRef<number | null>(null);
   /** Whether Last Card had been called at the moment the final card of your hand was selected (ruling 20: it must come first). */
   const calledBeforeFinalRef = useRef(false);
   const setLastCalled = (value: boolean) => { calledRef.current = value; setLastCalledState(value); };
@@ -196,7 +211,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     showId.current += 1;
     const steps = planTurn(before, action, after, names, { think, missedCall });
     let line = describe(before, after, names[before.turn], action);
-    if (before.turn !== 0 && after.status === 'playing' && after.hands[before.turn].length === 1) line += ` ${names[before.turn]} says "Last Card".`;
+    if (before.turn !== 0 && after.status === 'playing' && after.hands[before.turn].length === 1 && forgotRef.current !== before.turn) line += ` ${names[before.turn]} says "Last Card".`;
     if (missedCall) line += ' You had not said "Last Card", so you pick up two.';
     setGame(after);
     setShowing({ id: showId.current, before, after, action, steps, at: 0, line });
@@ -209,6 +224,17 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
       push(showing.line);
       setShowing(null);
       busy.current = false;
+      // A computer that went down to one card without saying "Last Card" is caught, and picks up two.
+      const forgot = forgotRef.current;
+      forgotRef.current = null;
+      if (forgot !== null && gameRef.current.status === 'playing' && gameRef.current.hands[forgot]?.length === 1) {
+        const caught = dealTo(gameRef.current, forgot, 2);
+        shout(names[forgot]);
+        cue('penalty');
+        push(`${names[forgot]} forgot to say "Last Card" and picks up two cards.`);
+        recorder.move({ seat: forgot, type: 'spot', counts: caught.hands.map((cards) => cards.length) });
+        setGame(caught);
+      }
       sayQueued();
       return;
     }
@@ -292,7 +318,10 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
         queuedBanter.current.push({ kind: 'spotted', victim: 0, by: before.turn });
       }
       const action = chooseTableAction(before, Math.random, level, { personality: names[before.turn] });
-      show(before, action, applyTableAction(before, action), !spotted);
+      const result = applyTableAction(before, action);
+      const seat = before.turn;
+      forgotRef.current = result.status === 'playing' && result.hands[seat].length === 1 && before.hands[seat].length !== 1 && Math.random() < forgetChance(level) ? seat : null;
+      show(before, action, result, !spotted);
     }, exposed ? timings.highlight + callGrace() : timings.highlight);
     return () => window.clearTimeout(timer);
   }, [showing, game.status, game.turn, game.move, lastCalled, level, timings]);

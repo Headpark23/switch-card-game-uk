@@ -252,6 +252,13 @@ test("saying Last Card inside the five seconds means nothing is spotted", async 
   await expect(page.locator(".player-hand button")).toHaveCount(1);
 });
 
+test("a computer can forget to say Last Card, and is caught with a HAHA and two more cards", async ({ page }) => {
+  await seedTable(page, { hands: [["9H", "QS", "KD"], ["3C", "4C"]], discard: ["4D", "6C"], suit: "C", turn: 1 }, { switchForgetLastCard: "1" });
+  await resume(page);
+  await expect(page.getByTestId("haha-banner")).toContainText("HAHA - John never said Last Card", { timeout: 15_000 });
+  await expect(page.getByText('John forgot to say "Last Card" and picks up two cards.')).toBeVisible();
+});
+
 test("an eight makes the next player miss a turn, and the highlight follows the engine", async ({ page }) => {
   await seedTable(page, { hands: [["8H", "9C", "3S"], ["3C", "4C", "6C"], ["QD", "QC", "4S"]], discard: ["4D", "8C"], suit: "C", turn: 0 });
   await resume(page);
