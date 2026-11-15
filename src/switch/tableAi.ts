@@ -1,7 +1,7 @@
 import { isBlackKing, isRedKing, rankOf, suitOf } from "./cards";
 import { isPlayableDuringPenalty } from "./rules";
 import type { ComputerLevel } from "./ai";
-import { bestChain, NO_TACTICS, shouldPickUp, tacticScore, tacticWeights, type PlayOutcome, type TacticView, type TacticWeights } from "./computerTactics";
+import { bestChain, COHESION_VALUE, handCohesion, NO_TACTICS, shouldPickUp, tacticScore, tacticWeights, type PlayOutcome, type TacticView, type TacticWeights } from "./computerTactics";
 import { applyTableAction, decksFor, liveSeats, nextSeat, tableLegalMoves, wentOut, type TableState } from "./table";
 import type { CardId, GameAction, RandomSource } from "./types";
 
@@ -112,6 +112,8 @@ function score(state: TableState, action: GameAction, level: ComputerLevel, cont
   } else {
     total += remaining.filter((card) => suitOf(card) === next.currentSuit).length * 12;
   }
+  // Hard keeps its hand connected: cards that share a suit or a number can answer each other.
+  if (liveSeats(next) === 2) total += handCohesion(remaining) * COHESION_VALUE;
   if (remaining.length === 1 && rankOf(remaining[0]) === "7") total -= 150;
   if (remaining.length === 1 && rankOf(remaining[0]) === "A" && weights.aces <= 0) total += 60;
   return total + tactical;

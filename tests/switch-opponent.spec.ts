@@ -83,8 +83,8 @@ test("difficulty levels are ordered by strength", async ({ page }) => {
       return wins / finished;
     }
     return {
-      standardVsRelaxed: seatAWinRate("standard", "relaxed", 600),
-      sharpVsStandard: seatAWinRate("sharp", "standard", 600),
+      standardVsRelaxed: seatAWinRate("standard", "relaxed", 1500),
+      sharpVsStandard: seatAWinRate("sharp", "standard", 1500),
     };
   });
   expect(result.standardVsRelaxed).toBeGreaterThan(0.6);

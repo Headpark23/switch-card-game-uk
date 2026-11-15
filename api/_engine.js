@@ -702,6 +702,16 @@ function chanceHolds(view, wanted, holding) {
 	for (let index = 0; index < holding; index += 1) miss *= (pool - wanted - index) / (pool - index);
 	return clamp(1 - miss, 0, 1);
 }
+/**
+* How well a hand hangs together: the number of pairs of cards that share a suit or a number. A connected hand has
+* more ways to answer whatever lands next, so Hard prefers plays that leave one (measured in scripts/ai-levels.mjs:
+* about three points of win rate over Medium heads up; with three or more players it measured slightly worse, so it is used heads up only). Counted from the computer's own cards only.
+*/
+function handCohesion(hand) {
+	let links = 0;
+	for (let first = 0; first < hand.length; first += 1) for (let second = first + 1; second < hand.length; second += 1) if (suitOf(hand[first]) === suitOf(hand[second]) || rankOf(hand[first]) === rankOf(hand[second])) links += 1;
+	return links;
+}
 /** How much the computer minds spending a play: aces most, ordinary cards not at all. */
 function holdValue(cards) {
 	const first = cards[0];
@@ -875,6 +885,7 @@ function score(state, action, level, context) {
 		if (weights.aces <= 0) total += remaining.length <= 2 ? 80 : -170;
 		if (action.chosenSuit) total += remaining.filter((card) => suitOf(card) === action.chosenSuit).length * 25;
 	} else total += remaining.filter((card) => suitOf(card) === next.currentSuit).length * 12;
+	if (liveSeats(next) === 2) total += handCohesion(remaining) * 70;
 	if (remaining.length === 1 && rankOf(remaining[0]) === "7") total -= 150;
 	if (remaining.length === 1 && rankOf(remaining[0]) === "A" && weights.aces <= 0) total += 60;
 	return total + tactical;
