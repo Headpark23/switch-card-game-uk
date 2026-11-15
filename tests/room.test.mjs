@@ -18,8 +18,8 @@ function seeded(seed) {
 }
 
 const T0 = 1_700_000_000_000;
-async function call(store, { method = "POST", code, op, token, body }, now, random = seeded(1)) {
-  const query = [code ? `code=${code}` : "", op ? `op=${op}` : ""].filter(Boolean).join("&");
+async function call(store, { method = "POST", code, op, token, body, watch }, now, random = seeded(1)) {
+  const query = [code ? `code=${code}` : "", op ? `op=${op}` : "", watch ? `watch=${watch}` : ""].filter(Boolean).join("&");
   const request = new Request(`https://example.test/api/room${query ? `?${query}` : ""}`, { method, headers: { ...(token ? { "x-seat-token": token } : {}), "content-type": "application/json" }, body: method === "GET" ? undefined : JSON.stringify(body ?? {}) });
   const response = await handleRoom(request, store, now, random);
   return { status: response.status, body: await response.json() };
@@ -442,8 +442,16 @@ async function playSeries(mode, capacity, extra = {}, seed = 5) {
       if (!view.game) continue;
       const hidden = view.you.watching ? view.game.hands : view.game.hands.slice(1);
       assert.ok(hidden.every((hand) => hand.every((card) => card === "back")), "only your own cards are ever shown");
-      if (view.you.watching) {
+      // Someone who is not in a game being played sees how their last game ended, and can choose any game being played to watch.
+      const live = view.tables?.find((entry) => entry.playing && !entry.you);
+      if (live && !view.table?.playing) {
+        const looking = (await call(store, { method: "GET", code, token, watch: live.id }, now, random)).body;
+        assert.equal(looking.you.watching, true, "choosing a live game watches it");
+        assert.equal(looking.table.id, live.id);
+        assert.ok(looking.game.hands.every((hand) => hand.every((card) => card === "back")), "a watcher sees every hand face down");
         watched += 1;
+      }
+      if (view.you.watching) {
         assert.equal(view.seats.some((seat) => seat.you), false);
         if (view.table?.playing) assert.equal((await call(store, { code, op: "move", token, body: { action: { type: "draw" } } }, now, random)).status, 409, "a watcher cannot move");
       }
@@ -495,7 +503,8 @@ test("a big table plays its games at the same time: every Cup match of a round, 
 
 test("online Knock Out: whoever is left holding cards is out, and the people who are out watch the rest", async () => {
   const played = await playSeries("knockout", 5, {}, 9);
-  assert.ok(played.watched > 0 || played.room.series.part.out.slice(0, -1).every((id) => played.room.seats[Number(id.slice(1))].kind === "computer"), "a person knocked out early watches");
+  const humanOutEarly = played.room.series.part.out.slice(0, -1).some((id) => played.room.seats[Number(id.slice(1))].kind === "human");
+  assert.ok(played.watched > 0 || !humanOutEarly, "a person knocked out early can watch the rest");
   const order = played.room.series.part;
   assert.equal(order.remaining.length, 1);
   assert.equal(order.out.length, 4);
