@@ -1284,5 +1284,5 @@
 .table-game .seat-row.many .reaction-bubble:not(.sticker){max-width:min(150px,42vw)}
 .table-game .seat-row.many .seat:nth-child(4n+1) .reaction-bubble:not(.sticker),.table-game .seat-row.many .seat:nth-child(4n+2) .reaction-bubble:not(.sticker){left:0;right:auto;translate:0 0}
 .table-game .seat-row.many .seat:nth-child(4n+3) .reaction-bubble:not(.sticker),.table-game .seat-row.many .seat:nth-child(4n) .reaction-bubble:not(.sticker){left:auto;right:0;translate:0 0}
-/* The effect pill sits at the top of the table so it never covers the suit badge below the pile. */
-.table-game .table-announce{bottom:auto;top:6px}
+/* The effect pill sits just below the table, over the notice line that says the same thing, so it never covers a card or the suit badge. */
+.table-game .table-announce{bottom:auto;top:100%;margin-top:3px;width:max-content;white-space:nowrap}
