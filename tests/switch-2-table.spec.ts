@@ -218,9 +218,22 @@ test("Play selected never leaves the phone: a big hand and four cards selected, 
   }
 });
 
-test("a computer takes at least five seconds over its move", async ({ page }) => {
+test("Quick pace: a computer thinks for about a second, not five", async ({ page }) => {
   test.setTimeout(40_000);
   await seedTable(page, { hands: [["9C", "3D"], ["3C", "4C", "8C"]], discard: ["4D", "6C"], suit: "C", turn: 1 }, { switchRealPace: "1" });
+  await resume(page);
+  const top = () => page.getByTestId("discard-pile").getAttribute("data-top");
+  const start = Date.now();
+  await expect(page.getByTestId("turn-status")).toContainText("CHOOSING");
+  const before = await top();
+  await expect.poll(top, { timeout: 15_000, intervals: [100] }).not.toBe(before);
+  expect(Date.now() - start).toBeLessThan(3500);
+});
+
+test("a computer takes at least five seconds over its move", async ({ page }) => {
+  test.setTimeout(40_000);
+  await seedTable(page, { hands: [["9C", "3D"], ["3C", "4C", "8C"]], discard: ["4D", "6C"], suit: "C", turn: 1 }, { switchRealPace: "1", switchTableSpeed: "natural" });
+  await page.addInitScript(() => localStorage.setItem("switchTableSpeed", "natural"));
   await resume(page);
   const top = () => page.getByTestId("discard-pile").getAttribute("data-top");
   const start = Date.now();
