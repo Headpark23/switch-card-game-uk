@@ -196,7 +196,7 @@
   .lobby-group h2 { font-size: 15px; margin-bottom: 10px; }
   .lobby-note { font-size: 14px; }
   .lobby-table { height: 168px; }
-  .mode-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .mode-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .personalities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .lobby-side .deal-button { min-height: 62px; font-size: 19px; }
   .lobby-side .lobby-group { margin: 0; }

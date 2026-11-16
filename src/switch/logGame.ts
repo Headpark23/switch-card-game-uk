@@ -23,7 +23,7 @@ export function logComputerGame(game: { id?: string; opponents: number; level: C
 }
 
 const ONLINE_FORMATS: Record<PlayMode, { format: ScoreFormat; label: string }> = {
-  single: { format: "head-to-head", label: "Switch" }, match: { format: "head-to-head", label: "Switch" }, knockout: { format: "knockout", label: "Knock Out" }, group: { format: "league", label: "Group Play" },
+  single: { format: "head-to-head", label: "Switch" }, match: { format: "head-to-head", label: "Switch" }, lastout: { format: "knockout", label: "Last One Out" }, knockout: { format: "knockout", label: "Knock Out" }, group: { format: "league", label: "Group Play" },
   cup: { format: "cup", label: "Switch Cup" }, darts: { format: "darts", label: "Darts" }, dominoes: { format: "domino", label: "Dominoes" },
 };
 

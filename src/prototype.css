@@ -1290,3 +1290,24 @@
 .game-tutorial .discard-pile{position:relative}
 .game-tutorial .discard-pile>span.suit-badge{position:absolute;left:50%;bottom:-18px;margin:0;translate:-50% 0;z-index:6;white-space:nowrap;animation:suit-pop .5s cubic-bezier(.2,1.5,.4,1) both,suit-away .35s ease-in 3.15s both}
 @keyframes suit-away{to{opacity:0}}
+
+/* Game type descriptions, the fuller explanation, and the computer picker (16 Nov 2026) */
+.mode-grid{grid-template-columns:1fr}
+.mode-grid button{min-height:58px}
+.mode-grid button .mode-text{display:grid;gap:2px;min-width:0}
+.mode-grid button .mode-text small{font-size:12px;line-height:1.3;color:var(--muted);font-weight:500}
+.mode-grid button.active .mode-text small{color:#e9ddb9}
+.mode-detail{margin-top:10px;border:1.5px solid #d8c99f;border-radius:14px;background:#fffdf6;padding:12px 14px;display:grid;gap:6px}
+.mode-detail h3{margin:0;font-family:'DM Serif Display',serif;font-size:19px;font-weight:400;color:var(--green)}
+.mode-detail p{margin:0;font-size:13.5px;line-height:1.45;color:var(--ink)}
+.mode-detail .mode-short{font-weight:700}
+.mode-detail .mode-scoring{padding-top:6px;border-top:1px solid #e8dcb8}
+.pick-actions{display:flex;margin:8px 0}
+.pick-actions button{display:inline-flex;align-items:center;gap:6px;border:1.5px solid #d8c99f;border-radius:999px;background:#fffaf0;padding:8px 14px;min-height:40px;font-weight:700;font-size:13px;color:var(--ink)}
+.pick-actions button.active{background:#0d4a37;border-color:#e6c97f;color:#fff}
+.personalities.pickable li{padding:0;border:0;background:none}
+.personalities.pickable li button{display:grid;gap:2px;width:100%;text-align:left;border:1.5px solid #d8c99f;background:#fffaf0;border-radius:12px;padding:9px 12px;font-size:12.5px;color:var(--ink);cursor:pointer}
+.personalities.pickable li button.active{background:#e8f3ec;border-color:#0d4a37;box-shadow:inset 0 0 0 1px #0d4a37}
+.personalities.pickable li button:disabled{opacity:.45;cursor:not-allowed}
+.personalities.pickable .picked-tick{color:#0d4a37;margin-left:auto}
+.personalities.pickable .personality-top{justify-content:flex-start;align-items:center}

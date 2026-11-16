@@ -184,7 +184,7 @@ export function measureBadges(
   for (const game of finished) {
     if (game.series?.won) { seriesStreak += 1; seriesBest = Math.max(seriesBest, seriesStreak); } else seriesStreak = 0;
   }
-  const modesWon = ["knockout", "group", "cup", "darts", "dominoes"].filter((mode) => seriesWon(mode) > 0).length;
+  const modesWon = ["knockout", "lastout", "group", "cup", "darts", "dominoes"].filter((mode) => seriesWon(mode) > 0).length;
   return {
     played, wins: totalWins, streak: best, formats: formats.size, allFormats: ALL_FORMATS.filter((format) => formats.has(format)).length,
     winsCup: wins.cup ?? 0, winsKnockout: wins.knockout ?? 0, winsDomino: wins.domino ?? 0, winsDarts: wins.darts ?? 0, winsDuel: wins["head-to-head"] ?? 0, winsLeague: wins.league ?? 0,
@@ -194,7 +194,7 @@ export function measureBadges(
     cpuSharpWins: cpuWon.filter((game) => game.level === "sharp").length, cpuRelaxedWins: cpuWon.filter((game) => game.level === "relaxed").length,
     cpuFourWins: cpuWon.filter((game) => game.opponents >= 4).length, cpuTableWins: cpuWon.filter((game) => game.opponents >= 3).length,
     cpuFast: cpuWon.filter((game) => game.moves <= 25).length,
-    cpuKo: seriesWon("knockout"), cpuGroup: seriesWon("group"), cpuCup: seriesWon("cup"), cpuDarts: seriesWon("darts"), cpuDominoes: seriesWon("dominoes"),
+    cpuKo: seriesWon("knockout") + seriesWon("lastout"), cpuGroup: seriesWon("group"), cpuCup: seriesWon("cup"), cpuDarts: seriesWon("darts"), cpuDominoes: seriesWon("dominoes"),
     cpuModesWon: modesWon, cpuSeries: finished.length, cpuSeriesStreak: seriesBest,
     cpuEightPlayed: mine.filter((game) => game.opponents >= 7).length, cpuEight: cpuWon.filter((game) => game.opponents >= 7).length,
     venues: venues.size, countries: countries.size, homeWins, awayWins, placedNights: placed,

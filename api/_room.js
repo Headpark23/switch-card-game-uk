@@ -26,8 +26,8 @@ const SUITS = ["S", "H", "D", "C"];
 /** The seven computers of the Play lobby first, then more for big tables. */
 const COMPUTER_NAMES = ["John", "Paul", "George", "Ringo", "Ziggy", "Marley", "Bowie", "Elton", "Freddie", "Dolly", "Stevie", "Cher", "Prince", "Adele", "Elvis"];
 /** The ways to play at an online table. Knock Out with friends is "last one out leaves" (ruling 11; owner decision, 14 Nov 2026). */
-export const MODES = Object.freeze(["single", "match", "knockout", "cup", "group", "darts", "dominoes"]);
-const MODE_NAMES = { single: "game", match: "match", knockout: "Knock Out", cup: "Switch Cup", group: "Group Play", darts: "Darts match", dominoes: "Dominoes match" };
+export const MODES = Object.freeze(["single", "match", "lastout", "knockout", "cup", "group", "darts", "dominoes"]);
+const MODE_NAMES = { single: "game", match: "match", lastout: "Last One Out", knockout: "Knock Out", cup: "Switch Cup", group: "Group Play", darts: "Darts match", dominoes: "Dominoes match" };
 /** The most people at one online table (ruling 32). */
 export const MAX_PLAYERS = 16;
 
@@ -92,32 +92,41 @@ function cleanName(value) {
 }
 const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
+/** The computers the host asked for: known names only, no repeats, never more than the seats the computers could fill. */
+function cleanComputers(value, capacity) {
+  if (value === undefined || value === null) return {};
+  if (!Array.isArray(value)) throw new RoomError("Pick computers from the list.");
+  const names = value.filter((entry, index) => typeof entry === "string" && COMPUTER_NAMES.slice(0, 7).includes(entry) && value.indexOf(entry) === index).slice(0, Math.max(0, capacity - 1));
+  return names.length ? { computers: names } : {};
+}
+
 function humanSeat(name, token, now, host = false) {
   return { name, kind: "human", tokenHash: hash(token), host, joinedAt: now, seenAt: now, called: false, exposedAt: null, autoStreak: 0, autoTotal: 0, lastReactAt: 0 };
 }
 
 /** What the host chose: the way to play and its settings. Anything a tournament needs is checked by the app's own rules. */
-function cleanSetup({ mode, setsToWin, limit, matchType, games }, capacity, level) {
+function cleanSetup({ mode, setsToWin, limit, matchType, games, computers }, capacity, level) {
+  const picked = cleanComputers(computers, capacity);
   const chosen = mode === undefined ? "single" : mode;
   if (!MODES.includes(chosen)) throw new RoomError("That way to play is not recognised.");
   if (capacity > ONLINE_MAX_PLAYERS[chosen]) throw new RoomError(chosen === "single" ? `A single game is for up to ${MAX_SEATS} players.` : `${MODE_NAMES[chosen]} is for up to ${ONLINE_MAX_PLAYERS[chosen]} players.`);
-  if (chosen === "single") return { mode: "single" };
+  if (chosen === "single") return { mode: "single", ...picked };
   // "Games": first to N wins or best of N. One game is just a single game, played the ordinary way.
-  if (chosen === "match" && Number(games ?? 1) === 1) return { mode: "single" };
-  const setup = { mode: chosen, opponents: capacity - 1, level, knockout: "last-out",
+  if (chosen === "match" && Number(games ?? 1) === 1) return { mode: "single", ...picked };
+  const setup = { mode: chosen, opponents: capacity - 1, level, knockout: "last-out", ...picked,
     ...(chosen === "match" ? { matchType, games: Number(games) } : {}), ...(chosen === "darts" ? { setsToWin: Number(setsToWin ?? 3) } : {}), ...(chosen === "dominoes" ? { limit: Number(limit ?? 100) } : {}) };
   const problem = validateSetup(setup, ONLINE_MAX_PLAYERS[chosen]);
   if (problem) throw new RoomError(problem.replace(/, so at least \d+ computers?\./, "."));
   return setup;
 }
 
-export function createRoom({ seats, level, name, mode, setsToWin, limit, matchType, games }, token, now) {
+export function createRoom({ seats, level, name, mode, setsToWin, limit, matchType, games, computers }, token, now) {
   const capacity = Number(seats);
   if (!Number.isInteger(capacity) || capacity < 2 || capacity > MAX_PLAYERS) throw new RoomError(`A table is for 2 to ${MAX_PLAYERS} players.`);
   const chosen = level === undefined ? "standard" : level;
   if (!LEVELS.includes(chosen)) throw new RoomError("Pick relaxed, standard or sharp computers.");
   return {
-    v: 3, rev: 0, createdAt: now, updatedAt: now, status: "lobby", capacity, level: chosen, setup: cleanSetup({ mode, setsToWin, limit, matchType, games }, capacity, chosen),
+    v: 3, rev: 0, createdAt: now, updatedAt: now, status: "lobby", capacity, level: chosen, setup: cleanSetup({ mode, setsToWin, limit, matchType, games, computers }, capacity, chosen),
     gameNo: 0, reactSeq: 0, newsSeq: 0, seriesNo: 0,
     seats: [humanSeat(cleanName(name), token, now, true)], tables: [], reactions: [], news: [], history: [],
     series: null, ready: {},
@@ -194,7 +203,12 @@ export function startRoom(room, seatIndex, now, random = secureRandom) {
   if (room.status !== "lobby") throw new RoomError("The game has already started.", 409);
   const humans = room.seats.filter((seat) => seat.kind === "human");
   if (humans.length < 2) throw new RoomError("Wait for at least one friend to join first.", 409);
-  const free = COMPUTER_NAMES.filter((candidate) => !humans.some((seat) => sameName(seat.name, candidate)));
+  // The host may have picked which computers to face. Picks come first (unless a guest already has that name); other seats are drawn at random.
+  const wanted = (room.setup?.computers ?? []).filter((candidate) => !humans.some((seat) => sameName(seat.name, candidate)));
+  const open = (candidate) => !wanted.includes(candidate) && !humans.some((seat) => sameName(seat.name, candidate));
+  // The seven computers with their own voices are drawn at random first; the extra names only fill very big tables.
+  const rest = [...shuffled(COMPUTER_NAMES.slice(0, 7).filter(open), random), ...COMPUTER_NAMES.slice(7).filter(open)];
+  const free = [...wanted, ...rest];
   const computers = Array.from({ length: room.capacity - humans.length }, (_, index) => ({
     name: free[index] ?? `Computer ${index + 1}`, kind: "computer", host: false, called: true, exposedAt: null, autoStreak: 0, autoTotal: 0, seenAt: 0, lastReactAt: 0,
   }));
@@ -727,7 +741,7 @@ async function route(request, store, now, random, observe) {
 
   if (!code) {
     const seatToken = randomBytes(18).toString("hex");
-    const room = createRoom({ seats: body.seats, level: body.level, name: body.name, mode: body.mode, setsToWin: body.setsToWin, limit: body.limit, matchType: body.matchType, games: body.games }, seatToken, now);
+    const room = createRoom({ seats: body.seats, level: body.level, name: body.name, mode: body.mode, setsToWin: body.setsToWin, limit: body.limit, matchType: body.matchType, games: body.games, computers: body.computers }, seatToken, now);
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const fresh = newCode();
       room.code = fresh;

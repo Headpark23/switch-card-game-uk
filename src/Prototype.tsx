@@ -112,7 +112,7 @@ export default function Prototype() {
   /** Which door of the Club screen Home opened: share my club, or join one. Passed down as `startMode` once the Club screen takes it. */
   const [clubMode, setClubMode] = useState<'share' | 'join' | undefined>(undefined);
   const [meSection, setMeSection] = useState<'overview' | 'badges'>('overview');
-  const [table, setTable] = useState<{ opponents: number; level: ComputerLevel; resume: boolean; deal: number }>({ opponents: 2, level: 'standard', resume: false, deal: 0 });
+  const [table, setTable] = useState<{ opponents: number; level: ComputerLevel; resume: boolean; deal: number; names?: string[] }>({ opponents: 2, level: 'standard', resume: false, deal: 0 });
   /** Where a learning page goes back to: the rules guide, or Home when it was opened from Home. */
   const [learnBack, setLearnBack] = useState<'Learn' | 'Rules'>('Learn');
   /** The game being replayed, and the screen to go back to afterwards. */
@@ -191,11 +191,11 @@ export default function Prototype() {
   const [seriesAtTable, setSeriesAtTable] = useState(false);
   const [seriesRun, setSeriesRun] = useState<{ setup: SeriesSetup; run: number } | null>(null);
   const startSeriesPlay = (setup: SeriesSetup) => { setSeriesRun((current) => ({ setup, run: (current?.run ?? 0) + 1 })); go('Series'); };
-  const dealMeIn = (opponents: number, level: ComputerLevel) => { setTable((current) => ({ opponents, level, resume: false, deal: current.deal + 1 })); go('Table'); };
+  const dealMeIn = (opponents: number, level: ComputerLevel, computers?: string[]) => { setTable((current) => ({ opponents, level, resume: false, deal: current.deal + 1, names: computers ? ['You', ...computers] : undefined })); go('Table'); };
   const resumeTable = () => {
     const saved = readActiveTable();
     if (!saved) { go('Play'); return; }
-    setTable((current) => ({ opponents: saved.opponents, level: saved.level, resume: true, deal: current.deal + 1 }));
+    setTable((current) => ({ opponents: saved.opponents, level: saved.level, resume: true, deal: current.deal + 1, names: undefined }));
     go('Table');
   };
   const openScore = (view: ScoreView = 'score') => { setScoreView(view); go('Score'); };
@@ -309,7 +309,7 @@ export default function Prototype() {
             {page === 'Play' && <PlayLobby onDeal={dealMeIn} onStartSeries={startSeriesPlay} onResume={resumeTable} onMe={() => openMe('overview')} onLearn={openRules} onFriends={() => go(loadSeat() ? 'Online' : 'Friends')} />}
             {page === 'Friends' && <FriendsTable key={inviteCode} initialCode={inviteCode} onOpenCode={openCode} onBack={() => { setInviteCode(''); go('Play'); }} onSeated={() => { setInviteCode(''); go('Online'); }} />}
             {page === 'Online' && <OnlineTable onLeave={() => go('Play')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onReplay={openReplay} />}
-            {page === 'Table' && <TableGame key={table.deal} opponents={table.opponents} level={table.level} resume={table.resume ? readActiveTable() : null} onExit={() => go('Play')} onChange={() => go('Play')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onReplay={openReplay} />}
+            {page === 'Table' && <TableGame key={table.deal} opponents={table.opponents} level={table.level} resume={table.resume ? readActiveTable() : null} seatNames={table.resume ? undefined : table.names} onExit={() => go('Play')} onChange={() => go('Play')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onReplay={openReplay} />}
             {page === 'Series' && seriesRun && <SeriesPlay key={seriesRun.run} setup={seriesRun.setup} onTable={setSeriesAtTable} onExit={() => go('Play')} onChange={() => go('Play')} onMe={() => openMe('overview')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} />}
             {page === 'Me' && <MePage key={meSection} initialSection={meSection} onPlay={() => go('Play')} onClub={() => openClub('stats')} onPrivacy={() => go('Privacy')} onReplay={openReplay} onBack={() => go('Learn')} />}
             {page === 'Replay' && replayOf && <ReplayScreen gameId={replayOf.id} onBack={() => (replayOf.back === 'Me' ? openMe('overview') : go(replayOf.back))} />}

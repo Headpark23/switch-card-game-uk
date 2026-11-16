@@ -476,7 +476,7 @@ async function playSeries(mode, capacity, extra = {}, seed = 5) {
   return { room: room(), games, watched, maxLive, view: async (who) => (await call(store, { method: "GET", code, token: tokens[who] }, now, random)).body };
 }
 
-for (const [mode, capacity, extra] of [["darts", 3, { setsToWin: 3 }], ["dominoes", 4, { limit: 30 }], ["knockout", 4, {}], ["cup", 4, {}], ["group", 6, {}]]) {
+for (const [mode, capacity, extra] of [["darts", 3, { setsToWin: 3 }], ["dominoes", 4, { limit: 30 }], ["lastout", 5, {}], ["knockout", 4, {}], ["cup", 4, {}], ["group", 6, {}]]) {
   test(`online ${mode}: a whole tournament is played to the end, one game at a time, and nobody sees another hand`, async () => {
     const played = await playSeries(mode, capacity, extra);
     const final = await played.view(0);
@@ -485,9 +485,38 @@ for (const [mode, capacity, extra] of [["darts", 3, { setsToWin: 3 }], ["dominoe
     assert.ok(final.series.outcome.winnerId);
     assert.equal(final.series.outcome.order.length, capacity);
     assert.ok(final.series.state.base.games >= 1, "games were played");
-    if (mode === "knockout") assert.equal(played.room.series.kind, "lastout", "Knock Out with friends: last one out leaves");
+    if (mode === "knockout" || mode === "lastout") assert.equal(played.room.series.kind, "lastout", "last one out leaves, one more game each time");
   });
 }
+
+test("online Last One Out: five become four, then three, then two, and the last one standing wins", async () => {
+  const played = await playSeries("lastout", 5, {});
+  const final = await played.view(0);
+  assert.equal(final.series.over, true);
+  assert.equal(final.series.state.part.out.length, 4, "four players drop out, one by one");
+  assert.equal(final.series.outcome.order.length, 5);
+  assert.equal(final.series.state.base.games, 4, "5 players, 4 games: 5, 4, 3, then the 1 v 1 final");
+});
+
+test("the host can pick which computers fill the empty seats, and the rest are drawn at random", async () => {
+  const store = memoryStore();
+  const random = seeded(11);
+  const made = await call(store, { body: { seats: 5, level: "standard", name: "Ana", mode: "lastout", computers: ["Bowie", "Marley", "Bowie", "Nobody"] } }, T0, random);
+  assert.equal(made.status, 201, JSON.stringify(made.body));
+  assert.deepEqual(made.body.view.setup.computers, ["Bowie", "Marley"], "only known names, once each");
+  const joined = await call(store, { code: made.body.code, op: "join", body: { name: "Ben" } }, T0, random);
+  assert.ok(joined.status < 300, JSON.stringify(joined.body));
+  const started = await call(store, { code: made.body.code, op: "start", token: made.body.token }, T0, random);
+  assert.equal(started.status, 200, JSON.stringify(started.body));
+  const computers = store.rows.get(made.body.code).seats.filter((seat) => seat.kind === "computer").map((seat) => seat.name);
+  assert.equal(computers.length, 3);
+  assert.ok(computers.includes("Bowie") && computers.includes("Marley"), "the picked computers sit down");
+  assert.equal(new Set(computers).size, 3, "nobody twice");
+  const plain = await call(store, { body: { seats: 4, level: "standard", name: "Cat" } }, T0, random);
+  assert.equal(plain.body.view.setup.computers, undefined, "no picks means a surprise table");
+  const bad = await call(store, { body: { seats: 4, level: "standard", name: "Dee", computers: "Bowie" } }, T0, random);
+  assert.equal(bad.status, 400);
+});
 
 test("a big table plays its games at the same time: every Cup match of a round, both leagues, Knock Out split across tables", async () => {
   for (const [mode, capacity, tables] of [["cup", 12, 6], ["group", 12, 2], ["knockout", 12, 2], ["cup", 16, 8], ["group", 16, 3], ["knockout", 16, 2]]) {

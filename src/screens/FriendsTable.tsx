@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, CaretLeft, UsersThree } from '@phosphor-icons/react';
+import { ArrowRight, CaretLeft, Check, Shuffle, UsersThree } from '@phosphor-icons/react';
 import { KeyboardInput, useKeyboard } from '../mobile';
 import { LEVEL_NAMES, type ComputerLevel } from '../switch/ai';
+import { PERSONALITIES } from '../switch/computerTactics';
 import { cleanTableCode, clearSeat, createTable, joinTable, loadSeat, lookupTable, saveSeat, type RoomSummary } from '../switch/onlineRoom';
 import { readClub } from '../switch/clubStore';
 import { getMeId } from '../switch/computerLog';
@@ -49,6 +50,11 @@ export default function FriendsTable({ initialCode = '', onBack, onSeated, onOpe
   const pickMatchType = (next: MatchType) => { setMatchType(next); setGames((current) => (next === 'best' ? (current === 2 ? 3 : MATCH_BEST_OF.includes(current as never) ? current : 3) : MATCH_FIRST_TO.includes(current as never) ? current : Math.min(5, Math.ceil(current / 2)))); };
   const [setsToWin, setSetsToWin] = useState<3 | 5>(3);
   const [limit, setLimit] = useState(100);
+  /** Computers the host wants at the table. Empty means a surprise: any empty seat is drawn at random. */
+  const [picks, setPicks] = useState<string[]>([]);
+  /** Guests take the other seats, so the computers can fill at most all but two (you and one friend). */
+  const maxPicks = Math.max(0, seats - 2);
+  const picked = picks.slice(0, maxPicks);
   const fewest = modeInfo(mode).minPlayers;
   const most = ONLINE_MAX_PLAYERS[mode];
   const pickMode = (next: PlayMode) => { setMode(next); setSeats((current) => Math.min(ONLINE_MAX_PLAYERS[next], Math.max(current, modeInfo(next).minPlayers))); };
@@ -83,7 +89,7 @@ export default function FriendsTable({ initialCode = '', onBack, onSeated, onOpe
     if (!cleanName || busy) return;
     keyboard.hide(); setBusy(true); setProblem(''); remember();
     try {
-      const made = await createTable(cleanName, seats, level, { mode, ...(mode === 'match' ? { matchType, games } : {}), ...(mode === 'darts' ? { setsToWin } : {}), ...(mode === 'dominoes' ? { limit } : {}) });
+      const made = await createTable(cleanName, seats, level, { mode, ...(picked.length ? { computers: picked } : {}), ...(mode === 'match' ? { matchType, games } : {}), ...(mode === 'darts' ? { setsToWin } : {}), ...(mode === 'dominoes' ? { limit } : {}) });
       saveSeat({ code: made.code, token: made.token, name: cleanName });
       onSeated();
     } catch (reason) { setProblem(reason instanceof Error ? reason.message : 'Could not start the table.'); }
@@ -119,8 +125,13 @@ export default function FriendsTable({ initialCode = '', onBack, onSeated, onOpe
       {nameField}
       <div className="lobby-group" role="group" aria-label="Way to play">
         <h2>What are we playing?</h2>
-        <div className="mode-grid">{ONLINE_MODES.map((entry) => <button key={entry.id} aria-pressed={mode === entry.id} className={mode === entry.id ? 'active' : ''} onClick={() => pickMode(entry.id)}><MiniFan codes={ONLINE_MODE_CARDS[entry.id]} /><b>{entry.name}</b></button>)}</div>
-        <p className="lobby-note" data-testid="online-mode-note">{onlineModeBlurb(mode, { mode, matchType, games })}</p>
+        <div className="mode-grid">{ONLINE_MODES.map((entry) => <button key={entry.id} aria-label={entry.name} aria-describedby={`online-mode-blurb-${entry.id}`} aria-pressed={mode === entry.id} className={mode === entry.id ? 'active' : ''} onClick={() => pickMode(entry.id)}><MiniFan codes={ONLINE_MODE_CARDS[entry.id]} /><span className="mode-text"><b>{entry.name}</b><small id={`online-mode-blurb-${entry.id}`}>{entry.blurb}</small></span></button>)}</div>
+        <div className="mode-detail" data-testid="online-mode-detail" aria-live="polite">
+          <h3>How {modeInfo(mode).name} plays</h3>
+          <p className="mode-short" data-testid="online-mode-note">{onlineModeBlurb(mode, { mode, matchType, games })}</p>
+          {modeInfo(mode).how.map((line, index) => <p key={index}>{line}</p>)}
+          <p className="mode-scoring"><strong>Scoring.</strong> {modeInfo(mode).scoring}</p>
+        </div>
       </div>
       {mode === 'match' && <div className="lobby-group" role="group" aria-label="How many games">
         <h2>How many games?</h2>
@@ -142,6 +153,21 @@ export default function FriendsTable({ initialCode = '', onBack, onSeated, onOpe
         <div className="seg seven">{[2, 3, 4, 5, 6, 7, 8].map((count) => <button key={count} aria-pressed={seats === count} className={seats === count ? 'active' : ''} disabled={count < fewest} onClick={() => setSeats(count)} aria-label={`${count} seats`}><b>{count}</b></button>)}</div>
         {most > 8 && <><p className="seat-row-label">Bigger nights</p><div className="seg four compact">{[10, 12, 14, 16].map((count) => <button key={count} aria-pressed={seats === count} className={seats === count ? 'active' : ''} onClick={() => setSeats(count)} aria-label={`${count} seats`}><b>{count}</b></button>)}</div></>}
         <p className="lobby-note">{fewest > 2 ? `${modeInfo(mode).name} needs at least ${fewest} seats. ` : ''}{most > 8 ? 'Up to 16: the games are played at the same time, on several tables. ' : 'Up to 8, everyone in one game. '}Your guests take seats as they join. Any seat still empty when you start is played by a computer.{seats >= 7 && seats <= 8 ? ' Seven or eight at one game use two decks.' : ''}</p>
+      </div>
+      <div className="lobby-group" role="group" aria-label="Computers at the table">
+        <h2>Which computers fill empty seats?</h2>
+        {maxPicks === 0 ? <p className="lobby-note">With two seats there is no room for a computer.</p> : <>
+          <p className="lobby-note" data-testid="online-picker-note">{picked.length === 0 ? 'Surprise me: any seat still empty when you start is given to a computer drawn at random.' : `${picked.join(', ')} picked (up to ${maxPicks}). Any other empty seat is drawn at random.`}</p>
+          <div className="pick-actions"><button aria-pressed={picked.length === 0} className={picked.length === 0 ? 'active' : ''} onClick={() => setPicks([])}><Shuffle size={16} weight="bold" />Pick at random</button></div>
+          <ul className="personalities pickable">{PERSONALITIES.map((personality) => {
+            const on = picked.includes(personality.name);
+            const full = !on && picked.length >= maxPicks;
+            return <li key={personality.id}><button aria-pressed={on} disabled={full} className={on ? 'active' : ''} aria-label={`${on ? 'Remove' : 'Pick'} ${personality.name}`} onClick={() => setPicks(on ? picked.filter((name) => name !== personality.name) : [...picked, personality.name])}>
+              <span className="personality-top"><strong>{personality.name}</strong><em>{personality.title}</em>{on && <Check size={16} weight="bold" className="picked-tick" />}</span>
+              <span>{personality.blurb}</span>
+            </button></li>;
+          })}</ul>
+        </>}
       </div>
       <div className="lobby-group" role="group" aria-label="Computer level">
         <h2>How good are the computers?</h2>

@@ -12,7 +12,7 @@ import type { CardId, Player, RandomSource } from "./types";
  * which games are waiting, plays the ones you are in, and `simulateGame` plays the rest in a blink.
  * Rules for each type: docs/RULES-RULINGS.md items 10-12, 16, 17 and 22.
  */
-export type PlayMode = "single" | "match" | "knockout" | "group" | "cup" | "darts" | "dominoes";
+export type PlayMode = "single" | "match" | "lastout" | "knockout" | "group" | "cup" | "darts" | "dominoes";
 
 export const COMPUTER_NAMES_IN_ORDER = ["John", "Paul", "George", "Ringo", "Ziggy", "Marley", "Bowie"] as const;
 export const ME_ID = "me";
@@ -21,7 +21,11 @@ export const MAX_COMPUTERS = 7;
 export interface ModeInfo {
   readonly id: PlayMode;
   readonly name: string;
+  /** One short line for the picker. */
   readonly blurb: string;
+  /** The fuller explanation shown when a type is opened: how a game plays out, then how it is won (and scored). */
+  readonly how: readonly string[];
+  readonly scoring: string;
   /** Total players at the start, you included. */
   readonly minPlayers: number;
   readonly maxPlayers: number;
@@ -29,19 +33,31 @@ export interface ModeInfo {
 }
 
 export const MODES: readonly ModeInfo[] = [
-  { id: "single", name: "Single game", short: "Single", blurb: "One game of Switch. First out wins.", minPlayers: 2, maxPlayers: 8 },
-  { id: "match", name: "Games", short: "Games", blurb: "Play a set number of games. Best of 3, 5 or more, or first to a number of wins.", minPlayers: 2, maxPlayers: 8 },
-  { id: "knockout", name: "Knock Out", short: "Knock Out", blurb: "1 v 1 games. Win yours to go through to the next round, until one is left.", minPlayers: 3, maxPlayers: 8 },
-  { id: "group", name: "Group Play", short: "Group Play", blurb: "Two leagues, then the championship and plate knockouts.", minPlayers: 6, maxPlayers: 8 },
-  { id: "cup", name: "Switch Cup", short: "Switch Cup", blurb: "Head-to-head knockout rounds. Win your match to go through.", minPlayers: 2, maxPlayers: 8 },
-  { id: "darts", name: "Darts scoring", short: "Darts", blurb: "Each game is a leg. Three legs win a set; win the sets to win the match.", minPlayers: 2, maxPlayers: 8 },
-  { id: "dominoes", name: "Dominoes scoring", short: "Dominoes", blurb: "Cards left in hand add up. First to your number loses.", minPlayers: 2, maxPlayers: 8 },
+  { id: "single", name: "Single game", short: "Single", blurb: "One game of Switch. First out wins.", minPlayers: 2, maxPlayers: 8,
+    how: ["One ordinary game of Switch. Everyone is dealt a hand and the first player to get rid of every card wins."], scoring: "No points. A win or a loss goes in your record." },
+  { id: "match", name: "Games", short: "Games", blurb: "Play a set number of games. Best of 3, 5 or more, or first to a number of wins.", minPlayers: 2, maxPlayers: 8,
+    how: ["The same players play game after game. Pick \"First to\" a number of wins, or \"Best of\" a number of games.", "In a best of, the match stops as soon as nobody can catch the leader. If you are level after the last game, extra games are dealt until someone is ahead."], scoring: "One win per game won. Most wins takes the match." },
+  { id: "lastout", name: "Last One Out", short: "Last One Out", blurb: "Everyone plays. The last player still holding cards drops out. Last player left wins.", minPlayers: 3, maxPlayers: 8,
+    how: ["Everyone plays the same game together. When one player is left holding cards, they drop out.", "The rest are dealt in again and play on: five become four, four become three, three become two. The last two play a 1 v 1 final."], scoring: "No points. Going out early keeps you in. The last player out finishes last, the winner of the final finishes first." },
+  { id: "knockout", name: "Knock Out", short: "Knock Out", blurb: "1 v 1 games. Win yours to go through to the next round, until one is left.", minPlayers: 3, maxPlayers: 8,
+    how: ["Players are drawn into pairs and each pair plays a 1 v 1 game. Win yours and you go through to the next round; lose and you are out.", "If there is an odd number, one player gets a bye straight through. Rounds repeat until one player is left."], scoring: "No points. Your place is how far you got. The last one standing wins." },
+  { id: "group", name: "Group Play", short: "Group Play", blurb: "Two leagues, then the championship and plate knockouts.", minPlayers: 6, maxPlayers: 8,
+    how: ["Players are split into two leagues. Each league plays as many games as it has players, and every game is played on after the first player goes out, until every place is settled.", "The top two in each league go through to the championship. Everyone else plays for the plate. Both are knock-outs: the last player holding cards drops out each game, until a 1 v 1 final."], scoring: "League points: the first out scores as many points as there are players in the league, the next one less, down to 1 for the last. Level on points? Most wins, then one deciding game." },
+  { id: "cup", name: "Switch Cup", short: "Switch Cup", blurb: "Head-to-head knockout rounds. Win your match to go through.", minPlayers: 2, maxPlayers: 8,
+    how: ["A bracket of head-to-head matches, drawn at random. Win your match to go through to the next round. A bye takes you straight through if the numbers are odd.", "The final decides the Cup."], scoring: "No points. Winning every match wins the Cup." },
+  { id: "darts", name: "Darts scoring", short: "Darts", blurb: "Each game is a leg. Three legs win a set; win the sets to win the match.", minPlayers: 2, maxPlayers: 8,
+    how: ["Scored like darts. Every game of Switch is a leg: win a game to win a leg.", "Win three legs to win a set. The legs then reset. Keep going until someone has won the sets needed (3 or 5)."], scoring: "Legs win sets, sets win the match. First to 3 or 5 sets wins." },
+  { id: "dominoes", name: "Dominoes scoring", short: "Dominoes", blurb: "Cards left in hand add up. First to your number loses.", minPlayers: 2, maxPlayers: 8,
+    how: ["After every game, the cards left in each player's hand are added to that player's running total.", "Keep playing games until someone reaches the number you chose. That player loses."], scoring: "Ace is 1 up to king 13 (jack 11, queen 12). The winner of a game adds nothing. The lowest total wins." },
 ];
 
-/** The ways to play at an online table: the same list, with "Games" (best of / first to) in place of a single game. */
-export const ONLINE_MODES: readonly ModeInfo[] = MODES.filter((entry) => entry.id !== "single");
+/**
+ * The ways to play at an online table. Knock Out with friends has always been "last one out leaves", which is now its own
+ * type, Last One Out; the server still accepts the old Knock Out for tables made before this change.
+ */
+export const ONLINE_MODES: readonly ModeInfo[] = MODES.filter((entry) => entry.id !== "single" && entry.id !== "knockout");
 /** The ways to play against the computer: "Games" (first to N, best of N; one game is a single game) in place of a single game. */
-export const COMPUTER_MODES: readonly ModeInfo[] = MODES.filter((entry) => entry.id !== "single");
+export const COMPUTER_MODES: readonly ModeInfo[] = MODES.filter((entry) => entry.id !== "single" && entry.id !== "knockout");
 
 export type MatchType = "first" | "best";
 /** Wins needed in "first to N", or the most games in "best of N". */
@@ -77,10 +93,28 @@ export interface SeriesSetup {
    * version (ruling 11): everyone left plays each game on until one player is left holding cards, and that player is out.
    */
   readonly knockout?: "pairs" | "last-out";
+  /** Against the computer: which computers sit at the table, in seat order (one per opponent). Absent means the usual order. */
+  readonly computers?: readonly string[];
+}
+
+/** A shuffled copy of the computer names, for "pick them at random". */
+export function randomComputers(count: number, random: RandomSource = Math.random, exclude: readonly string[] = []): string[] {
+  const pool = COMPUTER_NAMES_IN_ORDER.filter((name) => !exclude.includes(name));
+  for (let index = pool.length - 1; index > 0; index -= 1) { const other = Math.floor(random() * (index + 1)); [pool[index], pool[other]] = [pool[other], pool[index]]; }
+  return pool.slice(0, count);
+}
+
+/**
+ * The computers at a table of `count`: the ones you picked (in the order you picked them), and any seats left over filled
+ * at random from the rest. Picking none leaves the whole table to chance.
+ */
+export function chooseComputers(count: number, picks: readonly string[] = [], random: RandomSource = Math.random): string[] {
+  const valid = picks.filter((name, index) => (COMPUTER_NAMES_IN_ORDER as readonly string[]).includes(name) && picks.indexOf(name) === index).slice(0, count);
+  return [...valid, ...randomComputers(count - valid.length, random, valid)];
 }
 
 /** The most players a way of playing can take at an online table: tournaments split into several games at once. */
-export const ONLINE_MAX_PLAYERS: Readonly<Record<PlayMode, number>> = { single: 8, match: 8, darts: 8, dominoes: 8, knockout: 16, cup: 16, group: 16 };
+export const ONLINE_MAX_PLAYERS: Readonly<Record<PlayMode, number>> = { single: 8, match: 8, darts: 8, dominoes: 8, lastout: 16, knockout: 16, cup: 16, group: 16 };
 
 /** `maxPlayers` is 8 against the computer; an online table allows more for tournaments (ONLINE_MAX_PLAYERS). */
 export function validateSetup(setup: SeriesSetup, maxPlayers = MAX_COMPUTERS + 1): string | null {
@@ -100,8 +134,9 @@ export function validateSetup(setup: SeriesSetup, maxPlayers = MAX_COMPUTERS + 1
   return null;
 }
 
-export function seriesPlayers(opponents: number): Player[] {
-  return [{ id: ME_ID, name: "You" }, ...COMPUTER_NAMES_IN_ORDER.slice(0, opponents).map((name) => ({ id: `cpu-${name.toLowerCase()}`, name }))];
+export function seriesPlayers(opponents: number, computers?: readonly string[]): Player[] {
+  const names = computers && computers.length === opponents ? computers : COMPUTER_NAMES_IN_ORDER.slice(0, opponents);
+  return [{ id: ME_ID, name: "You" }, ...names.map((name) => ({ id: `cpu-${name.toLowerCase()}`, name }))];
 }
 
 /** The value of a card left in hand when a game ends: ace 1 up to king 13 (ruling 22). */
@@ -246,11 +281,12 @@ export function leagueSizes(players: number): [number, number] {
 export function startSeries(setup: SeriesSetup, random: RandomSource, id = `series-${Date.now()}-${Math.floor(random() * 1e6).toString(36)}`, given?: readonly Player[]): SeriesState {
   const problem = validateSetup(setup, given ? ONLINE_MAX_PLAYERS[setup.mode] : MAX_COMPUTERS + 1);
   if (problem) throw new Error(problem);
-  const players = given ? [...given] : seriesPlayers(setup.opponents);
+  const players = given ? [...given] : seriesPlayers(setup.opponents, setup.computers);
   if (players.length !== setup.opponents + 1) throw new Error("The players do not match the table.");
   const ids = players.map((player) => player.id);
   const base: SeriesBase = { id, setup, players, games: 0, yourGames: 0, yourWins: 0 };
   switch (setup.mode) {
+    case "lastout": return { kind: "lastout", base, part: koStart(ids, random) };
     case "knockout": return setup.knockout === "last-out"
       ? { kind: "lastout", base, part: koStart(ids, random) }
       : { kind: "knockout", base, cup: createCup(players, random) };
@@ -515,7 +551,7 @@ export function standings(state: SeriesState): { readonly heading: string; reado
     case "match": return [{ heading: `${matchLabel(state.matchType, state.games)} · ${state.base.games} played`, rows: state.base.players.map((player) => ({ id: player.id, name: player.name, main: `${state.wins[player.id]} win${state.wins[player.id] === 1 ? "" : "s"}`, note: "" })).sort((a, b) => state.wins[b.id] - state.wins[a.id]) }];
     case "darts": return [{ heading: `First to ${state.setsToWin} sets`, rows: state.base.players.map((player) => ({ id: player.id, name: player.name, main: `${state.sets[player.id]} set${state.sets[player.id] === 1 ? "" : "s"}`, note: `${state.legs[player.id]} leg${state.legs[player.id] === 1 ? "" : "s"}` })).sort((a, b) => state.sets[b.id] - state.sets[a.id] || state.legs[b.id] - state.legs[a.id]) }];
     case "dominoes": return [{ heading: `First to ${state.limit} loses`, rows: state.base.players.map((player) => ({ id: player.id, name: player.name, main: String(state.totals[player.id]), note: state.last[player.id] === undefined ? "" : `+${state.last[player.id]} last game` })).sort((a, b) => Number(a.main) - Number(b.main)) }];
-    case "lastout": return [{ heading: state.part.championId ? "Knock Out" : `${state.part.remaining.length} left in`, rows: [...state.part.remaining.map((id) => ({ id, name: name(id), main: state.part.championId ? "Champion" : "In", note: "" })), ...[...state.part.out].reverse().map((id) => ({ id, name: name(id), main: "Out", note: "", out: true }))] }];
+    case "lastout": return [{ heading: state.part.championId ? (state.base.setup.mode === "lastout" ? "Last One Out" : "Knock Out") : `${state.part.remaining.length} left in`, rows: [...state.part.remaining.map((id) => ({ id, name: name(id), main: state.part.championId ? "Champion" : "In", note: "" })), ...[...state.part.out].reverse().map((id) => ({ id, name: name(id), main: "Out", note: "", out: true }))] }];
     case "knockout":
     case "cup": return state.cup.rounds.slice(-1).map((round) => ({ heading: `Round ${round.number}`, rows: [...round.fixtures.map((fixture) => ({ id: fixture.id, name: fixture.playerIds.map(name).join(" v "), main: fixture.winnerId ? `${name(fixture.winnerId)} won` : "To play", note: "" })), ...(round.byePlayerId ? [{ id: "bye", name: name(round.byePlayerId), main: "Bye", note: "straight through" }] : [])] }));
     case "group": {

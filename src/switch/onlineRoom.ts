@@ -49,7 +49,7 @@ export interface RoomResult {
 }
 
 /** What the host chose: the way to play and its settings (Darts sets, Dominoes number). */
-export interface RoomSetup { readonly mode: PlayMode; readonly setsToWin?: number; readonly limit?: number; readonly matchType?: MatchType; readonly games?: number }
+export interface RoomSetup { readonly mode: PlayMode; readonly setsToWin?: number; readonly limit?: number; readonly matchType?: MatchType; readonly games?: number; /** Computers the host asked for, by name; other empty seats are drawn at random. */ readonly computers?: readonly string[] }
 
 /** A tournament or match at the table. Player ids are "p0", "p1"…; `me` is yours. Its games run side by side. */
 export interface RoomSeries {
@@ -176,7 +176,7 @@ export function clearSeat(): void {
 }
 
 /** Each way to play is shown by its own little hand of cards, as in the Play lobby. */
-export const ONLINE_MODE_CARDS: Record<PlayMode, string[]> = { single: ["AS", "KH"], match: ["AS", "AH", "AD"], knockout: ["KS", "KC"], group: ["QH", "QD", "JS"], cup: ["10H", "10S"], darts: ["7S", "7H"], dominoes: ["6C", "6D", "6S"] };
+export const ONLINE_MODE_CARDS: Record<PlayMode, string[]> = { single: ["AS", "KH"], match: ["AS", "AH", "AD"], lastout: ["KS", "KH", "KD"], knockout: ["KS", "KC"], group: ["QH", "QD", "JS"], cup: ["10H", "10S"], darts: ["7S", "7H"], dominoes: ["6C", "6D", "6S"] };
 
 /** What each way to play means at a table of friends. Knock Out here is the game-night version (ruling 11). */
 export function onlineModeBlurb(mode: PlayMode, setup?: RoomSetup): string {
@@ -185,6 +185,7 @@ export function onlineModeBlurb(mode: PlayMode, setup?: RoomSetup): string {
     case "match": return setup?.matchType === "best"
       ? `Best of ${setup.games ?? 3} games: most wins takes it, and it ends as soon as nobody can catch the leader. Level at the end? Play on until someone is ahead.`
       : `First to ${setup?.games ?? 3} wins takes the match. Every game is ordinary Switch.`;
+    case "lastout": return "Everyone plays the same game. Whoever is left holding cards drops out, until one player is left. More than eight are split across tables.";
     case "knockout": return "Everyone plays each round; more than eight are split across tables. Whoever is left holding cards at a table is out, until one player is left.";
     case "cup": return "Head-to-head matches, drawn at random, all played at the same time. Win yours to go through.";
     case "group": return "Two leagues playing side by side, then the championship and plate play-offs. For 6 to 16 players.";

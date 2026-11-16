@@ -57,7 +57,7 @@ const games = (page: Page) => page.evaluate(() => {
 test("the picker offers every game type, 1 to 7 computers, and never a table a type cannot run", async ({ page }) => {
   await openPlay(page, {});
   const types = page.getByRole("group", { name: "Game type" });
-  for (const name of ["Games", "Knock Out", "Group Play", "Switch Cup", "Darts scoring", "Dominoes scoring"]) await expect(types.getByRole("button", { name })).toBeVisible();
+  for (const name of ["Games", "Last One Out", "Group Play", "Switch Cup", "Darts scoring", "Dominoes scoring"]) await expect(types.getByRole("button", { name })).toBeVisible();
   const opponents = page.getByRole("group", { name: "Computer opponents" });
   await expect(opponents.getByRole("button")).toHaveCount(7);
   await types.getByRole("button", { name: "Group Play" }).click();
@@ -65,6 +65,9 @@ test("the picker offers every game type, 1 to 7 computers, and never a table a t
   await expect(opponents.getByRole("button", { name: "4 opponents" })).toBeDisabled();
   await expect(opponents.getByRole("button", { name: "5 opponents" })).toBeEnabled();
   await opponents.getByRole("button", { name: "7 opponents" }).click();
+  // Nobody picked: seven computers are a surprise until the cards are dealt.
+  await expect(page.locator(".lobby-seat")).toHaveText(["?", "?", "?", "?", "?", "?", "?"]);
+  for (const name of ["John", "Paul", "George", "Ringo", "Ziggy", "Marley", "Bowie"]) await page.getByRole("group", { name: "Who you are playing" }).getByRole("button", { name: `Pick ${name}` }).click();
   await expect(page.locator(".lobby-seat")).toHaveText(["John", "Paul", "George", "Ringo", "Ziggy", "Marley", "Bowie"]);
   await expect(page.getByText("Seven or eight players use two decks.")).toBeVisible();
   await types.getByRole("button", { name: "Dominoes scoring" }).click();
@@ -93,28 +96,6 @@ test("Dominoes scoring is played to the end at the table and lands in your stats
   expect(list.filter((game) => game.series)).toHaveLength(1);
   await page.getByRole("button", { name: /See my stats and trophies/ }).click();
   await page.getByRole("button", { name: /Computer/ }).first().click().catch(() => undefined);
-});
-
-test("Knock Out is 1 v 1 games: win yours to go through, until one player is left", async ({ page }) => {
-  test.setTimeout(240_000);
-  await openPlay(page, { mode: "knockout", opponents: 2, level: "relaxed" });
-  await page.getByRole("button", { name: /Start Knock Out/ }).click();
-  // Three players: one 1 v 1 game and one bye, then a final. You may sit out round 1 on the bye.
-  for (let round = 0; round < 4; round += 1) {
-    await expect(page.getByTestId("series-play").or(page.getByTestId("series-result"))).toBeVisible();
-    if (await page.getByTestId("series-result").isVisible()) break;
-    await page.getByTestId("series-play").click();
-    await expect(page.getByTestId("series-strip")).toContainText("match");
-    await playUntilGameEnds(page);
-    await page.getByTestId("series-continue").click();
-  }
-  await expect(page.getByTestId("series-result")).toBeVisible();
-  const list = await games(page);
-  expect(list.every((game) => game.mode === "knockout")).toBe(true);
-  expect(list.filter((game) => game.series)).toHaveLength(1);
-  expect(list.find((game) => game.series)?.series?.players).toBe(3);
-  // Every game you played was head to head.
-  expect(list.filter((game) => !game.series).every((game) => game.opponents === 1)).toBe(true);
 });
 
 test("against the computer, Games replaces Single game: First to / Best of and a count, one game being a single game", async ({ page }) => {
@@ -147,5 +128,64 @@ test("a First to 2 match against the computer is played to the end and lands in 
   await expect(page.getByTestId("series-result")).toBeVisible();
   const list = await games(page);
   expect(list.every((game) => game.mode === "match")).toBe(true);
+  expect(list.filter((game) => game.series)).toHaveLength(1);
+});
+
+test("every game type says what it is, and opening one explains how it plays and scores", async ({ page }) => {
+  await openPlay(page, {});
+  const types = page.getByRole("group", { name: "Game type" });
+  // Each type carries a short description before you even choose it.
+  await expect(types.getByText("The last player still holding cards drops out", { exact: false })).toHaveCount(0);
+  await expect(types.getByText(/Everyone plays. The last player still holding cards drops out/)).toBeVisible();
+  await expect(types.getByText(/Two leagues, then the championship and plate/)).toBeVisible();
+  await types.getByRole("button", { name: "Last One Out" }).click();
+  const detail = page.getByTestId("mode-detail");
+  await expect(detail).toContainText("How Last One Out plays");
+  await expect(detail).toContainText("five become four, four become three");
+  await expect(detail).toContainText("Scoring.");
+  await types.getByRole("button", { name: "Group Play" }).click();
+  await expect(detail).toContainText("the first out scores as many points as there are players in the league");
+  await types.getByRole("button", { name: "Dominoes scoring" }).click();
+  await expect(detail).toContainText("Ace is 1 up to king 13");
+});
+
+test("you can pick which computers to play, or leave it to chance, and a picked table is the one you get", async ({ page }) => {
+  test.setTimeout(240_000);
+  await openPlay(page, { mode: "lastout", opponents: 3, level: "relaxed" });
+  const who = page.getByRole("group", { name: "Who you are playing" });
+  await expect(page.getByTestId("picker-note")).toContainText("Surprise me");
+  await who.getByRole("button", { name: "Pick Bowie" }).click();
+  await who.getByRole("button", { name: "Pick Marley" }).click();
+  await expect(page.getByTestId("picker-note")).toContainText("Bowie, Marley picked. 1 more seat is drawn at random.");
+  await who.getByRole("button", { name: "Pick John" }).click();
+  // The table is full: nobody else can be picked until someone is removed.
+  await expect(who.getByRole("button", { name: "Pick Ringo" })).toBeDisabled();
+  await expect(page.locator(".lobby-seat")).toHaveText(["Bowie", "Marley", "John"]);
+  await who.getByRole("button", { name: "Pick at random" }).click();
+  await expect(page.locator(".lobby-seat")).toHaveText(["?", "?", "?"]);
+  await who.getByRole("button", { name: "Pick Bowie" }).click();
+  await who.getByRole("button", { name: "Pick Ziggy" }).click();
+  await page.getByRole("button", { name: /Start Last One Out/ }).click();
+  await expect(page.getByTestId("series-play")).toBeVisible();
+  // Bowie and Ziggy are on the standings, with one more computer drawn.
+  const board = page.locator(".series-board");
+  await expect(board).toContainText("Bowie");
+  await expect(board).toContainText("Ziggy");
+});
+
+test("Last One Out: the last player holding cards drops out, game after game, until one is left", async ({ page }) => {
+  test.setTimeout(240_000);
+  await openPlay(page, { mode: "lastout", opponents: 2, level: "relaxed" });
+  await page.getByRole("button", { name: /Start Last One Out/ }).click();
+  for (let round = 0; round < 4; round += 1) {
+    await expect(page.getByTestId("series-play").or(page.getByTestId("series-result"))).toBeVisible();
+    if (await page.getByTestId("series-result").isVisible()) break;
+    await page.getByTestId("series-play").click();
+    await playUntilGameEnds(page);
+    await page.getByTestId("series-continue").click();
+  }
+  await expect(page.getByTestId("series-result")).toBeVisible();
+  const list = await games(page);
+  expect(list.every((game) => game.mode === "lastout")).toBe(true);
   expect(list.filter((game) => game.series)).toHaveLength(1);
 });
