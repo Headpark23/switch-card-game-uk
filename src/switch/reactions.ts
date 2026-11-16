@@ -285,6 +285,10 @@ export function attackKind(cards: readonly string[], pendingBefore: PendingLike,
  */
 interface Candidate { seat: number; mood?: Mood; ids?: readonly string[]; odds: number; target?: string; answer?: { seat: number; ids: readonly string[]; odds: number } }
 
+/** The last lines said at any table, so the computers rarely repeat themselves. */
+const RECENT_LINES: string[] = [];
+const RECENT_LINES_KEPT = 60;
+
 export function banterFor(event: TableEvent, names: readonly string[], computers: readonly number[], random: () => number = Math.random, spicy: boolean = spicyTalk()): Remark | null {
   const isComputer = (seat: number | null): seat is number => seat !== null && computers.includes(seat);
   const others = (except: number) => computers.filter((seat) => seat !== except);
@@ -333,7 +337,16 @@ export function banterFor(event: TableEvent, names: readonly string[], computers
       const base = mood ? (spicy ? [...voice.moods[mood], ...SPICY_MOODS[mood]] : voice.moods[mood]) : [];
       pool = [...base, ...(mood ? voicePool(names[seat] ?? "", mood as VoiceMoodName, target) : [])];
     }
-    return pool.length ? pool[Math.floor(random() * pool.length) % pool.length] : null;
+    if (!pool.length) return null;
+    // Nobody repeats a line they said recently while they have anything else to say (owner decision, 16 Nov 2026).
+    // When everything has been said lately, the one said longest ago comes back first.
+    const age = (id: string) => RECENT_LINES.lastIndexOf(id);
+    const oldest = Math.min(...pool.map(age));
+    const from = pool.filter((id) => age(id) === oldest);
+    const chosen = from[Math.floor(random() * from.length) % from.length];
+    RECENT_LINES.push(chosen);
+    if (RECENT_LINES.length > RECENT_LINES_KEPT) RECENT_LINES.shift();
+    return chosen;
   };
   for (const candidate of candidates) {
     const voice = banterOf(names[candidate.seat] ?? "");

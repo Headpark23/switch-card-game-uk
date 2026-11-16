@@ -168,7 +168,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   /** Someone at the table says something: the bubble, the replay and the reaction stats all hear it. */
   function speak(seat: number, id: string) {
     if (!reactionOf(id)) return;
-    say(seat, id);
+    say(seat, id, { priority: seat === 0 });
     setTalk((current) => [...current.slice(-5), { seat, id }]);
     recorder.react({ seat, from: names[seat], id });
     logReaction({ gameId, at: new Date().toISOString(), move: gameRef.current.move, from: names[seat], mine: seat === 0, computer: seat !== 0, online: false, id });
@@ -540,7 +540,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
           <span className="seat-fan" aria-hidden="true">{Array.from({ length: Math.min(5, count) }, (_, i) => <CardImage code="back" key={i} />)}</span>
           <strong className={count === 1 ? 'last' : ''}>{outAfter.includes(seat) ? 'Out' : `${count} card${count === 1 ? '' : 's'}`}</strong>{ouchFor(seat)}
           <span className="seat-state" aria-hidden="true">{outAfter.includes(seat) ? `Out: ${ordinal(outAfter.indexOf(seat) + 1)}` : active ? (visible.thinking ? <><i className="think-dots"><b /><b /><b /></i>Choosing</> : 'Playing') : count === 1 ? 'Last card' : ' '}</span>
-          {bubbles[seat] && <Bubble key={bubbles[seat].n} n={bubbles[seat].n} id={bubbles[seat].id} name={name} />}
+          {bubbles[seat] && <Bubble key={bubbles[seat].n} n={bubbles[seat].n} id={bubbles[seat].id} name={name} leaving={bubbles[seat].leaving} />}
         </div>;
       })}
     </div>
@@ -560,7 +560,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     {recent.length > 1 && <ul className="move-log" aria-label="Recent moves">{recent.slice(0, -1).map((line, index) => <li key={index}>{line}</li>)}</ul>}
     <div className={'your-seat' + (visible.active === 0 ? ' turn' : '')} data-seat="0">
       {ouchFor(0)}
-      {bubbles[0] && <Bubble key={bubbles[0].n} n={bubbles[0].n} id={bubbles[0].id} name="You" />}
+      {bubbles[0] && <Bubble key={bubbles[0].n} n={bubbles[0].n} id={bubbles[0].id} name="You" leaving={bubbles[0].leaving} />}
       {yourMove && <span className="your-move-tag" aria-hidden="true">Your move</span>}
       {yourMove && missTurn && <div className="miss-turn-action"><strong>An eight was played</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you miss this turn.'}</p><button className="primary" onClick={pickUp}>Accept missed turn <ArrowRight size={18} /></button></div>}
       {youOutAt > 0 && <div className="out-panel" role="status" data-testid="you-are-out"><strong>You are out: {ordinal(youOutAt)} place.</strong><p>The others play on for the places still to be decided.</p><button className="secondary" onClick={skipToResult}>Skip to the result <ArrowRight size={18} /></button></div>}

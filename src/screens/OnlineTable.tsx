@@ -15,7 +15,7 @@ import { readSpeed } from '../switch/activeTable';
 import { modeInfo, pendingGames, seriesPlayerName, standings } from '../switch/series';
 import { clearSeat, loadSeat, onlineModeBlurb, reactionOf, tableInvite, tableName, useRoom, type RoomView } from '../switch/onlineRoom';
 import { logReaction } from '../switch/gameReplay';
-import { beginReplay, Bubble, ReactionSheet, useReplayRecorder } from './tableTalk';
+import { beginReplay, Bubble, ReactionSheet, useBubbles, useReplayRecorder } from './tableTalk';
 import { sortHand } from '../switch/sortHand';
 import { HahaBanner, hahaText, type Haha } from './HahaBanner';
 import { CardImage, CardShower, FeltHeader, rank, suitNames, suitSymbols } from '../ui';
@@ -166,7 +166,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
   const [flash, setFlash] = useState<CardId[]>([]);
   const [called, setCalledState] = useState(false);
   const [reactOpen, setReactOpen] = useState(false);
-  const [bubbles, setBubbles] = useState<Record<number, { n: number; id: string }>>({});
+  const { bubbles, say: sayBubble } = useBubbles();
   const [, setTick] = useState(0);
   const timings = useMemo(() => (reduced() ? REDUCED : SPEEDS[readSpeed()]), []);
   const showId = useRef(0);
@@ -325,8 +325,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
     fresh.filter((entry) => entry.seat === null).forEach((entry) => { const reaction = reactionOf(entry.id); if (reaction) push(`${entry.name} (watching): ${reaction.text}`); });
     const seated = fresh.filter((entry): entry is typeof entry & { seat: number } => entry.seat !== null);
     if (!seated.length) return;
-    setBubbles((current) => { const next = { ...current }; seated.forEach((entry) => { next[entry.seat] = { n: entry.n, id: entry.id }; }); return next; });
-    seated.forEach((entry) => window.setTimeout(() => setBubbles((current) => (current[entry.seat]?.n === entry.n ? Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== entry.seat)) : current)), 3600));
+    seated.forEach((entry) => sayBubble(entry.seat, entry.id, { priority: entry.seat === 0 && !watching }));
   }, [view]);
 
   // The countdowns (a slow player, the next game of a tournament) are the server's clock, shown twice a second.
@@ -432,7 +431,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
   const bubbleFor = (index: number) => {
     const bubble = bubbles[index];
     const reaction = bubble ? reactionOf(bubble.id) : null;
-    return bubble && reaction ? <Bubble key={bubble.n} n={bubble.n} id={bubble.id} name={names[index]} /> : null;
+    return bubble && reaction ? <Bubble key={bubble.n} n={bubble.n} id={bubble.id} name={names[index]} leaving={bubble.leaving} /> : null;
   };
 
   if (finished) return <Finished view={view} room={room} game={game} names={names} watching={watching} youWon={youWon} warn={warn} setWarn={setWarn} onReact={() => setReactOpen(true)} onReplay={!watching && onReplay ? () => onReplay(gameId) : undefined} onWatch={onWatch} onLeave={onLeave} onOpenCards={onOpenCards} onStartNight={onStartNight}>

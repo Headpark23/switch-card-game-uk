@@ -15,11 +15,13 @@
  * song titles as puns ("Taxman" on a black king, "Hello, goodbye" on an eight), never lyrics. Nine words or fewer.
  */
 
+import { MORE_CARD_VOICES } from "./_cardTalkMore.js";
+
 export const PLAY_MOMENTS = Object.freeze(["two", "blackKing", "redKing", "eight", "seven", "jack", "ace", "set", "counter", "stack", "finish"]);
 export const HIT_KINDS = Object.freeze(["two", "blackKing", "eight", "stack"]);
 export const CAUGHT_KINDS = Object.freeze(["lastCard", "illegal"]);
 
-export const CARD_VOICES = Object.freeze({
+const BASE_CARD_VOICES = Object.freeze({
   John: {
     play: {
       two: ["Pick up two. Do try to enjoy it.", "A two. Terribly subtle, I know."],
@@ -189,6 +191,21 @@ export const CARD_VOICES = Object.freeze({
     great: ["Respect. That was smooth, friend.", "One love for that move.", "Nice. Real nice. Annoyingly nice."],
   },
 });
+
+/** The first lines above, then the longer lists in `_cardTalkMore.js` appended after them, so ids never move. */
+export const CARD_VOICES = Object.freeze(Object.fromEntries(Object.entries(BASE_CARD_VOICES).map(([name, voice]) => {
+  const more = MORE_CARD_VOICES[name];
+  if (!more) return [name, voice];
+  const join = (a, b) => [...a, ...(b ?? [])];
+  const group = (base, extra, kinds) => Object.fromEntries(kinds.map((kind) => [kind, join(base[kind], extra[kind])]));
+  return [name, {
+    play: group(voice.play, more.play, PLAY_MOMENTS),
+    hit: group(voice.hit, more.hit, HIT_KINDS),
+    mistake: join(voice.mistake, more.mistake),
+    caught: group(voice.caught, more.caught, CAUGHT_KINDS),
+    great: join(voice.great, more.great),
+  }];
+})));
 
 const slug = (name) => name.toLowerCase();
 const find = (name) => CARD_VOICES[Object.keys(CARD_VOICES).find((key) => key.toLowerCase() === String(name).toLowerCase())];

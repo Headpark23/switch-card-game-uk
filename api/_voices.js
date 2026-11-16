@@ -18,10 +18,11 @@
  */
 
 import { cardEntries } from "./_cardTalk.js";
+import { MORE_VOICES } from "./_voicesMore.js";
 
 export const VOICE_MOODS = Object.freeze(["gloat", "sulk", "tease", "win", "lose", "reply"]);
 
-export const VOICES = Object.freeze({
+const BASE_VOICES = Object.freeze({
   John: {
     gloat: ["Why not!", "Flattered? You're flattened.", "You're joking! Is that all?", "He ought to see a doctor about that."],
     sulk: ["Oh, do me a favour!", "I haven't got a nice personality.", "The end, daddy-o."],
@@ -120,6 +121,15 @@ export const VOICES = Object.freeze({
     at: {},
   },
 });
+
+/** The first lines in this file, then the longer lists in `_voicesMore.js` appended after them, so ids never move. */
+export const VOICES = Object.freeze(Object.fromEntries(Object.entries(BASE_VOICES).map(([name, voice]) => {
+  const more = MORE_VOICES[name] ?? {};
+  const merged = { at: {} };
+  for (const kind of [...VOICE_MOODS, "user", "any"]) merged[kind] = [...voice[kind], ...(more[kind] ?? [])];
+  for (const other of new Set([...Object.keys(voice.at), ...Object.keys(more.at ?? {})])) merged.at[other] = [...(voice.at[other] ?? []), ...(more.at?.[other] ?? [])];
+  return [name, merged];
+})));
 
 const slug = (name) => name.toLowerCase();
 

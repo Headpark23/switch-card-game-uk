@@ -361,7 +361,15 @@ function computerBanter(room, table, event, at, random = secureRandom) {
   const pick = (index, mood, ids, target) => {
     const name = nameOf(index);
     const pool = ids?.length ? ids : [...BANTER_MOODS[mood], ...(BANTER_THEMES[BANTER_BAND[name]]?.[mood] ?? []), ...voicePool(name, mood, target)];
-    return pool[Math.floor(random() * pool.length) % pool.length];
+    // Nobody repeats a line they said recently while they have anything else to say (owner decision, 16 Nov 2026).
+    const recent = (table.recentLines ??= []);
+    const age = (id) => recent.lastIndexOf(id);
+    const oldest = Math.min(...pool.map(age));
+    const from = pool.filter((id) => age(id) === oldest);
+    const chosen = from[Math.floor(random() * from.length) % from.length];
+    recent.push(chosen);
+    if (recent.length > 40) recent.shift();
+    return chosen;
   };
   const say = (index, id) => {
     const player = table.players[index];

@@ -209,3 +209,23 @@ test("what they say is about the cards: plays, hits, mistakes and great shots", 
   // A missed Last Card is mocked with a line about exactly that.
   expect(banterFor({ kind: "spotted", victim: 0, by: 3 }, names, [1, 2, 3], always, false)?.id).toMatch(/^george-caught-lastCard-/);
 });
+
+test("depth: every computer has plenty to say, and nobody repeats a line while they have another", () => {
+  const names = ["You", "John", "Paul", "George", "Ringo", "Ziggy", "Bowie", "Marley"];
+  for (const name of names.slice(1)) {
+    const lines = VOICE_REACTIONS.filter((line) => line.id.startsWith(`${name.toLowerCase()}-`));
+    expect(lines.length, name).toBeGreaterThanOrEqual(120);
+  }
+  // A long run of the same kind of event: the same computer almost never says the same thing twice running.
+  let n = 0;
+  const random = () => ((n++ * 0.6180339887) % 1);
+  let repeats = 0;
+  let last = "";
+  let said = 0;
+  for (let round = 0; round < 300; round += 1) {
+    const remark = banterFor({ kind: "win", winner: 1 }, names.slice(0, 4), [1, 2, 3], random, false);
+    if (remark?.seat === 1) { said += 1; if (remark.id === last) repeats += 1; last = remark.id; }
+  }
+  expect(said).toBeGreaterThan(50);
+  expect(repeats).toBe(0);
+});
