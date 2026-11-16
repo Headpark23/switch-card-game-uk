@@ -39,6 +39,15 @@ function rng(seed: number): () => number {
 const idOf = (name: string) => `${SAMPLE_PREFIX}${name.toLowerCase()}`;
 const playerOf = (name: string): Player => ({ id: idOf(name), name });
 
+/** Once a person removes the sample club it is never offered again (owner request, 16 Nov 2026). New key: switchSampleDismissed. */
+const DISMISSED_KEY = "switchSampleDismissed";
+export function sampleDismissed(): boolean {
+  try { return window.localStorage.getItem(DISMISSED_KEY) === "1"; } catch { return false; }
+}
+export function dismissSample(): void {
+  try { window.localStorage.setItem(DISMISSED_KEY, "1"); } catch { /* storage blocked: it returns next time */ }
+}
+
 export function hasSampleData(extensions: Extensions): boolean {
   return getProfiles(extensions).some((profile) => profile.id.startsWith(SAMPLE_PREFIX));
 }

@@ -100,3 +100,4 @@ New per-device keys, outside the club document and never synced or shared:
 ## One player per account (15 Nov 2026)
 
 `switchAccountMe` sits inside the club document (`extensions`) and is synced with Google sign-in. It names the saved player who is "me" for the whole account. Each phone or browser makes its own "You" player, so before this a signed-in person's games were split across devices (15 on the website, 54 on the phone) even though sync had copied every game to both. On sync, a device folds its own "me" into the account's (`unifyIdentity` in `src/switch/sync.ts`); a real name beats the automatic "You". No existing key changed.
+- `switchSampleDismissed` ("1" once the sample club was removed; the offer never returns). Added 16 Nov 2026.
