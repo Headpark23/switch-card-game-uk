@@ -17,6 +17,7 @@ import { clearSeat, loadSeat, onlineModeBlurb, reactionOf, tableInvite, tableNam
 import { logReaction } from '../switch/gameReplay';
 import { GameEnding } from './GameEnding';
 import { beginReplay, Bubble, ReactionSheet, useBubbles, useReplayRecorder } from './tableTalk';
+import { SuitBadge, TableToggles, useTablePrefs } from './tablePrefs';
 import { sortHand } from '../switch/sortHand';
 import { HahaBanner, hahaText, type Haha } from './HahaBanner';
 import { CardImage, CardShower, FeltHeader, rank, suitNames, suitSymbols } from '../ui';
@@ -168,6 +169,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
   const [called, setCalledState] = useState(false);
   const [reactOpen, setReactOpen] = useState(false);
   const { bubbles, say: sayBubble } = useBubbles();
+  const prefs = useTablePrefs();
   const [, setTick] = useState(0);
   const timings = useMemo(() => (reduced() ? REDUCED : SPEEDS[readSpeed()]), []);
   const showId = useRef(0);
@@ -438,7 +440,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
   const bubbleFor = (index: number) => {
     const bubble = bubbles[index];
     const reaction = bubble ? reactionOf(bubble.id) : null;
-    return bubble && reaction ? <Bubble key={bubble.n} n={bubble.n} id={bubble.id} name={names[index]} leaving={bubble.leaving} /> : null;
+    return prefs.talk && bubble && reaction ? <Bubble key={bubble.n} n={bubble.n} id={bubble.id} name={names[index]} leaving={bubble.leaving} /> : null;
   };
 
   if (ending) {
@@ -467,7 +469,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
   const drawingTiming = drawTiming(drawingNow?.count ?? 0, drawingNow?.penalty === true, timings);
   const ouchFor = (seatIndex: number) => drawingNow?.ouch && drawingNow.seat === seatIndex
     ? <span key={`ouch-${showing?.id}`} className="ouch" aria-hidden="true" data-testid="ouch" style={{ animationDelay: `${Math.round(drawingTiming.trip)}ms` }}>Ouch!</span> : null;
-  const notice = warn || (visible.announce ? visible.announce.text + '.'
+  const notice = warn || (!prefs.moves ? '' : visible.announce ? visible.announce.text + '.'
     : visible.flying ? `${activeName === 'You' ? 'You play' : `${activeName} plays`} ${cardIdLabel(visible.flying.card)}${visible.flying.count > 1 ? ` (${visible.flying.index + 1} of ${visible.flying.count})` : ''}.`
     : visible.drawing ? `${activeName === 'You' ? 'You pick' : `${activeName} picks`} up ${visible.drawing.count} card${visible.drawing.count === 1 ? '' : 's'}.`
     : yourMove ? (recent.length === 0 ? (openingNote(game, names) ?? `${names[game.dealer]} dealt.`) + " It is your move." : recent[recent.length - 1]) : recent[recent.length - 1] ?? openingNote(game, names) ?? `${names[game.dealer]} dealt.`);
@@ -480,6 +482,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
       <span className="turn-dot" aria-hidden="true" />
       <span className="turn-status" aria-live="polite" data-testid="turn-status">{status}</span>
       <em className="dealer-chip" aria-label={`Dealer: ${names[game.dealer]}`}>Dealer · {names[game.dealer]}</em>
+      <TableToggles prefs={prefs} />
       <button onClick={onExit}>Exit</button>
     </div>
     {view.series && <p className="series-strip" data-testid="series-strip">{modeName(view)} · {view.table?.title}</p>}
@@ -507,13 +510,13 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
           {pile.map((card, index) => <span key={card + index} className={'pile-card depth-' + (pile.length - 1 - index)}><CardImage code={card} /></span>)}
           {visible.flying && <span ref={flyRef} key={`fly-${showing?.id}-${visible.flying.index}`} className="pile-card flying" data-testid="flying-card" data-card={visible.flying.card}><CardImage code={visible.flying.card} /></span>}
         </span>
-        <span>Suit <b className={visible.currentSuit === 'H' || visible.currentSuit === 'D' ? 'red' : ''}>{suitSymbols[visible.currentSuit]} {suitNames[visible.currentSuit]}</b></span>
+        <SuitBadge suit={visible.currentSuit} />
         {seats > 2 && <span className="direction" aria-label={`Play goes ${visible.direction === 1 ? 'clockwise' : 'anticlockwise'}`}>{visible.direction === 1 ? <ArrowClockwise size={14} weight="bold" /> : <ArrowCounterClockwise size={14} weight="bold" />}{visible.direction === 1 ? 'Clockwise' : 'Anticlockwise'}</span>}
       </div>
-      {visible.announce && <div key={`${showing?.id}-${showing?.at}`} className={'table-announce ' + visible.announce.tone} data-testid="table-announce" aria-hidden="true">{visible.announce.text}</div>}
+      {prefs.moves && visible.announce && <div key={`${showing?.id}-${showing?.at}`} className={'table-announce ' + visible.announce.tone} data-testid="table-announce" aria-hidden="true">{visible.announce.text}</div>}
     </div>
     <p className={'game-notice' + (warn && yourMove ? ' warn' : '')} aria-live="polite" role={warn ? 'alert' : undefined}>{notice}</p>
-    {recent.length > 1 && <ul className="move-log" aria-label="Recent moves">{recent.slice(0, -1).map((line, index) => <li key={index}>{line}</li>)}</ul>}
+    {prefs.moves && recent.length > 1 && <ul className="move-log" aria-label="Recent moves">{recent.slice(0, -1).map((line, index) => <li key={index}>{line}</li>)}</ul>}
     {watching
       ? <div className="watch-panel" data-testid="watching" role="status">
         <Eye size={22} weight="bold" />

@@ -82,12 +82,17 @@ export function drawTiming(count: number, penalty: boolean, timings: Timings): {
   return { trip, stagger, shown, total: trip + (shown - 1) * stagger + (penalty ? timings.announce * 0.6 : timings.gap) };
 }
 
+/** A card's effect stays up long enough to read: 2.2 seconds, then about a third of a second a word (owner request, 16 Nov 2026). */
+export function announceReadingMs(text: string): number {
+  return Math.min(5500, 2200 + text.split(/\s+/).length * 330);
+}
+
 export function stepDuration(step: Step, timings: Timings): number {
   switch (step.kind) {
     case "think": return step.forced ? Math.min(timings.think, FORCED_THINK_MS) : timings.think;
     case "card": return timings.flight + timings.gap;
     case "draw": return drawTiming(step.count, step.penalty === true, timings).total;
-    case "announce": return timings.announce;
+    case "announce": return paceIsHuman() ? Math.max(timings.announce, announceReadingMs(step.text)) : timings.announce;
   }
 }
 

@@ -22,6 +22,7 @@ import { attackKind, banterFor, playEvent, reactionOf, type TableEvent } from '.
 import { logReaction, type ReplayMove } from '../switch/gameReplay';
 import { GameEnding } from './GameEnding';
 import { beginReplay, Bubble, ReactionSheet, useBubbles, useReplayRecorder } from './tableTalk';
+import { SuitBadge, TableToggles, useTablePrefs } from './tablePrefs';
 
 import { COMPUTER_NAMES } from '../switch/presentation';
 export { COMPUTER_NAMES };
@@ -136,6 +137,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   // Table talk: your reactions, the computers' banter, and a recording of the whole game for its replay.
   const [reactOpen, setReactOpen] = useState(false);
   const { bubbles, say } = useBubbles(paceIsHuman() ? 3600 : 1200);
+  const prefs = useTablePrefs();
   const [talk, setTalk] = useState<{ seat: number; id: string }[]>([]);
   const computers = useMemo(() => names.map((_, seat) => seat).filter((seat) => seat !== 0), [names]);
   const recorder = useReplayRecorder(gameId, () => beginReplay(gameId, game, names, computers, false));
@@ -526,10 +528,11 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   const drawingTiming = drawTiming(drawingNow?.count ?? 0, drawingNow?.penalty === true, timings);
   const ouchFor = (seat: number) => drawingNow?.ouch && drawingNow.seat === seat
     ? <span key={`ouch-${showing?.id}`} className="ouch" aria-hidden="true" data-testid="ouch" style={{ animationDelay: `${Math.round(drawingTiming.trip)}ms` }}>Ouch!</span> : null;
-  const notice = warn || (visible.announce ? visible.announce.text + '.'
-    : visible.thinking ? `${activeName} is choosing a move…`
-    : visible.flying ? `${activeName === 'You' ? 'You play' : `${activeName} plays`} ${cardIdLabel(visible.flying.card)}${visible.flying.count > 1 ? ` (${visible.flying.index + 1} of ${visible.flying.count})` : ''}.`
-    : visible.drawing ? `${activeName === 'You' ? 'You pick' : `${activeName} picks`} up ${visible.drawing.count} card${visible.drawing.count === 1 ? '' : 's'}.`
+  // The description of a move holds steady while the move is shown and stays up while the next player thinks.
+  const lastLine = recent[recent.length - 1];
+  const notice = warn || (!prefs.moves ? '' : visible.announce ? visible.announce.text + '.'
+    : visible.thinking ? (lastLine ?? `${activeName} is choosing a move…`)
+    : (visible.flying || visible.drawing) && showing ? showing.line
     : yourMove ? (recent.length === 0 ? (openingNote(game, names) ?? `${names[game.dealer]} dealt.`) + (game.turn === game.dealer ? " You play." : " You play first.") : recent[recent.length - 1]) : recent[recent.length - 1] ?? openingNote(game, names) ?? `${names[game.dealer]} dealt.`);
 
   return <section ref={sectionRef} className="tutorial game-tutorial table-game" aria-label={series ? series.title : `Game against ${opponents === 1 ? 'the computer' : `${opponents} computers`}`} data-active-seat={visible.active} data-showing={showing ? 'yes' : 'no'}>
@@ -538,9 +541,10 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
       <span className="turn-dot" aria-hidden="true" />
       <span className="turn-status" aria-live="polite" data-testid="turn-status">{status}</span>
       <em className="dealer-chip" aria-label={`Dealer: ${names[game.dealer]}`}>Dealer · {names[game.dealer]}</em>
+      <TableToggles prefs={prefs} />
       <button onClick={onExit}>Exit</button>
     </div>
-    {series && <p className="series-strip" data-testid="series-strip">{series.title}</p>}
+    {series &&<p className="series-strip" data-testid="series-strip">{series.title}</p>}
     <div className={`seat-row seats-${opponents}${opponents > 4 ? ' many' : ''}`} role="list" aria-label="Players at the table">
       {names.slice(1).map((name, index) => {
         const seat = index + 1;
@@ -551,7 +555,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
           <span className="seat-fan" aria-hidden="true">{Array.from({ length: Math.min(5, count) }, (_, i) => <CardImage code="back" key={i} />)}</span>
           <strong className={count === 1 ? 'last' : ''}>{outAfter.includes(seat) ? 'Out' : `${count} card${count === 1 ? '' : 's'}`}</strong>{ouchFor(seat)}
           <span className="seat-state" aria-hidden="true">{outAfter.includes(seat) ? `Out: ${ordinal(outAfter.indexOf(seat) + 1)}` : active ? (visible.thinking ? <><i className="think-dots"><b /><b /><b /></i>Choosing</> : 'Playing') : count === 1 ? 'Last card' : ' '}</span>
-          {bubbles[seat] && <Bubble key={bubbles[seat].n} n={bubbles[seat].n} id={bubbles[seat].id} name={name} leaving={bubbles[seat].leaving} />}
+          {prefs.talk && bubbles[seat] && <Bubble key={bubbles[seat].n} n={bubbles[seat].n} id={bubbles[seat].id} name={name} leaving={bubbles[seat].leaving} />}
         </div>;
       })}
     </div>
@@ -562,16 +566,16 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
           {pile.map((card, index) => <span key={card} className={'pile-card depth-' + (pile.length - 1 - index)}><CardImage code={card} /></span>)}
           {visible.flying && <span ref={flyRef} key={`fly-${showing?.id}-${visible.flying.index}`} className="pile-card flying" data-testid="flying-card" data-card={visible.flying.card}><CardImage code={visible.flying.card} /></span>}
         </span>
-        <span>Suit <b className={visible.currentSuit === 'H' || visible.currentSuit === 'D' ? 'red' : ''}>{suitSymbols[visible.currentSuit]} {suitNames[visible.currentSuit]}</b></span>
+        <SuitBadge suit={visible.currentSuit} />
         {seats > 2 && <span className="direction" aria-label={`Play goes ${visible.direction === 1 ? 'clockwise' : 'anticlockwise'}`}>{visible.direction === 1 ? <ArrowClockwise size={14} weight="bold" /> : <ArrowCounterClockwise size={14} weight="bold" />}{visible.direction === 1 ? 'Clockwise' : 'Anticlockwise'}</span>}
       </div>
-      {visible.announce && <div key={`${showing?.id}-${showing?.at}`} className={'table-announce ' + visible.announce.tone} data-testid="table-announce" aria-hidden="true">{visible.announce.text}</div>}
+      {prefs.moves && visible.announce && <div key={`${showing?.id}-${showing?.at}`} className={'table-announce ' + visible.announce.tone} data-testid="table-announce" aria-hidden="true">{visible.announce.text}</div>}
     </div>
     <p className={'game-notice' + (warn && yourMove ? ' warn' : '')} aria-live="polite" role={warn ? 'alert' : undefined}>{notice}</p>
-    {recent.length > 1 && <ul className="move-log" aria-label="Recent moves">{recent.slice(0, -1).map((line, index) => <li key={index}>{line}</li>)}</ul>}
+    {prefs.moves && recent.length > 1 && <ul className="move-log" aria-label="Recent moves">{recent.slice(0, -1).map((line, index) => <li key={index}>{line}</li>)}</ul>}
     <div className={'your-seat' + (visible.active === 0 ? ' turn' : '')} data-seat="0">
       {ouchFor(0)}
-      {bubbles[0] && <Bubble key={bubbles[0].n} n={bubbles[0].n} id={bubbles[0].id} name="You" leaving={bubbles[0].leaving} />}
+      {prefs.talk && bubbles[0] && <Bubble key={bubbles[0].n} n={bubbles[0].n} id={bubbles[0].id} name="You" leaving={bubbles[0].leaving} />}
       {yourMove && <span className="your-move-tag" aria-hidden="true">Your move</span>}
       {yourMove && missTurn && <div className="miss-turn-action"><strong>An eight was played</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you miss this turn.'}</p><button className="primary" onClick={pickUp}>Accept missed turn <ArrowRight size={18} /></button></div>}
       {youOutAt > 0 && <div className="out-panel" role="status" data-testid="you-are-out"><strong>You are out: {ordinal(youOutAt)} place.</strong><p>The others play on for the places still to be decided.</p><button className="secondary" onClick={skipToResult}>Skip to the result <ArrowRight size={18} /></button></div>}

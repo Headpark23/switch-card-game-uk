@@ -1267,3 +1267,22 @@
 .end-why{text-align:left;background:#f6edcf;border:1px solid #e3d9c4;border-radius:12px;padding:12px 14px;margin:6px 0 14px}.end-why strong{display:block;font-family:'DM Serif Display',Georgia,serif;font-size:20px;font-weight:400;margin-bottom:6px}.end-why p{font-size:13px;line-height:1.45;color:#35453d;margin:0 0 6px!important}.end-why p:last-child{margin-bottom:0!important}
 .game-ending .end-heading{font-size:22px;margin:6px 0 8px;text-align:left}
 .end-hands{list-style:none;margin:0 0 16px;padding:0;display:grid;gap:8px;text-align:left}.end-hands li{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center;border:1px solid #e0d6c0;border-radius:11px;padding:8px 10px;background:#fffdf7}.end-hands li.me{border-color:var(--gold);background:#fbf3d9}.end-hands b{font-size:13px}.end-hands span{font-size:11px;color:var(--muted)}.end-hands div{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:3px;min-height:0}.end-hands .playing-card{width:30px}
+
+/* 16 Nov 2026: table switches, a big suit badge, and bubbles that stay on screen with five or more computers. */
+.table-toggles{display:inline-flex;gap:4px;align-items:center}
+.turn-banner .table-toggle{display:inline-grid;place-items:center;width:28px;height:28px;min-height:28px;padding:0;border-radius:50%;text-decoration:none;border:1px solid currentColor;opacity:.55;background:transparent}
+.turn-banner .table-toggle.on{opacity:1;background:#ffffff26}
+.turn-banner .table-toggle:focus-visible{outline:2px solid #f2c660;outline-offset:2px}
+.table-toggle::after{content:'';position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+.table-toggle{position:relative}
+.game-tutorial .discard-pile>span.suit-badge{display:inline-flex;align-items:center;gap:8px;margin-top:6px;padding:3px 14px 3px 8px;border-radius:999px;background:#fffdf7;color:#14301f;border:2px solid #e6c97f;box-shadow:0 4px 12px #02150f66;letter-spacing:0;animation:suit-pop .5s cubic-bezier(.2,1.5,.4,1) both}
+.game-tutorial .discard-pile>span.suit-badge i{font-style:normal;font-size:34px;line-height:1}
+.game-tutorial .discard-pile>span.suit-badge b{font-size:15px;font-weight:800;letter-spacing:.3px;color:inherit}
+.game-tutorial .discard-pile>span.suit-badge.red{color:#b3261e}
+@keyframes suit-pop{0%{transform:scale(.6);box-shadow:0 0 0 0 #ffe19a}60%{transform:scale(1.14)}100%{transform:scale(1);box-shadow:0 4px 12px #02150f66}}
+@media(prefers-reduced-motion:reduce){.game-tutorial .discard-pile>span.suit-badge{animation:none}}
+.table-game .seat-row.many .reaction-bubble:not(.sticker){max-width:min(150px,42vw)}
+.table-game .seat-row.many .seat:nth-child(4n+1) .reaction-bubble:not(.sticker),.table-game .seat-row.many .seat:nth-child(4n+2) .reaction-bubble:not(.sticker){left:0;right:auto;translate:0 0}
+.table-game .seat-row.many .seat:nth-child(4n+3) .reaction-bubble:not(.sticker),.table-game .seat-row.many .seat:nth-child(4n) .reaction-bubble:not(.sticker){left:auto;right:0;translate:0 0}
+/* The effect pill sits at the top of the table so it never covers the suit badge below the pile. */
+.table-game .table-announce{bottom:auto;top:6px}
