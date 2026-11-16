@@ -120,3 +120,54 @@ test("the server snapshot counts what is stored without copying names or scores 
   assert.equal(snap.sharedNights.liveNow, 1);
   assert.ok(!/Secret|Ann|Bo\b/.test(JSON.stringify(snap)));
 });
+
+test("games carry their type, table size and where they were left, and every field is whitelisted", () => {
+  const out = tally([
+    { e: "game_start", opponents: 6, level: "sharp", mode: "knockout" },
+    { e: "game", opponents: 6, level: "sharp", mode: "knockout", won: true, place: 1, moves: 70 },
+    { e: "game", opponents: 3, level: "standard", mode: "toaster", won: false, place: 4, moves: 20 },
+    { e: "game_quit", mode: "cup", opponents: 3, moves: 12 },
+    { e: "game_quit", mode: "nope", opponents: 3, moves: 75 },
+  ], NOW);
+  assert.equal(out.add["games.started.mode.knockout"], 1);
+  assert.equal(out.add["games.started.opp.6"], 1);
+  assert.equal(out.add["games.opp.6"], 1, "tables of up to 8 count");
+  assert.equal(out.add["games.mode.knockout"], 1);
+  assert.equal(out.add["games.mode.knockout.won"], 1);
+  assert.equal(out.add["games.mode.toaster"], undefined, "unknown game types are dropped");
+  assert.equal(out.add["games.finished"], 2);
+  assert.equal(out.add["games.quit"], 2);
+  assert.equal(out.add["games.quit.mode.cup"], 1);
+  assert.equal(out.add["games.quit.moves.10"], 1);
+  assert.equal(out.add["games.quit.moves.60"], 1);
+});
+
+test("tournaments and scorecards count when begun, finished and left", () => {
+  const out = tally([
+    { e: "series", stage: "start", mode: "cup", players: 8 },
+    { e: "series", stage: "finish", mode: "cup", won: true },
+    { e: "series", stage: "leave", mode: "group" },
+    { e: "series", stage: "start", mode: "bogus" },
+    { e: "night_start", format: "darts", players: 4 },
+    { e: "night_start", format: "pinball", players: 4 },
+    { e: "night", format: "darts", players: 4, shared: false },
+  ], NOW);
+  assert.deepEqual(
+    { started: out.add["series.started.cup"], size: out.add["series.size.8"], won: out.add["series.won.cup"], left: out.add["series.left.group"], bogus: out.add["series.started.bogus"] },
+    { started: 1, size: 1, won: 1, left: 1, bogus: undefined },
+  );
+  assert.equal(out.add["nights.started"], 1);
+  assert.equal(out.add["nights.started.format.darts"], 1);
+  assert.equal(out.add["nights.started.size.4"], 1);
+  assert.equal(out.add["nights.format.darts"], 1);
+  assert.equal(out.add["nights.format.darts.players"], 4);
+  assert.equal(out.add["nights.size.4"], 1);
+});
+
+test("a dashboard page holds the new sections and parses", async () => {
+  const { readFileSync } = await import("node:fs");
+  const html = readFileSync(new URL("../public/stats.html", import.meta.url), "utf8");
+  for (const id of ["h-all", "h-fin", "h-cpu", "h-online", "h-score"]) assert.ok(html.includes(`id="${id}"`), id);
+  const script = html.match(/<script>([\s\S]*)<\/script>/)[1];
+  assert.doesNotThrow(() => new Function(script));
+});

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowCounterClockwise, ArrowRight, ChartBar, Trophy } from '@phosphor-icons/react';
 import { logSeriesResult } from '../switch/logGame';
+import { track } from '../switch/telemetry';
 import {
   advanceComputers, isSeriesOver, matchLabel, modeInfo, placeOf, resultOf, seriesOutcome, seriesPlayerName, standings, startSeries, submitGame, yourNextGame,
   ME_ID, type PendingGame, type SeriesSetup, type SeriesState,
@@ -27,6 +28,8 @@ export default function SeriesPlay({ setup, onTable, onExit, onChange, onMe, onO
   const [view, setView] = useState<'board' | 'table'>('board');
   useEffect(() => { onTable?.(view === 'table'); return () => onTable?.(false); }, [view]);
   const lastGame = useRef<string | null>(null);
+  // Anonymous counts for the owner's dashboard: this tournament or match began, was finished, or was walked away from.
+  const counted = useRef<{ started: string | null; finished: string | null }>({ started: null, finished: null });
   const recorded = useRef<string | null>(null);
 
   function start() {
@@ -36,6 +39,16 @@ export default function SeriesPlay({ setup, onTable, onExit, onChange, onMe, onO
 
   const { state, log } = run;
   const over = isSeriesOver(state);
+  useEffect(() => {
+    if (counted.current.started === state.base.id) return;
+    counted.current.started = state.base.id;
+    track({ e: 'series', stage: 'start', mode: setup.mode, players: state.base.players.length });
+  }, [state.base.id]);
+  useEffect(() => {
+    if (!over || counted.current.finished === state.base.id) return;
+    counted.current.finished = state.base.id;
+    track({ e: 'series', stage: 'finish', mode: setup.mode, won: seriesOutcome(state)?.winnerId === ME_ID });
+  }, [over, state.base.id]);
   const next: PendingGame | null = over ? null : yourNextGame(state);
   const outcome = seriesOutcome(state);
   const info = modeInfo(setup.mode);
@@ -95,7 +108,7 @@ export default function SeriesPlay({ setup, onTable, onExit, onChange, onMe, onO
     {log.length > 0 && <div className="series-log" aria-label="What the computers played" role="status"><strong>Meanwhile</strong><ul>{log.slice(-6).map((line, index) => <li key={index}>{line}</li>)}</ul></div>}
     {tables.map((table) => <StandingsTable key={table.heading} heading={table.heading} rows={table.rows} />)}
     {next && <button className="primary deal-button" data-testid="series-play" onClick={() => setView('table')}><Trophy size={20} weight="fill" />Play: {next.title}</button>}
-    <button className="text-link" onClick={onExit}>Leave this {noun}. Games already played still count.</button>
+    <button className="text-link" onClick={() => { if (counted.current.finished !== state.base.id) track({ e: 'series', stage: 'leave', mode: setup.mode }); onExit(); }}>Leave this {noun}. Games already played still count.</button>
   </section>;
 }
 

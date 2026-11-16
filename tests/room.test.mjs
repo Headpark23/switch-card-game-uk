@@ -523,3 +523,46 @@ test("a tournament needs enough players: Group Play needs six, Knock Out three",
   assert.equal((await call(store, { body: { seats: 9, name: "Ana", mode: "darts" } }, T0)).status, 400, "Darts is everyone in one game: eight at most");
   assert.equal((await call(store, { body: { seats: 9, name: "Ana" } }, T0)).status, 400, "a single game: eight at most");
 });
+
+test("the owner's anonymous counters see tables made, started and finished, and only ever numbers", async () => {
+  const { tableChanged } = await import("../api/_onlineStats.js");
+  const seen = [];
+  const observe = async (increments) => { seen.push(increments); };
+  const store = memoryStore();
+  const random = seeded(5);
+  const ask = async (opts, now) => {
+    const query = [opts.code ? `code=${opts.code}` : "", opts.op ? `op=${opts.op}` : ""].filter(Boolean).join("&");
+    const request = new Request(`https://example.test/api/room${query ? `?${query}` : ""}`, { method: opts.method ?? "POST", headers: { ...(opts.token ? { "x-seat-token": opts.token } : {}), "content-type": "application/json" }, body: (opts.method ?? "POST") === "GET" ? undefined : JSON.stringify(opts.body ?? {}) });
+    const response = await handleRoom(request, store, now, random, observe);
+    return { status: response.status, body: await response.json() };
+  };
+  const made = await ask({ body: { seats: 4, level: "standard", name: "Alice Secret" } }, T0);
+  assert.equal(seen[0].add["online.tables.created"], 1);
+  assert.equal(seen[0].add["online.tables.created.mode.single"], 1);
+  assert.equal(seen[0].add["online.tables.created.size.4"], 1);
+  const joined = await ask({ code: made.body.code, op: "join", body: { name: "Bob Private" } }, T0);
+  assert.equal(seen[1].add["online.joins"], 1);
+  await ask({ code: made.body.code, op: "start", token: made.body.token }, T0);
+  const started = seen[2];
+  assert.equal(started.add["online.tables.started"], 1);
+  assert.equal(started.add["online.tables.humans.2"], 1);
+  assert.equal(started.add["online.tables.seats.4"], 1);
+  assert.equal(started.add["online.computerSeats"], 2);
+  // Poll with nothing due: nothing is counted.
+  const before = seen.length;
+  await ask({ method: "GET", code: made.body.code, token: joined.body.token }, T0 + 1000);
+  assert.equal(seen.length, before, "a quiet poll adds no counts");
+  // Play the whole game out by letting time pass: the computer covers for both people.
+  // Someone is always looking, as a phone with the app open is (it polls every few seconds).
+  for (let now = T0 + 5_000; now < T0 + 4 * 3_600_000 && !seen.some((s) => s.add["online.games.finished"]); now += 5_000) await ask({ method: "GET", code: made.body.code, token: made.body.token }, now);
+  const finished = seen.find((s) => s.add["online.games.finished"]);
+  assert.ok(finished, "the finished game is counted once");
+  assert.equal(seen.filter((s) => s.add["online.games.finished"]).length, 1);
+  assert.equal(finished.add["online.games.mode.single"], 1);
+  assert.equal(finished.add["online.tables.finished"], 1);
+  assert.ok(finished.add["online.games.withAuto"] >= 1, "people who went quiet are counted");
+  const text = JSON.stringify(seen);
+  assert.ok(!/Alice|Bob|Secret|Private|[A-Z2-9]{6}/.test(text.replace(/online\.[a-zA-Z.0-9]+/g, "")), "only counter names and numbers");
+  assert.ok(seen.every((s) => Object.values(s.add).every((v) => Number.isInteger(v))));
+  assert.equal(typeof tableChanged, "function");
+});

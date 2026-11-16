@@ -6,7 +6,7 @@ import { clearCupResult, createCup, cupUndoStep, drawNextCupRound, isCupFinal, s
 import { createCrossLeaguePlayoffs, rankLeague, tiedGroups, type League } from '../switch/leagues';
 import { clearPicks, emptyLeagueProgress, recordFinisher, settleTie, undoLastRound, undoRoundBlocker, type LeagueProgress } from '../switch/leagueNight';
 import { createKnockout, createPlayoffKnockout, markLost, undoKnockout, type KnockoutState } from '../switch/knockout';
-import { trackNightSaved } from '../switch/telemetry';
+import { trackNightSaved, trackNightStarted } from '../switch/telemetry';
 import { addNight, completionFromCup, completionFromKnockout, completionFromLeagues, completionFromSession, createNightRecord } from '../switch/history';
 import { ensureProfiles, getProfiles } from '../switch/profiles';
 import { converge } from '../switch/clubSync';
@@ -145,6 +145,7 @@ export default function SwitchScorekeeper({onBack,backLabel='Home',initialView='
       setPlayers(current=>current.map((player,index)=>index<named.length?named[index]:player));
       const freshDealers:Record<string,DealerState>=format==='league'?Object.fromEntries(sizes.map((size,index)=>[`league-${index+1}`,pickDealer(named.slice(leagueOffsets[index],leagueOffsets[index]+size).map(player=>player.id))])):format==='cup'?{}:{main:pickDealer(named.map(player=>player.id))};
       setDealersNow(freshDealers);
+      trackNightStarted(format,named.length);
       if(format==='knockout'){const next=createKnockout(named);setKnockout(next);persist(named,{},putActiveNight(profileExt,{version:1,kind:'knockout',state:next}));return;}
       if(format==='cup'){const useDraw=cupOrder&&cupOrder.length===named.length;const next=useDraw?createCup(cupOrder.map(index=>named[index]),()=>0.999999):createCup(named,Math.random);setCup(next);persist(named,{},putActiveNight(profileExt,{version:1,kind:'cup',state:next}));return;}
       if(format==='league'){const fresh=emptyLeagueProgress(named.map(player=>player.id));setLeague(fresh);setLeagueStarted(true);persist(named,{...fresh.scores},putActiveNight(profileExt,leagueSnapshot(named,fresh)));return;}

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ArrowRight, CaretLeft, Crown, Minus, Plus } from '@phosphor-icons/react';
 import { cue } from '../feedback';
 import { KeyboardInput, useKeyboard } from '../mobile';
-import { trackNightSaved } from '../switch/telemetry';
+import { trackNightSaved, trackNightStarted } from '../switch/telemetry';
 import { addNight, createNightRecord, type NightCompletion, type SwitchNightRecord } from '../switch/history';
 import { ShareButton } from '../ShareButton';
 import { getClubName, nightShareCard } from '../switch/club';
@@ -48,6 +48,7 @@ export default function QuickNight({ onBack, onHistory }: { onBack: () => void; 
       setPlayers([...ensured.players]);
       setDealerState(pickDealer(ensured.players.map((player) => player.id)));
       persist(withoutNewProfiles(ensured.extensions, getProfiles(converge(loaded.state.extensions))), ensured.players);
+      trackNightStarted('head-to-head', ensured.players.length);
       keyboard.hide(); setError(''); cue('good');
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not start.'); }
   }

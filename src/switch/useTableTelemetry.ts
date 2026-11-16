@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ComputerLevel } from "./ai";
+import type { PlayMode } from "./series";
 import { emptyTally, tallyForReport, tallyLastCardMissed, tallyMove, tallyTime, type GameTally } from "./gameTally";
 import type { TableState } from "./table";
 import { track } from "./telemetry";
@@ -23,7 +24,7 @@ function load(id: string): GameTally | null {
 function save(id: string, tally: GameTally) { try { window.localStorage.setItem(KEY, JSON.stringify({ id, tally })); } catch { /* counting is optional */ } }
 function forget() { try { window.localStorage.removeItem(KEY); } catch { /* nothing to clear */ } }
 
-export function useTableTelemetry(gameId: string, opponents: number, level: ComputerLevel) {
+export function useTableTelemetry(gameId: string, opponents: number, level: ComputerLevel, mode: PlayMode = "single") {
   const state = useRef<{ id: string; tally: GameTally; lastAt: number; yourHand: number | null; resumed: boolean; reported: boolean } | null>(null);
   if (!state.current || state.current.id !== gameId) {
     const saved = load(gameId);
@@ -32,8 +33,8 @@ export function useTableTelemetry(gameId: string, opponents: number, level: Comp
 
   useEffect(() => {
     const current = state.current;
-    if (current && !current.resumed) track({ e: "game_start", opponents, level });
-  }, [gameId, opponents, level]);
+    if (current && !current.resumed) track({ e: "game_start", opponents, level, mode });
+  }, [gameId, opponents, level, mode]);
 
   const onMove = useCallback((before: TableState, action: GameAction, after: TableState) => {
     const current = state.current;
@@ -52,9 +53,16 @@ export function useTableTelemetry(gameId: string, opponents: number, level: Comp
     const current = state.current;
     if (!current || current.reported) return;
     current.reported = true;
-    track({ e: "game", opponents, level, ...result, seconds: Math.round(current.tally.activeMs / 1000), tally: tallyForReport(current.tally) });
+    track({ e: "game", opponents, level, mode, ...result, seconds: Math.round(current.tally.activeMs / 1000), tally: tallyForReport(current.tally) });
     forget();
-  }, [opponents, level]);
+  }, [opponents, level, mode]);
 
-  return { onMove, onFinish };
+  /** The person left the table with the game still going. It can be resumed, so the dashboard also compares started with finished. */
+  const onLeave = useCallback((moves: number) => {
+    const current = state.current;
+    if (!current || current.reported) return;
+    track({ e: "game_quit", mode, opponents, moves });
+  }, [opponents, mode]);
+
+  return { onMove, onFinish, onLeave };
 }

@@ -12,6 +12,10 @@ import { createHash, timingSafeEqual } from "node:crypto";
 export const LEVELS = ["relaxed", "standard", "sharp"];
 export const PLATFORMS = ["ios", "android", "windows", "mac", "linux", "other"];
 export const FORMATS = ["head-to-head", "domino", "darts", "league", "knockout", "cup"];
+/** Ways to play against the computer, as named in src/switch/series.ts (PlayMode). */
+export const GAME_MODES = ["single", "match", "knockout", "group", "cup", "darts", "dominoes"];
+/** Moves played when someone left a game, in four bands: where do people give up? */
+export const QUIT_BANDS = [[0, "0"], [10, "10"], [30, "30"], [60, "60"]];
 /** Screens, as named in Prototype.tsx. */
 export const PAGES = ["Learn", "Rules", "Cards", "Modes", "Watch", "Questions", "Tutorial", "Score", "Club", "Quick", "Puzzles", "Privacy", "Play", "Table", "Me"];
 /** One-off things worth counting. Anything not listed here is dropped. */
@@ -71,7 +75,10 @@ export function countersFor(event, now = Date.now(), out = { add: {}, max: {} })
       if (!format) break;
       add(out, "nights.saved");
       add(out, `nights.format.${format}`);
-      add(out, "nights.players", num(event.players, 24));
+      const players = num(event.players, 24);
+      add(out, "nights.players", players);
+      add(out, `nights.format.${format}.players`, players);
+      if (players >= 2) add(out, `nights.size.${players}`);
       if (event.shared === true) add(out, "nights.sharedSaved");
       break;
     }
@@ -85,14 +92,18 @@ export function countersFor(event, now = Date.now(), out = { add: {}, max: {} })
       add(out, "games.started");
       const level = oneOf(event.level, LEVELS);
       if (level) add(out, `games.started.${level}`);
+      const startedMode = oneOf(event.mode, GAME_MODES);
+      if (startedMode) add(out, `games.started.mode.${startedMode}`);
+      const startedWith = num(event.opponents, 7);
+      if (startedWith >= 1) add(out, `games.started.opp.${startedWith}`);
       break;
     }
     case "game": {
       const level = oneOf(event.level, LEVELS);
-      const opponents = num(event.opponents, 5);
+      const opponents = num(event.opponents, 7);
       if (!level || opponents < 1) break;
       const won = event.won === true;
-      const place = Math.max(1, num(event.place, 6));
+      const place = Math.max(1, num(event.place, 8));
       const moves = num(event.moves, 2000);
       add(out, "games.finished");
       add(out, won ? "games.won" : "games.lost");
@@ -101,6 +112,8 @@ export function countersFor(event, now = Date.now(), out = { add: {}, max: {} })
       add(out, `games.opp.${opponents}`);
       if (won) add(out, `games.opp.${opponents}.won`);
       add(out, `games.place.${place}`);
+      const mode = oneOf(event.mode, GAME_MODES);
+      if (mode) { add(out, `games.mode.${mode}`); if (won) add(out, `games.mode.${mode}.won`); }
       add(out, "games.moves", moves);
       peak(out, "max.moves", moves);
       const seconds = num(event.seconds, 3600);
@@ -125,6 +138,37 @@ export function countersFor(event, now = Date.now(), out = { add: {}, max: {} })
         const plays = t.plays && typeof t.plays === "object" ? t.plays[who] : null;
         if (plays && typeof plays === "object") for (const rank of RANKS) add(out, `plays.${who}.${rank}`, num(plays[rank], 200));
       }
+      break;
+    }
+    case "game_quit": {
+      // Someone left a table with the game still going. It may be resumed later, so "unfinished" is the safer measure.
+      const mode = oneOf(event.mode, GAME_MODES);
+      const moves = num(event.moves, 2000);
+      add(out, "games.quit");
+      if (mode) add(out, `games.quit.mode.${mode}`);
+      const band = [...QUIT_BANDS].reverse().find(([from]) => moves >= from);
+      if (band) add(out, `games.quit.moves.${band[1]}`);
+      break;
+    }
+    case "series": {
+      // A tournament or match against the computers as a whole (each of its games also counts as a normal game).
+      const mode = oneOf(event.mode, GAME_MODES);
+      const stage = oneOf(event.stage, ["start", "finish", "leave"]);
+      if (!mode || !stage) break;
+      const key = stage === "start" ? "started" : stage === "finish" ? "finished" : "left";
+      add(out, `series.${key}`);
+      add(out, `series.${key}.${mode}`);
+      if (stage === "finish" && event.won === true) add(out, `series.won.${mode}`);
+      if (stage === "start") add(out, `series.size.${Math.max(2, num(event.players, 8))}`);
+      break;
+    }
+    case "night_start": {
+      // A scorecard was begun (as opposed to saved): the gap between the two is nights that never reached a result.
+      const format = oneOf(event.format, FORMATS);
+      if (!format) break;
+      add(out, "nights.started");
+      add(out, `nights.started.format.${format}`);
+      add(out, `nights.started.size.${Math.max(2, num(event.players, 24))}`);
       break;
     }
     default: break;

@@ -19,6 +19,20 @@ Without `STATS_TOKEN` the data endpoint answers 503 and the dashboard stays off.
 
 Counters are kept as one small file per UTC day, `stats/days/YYYY-MM-DD.json` in the private blob store. Nothing but named numbers is stored: no id, name, score, club, address or user agent. `tests/stats.test.mjs` checks this.
 
+## Games played, and what gets finished (16 Nov 2026)
+
+The top of the dashboard answers "how much is played, of what, and what is left unfinished". It follows the date range buttons.
+
+| Section | What it shows | Counted by |
+|---|---|---|
+| Games played | Total finished, split into against the computer, online with friends and scored nights, a per-day chart, and "What stands out" (red/amber findings, most and least played types) | Phone events (`game`, `night`) and the server (`online.*`) |
+| What gets finished | For every type: started, finished, not finished, completion %. Red under 60% with at least 5 starts | `game_start` + `game` (by `mode`), `night_start` + `night` (by format), online tables `started` + `finished` |
+| Against the computer, in depth | Game types, table size 1 to 7, level, where games are left (`game_quit`, by moves played), win rate by type, tournaments and matches as a whole (`series`) | Phone |
+| Online tables, in depth | Tables made, started, finished, people and seats per table, game types, how often the computer had to play for a quiet person | The server, in `api/_onlineStats.js`, so closing the app never loses a table |
+| Scoring types, in depth | Most and least popular scorekeeper, players per night, begun v saved by number of players | Phone |
+
+Notes: unfinished = started minus finished, so a game still going or resumed later is a small, harmless gap; look for large gaps that persist. Online counters are worked out by the server from what changed in a table (`handleRoom(..., observe)` in `api/_room.js`) and only after the change was saved; they hold no names, codes or scores. Games finished before 16 Nov 2026 carry no game type and appear as "Before game types were counted". "Left early" for single games is an Exit with the game still going; it can be resumed.
+
 ## Limits to keep in mind
 
 - "Devices" are phones or browsers, not people, and there is no id to join days together, so weekly or monthly unique users cannot be calculated. Clearing site data makes a phone look new.

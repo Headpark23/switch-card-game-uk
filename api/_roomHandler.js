@@ -1,6 +1,7 @@
 import { handleRoom } from "./_room.js";
 import { storeFromEnv } from "./_roomStore.js";
 import { makeLimiter, tooMany } from "./_limit.js";
+import { recordIncrements } from "./_statsStore.js";
 
 // A family on one home connection shares one address and every phone polls every second or two, so this is far
 // more generous than the club limit. It is only a flood guard.
@@ -12,6 +13,6 @@ export default {
     if (!allow(request)) return tooMany();
     const store = storeFromEnv();
     if (!store) return unavailable("Playing with friends is not switched on yet.");
-    try { return await handleRoom(request, store); } catch { return unavailable("Playing with friends is unavailable right now."); }
+    try { return await handleRoom(request, store, Date.now(), undefined, recordIncrements); } catch { return unavailable("Playing with friends is unavailable right now."); }
   },
 };

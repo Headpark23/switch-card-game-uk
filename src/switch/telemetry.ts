@@ -128,4 +128,6 @@ export function trackOpen(): void {
 export const trackView = (page: string) => track({ e: "view", page });
 /** A night was saved on this phone: only its kind and how many played, never who or the scores. */
 export const trackNightSaved = (format: string, players: number, shared: boolean) => track({ e: "night", format, players, shared });
+/** A scorecard was begun: only its kind and how many are playing. Compared with nights saved, it shows which kinds never finish. */
+export const trackNightStarted = (format: string, players: number) => track({ e: "night_start", format, players });
 export const trackFeature = (name: string) => track({ e: "feature", name });

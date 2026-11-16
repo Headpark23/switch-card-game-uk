@@ -126,7 +126,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   const timings = useMemo(() => withThinkingFloor(prefersReducedMotion() ? REDUCED : SPEEDS[speed]), [speed]);
   const logged = useRef<string | null>(null);
   // Anonymous counts for the owner's dashboard (who dealt the penalty cards, how the game ended). Never read back by the game.
-  const stats = useTableTelemetry(gameId, opponents, level);
+  const stats = useTableTelemetry(gameId, opponents, level, series?.mode ?? 'single');
   const showId = useRef(0);
   /** Set the moment a move is submitted, so a double tap can never send it twice. Released when the turn has been shown. */
   const busy = useRef(false);
@@ -542,7 +542,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
       <span className="turn-status" aria-live="polite" data-testid="turn-status">{status}</span>
       <em className="dealer-chip" aria-label={`Dealer: ${names[game.dealer]}`}>Dealer · {names[game.dealer]}</em>
       <TableToggles prefs={prefs} />
-      <button onClick={onExit}>Exit</button>
+      <button onClick={() => { if (game.status === 'playing') stats.onLeave(game.move); onExit(); }}>Exit</button>
     </div>
     {series &&<p className="series-strip" data-testid="series-strip">{series.title}</p>}
     <div className={`seat-row seats-${opponents}${opponents > 4 ? ' many' : ''}`} role="list" aria-label="Players at the table">

@@ -16,6 +16,7 @@ import {
 } from "./_engine.js";
 import { aimedIds, voiceIds, voicePool } from "./_voices.js";
 import { attackOf, cardCandidates, caughtPool, hitPool, momentsOf } from "./_cardTalk.js";
+import { hasCounts, summarise, tableChanged, tableCreated, tableJoined } from "./_onlineStats.js";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const CODE = /^[A-Z2-9]{6}$/;
@@ -676,12 +677,29 @@ async function mutate(store, code, now, change, first = null) {
   throw new RoomError("The table is busy. Try again.", 503);
 }
 
-export async function handleRoom(request, store, now = Date.now(), random = secureRandom) {
-  try { return await route(request, store, now, random); }
+/**
+ * `observe`, when given, is told what each change added to the owner's anonymous counters (see _onlineStats.js).
+ * It is called only after a change was really saved, and a failure in it never touches the game.
+ */
+export async function handleRoom(request, store, now = Date.now(), random = secureRandom, observe = null) {
+  try { return await route(request, store, now, random, observe); }
   catch (error) { if (error instanceof RoomError) return json({ error: error.message }, error.status); throw error; }
 }
 
-async function route(request, store, now, random) {
+/** Like `mutate`, but reports what the change did to the counters once it has been saved. */
+async function mutateCounted(store, code, now, change, observe, first = null) {
+  let seen = null;
+  const outcome = await mutate(store, code, now, (room) => {
+    const before = observe ? summarise(room) : null;
+    const changed = change(room);
+    seen = changed && before ? tableChanged(before, summarise(room)) : null;
+    return changed;
+  }, first);
+  if (observe && outcome.written && seen && hasCounts(seen)) { try { await observe(seen); } catch { /* counting never affects a game */ } }
+  return outcome;
+}
+
+async function route(request, store, now, random, observe) {
   const url = new URL(request.url);
   const code = (url.searchParams.get("code") || "").toUpperCase();
   const op = url.searchParams.get("op") || "";
@@ -693,11 +711,11 @@ async function route(request, store, now, random) {
     const row = await load(store, code, now);
     const index = findSeat(row, token);
     if (index < 0) return json(publicSummary({ ...row, code }));
-    const outcome = await mutate(store, code, now, (room) => {
+    const outcome = await mutateCounted(store, code, now, (room) => {
       const seat = findSeat(room, token);
       const touched = touch(room, seat, now);
       return room.status !== "lobby" ? tick(room, now, random) || touched : touched;
-    }, row).catch((error) => { if (error instanceof RoomError && error.status === 503) return { room: { ...row, code } }; throw error; });
+    }, observe, row).catch((error) => { if (error instanceof RoomError && error.status === 503) return { room: { ...row, code } }; throw error; });
     return json(viewFor(outcome.room, findSeat(outcome.room, token), now, watch));
   }
 
@@ -713,7 +731,10 @@ async function route(request, store, now, random) {
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const fresh = newCode();
       room.code = fresh;
-      if (await store.create(fresh, room, Math.ceil(TIMING.ttlMs / 1000))) return json({ code: fresh, token: seatToken, view: viewFor(room, 0, now) }, 201);
+      if (await store.create(fresh, room, Math.ceil(TIMING.ttlMs / 1000))) {
+        if (observe) { try { await observe(tableCreated(room)); } catch { /* counting never affects a game */ } }
+        return json({ code: fresh, token: seatToken, view: viewFor(room, 0, now) }, 201);
+      }
     }
     throw new RoomError("Could not make a code. Try again.", 503);
   }
@@ -722,10 +743,11 @@ async function route(request, store, now, random) {
   if (op === "join") {
     const seatToken = randomBytes(18).toString("hex");
     const outcome = await mutate(store, code, now, (room) => { joinRoom(room, body.name, seatToken, now); return true; });
+    if (observe) { try { await observe(tableJoined()); } catch { /* counting never affects a game */ } }
     return json({ code, token: seatToken, view: viewFor(outcome.room, outcome.room.seats.length - 1, now) }, 201);
   }
 
-  const outcome = await mutate(store, code, now, (room) => {
+  const outcome = await mutateCounted(store, code, now, (room) => {
     const seatIndex = findSeat(room, token);
     if (seatIndex < 0) throw new RoomError("That seat is not yours, or the table has ended.", 403);
     touch(room, seatIndex, now);
@@ -738,7 +760,7 @@ async function route(request, store, now, random) {
     else if (op === "react") react(room, seatIndex, body.id, now);
     else throw new RoomError("Unknown request.");
     return true;
-  });
+  }, observe);
   // Starting a game shuffles the seats, so the answer is cut for wherever this token sits now, never the seat it had before.
   return json(viewFor(outcome.room, findSeat(outcome.room, token), now, watch));
 }
