@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 // @ts-expect-error plain JavaScript module shared with the Vercel function
 import { REACTIONS as SERVER_REACTIONS } from "../api/_room.js";
-import { banterFor, reactionOf, REACTIONS, SAYINGS, SPICY_SAYINGS, STICKERS } from "../src/switch/reactions";
+import { banterFor, reactionOf, REACTIONS, SAYINGS, SPICY_SAYINGS, STICKERS, VOICE_REACTIONS } from "../src/switch/reactions";
+import { momentsOf } from "../api/_cardTalk.js";
 import { replayFrames, summariseReactions, type GameReplay } from "../src/switch/gameReplay";
 
 /**
@@ -45,7 +46,7 @@ test("spicy talk: swearing only on phones that asked for it, a clean stand-in ev
 test("eighty-five reactions: ten sayings, eight of our own stickers, thirty-seven masked spicy ones and thirty favourites the computers send, the same ids the server accepts, no emoji", () => {
   expect(SAYINGS).toHaveLength(10);
   expect(STICKERS).toHaveLength(8);
-  expect(REACTIONS).toHaveLength(85);
+  expect(REACTIONS).toHaveLength(85 + VOICE_REACTIONS.length);
   expect(REACTIONS.map((entry) => entry.id).sort()).toEqual([...SERVER_REACTIONS].sort());
   expect(STICKERS.every((entry) => entry.sticker === entry.id)).toBe(true);
   for (const entry of REACTIONS) expect(entry.text).not.toMatch(/\p{Extended_Pictographic}/u);
@@ -141,4 +142,70 @@ test("react at the computer table, finish the game, then watch it back with the 
   // The same replay opens from Me > History.
   await page.getByRole("navigation").getByRole("button", { name: "Me", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Table talk" })).toBeVisible();
+});
+
+test("every computer has its own voice: short lines, mirrored on the server, aimed at people and at each other", () => {
+  const ids = VOICE_REACTIONS.map((line) => line.id);
+  expect(new Set(ids).size).toBe(ids.length);
+  for (const line of VOICE_REACTIONS) {
+    expect(line.text.split(/\s+/).length, line.text).toBeLessThanOrEqual(9);
+    expect(SERVER_REACTIONS, line.id).toContain(line.id);
+  }
+  const names = ["You", "John", "Paul", "Ringo"];
+  const rolls = (count: number) => { let n = 0; return () => ((n++ * 0.37 + 0.11) % 0.97); void count; };
+  let userDigs = 0;
+  let exchanges = 0;
+  for (let round = 0; round < 400; round += 1) {
+    const roll = rolls(round);
+    for (let skip = 0; skip < round % 17; skip += 1) roll();
+    // A computer makes you pick up: it can needle you.
+    const onYou = banterFor({ kind: "penalty", victim: 0, by: 1, cards: 4 }, names, [1, 2, 3], roll, false);
+    if (onYou && /^john-user-/.test(onYou.id)) userDigs += 1;
+    // A computer makes another computer pick up: it can needle it, and the victim can hit back.
+    const onPaul = banterFor({ kind: "penalty", victim: 2, by: 1, cards: 4 }, names, [1, 2, 3], roll, false);
+    if (onPaul?.answer) {
+      exchanges += 1;
+      expect(onPaul.answer.seat).toBe(2);
+      expect(onPaul.answer.id.startsWith("paul-")).toBe(true);
+    }
+  }
+  expect(userDigs).toBeGreaterThan(0);
+  expect(exchanges).toBeGreaterThan(0);
+});
+
+test("what they say is about the cards: plays, hits, mistakes and great shots", () => {
+  // What counts as a moment.
+  expect(momentsOf({ cards: ["KS"] })).toEqual(["blackKing"]);
+  expect(momentsOf({ cards: ["KH"] })).toEqual(["redKing"]);
+  expect(momentsOf({ cards: ["7D", "7S"] })).toEqual(["seven"]);
+  expect(momentsOf({ cards: ["9D", "9S", "9C"] })).toEqual(["set"]);
+  expect(momentsOf({ cards: ["2D"], pendingBefore: { kind: "draw-two", cards: 2 }, pendingAfter: { kind: "draw-two", cards: 4 } })).toEqual(["counter", "two"]);
+  expect(momentsOf({ cards: ["2D"], pendingBefore: { kind: "draw-two", cards: 4 }, pendingAfter: { kind: "draw-two", cards: 6 } })).toEqual(["stack", "counter", "two"]);
+  expect(momentsOf({ cards: ["AH"], won: true })).toEqual(["finish", "ace"]);
+  expect(momentsOf({ cards: ["4D"] })).toEqual([]);
+
+  const names = ["You", "John", "Paul", "George"];
+  const always = () => 0;
+  // A computer playing a black king talks about the black king, in its own voice.
+  const king = banterFor({ kind: "play", seat: 1, cards: ["KS"], pendingBefore: null, pendingAfter: { kind: "black-king", units: 1, cards: 5 } as never, won: false, next: 2 }, names, [1, 2, 3], always, false);
+  expect(king?.seat).toBe(1);
+  expect(king?.id).toMatch(/^john-play-blackKing-/);
+  // And the computer it lands on answers about the card that landed on it.
+  expect(king?.answer?.seat).toBe(2);
+  expect(king?.answer?.id).toMatch(/^paul-hit-blackKing-/);
+  // A card played at a computer by you draws a remark from that computer, about that card.
+  const eight = banterFor({ kind: "play", seat: 0, cards: ["8H"], pendingBefore: null, pendingAfter: { kind: "miss-turn" }, won: false, next: 1 }, names, [1, 2, 3], always, false);
+  expect(eight?.id).toMatch(/^john-hit-eight-/);
+  // A great shot by you gets a grudging word from another computer.
+  const great = banterFor({ kind: "play", seat: 0, cards: ["9D", "9S", "9C"], pendingBefore: null, pendingAfter: null, won: false }, names, [1, 2, 3], always, false);
+  expect(great?.id).toMatch(/^john-great-/);
+  // Plain cards say nothing.
+  expect(banterFor({ kind: "play", seat: 1, cards: ["4D"], pendingBefore: null, pendingAfter: null, won: false }, names, [1, 2, 3], always, false)).toBeNull();
+  // A mistake is mocked, and a computer's own mistake is its own embarrassment.
+  expect(banterFor({ kind: "mistake", seat: 0, what: "illegal" }, names, [1, 2, 3], always, false)?.id).toMatch(/^john-caught-illegal-/);
+  const forgot = banterFor({ kind: "mistake", seat: 2, what: "lastCard" }, names, [1, 2, 3], always, false);
+  expect(forgot?.seat).toBe(2);
+  expect(forgot?.id).toMatch(/^paul-mistake-/);
+  // A missed Last Card is mocked with a line about exactly that.
+  expect(banterFor({ kind: "spotted", victim: 0, by: 3 }, names, [1, 2, 3], always, false)?.id).toMatch(/^george-caught-lastCard-/);
 });

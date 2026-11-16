@@ -18,7 +18,7 @@ import RealCards from './RealCards';
 import type { PlayMode } from '../switch/series';
 import { sortHand } from '../switch/sortHand';
 import { HahaBanner, hahaText, type Haha } from './HahaBanner';
-import { banterFor, reactionOf, type TableEvent } from '../switch/reactions';
+import { attackKind, banterFor, playEvent, reactionOf, type TableEvent } from '../switch/reactions';
 import { logReaction, type ReplayMove } from '../switch/gameReplay';
 import { beginReplay, Bubble, ReactionSheet, useBubbles, useReplayRecorder } from './tableTalk';
 
@@ -136,6 +136,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   const computers = useMemo(() => names.map((_, seat) => seat).filter((seat) => seat !== 0), [names]);
   const recorder = useReplayRecorder(gameId, () => beginReplay(gameId, game, names, computers, false));
   const penaltyBy = useRef<number | null>(null);
+  const penaltyCard = useRef<'two' | 'blackKing' | 'stack' | undefined>(undefined);
   const queuedBanter = useRef<TableEvent[]>([]);
   const lastBanterAt = useRef(0);
 
@@ -181,6 +182,9 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     if (!remark) return;
     lastBanterAt.current = now;
     speak(remark.seat, remark.id);
+    // The computer who was just needled may hit back, in its own words, a couple of seconds later.
+    const { answer } = remark;
+    if (answer) window.setTimeout(() => speak(answer.seat, answer.id), 2600);
   }
 
   function sayQueued() {
@@ -195,11 +199,14 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     const type: ReplayMove['type'] = action.type === 'play' ? 'play' : action.type === 'draw' ? 'draw' : 'miss';
     recorder.move({ seat, type, ...(action.type === 'play' ? { cards: [...action.cards], suit: after.currentSuit } : {}), counts: after.hands.map((cards) => cards.length) });
     const events: TableEvent[] = [];
-    if (action.type === 'draw' && pickups(before) > 0) events.push({ kind: 'penalty', victim: seat, by: penaltyBy.current, cards: after.hands[seat].length - before.hands[seat].length });
+    // What was played, what it did and who it landed on: the card talk is about the cards.
+    if (action.type === 'play') events.push(playEvent(seat, action.cards, before.pendingPenalty, after.pendingPenalty, after.status === 'won' && after.winner === seat, after.status === 'playing' ? after.turn : undefined));
+    if (action.type === 'draw' && pickups(before) > 0) events.push({ kind: 'penalty', victim: seat, by: penaltyBy.current, cards: after.hands[seat].length - before.hands[seat].length, card: penaltyCard.current });
     if (action.type === 'play') {
+      penaltyCard.current = attackKind(action.cards, before.pendingPenalty, after.pendingPenalty);
       const top = action.cards[action.cards.length - 1];
       penaltyBy.current = rank(top) === '2' || rank(top) === 'K' ? seat : null;
-    } else penaltyBy.current = null;
+    } else { penaltyBy.current = null; penaltyCard.current = undefined; }
     if (after.status === 'won' && after.winner !== null) events.push({ kind: 'win', winner: after.winner });
     else if (after.status === 'playing' && after.hands[seat].length === 1 && before.hands[seat].length !== 1) events.push({ kind: 'last-card', seat });
     queuedBanter.current.push(...events);
@@ -233,6 +240,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
         cue('penalty');
         push(`${names[forgot]} forgot to say "Last Card" and picks up two cards.`);
         recorder.move({ seat: forgot, type: 'spot', counts: caught.hands.map((cards) => cards.length) });
+        queuedBanter.current.push({ kind: 'mistake', seat: forgot, what: 'lastCard' });
         setGame(caught);
       }
       sayQueued();
@@ -343,6 +351,8 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
 
   function refuse(cards: CardId[], reason: string) {
     cue('bad');
+    // Someone at the table notices you trying a card that cannot be played.
+    if (!busy.current) banter({ kind: 'mistake', seat: 0, what: 'illegal' });
     setFlash(cards);
     setWarn(reason);
     window.setTimeout(() => setFlash((current) => (current === cards ? [] : current)), 1100);
@@ -425,7 +435,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     busy.current = false;
     setShowing(null);
     setRecent([]); setStaged([]); setAceChoice(null); setHint(false); setLastCalled(false); setTalk([]);
-    penaltyBy.current = null; queuedBanter.current = [];
+    penaltyBy.current = null; penaltyCard.current = undefined; queuedBanter.current = [];
     setGameId(newTableGameId());
     if (!seatNames) setDrawn(randomNames(opponents));
     setGame(createTable(seats, Math.random, pickDealer(seats), { playOn: series?.playOn, powerStartChance: POWER_START_CHANCE }));

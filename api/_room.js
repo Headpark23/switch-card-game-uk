@@ -14,6 +14,8 @@ import {
   applyTableAction, chooseTableAction, createTable, dealTo, isLegalTablePlay, isSeriesOver, MAX_SEATS, ONLINE_MAX_PLAYERS, pendingGames, POWER_START_CHANCE,
   penaliseMissedLastCard, resultOf, seriesOutcome, startSeries, submitGame, tablePlaces, validateSetup,
 } from "./_engine.js";
+import { aimedIds, voiceIds, voicePool } from "./_voices.js";
+import { attackOf, cardCandidates, caughtPool, hitPool, momentsOf } from "./_cardTalk.js";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const CODE = /^[A-Z2-9]{6}$/;
@@ -54,7 +56,7 @@ export const TIMING = Object.freeze({
 export const AWAY_AFTER = 2;
 
 /**
- * The 85 reactions: ten cheeky sayings, eight stickers, thirty-seven spicy sayings (swear words always masked) and thirty favourites the computers send (Beatles, Bowie, Marley). The server keeps only the id; the
+ * The reactions: ten cheeky sayings, eight stickers, thirty-seven spicy sayings (swear words always masked) and thirty favourites the computers send (Beatles, Bowie, Marley) and every computer's own lines (`api/_voices.js`: digs at people, digs at other computers and the ways they hit back). The server keeps only the id; the
  * words and drawings live in the app (`src/switch/reactions.ts`). A spicy id is shown as its clean stand-in on any
  * phone that has Spicy off, so the server never needs to know who wants swearing.
  */
@@ -69,6 +71,7 @@ export const REACTIONS = Object.freeze([
   "get-back", "let-it-be", "help", "dont-let-me-down", "come-together", "all-you-need", "twist-and-shout", "goo-goo", "hey-jude", "here-comes-the-sun", "little-help",
   "lets-dance", "ground-control", "im-a-starman", "rebel-rebel", "changes",
   "buffalo-soldier", "redemption", "get-up-stand-up", "one-love-saying", "every-little-thing", "jammin",
+  ...voiceIds(),
 ]);
 
 export class RoomError extends Error {
@@ -334,29 +337,49 @@ function computerBanter(room, table, event, at, random = secureRandom) {
   if (!table.players.some((player) => room.seats[player].kind === "human")) return;
   if (event.kind !== "win" && at - (table.lastBanterAt ?? -Infinity) < BANTER_GAP_MS) return;
   const isComputer = (index) => typeof index === "number" && index >= 0 && room.seats[table.players[index]]?.kind === "computer";
+  const nameOf = (index) => room.seats[table.players[index]].name;
+  /** Who a remark is for: a computer by name, or a person at the table ("user"). */
+  const aim = (index) => (typeof index !== "number" || index < 0 ? undefined : isComputer(index) ? nameOf(index) : "user");
   const candidates = [];
-  if (event.kind === "penalty") {
-    if (isComputer(event.by) && event.by !== event.victim) candidates.push({ index: event.by, mood: "gloat", odds: Math.min(0.95, 0.45 + event.cards * 0.06) });
-    if (isComputer(event.victim)) candidates.push({ index: event.victim, mood: "sulk", odds: Math.min(0.9, 0.35 + event.cards * 0.05) });
+  if (event.kind === "play" || event.kind === "mistake") {
+    candidates.push(...cardCandidates(event, { seats: table.players.map((_, index) => index), isComputer, nameOf }));
+  } else if (event.kind === "penalty") {
+    const retorts = isComputer(event.by) && isComputer(event.victim) ? aimedIds(nameOf(event.victim), nameOf(event.by)) : [];
+    const hit = event.card && isComputer(event.victim) ? hitPool(nameOf(event.victim), event.card) : [];
+    if (isComputer(event.by) && event.by !== event.victim) candidates.push({ index: event.by, mood: "gloat", odds: Math.min(0.95, 0.45 + event.cards * 0.06), target: aim(event.victim), answer: retorts.length ? { index: event.victim, ids: retorts } : undefined });
+    if (isComputer(event.victim)) candidates.push({ index: event.victim, mood: "sulk", ids: hit.length ? hit : undefined, odds: Math.min(0.9, 0.35 + event.cards * 0.05), target: isComputer(event.by) ? aim(event.by) : undefined });
   } else if (event.kind === "spotted") {
-    if (isComputer(event.by)) candidates.push({ index: event.by, mood: "gloat", odds: 0.85 });
+    const caught = isComputer(event.by) ? caughtPool(nameOf(event.by), "lastCard") : [];
+    if (isComputer(event.by)) candidates.push({ index: event.by, mood: "gloat", ids: caught.length ? [...caught, ...caught] : undefined, odds: 0.85, target: aim(event.victim) });
   } else if (event.kind === "last-card") {
-    if (isComputer(event.seat)) candidates.push({ index: event.seat, mood: "tease", odds: 0.4 });
+    if (isComputer(event.seat)) candidates.push({ index: event.seat, mood: "tease", odds: 0.4, target: "user" });
   } else if (event.kind === "win") {
     const losers = table.players.map((_, index) => index).filter((index) => isComputer(index) && index !== event.winner);
-    if (isComputer(event.winner)) candidates.push({ index: event.winner, mood: "win", odds: 0.85 });
-    losers.forEach((index, n) => candidates.push({ index, mood: "lose", odds: n === losers.length - 1 ? 0.8 : 0.7 / losers.length }));
+    if (isComputer(event.winner)) candidates.push({ index: event.winner, mood: "win", odds: 0.85, target: "user" });
+    losers.forEach((index, n) => candidates.push({ index, mood: "lose", odds: n === losers.length - 1 ? 0.8 : 0.7 / losers.length, target: isComputer(event.winner) ? aim(event.winner) : undefined }));
   }
-  for (const candidate of candidates) {
-    const player = table.players[candidate.index];
-    const seat = room.seats[player];
-    if (random() >= candidate.odds * (0.5 + (BANTER_CHAT[seat.name] ?? 0.5))) continue;
-    const pool = [...BANTER_MOODS[candidate.mood], ...(BANTER_THEMES[BANTER_BAND[seat.name]]?.[candidate.mood] ?? [])];
+  const pick = (index, mood, ids, target) => {
+    const name = nameOf(index);
+    const pool = ids?.length ? ids : [...BANTER_MOODS[mood], ...(BANTER_THEMES[BANTER_BAND[name]]?.[mood] ?? []), ...voicePool(name, mood, target)];
+    return pool[Math.floor(random() * pool.length) % pool.length];
+  };
+  const say = (index, id) => {
+    const player = table.players[index];
     room.reactSeq += 1;
-    room.reactions.push({ n: room.reactSeq, player, id: pool[Math.floor(random() * pool.length) % pool.length], at });
+    room.reactions.push({ n: room.reactSeq, player, id, at });
     if (room.reactions.length > 20) room.reactions.splice(0, room.reactions.length - 20);
-    seat.lastReactAt = at;
+    room.seats[player].lastReactAt = at;
+  };
+  for (const candidate of candidates) {
+    // The card talk speaks for the seat in `seat` (the shared `_cardTalk.js` candidates); older candidates use `index`.
+    const index = candidate.index ?? candidate.seat;
+    const seat = room.seats[table.players[index]];
+    if (random() >= candidate.odds * (0.5 + (BANTER_CHAT[seat.name] ?? 0.5))) continue;
+    say(index, pick(index, candidate.mood, candidate.ids, candidate.target));
     table.lastBanterAt = at;
+    // A computer that has just been needled, or had a card played at it, may answer.
+    const answer = candidate.answer;
+    if (answer && random() < (answer.odds ?? 0.75)) say(answer.index ?? answer.seat, answer.ids[Math.floor(random() * answer.ids.length) % answer.ids.length]);
     return;
   }
 }
@@ -397,7 +420,13 @@ function playAction(room, table, seat, action, { at, lastCard, auto }) {
   table.game = after;
   table.turnAt = at;
   if (after.status === "won") finishTable(room, table, at);
-  if (action.type === "draw" && pickedUp >= 2) computerBanter(room, table, { kind: "penalty", victim: seat, by: penaltyFrom, cards: pickedUp }, at);
+  // What was played, what it did and who it landed on: the card talk is about the cards.
+  const attack = action.type === "play" ? attackOf(momentsOf({ cards: action.cards, pendingBefore: game.pendingPenalty, pendingAfter: after.pendingPenalty }), after.pendingPenalty) : null;
+  if (action.type === "play") computerBanter(room, table, { kind: "play", seat, cards: action.cards, pendingBefore: game.pendingPenalty, pendingAfter: after.pendingPenalty, won: after.status === "won" && after.winner === seat, next: after.status === "playing" ? after.turn : undefined }, at);
+  if (missed) computerBanter(room, table, { kind: "mistake", seat, what: "lastCard" }, at);
+  const attackBefore = table.lastAttack ?? undefined;
+  table.lastAttack = action.type === "play" && (attack === "two" || attack === "blackKing" || attack === "stack") ? attack : null;
+  if (action.type === "draw" && pickedUp >= 2) computerBanter(room, table, { kind: "penalty", victim: seat, by: penaltyFrom, cards: pickedUp, card: attackBefore }, at);
   if (after.status === "won" && after.winner !== null) computerBanter(room, table, { kind: "win", winner: after.winner }, at);
   else if (after.status === "playing" && after.hands[seat].length === 1 && game.hands[seat].length !== 1) computerBanter(room, table, { kind: "last-card", seat }, at);
 }
