@@ -390,11 +390,14 @@ function render() {
 }
 
 /* ---------- games played: how much, of what, and how much of it is finished ---------- */
-const MODE_NAMES = { single: "Single game", match: "Match", knockout: "Knock Out", group: "Group Play", cup: "Switch Cup", darts: "Darts scoring", dominoes: "Dominoes scoring" };
-const MODE_ORDER = ["single", "match", "knockout", "group", "cup", "darts", "dominoes"];
+const MODE_NAMES = { single: "Single game", match: "Match", lastout: "Last One Out", knockout: "Knock Out (retired)", group: "Group Play", cup: "Switch Cup", darts: "Darts scoring", dominoes: "Dominoes scoring" };
+const MODE_ORDER = ["single", "match", "lastout", "knockout", "group", "cup", "darts", "dominoes"];
 const FORMAT_ORDER = ["head-to-head", "domino", "darts", "league", "knockout", "cup"];
 const QUIT_LABELS = { 0: "Under 10 moves (just started)", 10: "10 to 29 moves", 30: "30 to 59 moves", 60: "60 moves or more (nearly done)" };
 const LOW = 60, WATCH = 85, MIN_SAMPLE = 5;
+
+/** Knock Out is no longer offered (replaced by Last One Out, 16 Nov 2026): it only appears while the chosen range still holds games played before. */
+const RETIRED = ["knockout"];
 
 /** Sums every key like `prefix + number` over the chosen days into { number: total }. */
 function sumPrefix(view, prefix) {
@@ -422,12 +425,12 @@ function gamesPlayedHtml(view, rs, rangeName) {
   const total = cpuDone + onlineDone + nightsDone;
 
   /* ---- computer game types ---- */
-  const cpuRows = MODE_ORDER.map((m) => ({ group: "Against the computer", key: m, label: MODE_NAMES[m], started: rs("games.started.mode." + m), finished: rs("games.mode." + m), won: rs("games.mode." + m + ".won") }));
+  const cpuRows = MODE_ORDER.filter((m) => !RETIRED.includes(m) || rs("games.started.mode." + m) + rs("games.mode." + m) > 0).map((m) => ({ group: "Against the computer", key: m, label: MODE_NAMES[m], started: rs("games.started.mode." + m), finished: rs("games.mode." + m), won: rs("games.mode." + m + ".won") }));
   const typed = cpuRows.reduce((t, r) => t + r.finished, 0), typedStarts = cpuRows.reduce((t, r) => t + r.started, 0);
   const untypedDone = Math.max(0, cpuDone - typed), untypedStarts = Math.max(0, rs("games.started") - typedStarts);
 
   /* ---- online ---- */
-  const onlineRows = MODE_ORDER.map((m) => ({ group: "Online with friends", key: m, label: MODE_NAMES[m], started: rs("online.tables.started.mode." + m), finished: rs("online.tables.finished.mode." + m), games: rs("online.games.mode." + m), auto: rs("online.games.withAuto.mode." + m), created: rs("online.tables.created.mode." + m) }));
+  const onlineRows = MODE_ORDER.filter((m) => !RETIRED.includes(m) || rs("online.tables.created.mode." + m) + rs("online.tables.started.mode." + m) > 0).map((m) => ({ group: "Online with friends", key: m, label: MODE_NAMES[m], started: rs("online.tables.started.mode." + m), finished: rs("online.tables.finished.mode." + m), games: rs("online.games.mode." + m), auto: rs("online.games.withAuto.mode." + m), created: rs("online.tables.created.mode." + m) }));
   const created = rs("online.tables.created"), startedTables = rs("online.tables.started"), finishedTables = rs("online.tables.finished");
 
   /* ---- scoring ---- */
@@ -485,7 +488,7 @@ function gamesPlayedHtml(view, rs, rangeName) {
   for (const d of view) for (const k in d.c) { const m = /^games\.opp\.(\d+)\.won$/.exec(k); if (m) wonBy[m[1]] = (wonBy[m[1]] || 0) + d.c[k]; }
   const sizes = [1, 2, 3, 4, 5, 6, 7];
   const quitRows = Object.keys(QUIT_LABELS).map((b) => ({ label: QUIT_LABELS[b], value: rs("games.quit.moves." + b), color: C.lost }));
-  const seriesRows = MODE_ORDER.filter((m) => m !== "single").map((m) => [esc(MODE_NAMES[m]), n0(rs("series.started." + m)), n0(rs("series.finished." + m)), n0(rs("series.left." + m)), pct(rs("series.won." + m), rs("series.finished." + m))]);
+  const seriesRows = MODE_ORDER.filter((m) => m !== "single" && (!RETIRED.includes(m) || rs("series.started." + m) > 0)).map((m) => [esc(MODE_NAMES[m]), n0(rs("series.started." + m)), n0(rs("series.finished." + m)), n0(rs("series.left." + m)), pct(rs("series.won." + m), rs("series.finished." + m))]);
   out.push(`<section class="block" aria-labelledby="h-cpu"><h2 id="h-cpu">Against the computer, in depth</h2><p class="lede">Which game types are chosen, how big the tables are, and where people stop.</p>
     <div class="grid">
       ${panel("Most and least played game types", "Finished games by type, " + rangeName + ".", hbars(cpuRows.map((r) => ({ label: r.label, value: r.finished, color: C.you, note: r.started ? `${n0(r.started)} started` : "", tip: `${r.label}: <b>${n0(r.finished)}</b> finished, ${n0(r.started)} started` })).sort((a, b) => b.value - a.value), { keepZero: true }))}
@@ -609,7 +612,7 @@ function demoData() {
     add(c, "practice.start", Math.round(fresh * 0.8)); add(c, "practice.finish", Math.round(fresh * 0.5)); add(c, "practice.won", Math.round(fresh * 0.3));
     const nights = Math.round(active * 0.12); add(c, "nights.saved", nights); add(c, "nights.players", nights * 3.4 | 0);
     ["head-to-head", "domino", "darts", "league", "knockout", "cup"].forEach((f, k) => add(c, "nights.format." + f, Math.round(nights * [0.35, 0.15, 0.2, 0.12, 0.1, 0.08][k])));
-    const MODES = ["single", "match", "knockout", "group", "cup", "darts", "dominoes"], mw = [0.5, 0.06, 0.1, 0.12, 0.08, 0.06, 0.08];
+    const MODES = ["single", "match", "lastout", "group", "cup", "darts", "dominoes"], mw = [0.5, 0.06, 0.1, 0.12, 0.08, 0.06, 0.08];
     MODES.forEach((m, k) => { const f = Math.round(games * mw[k]); const st = f + Math.round(f * (0.06 + k * 0.05) + rnd()); add(c, "games.started.mode." + m, st); add(c, "games.mode." + m, f); add(c, "games.mode." + m + ".won", Math.round(f * 0.42)); });
     add(c, "games.quit", Math.round(games * 0.15)); [["0", 0.4], ["10", 0.3], ["30", 0.2], ["60", 0.1]].forEach(([b, w]) => add(c, "games.quit.moves." + b, Math.round(games * 0.15 * w)));
     MODES.slice(1).forEach((m, k) => { const st = Math.round(rnd() * 3); add(c, "series.started." + m, st); add(c, "series.finished." + m, Math.round(st * (0.7 - k * 0.05))); add(c, "series.left." + m, Math.round(st * 0.3)); add(c, "series.won." + m, Math.round(st * 0.25)); });

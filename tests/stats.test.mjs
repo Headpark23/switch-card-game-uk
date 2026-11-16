@@ -126,12 +126,14 @@ test("games carry their type, table size and where they were left, and every fie
     { e: "game_start", opponents: 6, level: "sharp", mode: "knockout" },
     { e: "game", opponents: 6, level: "sharp", mode: "knockout", won: true, place: 1, moves: 70 },
     { e: "game", opponents: 3, level: "standard", mode: "toaster", won: false, place: 4, moves: 20 },
+    { e: "game_start", opponents: 4, level: "standard", mode: "lastout" },
     { e: "game_quit", mode: "cup", opponents: 3, moves: 12 },
     { e: "game_quit", mode: "nope", opponents: 3, moves: 75 },
   ], NOW);
   assert.equal(out.add["games.started.mode.knockout"], 1);
   assert.equal(out.add["games.started.opp.6"], 1);
   assert.equal(out.add["games.opp.6"], 1, "tables of up to 8 count");
+  assert.equal(out.add["games.started.mode.lastout"], 1, "Last One Out is a counted game type");
   assert.equal(out.add["games.mode.knockout"], 1);
   assert.equal(out.add["games.mode.knockout.won"], 1);
   assert.equal(out.add["games.mode.toaster"], undefined, "unknown game types are dropped");

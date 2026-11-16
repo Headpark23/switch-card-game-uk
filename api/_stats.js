@@ -13,7 +13,7 @@ export const LEVELS = ["relaxed", "standard", "sharp"];
 export const PLATFORMS = ["ios", "android", "windows", "mac", "linux", "other"];
 export const FORMATS = ["head-to-head", "domino", "darts", "league", "knockout", "cup"];
 /** Ways to play against the computer, as named in src/switch/series.ts (PlayMode). */
-export const GAME_MODES = ["single", "match", "knockout", "group", "cup", "darts", "dominoes"];
+export const GAME_MODES = ["single", "match", "lastout", "knockout", "group", "cup", "darts", "dominoes"];
 /** Moves played when someone left a game, in four bands: where do people give up? */
 export const QUIT_BANDS = [[0, "0"], [10, "10"], [30, "30"], [60, "60"]];
 /** Screens, as named in Prototype.tsx. */
