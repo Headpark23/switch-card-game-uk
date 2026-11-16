@@ -1262,3 +1262,8 @@
 .reaction-bubble{animation:reaction-float .45s cubic-bezier(.2,.8,.3,1) both}
 .reaction-bubble.leaving{animation:reaction-away .32s ease-in both}
 @media(prefers-reduced-motion:reduce){.reaction-bubble,.reaction-bubble.leaving{animation:none}.reaction-bubble.leaving{opacity:0}}
+/* How a game ends (16 Nov 2026): the winning play, why you lost, and everyone's leftover cards face up. */
+.game-ending .end-played{display:flex;justify-content:center;gap:6px;margin:4px 0 14px}.game-ending .end-played .playing-card{width:64px}
+.end-why{text-align:left;background:#f6edcf;border:1px solid #e3d9c4;border-radius:12px;padding:12px 14px;margin:6px 0 14px}.end-why strong{display:block;font-family:'DM Serif Display',Georgia,serif;font-size:20px;font-weight:400;margin-bottom:6px}.end-why p{font-size:13px;line-height:1.45;color:#35453d;margin:0 0 6px!important}.end-why p:last-child{margin-bottom:0!important}
+.game-ending .end-heading{font-size:22px;margin:6px 0 8px;text-align:left}
+.end-hands{list-style:none;margin:0 0 16px;padding:0;display:grid;gap:8px;text-align:left}.end-hands li{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center;border:1px solid #e0d6c0;border-radius:11px;padding:8px 10px;background:#fffdf7}.end-hands li.me{border-color:var(--gold);background:#fbf3d9}.end-hands b{font-size:13px}.end-hands span{font-size:11px;color:var(--muted)}.end-hands div{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:3px;min-height:0}.end-hands .playing-card{width:30px}

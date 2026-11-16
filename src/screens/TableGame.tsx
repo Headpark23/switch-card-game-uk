@@ -103,6 +103,9 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   const [gameId, setGameId] = useState(() => resume?.id ?? newTableGameId());
   const [game, setGame] = useState<TableState>(() => resume?.game ?? createTable(seats, Math.random, pickDealer(seats), { playOn: series?.playOn, powerStartChance: POWER_START_CHANCE }));
   const [showing, setShowing] = useState<Showing | null>(null);
+  // The table stays up after the last card so you can see how it ended; this is the game you have read the ending of.
+  const [endSeenFor, setEndSeenFor] = useState<string | null>(null);
+  const lastPlay = useRef<{ seat: number; cards: CardId[] } | null>(null);
   const [recent, setRecent] = useState<string[]>(() => (resume ? ['Game resumed where you left it.'] : []));
   const [staged, setStaged] = useState<CardId[]>([]);
   const [aceChoice, setAceChoice] = useState<CardId[] | null>(null);
@@ -161,7 +164,11 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   // A play-on game: once you are out the computers finish the round. Your place is already fixed.
   const youOutAt = game.playOn && game.status === 'playing' ? (game.out ?? []).indexOf(0) + 1 : 0;
   const outAfter = (showing ? showing.before : game).out ?? [];
-  const finished = game.status === 'won' && !showing;
+  const gameOver = game.status === 'won' && !showing;
+  // A person gets a proper ending (who won, with what, and what everyone was left holding). Automated runs skip it.
+  const showEnding = paceIsHuman() || (() => { try { return window.localStorage.getItem('switchShowEnding') === '1'; } catch { return false; } })();
+  const finished = gameOver && (endSeenFor === gameId || !showEnding);
+  const ending = gameOver && !finished;
 
   const push = (line: string) => setRecent((current) => [...current.slice(-3), line]);
 
@@ -196,6 +203,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   /** What the table saw of a move, for the replay, and anything in it worth a comment. */
   function record(before: TableState, action: GameAction, after: TableState) {
     const seat = before.turn;
+    if (action.type === 'play') lastPlay.current = { seat, cards: [...action.cards] };
     const type: ReplayMove['type'] = action.type === 'play' ? 'play' : action.type === 'draw' ? 'draw' : 'miss';
     recorder.move({ seat, type, ...(action.type === 'play' ? { cards: [...action.cards], suit: after.currentSuit } : {}), counts: after.hands.map((cards) => cards.length) });
     const events: TableEvent[] = [];
@@ -347,7 +355,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     if (!series) clearActiveTable();
   }, [game, lastCalled, gameId, opponents, level]);
 
-  useEffect(() => { if (finished) cue(youWon ? 'win' : 'bad'); }, [finished, youWon]);
+  useEffect(() => { if (gameOver) cue(youWon ? 'win' : 'bad'); }, [gameOver, youWon]);
 
   function refuse(cards: CardId[], reason: string) {
     cue('bad');
@@ -469,6 +477,35 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     : pending?.kind === 'black-king' ? `Play another black king, or a red king to cancel 5, or pick up ${pendingDraw}.`
     : missTurn ? 'Play another eight to pass the missed turn, or accept it.'
     : legalCards.length ? `You can play ${legalCards.map(cardIdLabel).join(', ')}. You may also pick up one card instead.` : 'You have no legal card. Pick up one card.';
+
+  if (ending) {
+    const winner = game.winner ?? 0;
+    const winnerName = winner === 0 ? 'You' : names[winner];
+    const played = lastPlay.current && lastPlay.current.seat === winner ? lastPlay.current.cards : game.discardPile.slice(-1);
+    const winningRank = rank(played[played.length - 1]);
+    const power: Record<string, string> = { '2': 'a two', '8': 'an eight', K: 'a king', A: 'an ace' };
+    const powerLeft = hand.filter((card) => ['2', '8', 'K', 'A', 'J', '7'].includes(rank(card)));
+    const order = [...game.hands.keys()].filter((seat) => seat !== winner).sort((a, b) => game.hands[a].length - game.hands[b].length || a - b);
+    const why: string[] = [];
+    if (!youWon) {
+      why.push(`${winnerName} played their last card first. You were still holding ${hand.length} card${hand.length === 1 ? '' : 's'}.`);
+      if (power[winningRank]) why.push(`Going out on ${power[winningRank]} is allowed, so it still wins the game.`);
+      if (hand.length === 1) why.push('So close: you were one card away.');
+      if (powerLeft.length) why.push(`You were left holding ${powerLeft.map(cardIdLabel).join(', ')}. Power cards kept to the end are the usual way to lose a close game, so use them while they help.`);
+    }
+    return <section className="tutorial game-tutorial table-game" aria-label="How the game ended" data-testid="game-ending">
+      <div className="completion game-ending">
+        <CheckCircle size={52} weight="light" />
+        <h1>{youWon ? <>You went<br />out.</> : <>{winnerName} went<br />out.</>}</h1>
+        <p>{winnerName} played {played.length > 1 ? 'the last cards' : 'the last card'}:</p>
+        <div className="end-played" aria-label="The winning play">{played.map((card) => <CardImage key={card} code={card} />)}</div>
+        {why.length > 0 && <div className="end-why" data-testid="end-why"><strong>Why you lost</strong>{why.map((line) => <p key={line}>{line}</p>)}</div>}
+        <h2 className="end-heading">What everyone was holding</h2>
+        <ul className="end-hands" aria-label="Cards left in each hand">{order.map((seat) => <li key={seat} className={seat === 0 ? 'me' : ''}><b>{seat === 0 ? 'You' : names[seat]}</b><span>{game.hands[seat].length === 0 ? 'Out' : `${game.hands[seat].length} left`}</span><div>{game.hands[seat].map((card) => <CardImage key={card} code={card} />)}</div></li>)}</ul>
+        <button className="primary" data-testid="end-continue" onClick={() => setEndSeenFor(gameId)}>See the results <ArrowRight size={18} /></button>
+      </div>
+    </section>;
+  }
 
   if (finished && series) {
     return <section className="tutorial game-tutorial table-game" aria-label="Game over">

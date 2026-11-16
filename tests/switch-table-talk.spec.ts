@@ -210,6 +210,35 @@ test("what they say is about the cards: plays, hits, mistakes and great shots", 
   expect(banterFor({ kind: "spotted", victim: 0, by: 3 }, names, [1, 2, 3], always, false)?.id).toMatch(/^george-caught-lastCard-/);
 });
 
+test("the game ends on the table: who went out, with what, why you lost and everyone's cards, before the results", async ({ page }) => {
+  await page.setViewportSize({ width: 430, height: 932 });
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem("seeded")) return;
+    sessionStorage.setItem("seeded", "1");
+    localStorage.setItem("switchTableSpeed", "quick");
+    localStorage.setItem("switchShowEnding", "1");
+    localStorage.setItem("switchTableGame", JSON.stringify({
+      version: 1, id: "cpu-ending-game", opponents: 1, level: "standard", awaitingLastCard: false, savedAt: new Date().toISOString(),
+      game: { hands: [["3C", "4D", "6S"], ["9C"]], drawPile: ["5D", "8C", "JD", "QS", "KD", "7C", "9S", "10H"], discardPile: ["5C"], currentSuit: "C", turn: 0, direction: 1, dealer: 1, pendingPenalty: null, status: "playing", winner: null, move: 3 },
+    }));
+  });
+  await page.goto("/");
+  await page.getByRole("navigation").getByRole("button", { name: "Play", exact: true }).click();
+  await page.getByRole("button", { name: /Resume your game/ }).click();
+  await page.locator('[data-card="3C"]').click();
+  await page.getByRole("button", { name: "Play selected" }).click();
+  // The ending comes first: the winner, the winning card, why you lost, and every hand face up.
+  const ending = page.getByTestId("game-ending");
+  await expect(ending).toBeVisible({ timeout: 15_000 });
+  await expect(ending.getByRole("heading", { name: /John went/ })).toBeVisible();
+  await expect(page.getByTestId("end-why")).toContainText("still holding 2 cards");
+  await expect(ending.getByRole("list", { name: "Cards left in each hand" })).toContainText("You");
+  await expect(page.getByRole("heading", { name: /John won/ })).toHaveCount(0);
+  // Then the results, when you ask for them.
+  await page.getByTestId("end-continue").click();
+  await expect(page.getByRole("heading", { name: /John won/ })).toBeVisible();
+});
+
 test("depth: every computer has plenty to say, and nobody repeats a line while they have another", () => {
   const names = ["You", "John", "Paul", "George", "Ringo", "Ziggy", "Bowie", "Marley"];
   for (const name of names.slice(1)) {
