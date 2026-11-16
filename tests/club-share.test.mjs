@@ -42,3 +42,13 @@ test("a deleted night stays deleted, and the newer change to a player wins", () 
   const archived = mergeClub({ profiles: [profile("a", "Ann", { archived: true })] }, { profiles: [profile("a", "Ann")] });
   assert.equal(archived.profiles[0].archived, true);
 });
+
+test("sample (demo) data an older version once shared is dropped, so removing the sample club sticks", () => {
+  const merged = mergeClub(
+    { profiles: [profile("demo-alex", "Alex"), profile("p1", "Ann")], nights: [night("demo-night-1", "2026-11-01T20:00:00.000Z"), night("n1", "2026-11-02T20:00:00.000Z")], seasons: [], removed: [] },
+    { profiles: [], nights: [], seasons: [{ id: "demo-season-1", status: "active", nightIds: [] }], removed: [] },
+  );
+  assert.deepEqual(merged.profiles.map((item) => item.id), ["p1"]);
+  assert.deepEqual(merged.nights.map((item) => item.id), ["n1"]);
+  assert.deepEqual(merged.seasons, []);
+});

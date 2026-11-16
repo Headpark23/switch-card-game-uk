@@ -29,8 +29,8 @@ export const MORE_VOICES = Object.freeze({
       "One card, and a crossword clue.",
     ],
     win: [
-      "In my own write. And win.", "Quarrymen to the top. Again.", "Bake the bread, I'm done.",
-      "Nonsense wins. Always did.", "Plastic win, and no encore.", "Mimi, I did it. Sort of.",
+      "In my own write. And win.", "Quarrymen to the top. Again.", "Put the kettle on. I'm done.",
+      "Nonsense wins. Always did.", "A plastic win, and no encore.", "Mimi, I did it. Sort of.",
       "Put that in your book.",
     ],
     lose: [
@@ -48,7 +48,7 @@ export const MORE_VOICES = Object.freeze({
       "Mimi would've called that carelessness.", "Quarrymen had more rhythm than you.",
     ],
     any: [
-      "Do try, won't you? Go on.", "A hand like a bad poem.", "Cheer up, you sound like a crossword.",
+      "Do try, won't you? Go on.", "A hand like a bad poem.", "Cheer up, you sound like a dull crossword.",
       "Terribly clever. Terribly wrong.", "Did you write that yourself?", "Hardly Quarrymen standard, is it?",
     ],
     at: {
@@ -56,14 +56,14 @@ export const MORE_VOICES = Object.freeze({
       George: ["Quiet one speaks! Write it down.", "Pass the garden gnome, George.", "Gardening again, George? Riveting."],
       Ringo: ["Ringo, mate. Rings don't win games.", "Drum solo coming, I suppose.", "Steady, Ringo. Octopus is watching."],
       Ziggy: ["Nice hair, Ziggy. Mine's a mop.", "Is that an eyebrow? Where?", "Spiders from Mars? Bit dusty."],
-      Bowie: ["New face today, David?", "Changes? Try a haircut.", "Chameleon. I prefer fruitcake."],
+      Bowie: ["New face today, David?", "Changes? Try a haircut.", "A chameleon? I prefer fruitcake."],
       Marley: ["Relax, Bob. It's cards, not peace.", "Bob, pass me a hat.", "Trenchtown's loss is our gain."],
     },
   },
   Paul: {
     gloat: [
       "Left-handed. Right on the money.", "Played that one by ear. Lovely.", "Bass line says I win.",
-      "Wings for that one, mate.", "Nothing personal. Just thirty-two number ones.", "Cheers, lads. Knighted for that.",
+      "Wings for that one, mate.", "Nothing personal. Just thirty-two number ones.", "Cheers, lads. I was knighted for less.",
       "Sir Paul, if you don't mind.", "Painted that move. Masterpiece, really.",
     ],
     sulk: [
@@ -73,12 +73,12 @@ export const MORE_VOICES = Object.freeze({
     ],
     tease: [
       "One card, lads. Lovely, isn't it?", "Nearly there. Nothing to see.", "One card. Writing a song about it.",
-      "Smile, everyone! I'm nearly out.", "Almost home. Bernard Webb says hello.", "One left. Cheeky grin ready.",
+      "Smile, everyone! I'm nearly out.", "Almost home. Nothing to see here.", "One left. Cheeky grin ready.",
       "Last card. Quick, take a photo!",
     ],
     win: [
       "Oh aye! Knighted, and now this.", "Another number one, lads.", "Lovely. Time for a cup of tea.",
-      "Bernard Webb wins. Who knew?", "That's thirty-three. Roughly. Maybe.", "Marvellous. Put it on the wall.",
+      "Another win, lads. Who knew?", "That's thirty-three. Roughly. Maybe.", "Marvellous. Put it on the wall.",
       "Cheers. I'll paint that later.",
     ],
     lose: [
@@ -96,8 +96,8 @@ export const MORE_VOICES = Object.freeze({
       "Aw, go on. Cheer up.", "Your hand's a children's book. Short.",
     ],
     any: [
-      "Lovely stuff. Pure Apollo C. Vermouth.", "Aw, cheer up, you great lump.", "Nice try, nice try, nice try.",
-      "Everton fan, are you? It shows.", "Lovely, lads. Absolutely marvellous.", "That's a Thrillington effort, that.",
+      "Lovely stuff, lads. Pure class.", "Aw, cheer up, you great lump.", "Nice try, nice try, nice try.",
+      "Everton fan, are you? It shows.", "Lovely, lads. Absolutely marvellous.", "That's a proper Thrillington effort.",
     ],
     at: {
       John: ["John, you old fruitcake. Smile.", "Write me a postcard, John.", "John! Still sulking, are we?"],
@@ -112,7 +112,7 @@ export const MORE_VOICES = Object.freeze({
     gloat: [
       "Did the gardening. Did the winning.", "Hm. Nice day for it.", "My roses played better.",
       "Quietly confident. Mostly quiet.", "Formula One? No. Formula Win.", "Rather good, that. Don't you think?",
-      "Even the sitar tuned better.", "Wilbury wins. Nelson would approve.",
+      "Even my sitar was better tuned.", "Wilbury wins. Nelson would approve.",
     ],
     sulk: [
       "Hm. Back to the garden.", "Not ideal. Not ideal at all.", "I'll sit this one out. Quietly.",
@@ -158,8 +158,8 @@ export const MORE_VOICES = Object.freeze({
   },
   Ringo: {
     gloat: [
-      "Drum roll, please! I win!", "Played that on me rings.", "Thomas the Tank Engine pace, that.",
-      "Off to the garden, octopus-style.", "Peace and love, and a win!", "I'm a star, me. Obviously.",
+      "Drum roll, please! I win!", "Played that with me rings on.", "That's Thomas the Tank Engine pace.",
+      "Off to the garden. Octopus-style!", "Peace and love, and a win!", "I'm a star, me. Obviously.",
       "Not bad for Dingle, eh?", "Pass me the All-Starr trophy.",
     ],
     sulk: [
@@ -175,19 +175,19 @@ export const MORE_VOICES = Object.freeze({
     win: [
       "All aboard the Ringo express!", "Peace and love, lads. Winner!", "Sir Ringo wins. Lovely.",
       "Drum roll. Cymbal crash. Me.", "All-Starr win. Take a bow.", "Photograph that. I won!",
-      "Lazarus rises again, mate.",
+      "Back on top again, mate!",
     ],
     lose: [
       "Peace and love. Still.", "It don't come easy, mate.", "I'm the quiet one. Today.",
       "I'll go and narrate a train.", "Back to the drum kit.", "Right. All aboard for next time.",
-      "Lazarus has been down before.",
+      "I've been down before, mate.",
     ],
     reply: [
       "Steady, mate. Peace and love.", "Cheek! I'm a knight.", "Oi! That's me rings.",
       "Mocker, me. Not a rocker.", "Cheers, mate. Love you.", "Right, back at you!",
     ],
     user: [
-      "Sorry mate. Peace and love though.", "You've blisters on your brain.", "Count to four. Then try again.",
+      "Sorry mate. Peace and love though.", "You've got blisters on your brain.", "Count to four. Then try again.",
       "Even Thomas runs faster, mate.", "I've seen better cards in Dingle.", "Keep the beat, mate. Please.",
       "Not bad. For a mocker.", "You play like a metronome. Joke!",
     ],
@@ -222,7 +222,7 @@ export const MORE_VOICES = Object.freeze({
     ],
     win: [
       "Ziggymania! Take a bow, earthlings.", "Messiah of Mars wins again.", "The Spiders will sing tonight.",
-      "Hammersmith Odeon. Last night. Perfect.", "Glitter and gold. Pure triumph.", "Ziggy retires. Never.",
+      "Hammersmith Odeon. Last night. Perfect.", "Glitter and gold. Pure triumph.", "Ziggy retire? Never.",
       "Heddon Street plaque, please.",
     ],
     lose: [
@@ -248,7 +248,7 @@ export const MORE_VOICES = Object.freeze({
       Paul: ["Paul, bass line? Marvellous. Sleepy.", "Paul, dear. Smile less.", "Mop-top Paul, how delightful."],
       George: ["George, put the garden away.", "George, speak up. Starman requests.", "George, a mullet would help."],
       Ringo: ["Ringo, your rings are cute.", "Ringo, darling. All aboard Mars.", "Ringo! Lend me a drumstick."],
-      Marley: ["Bob, pass the sunshine. Please.", "Bob, no one tuffer. Almost.", "Bob. A Spider for a Wailer?"],
+      Marley: ["Bob, pass the sunshine. Please.", "Bob, no one's tuffer. Almost.", "Bob. A Spider for a Wailer?"],
     },
   },
   Bowie: {
@@ -336,7 +336,7 @@ export const MORE_VOICES = Object.freeze({
     ],
     any: [
       "Easy, brother. Football's calmer.", "Peace, brother. Peace. Truly.", "Lion's watching. Be gentle.",
-      "Pass the sunshine. You need it.", "Good vibes only, brother. Seriously.", "One love, brother. Poor play.",
+      "Pass the sunshine. You need it.", "Good vibes only, brother. Seriously.", "One love, brother. Poor cards.",
     ],
     at: {
       John: ["John, friend. Take off the glasses.", "John, easy. One love.", "John, chill. Have some sunshine."],

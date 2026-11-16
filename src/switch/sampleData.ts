@@ -116,6 +116,6 @@ export function addSampleData(extensions: Extensions, now: Date = new Date()): R
 export function removeSampleData(extensions: Extensions): Record<string, unknown> {
   const isDemo = (id: string) => id.startsWith(SAMPLE_PREFIX);
   let next: Record<string, unknown> = putProfiles(extensions, getProfiles(extensions).filter((profile) => !isDemo(profile.id)));
-  next = { ...next, switchNightHistory: getHistory(next).filter((night) => !isDemo(night.id)) };
-  return putSeasons(next, getSeasons(next).filter((season) => !isDemo(season.id)));
+  next = { ...next, switchNightHistory: getHistory(next).filter((night) => !isDemo(night.id) && !night.players.some((player) => isDemo(player.id))) };
+  return putSeasons(next, getSeasons(next).filter((season) => !isDemo(season.id) && !season.profileIds.some(isDemo)));
 }

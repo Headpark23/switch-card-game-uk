@@ -219,7 +219,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
       penaltyBy.current = rank(top) === '2' || rank(top) === 'K' ? seat : null;
     } else { penaltyBy.current = null; penaltyCard.current = undefined; }
     if (after.status === 'won' && after.winner !== null) events.push({ kind: 'win', winner: after.winner });
-    else if (after.status === 'playing' && after.hands[seat].length === 1 && before.hands[seat].length !== 1) events.push({ kind: 'last-card', seat });
+    else if (after.status === 'playing' && after.hands[seat].length === 1 && before.hands[seat].length !== 1 && forgotRef.current !== seat) events.push({ kind: 'last-card', seat });
     queuedBanter.current.push(...events);
   }
 
@@ -227,7 +227,9 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     stats.onMove(before, action, after);
     record(before, action, after);
     showId.current += 1;
-    const steps = planTurn(before, action, after, names, { think, missedCall });
+    // A computer that is about to be caught for forgetting never announces "Last Card" first: it only says it when it really does.
+    const forgetting = forgotRef.current;
+    const steps = planTurn(before, action, after, names, { think, missedCall, called: names.map((_, index) => index !== forgetting) });
     let line = describe(before, after, names[before.turn], action);
     if (before.turn !== 0 && after.status === 'playing' && after.hands[before.turn].length === 1 && forgotRef.current !== before.turn) line += ` ${names[before.turn]} says "Last Card".`;
     if (missedCall) line += ' You had not said "Last Card", so you pick up two.';

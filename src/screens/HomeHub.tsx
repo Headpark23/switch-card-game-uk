@@ -2,8 +2,9 @@ import { ArrowRight, Broadcast, CalendarPlus, ClockCounterClockwise, Club, Gradu
 import { useEffect, useState } from 'react';
 import { loadLink, wantJoinForm } from '../switch/clubSync';
 import { fetchShare, loadKeys } from '../switch/shareNight';
-import { readClub } from '../switch/clubStore';
-import { getActiveNight } from '../switch/activeNight';
+import { readClub, updateClub } from '../switch/clubStore';
+import { useConfirm } from '../Confirm';
+import { clearActiveNight, getActiveNight } from '../switch/activeNight';
 import { readActiveTable } from '../switch/activeTable';
 import { getComputerGames, getMeId } from '../switch/computerLog';
 import { modeInfo } from '../switch/series';
@@ -53,6 +54,8 @@ type Props = {
 
 /** HOME: a compact, personal dashboard on the photographic card-table background. */
 export default function HomeHub(props: Props) {
+  const [, refresh] = useState(0);
+  const [confirm, confirmSheet] = useConfirm();
   const club = readClub();
   const sharing = loadKeys();
   const [arrived, setArrived] = useState<string[]>([]);
@@ -86,6 +89,12 @@ export default function HomeHub(props: Props) {
   const nightTitle = activeNight?.kind === 'score' ? `Your game: ${activeNight.session.players.map((player) => player.name).join(' v ')}` : activeNight ? `Your ${nightLabel}` : '';
   const nightScore = activeNight?.kind === 'score' && activeNight.session.players.length === 2 && activeNight.session.format !== 'darts' ? ` · ${activeNight.session.players.map((player) => activeNight.session.scores[player.id] ?? 0).join('–')}` : '';
   const nightShare = sharing ? (arrived.length ? ` · ${arrived.join(' & ')} joined` : ' · sharing live') : '';
+  /** A game that was never finished can always be put away from here, so Home never nags about it for good. */
+  async function endNight() {
+    if (!await confirm({ title: 'End this game?', message: 'The scores so far are cleared and nothing is saved to your record.', confirmLabel: 'End game', destructive: true })) return;
+    updateClub((current) => clearActiveNight(current));
+    refresh((tick) => tick + 1);
+  }
   const power = powers[new Date().getDate() % powers.length];
 
   return <>
@@ -96,7 +105,7 @@ export default function HomeHub(props: Props) {
 
       {(activeTable || activeNight) && <div className="resume-stack">
         {activeTable && <button className="resume-card" onClick={props.onResumeTable}><span className="resume-dot" aria-hidden="true" /><span><strong>Resume your game</strong><small>Against {activeTable.opponents === 1 ? 'the computer' : `${activeTable.opponents} computers`} · {LEVEL_NAMES[activeTable.level]} · {activeTable.game.hands[0].length} cards in hand</small></span><ArrowRight size={17} /></button>}
-        {activeNight && <button className="resume-card night" onClick={props.onScore}><span className="resume-dot" aria-hidden="true" /><span><strong>{nightTitle}</strong><small>{nightLabel}{nightScore}{nightShare} · tap to carry on</small></span><ArrowRight size={17} /></button>}
+        {activeNight && <div className="resume-night"><button className="resume-card night" onClick={props.onScore}><span className="resume-dot" aria-hidden="true" /><span><strong>{nightTitle}</strong><small>{nightLabel}{nightScore}{nightShare} · tap to carry on</small></span><ArrowRight size={17} /></button><button className="text-link resume-end" onClick={endNight}>End this game</button></div>}
       </div>}
 
       <div className="home-tiles v2">
@@ -128,5 +137,6 @@ export default function HomeHub(props: Props) {
 
       <button className="home-daily v2" onClick={() => props.onPower(power)}><Fan codes={power.cards.slice(0, 3)} /><span><strong>{power.name}</strong><em>{power.short} · today’s power card</em></span><ArrowRight size={15} /></button>
     </section>
+    {confirmSheet}
   </>;
 }

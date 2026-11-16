@@ -1311,3 +1311,7 @@
 .personalities.pickable li button:disabled{opacity:.45;cursor:not-allowed}
 .personalities.pickable .picked-tick{color:#0d4a37;margin-left:auto}
 .personalities.pickable .personality-top{justify-content:flex-start;align-items:center}
+
+.resume-night{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.resume-night .resume-card{margin:0}
+.resume-end{font-size:12px;padding:6px 4px;margin-left:6px}
