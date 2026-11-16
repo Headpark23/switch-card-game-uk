@@ -1,5 +1,5 @@
 import type { CupState } from "./cup";
-import type { KnockoutState } from "./knockout";
+import { roundWins, roundsToWin, type KnockoutState } from "./knockout";
 import { rankLeague, type League } from "./leagues";
 import { isGameMatch, scoreWinnerId, type ScoreSession } from "./scoring";
 import type { SwitchNightRecord } from "./history";
@@ -31,13 +31,15 @@ function buildBoard(input: { club?: string; host?: string; session: ScoreSession
       value: darts ? `${session.darts?.sets[player.id] ?? 0} sets · ${session.darts?.legs[player.id] ?? 0} legs` : `${session.scores[player.id] ?? 0} ${isGameMatch(session) ? "games" : "points"}`,
       lead: winner === player.id,
     }));
-    const name = session.format === "domino" ? "Domino" : session.format === "darts" ? "Darts" : "One v One";
+    const name = session.format === "domino" ? "Dominoes" : session.format === "darts" ? "Darts" : "One v One";
     return { title, format: session.format, status: winner ? `${session.players.find((p) => p.id === winner)?.name} wins the match` : darts ? `First to ${session.darts?.setsToWin ?? 3} sets` : isGameMatch(session) ? `${name} · first to ${session.target} games` : `${name} · first to ${session.target}`, lines };
   }
   if (knockout) {
     const still = knockout.players.filter((player) => !knockout.eliminatedIds.includes(player.id));
-    const lines = knockout.players.map((player) => ({ label: player.name, value: knockout.championId === player.id ? "CHAMPION" : knockout.eliminatedIds.includes(player.id) ? "Out" : "Still in", lead: knockout.championId === player.id }));
-    return { title, format: "knockout", status: knockout.championId ? "We have a champion" : `${still.length} still playing`, lines };
+    const target = roundsToWin(knockout);
+    const wins = roundWins(knockout);
+    const lines = knockout.players.map((player) => ({ label: player.name, value: `${knockout.championId === player.id ? "CHAMPION" : knockout.eliminatedIds.includes(player.id) ? "Out" : "Still in"}${target > 1 ? ` · ${wins[player.id] ?? 0} round win${wins[player.id] === 1 ? "" : "s"}` : ""}`, lead: knockout.championId === player.id }));
+    return { title, format: "knockout", status: knockout.championId ? "We have a champion" : target > 1 ? `Round ${(knockout.rounds?.length ?? 0) + 1} · first to ${target} round wins · ${still.length} still playing` : `${still.length} still playing`, lines };
   }
   if (cup) {
     const round = cup.rounds.at(-1);
@@ -84,7 +86,7 @@ export interface JoinedPlayer { readonly name: string; readonly at: number }
 export async function fetchShare(code: string): Promise<{ snapshot: NightSnapshot; results: SwitchNightRecord[]; joined: JoinedPlayer[]; updatedAt: number }> {
   const response = await fetch(`/api/night?code=${encodeURIComponent(code.trim().toUpperCase())}`, { cache: "no-store" });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.error || "Could not load that night.");
+  if (!response.ok || !body.snapshot) throw new Error(body.error || "Could not load that night.");
   return { snapshot: body.snapshot, results: Array.isArray(body.results) ? body.results : [], joined: Array.isArray(body.joined) ? body.joined : [], updatedAt: body.updatedAt };
 }
 /** Friend side: tells the host "I am Martin", so the host can see the invitation worked. Safe to repeat. */

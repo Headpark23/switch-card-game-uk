@@ -8,11 +8,12 @@ import { collectResults, forgetJoin, loadJoined, myNames, rememberJoin, remember
 import { readClub, updateClub } from '../switch/clubStore';
 import type { SwitchNightRecord } from '../switch/history';
 import { CardShower } from '../ui';
+import { NOT_FOUND, readCode, resolveCode, type CodeKind } from '../switch/joinCode';
 
 const same = (left: string, right: string) => left.trim().toLowerCase() === right.trim().toLowerCase();
 
 /** Friend side: enter a code (or open a link), say which player you are, and watch the scoreboard refresh. Saved results land in your own history. */
-export default function WatchNight({ initialCode, initialAs = '', onBack }: { initialCode: string; initialAs?: string; onBack: () => void }) {
+export default function WatchNight({ initialCode, initialAs = '', onBack, onOpenCode }: { initialCode: string; initialAs?: string; onBack: () => void; /** The code turned out to be a table or a club: go there instead. */ onOpenCode?: (kind: CodeKind, code: string) => void }) {
   const keyboard = useKeyboard();
   const [confirm, confirmSheet] = useConfirm();
   const [, refresh] = useState(0);
@@ -26,6 +27,7 @@ export default function WatchNight({ initialCode, initialAs = '', onBack }: { in
   const [results, setResults] = useState<SwitchNightRecord[]>([]);
   const [joined, setJoined] = useState<JoinedPlayer[] | null>(null);
   const [justSaved, setJustSaved] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
   const choose = (name: string | null) => { rememberJoin(code, name); if (name) rememberWho(name); setAs(name); };
 
   useEffect(() => {
@@ -66,7 +68,17 @@ export default function WatchNight({ initialCode, initialAs = '', onBack }: { in
     if (added.length) setJustSaved(added[added.length - 1].id);
   }, [as, results]);
 
-  function join() { keyboard.hide(); const next = input.trim().toUpperCase(); if (next.length === 8) { window.location.assign(`/?club=${next}`); return; } setSnapshot(null); setResults([]); setJoined(null); setError(''); setAs(loadJoined().find((item) => item.code === next)?.as); setCode(next); }
+  async function join() {
+    keyboard.hide(); setError(''); setChecking(true);
+    try {
+      const found = await resolveCode(input);
+      if (!found) { setError(NOT_FOUND); return; }
+      // A table code or a club code typed here still works: take them where it belongs.
+      if (found.kind !== 'night') { if (onOpenCode) onOpenCode(found.kind, found.code); else window.location.assign(`/?${found.kind}=${found.code}`); return; }
+      setSnapshot(null); setResults([]); setJoined(null); setAs(loadJoined().find((item) => item.code === found.code)?.as); setCode(found.code);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not check that code. Try again.'); }
+    finally { setChecking(false); }
+  }
   // Nights shared by an older version of the app carry no player list, so fall back to the scoreboard names.
   const players = snapshot?.players?.length ? snapshot.players : (snapshot?.lines ?? []).map((line) => line.label.replace(/^\d+\.\s*/, ''));
   const latest = results[0];
@@ -90,8 +102,8 @@ export default function WatchNight({ initialCode, initialAs = '', onBack }: { in
     
     <h1 id="watch-title">{snapshot ? snapshot.title : 'Join a night'}</h1>
     {!snapshot && <form className="join-form" onSubmit={(event) => { event.preventDefault(); join(); }}>
-      <label><span>Night code</span><KeyboardInput aria-label="Night code" autoCapitalize="characters" maxLength={8} placeholder="Night code or club code" value={input} onChange={(event) => setInput(event.target.value.toUpperCase())} /></label>
-      <button className="primary" type="submit" disabled={input.trim().length < 6 || input.trim().length === 7}>{input.trim().length === 8 ? 'Join club' : 'Watch'}</button>
+      <label><span>Night code</span><KeyboardInput aria-label="Night code" autoCapitalize="characters" autoCorrect="off" spellCheck={false} placeholder="Any code: night, table or club" value={input} onChange={(event) => { setError(''); const text = event.target.value; setInput(/https?:/i.test(text) ? text : text.toUpperCase()); }} /></label>
+      <button className="primary" type="submit" disabled={checking || readCode(input).code.length < 6 || readCode(input).code.length === 7}>{checking ? 'Checking…' : readCode(input).code.length === 8 ? 'Join club' : 'Join'}</button>
     </form>}
     {error && <p className="score-error" role="alert">{error}</p>}
     {snapshot && <>

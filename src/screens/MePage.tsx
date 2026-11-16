@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CLUB_REFRESH } from '../switch/clubSync';
-import { ArrowRight, Fire, Pencil, Robot } from '@phosphor-icons/react';
+import { ArrowRight, CaretLeft, Pencil, Robot } from '@phosphor-icons/react';
 import { FeltHeader } from '../ui';
 import { KeyboardInput, useKeyboard } from '../mobile';
 import { BadgeButton, BadgeSheet, BadgeWall, PassportBook } from './Badges';
@@ -12,7 +12,7 @@ import { claimMe, mergeProfiles } from '../switch/identity';
 import { useConfirm } from '../Confirm';
 import { derivePlayerStats } from '../switch/analytics';
 import { getHistory } from '../switch/history';
-import { ensureProfiles, getProfiles, isNameTaken, nameTakenMessage, renameProfile, resolveHistoryPlayerId } from '../switch/profiles';
+import { ensureProfiles, getProfiles, type LocalProfile, isNameTaken, nameTakenMessage, renameProfile, resolveHistoryPlayerId } from '../switch/profiles';
 import { countryName } from '../switch/places';
 import { readClub, updateClub } from '../switch/clubStore';
 import NightDetail from './NightDetail';
@@ -24,13 +24,17 @@ import { SPEED_NAMES, type Speed } from '../switch/presentation';
 import { feedbackEnabled, setFeedbackEnabled } from '../feedback';
 import { AccountPanel } from '../AccountPanel';
 import InstallButton from '../InstallButton';
+import HistoryPanel, { type HistoryCategory, type HistoryEntry } from './HistoryPanel';
 
 type Section = 'overview' | 'history' | 'computer' | 'badges' | 'passport' | 'trophies' | 'settings';
 const SECTIONS: readonly { id: Section; label: string }[] = [
   { id: 'overview', label: 'Me' }, { id: 'history', label: 'History' }, { id: 'computer', label: 'Computer' }, { id: 'badges', label: 'Badges' }, { id: 'passport', label: 'Passport' }, { id: 'trophies', label: 'Trophies' }, { id: 'settings', label: 'Settings' },
 ];
 const LEVEL_NAMES: Record<string, string> = { relaxed: 'Easy', standard: 'Medium', sharp: 'Hard' };
-const FORMAT_NAMES: Record<string, string> = { 'head-to-head': 'One v One', domino: 'Domino', darts: 'Darts', league: 'Group Play', knockout: 'Knock Out', cup: 'Switch Cup' };
+const FORMAT_NAMES: Record<string, string> = { 'head-to-head': 'One v One', domino: 'Dominoes', darts: 'Darts', league: 'Group Play', knockout: 'Last One Out', cup: 'Switch Cup' };
+
+/** Scored-at-home formats named the same way as the matching way to play on the app, so charts group them together. */
+const HOME_TYPES: Record<string, string> = { 'head-to-head': 'One v One', domino: 'Dominoes scoring', darts: 'Darts scoring', league: 'Group Play', knockout: 'Last One Out', cup: 'Switch Cup' };
 
 function Bar({ label, value, total }: { label: string; value: number; total: number }) {
   return <div className="me-bar"><span>{label}</span><i aria-hidden="true"><b style={{ width: `${total ? Math.round((value / total) * 100) : 0}%` }} /></i><em>{value}/{total}</em></div>;
@@ -39,7 +43,7 @@ function Bar({ label, value, total }: { label: string; value: number; total: num
 function percent(rate: number) { return `${Math.round(rate * 100)}%`; }
 
 /** Your own corner: who you are, every night and computer game you have played, your badges and passport. */
-export default function MePage({ onPlay, onClub, onPrivacy, onReplay, initialSection = 'overview' }: { onPlay: () => void; onClub: () => void; onPrivacy?: () => void; onReplay?: (gameId: string) => void; initialSection?: Section }) {
+export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, initialSection = 'overview' }: { onPlay: () => void; onClub: () => void; onPrivacy?: () => void; onReplay?: (gameId: string) => void; onBack?: () => void; initialSection?: Section }) {
   const keyboard = useKeyboard();
   const [extensions, setExtensions] = useState(readClub);
   // A shared club changed under this screen: show the new players and nights without losing the tab you are on.
@@ -48,7 +52,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, initialSec
   const [soundOn, setSoundOn] = useState(feedbackEnabled);
   const [spicyOn, setSpicyOn] = useState(spicyTalk);
   const [speed, setSpeed] = useState<Speed>(readSpeed);
-  const [filter, setFilter] = useState<'all' | 'nights' | 'computer'>('all');
+  const [filter, setFilter] = useState<HistoryCategory>('all');
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState('');
@@ -64,8 +68,11 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, initialSec
   const me = profiles.find((profile) => profile.id === meId) ?? null;
 
   if (!me) {
+    let previewBadges: BadgeProgress[] = [];
+    try { previewBadges = deriveBadges({ id: '__preview__', name: 'Preview' } as unknown as LocalProfile, [], [], []); } catch { /* the preview is optional */ }
     return <section className="me-page" aria-labelledby="me-title">
-      <FeltHeader id="me-title" title="Who are you?" intro="Your games against the computer, your nights, badges and passport all hang on this name." cards={['KH', 'AS']} />
+      {onBack && <button className="text-link back-link" onClick={onBack}><CaretLeft size={15} weight="bold" />Home</button>}
+      <FeltHeader id="me-title" title="Who are you?" intro="Pick a name so your badges and passport follow you." cards={['KH', 'AS']} />
       {profiles.length > 0 && <div className="saved-players" aria-label="Saved players"><span>Already playing? Pick your name</span><div className="player-tokens">{profiles.map((profile) => <button key={profile.id} data-colour={profile.colour} onClick={() => apply((current) => claimMe(current, profile.id))}>{profile.name}</button>)}</div></div>}
       <label className="target-field"><span>Or type your name</span><KeyboardInput aria-label="Your name" value={draft} placeholder="Your name" onChange={(event) => setDraft(event.target.value)} /></label>
       {error && <p className="score-error" role="alert">{error}</p>}
@@ -75,6 +82,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, initialSec
       }}>This is me <ArrowRight size={18} /></button>
       <button className="text-link" onClick={() => apply((current) => ensureMe(current).extensions)}>Skip and call me “You”</button>
       {onPrivacy && <button className="text-link" onClick={onPrivacy}>Privacy: what stays on your phone <ArrowRight size={16} /></button>}
+      {previewBadges.length > 0 && <section className="badge-preview" aria-label="Badges you can win"><h3>Badges you can win</h3><BadgeWall badges={previewBadges} /></section>}
     </section>;
   }
 
@@ -95,11 +103,18 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, initialSec
   const nightRecord = { played: myNights.length, won: myNights.filter((night) => night.players.some((player) => resolveHistoryPlayerId(player, allProfiles) === me.id && night.winnerIds.includes(player.id))).length };
   const wonNight = (night: (typeof nights)[number]) => night.players.some((player) => resolveHistoryPlayerId(player, allProfiles) === me.id && night.winnerIds.includes(player.id));
 
-  type Row = { key: string; when: string; kind: 'night' | 'computer'; title: string; detail: string; won: boolean; open: () => void };
-  const rows: Row[] = [
-    ...(filter !== 'computer' ? myNights.map((night): Row => ({ key: night.id, when: night.completedAt, kind: 'night', title: night.title, detail: `${FORMAT_NAMES[night.format] ?? night.formatLabel} · ${night.players.length} players${night.place ? ` · ${night.place.name}, ${countryName(night.place.country)}` : ''}`, won: wonNight(night), open: () => setOpenNight(night) })) : []),
-    ...(filter !== 'nights' ? games.map((game): Row => ({ key: game.id, when: game.playedAt, kind: 'computer', title: game.won ? (game.online ? 'Won online' : 'Beat the computer') : `Finished ${game.place}${['st', 'nd', 'rd'][game.place - 1] ?? 'th'}`, detail: `${gameMode(game) === 'single' ? '' : `${modeInfo(gameMode(game)).name}${game.series ? (game.series.won ? ' · won the whole thing' : ` · finished ${game.series.place}${['st', 'nd', 'rd'][game.series.place - 1] ?? 'th'} overall`) : ''} · `}${game.online ? `Online · ${game.opponents + 1} players` : game.opponents === 1 ? '1 opponent' : `${game.opponents} opponents`} · ${LEVEL_NAMES[game.level]} · ${game.moves} moves`, won: game.won, open: () => setOpenGame(game) })) : []),
-  ].sort((a, b) => Date.parse(b.when) - Date.parse(a.when));
+  const ordinal = (place: number) => `${place}${['st', 'nd', 'rd'][place - 1] ?? 'th'}`;
+  const rows: HistoryEntry[] = [
+    ...myNights.map((night): HistoryEntry => ({ key: night.id, when: night.completedAt, kind: 'home', type: HOME_TYPES[night.format] ?? night.formatLabel, title: night.title, detail: `${FORMAT_NAMES[night.format] ?? night.formatLabel} · ${night.players.length} players${night.place ? ` · ${night.place.name}, ${countryName(night.place.country)}` : ''}`, won: wonNight(night), open: () => setOpenNight(night) })),
+    ...games.map((game): HistoryEntry => {
+      const winner = game.rivals?.find((rival) => rival.place === 1)?.name;
+      const mode = gameMode(game);
+      return { key: game.id, when: game.playedAt, kind: game.online ? 'online' : 'computer', type: modeInfo(mode).name,
+        title: game.won ? (game.online ? 'Won online' : 'Beat the computer') : `Finished ${ordinal(game.place)}`,
+        detail: `${!game.won && winner ? `${winner} won · ` : ''}${mode === 'single' ? '' : `${modeInfo(mode).name}${game.series ? (game.series.won ? ' · won the whole thing' : ` · finished ${ordinal(game.series.place)} overall`) : ''} · `}${game.online ? `Online · ${game.opponents + 1} players` : game.opponents === 1 ? '1 opponent' : `${game.opponents} opponents`} · ${LEVEL_NAMES[game.level]} · ${game.moves} moves`,
+        won: game.won, open: () => setOpenGame(game) };
+    }),
+  ];
 
   const rename = async () => {
     keyboard.hide();
@@ -109,7 +124,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, initialSec
   };
 
   return <section className="me-page" aria-labelledby="me-title">
-    <FeltHeader compact id="me-title" title={me.name} intro={`${stats.appearances} night${stats.appearances === 1 ? '' : 's'} · ${summary.games} game${summary.games === 1 ? '' : 's'} v computer · ${earned.length} badges`} cards={['KH', 'QS']} />
+    <FeltHeader compact id="me-title" title={me.name} intro={`${stats.appearances} night${stats.appearances === 1 ? '' : 's'} · ${summary.games} game${summary.games === 1 ? '' : 's'} v computer · ${earned.length} ${earned.length === 1 ? 'badge' : 'badges'}`} cards={['KH', 'QS']} />
     <div className="club-tabs me-tabs" role="group" aria-label="Me sections">{SECTIONS.map((item) => <button key={item.id} className={section === item.id ? 'active' : ''} aria-pressed={section === item.id} onClick={() => { keyboard.hide(); setSection(item.id); }}>{item.label}</button>)}</div>
 
     {section === 'overview' && <>
@@ -139,12 +154,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, initialSec
       <button className="text-link" onClick={onClub}>Whole-club stats and seasons <ArrowRight size={16} /></button>
     </>}
 
-    {section === 'history' && <>
-      <div className="profile-chips" role="group" aria-label="Filter history">{([['all', 'Everything'], ['nights', 'Game nights'], ['computer', 'v Computer']] as const).map(([id, label]) => <button key={id} className={filter === id ? 'active' : ''} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}</div>
-      {rows.length === 0 ? <p className="history-empty">Nothing here yet. Play the computer, or save a game night, and it lands in this list.</p>
-        : <><p className="dash-note">{nightRecord.played + summary.games} {nightRecord.played + summary.games === 1 ? 'game' : 'games'} · {nightRecord.won + summary.wins} won · {nightRecord.played - nightRecord.won + summary.losses} lost. Tap any game for the full score.</p>
-          <ul className="me-history" aria-label="Your game history">{rows.slice(0, 200).map((row) => <li key={row.key} className={row.won ? 'won' : 'lost'}><button type="button" className="me-history-row" onClick={row.open} aria-label={`${row.title}, ${row.won ? 'won' : 'lost'}, ${new Date(row.when).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}. Show full score`}><span className={'me-dot ' + row.kind} aria-hidden="true">{row.kind === 'computer' ? <Robot size={16} weight="fill" /> : <Fire size={16} weight="fill" />}</span><span><strong>{row.title}</strong><small>{row.detail}</small></span><span className="me-result"><b className={row.won ? 'win' : 'loss'}>{row.won ? 'Won' : 'Lost'}</b><em>{new Date(row.when).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</em></span></button></li>)}</ul></>}
-    </>}
+    {section === 'history' && <HistoryPanel entries={rows} category={filter} onCategory={setFilter} />}
 
     {section === 'computer' && <>
       {summary.games === 0
@@ -192,13 +202,13 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, initialSec
     {section === 'trophies' && <PlayerCabinet extensions={extensions} profileId={me.id} />}
     {section === 'settings' && <div className="me-settings">
       <h3>Profile</h3>
-      <p className="lobby-note">You play as <strong>{me.name}</strong>. Change your name on the Me tab. Everything stays on this phone unless you back it up.</p>
+      <p className="lobby-note">You play as <strong>{me.name}</strong>. Change your name on the Me tab. Everything stays on this device unless you back it up.</p>
       <AccountPanel />
       <h3>Playing the computer</h3>
       <div className="seg three compact" role="group" aria-label="Computer pace">{(['quick', 'natural', 'relaxed'] as const).map((id) => <button key={id} aria-pressed={speed === id} className={speed === id ? 'active' : ''} onClick={() => { setSpeed(id); saveSpeed(id); }}><b>{SPEED_NAMES[id]}</b></button>)}</div>
-      <button className="secondary" onClick={() => { const next = !soundOn; setFeedbackEnabled(next); setSoundOn(next); }}>{soundOn ? 'Mute sounds and vibration' : 'Turn on sounds and vibration'}</button>
+      <button className="secondary setting-toggle" role="switch" aria-checked={soundOn} onClick={() => { const next = !soundOn; setFeedbackEnabled(next); setSoundOn(next); }}>Sounds and vibration: {soundOn ? 'on' : 'off'}</button>
       <button className="secondary" role="switch" aria-checked={spicyOn} data-testid="spicy-setting" onClick={() => { const next = !spicyOn; setSpicyTalk(next); setSpicyOn(next); }}>{spicyOn ? 'Spicy talk is on: turn it off' : 'Turn on spicy talk (swearing, adults only)'}</button>
-      <p className="lobby-note">Spicy talk adds pub swearing to the reactions and lets the computers swear back. It is only ever on for this phone: friends with it off see a clean version of whatever you say.</p>
+      <p className="lobby-note">Spicy talk adds pub swearing to the reactions and lets the computers swear back. It is only ever on for this device: friends with it off see a clean version of whatever you say.</p>
       <h3>This app</h3>
       <InstallButton />
       {onPrivacy && <button className="text-link" onClick={onPrivacy}>Privacy: what stays on your phone <ArrowRight size={16} /></button>}

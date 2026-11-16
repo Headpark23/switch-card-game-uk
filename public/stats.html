@@ -64,7 +64,7 @@ details.data{margin-top:12px;background:var(--card);border:1px solid var(--line)
 details.data summary{cursor:pointer;font-weight:600;font-size:14px}
 .tablewrap{overflow:auto;max-height:420px;margin-top:10px}
 table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
-th,td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th,td{padding:5px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
 th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--card)}
 thead th{position:sticky;top:0;background:#f6f0e2;font-weight:600}
 .note{font-size:12px;color:var(--muted);margin-top:30px;border-top:1px solid var(--line);padding-top:14px}
@@ -75,6 +75,17 @@ thead th{position:sticky;top:0;background:#f6f0e2;font-weight:600}
 .login h1{font-size:30px}
 .login p{color:var(--muted);font-size:13px}
 .login input{width:100%;height:46px;border:1px solid #c9bfaa;border-radius:10px;padding:10px 12px;font:inherit;background:#fffdf9;margin:10px 0}
+.tablewrap.flat{max-height:none;margin-top:4px}
+.rowhead{font-weight:400}
+.pill{display:inline-block;border-radius:12px;padding:1px 9px;font-size:11px;font-weight:600;white-space:nowrap;border:1px solid transparent}
+.pill.ok{background:#dcefe4;color:#0b4f2f;border-color:#b7dcc7}
+.pill.watch{background:#f6edcf;color:#6b4a07;border-color:#e3d3a2}
+.pill.bad{background:#f8ded7;color:#7d281c;border-color:#e4b3a6}
+.pill.few{background:#efeadb;color:var(--muted);border-color:var(--line)}
+ul.insights{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:14px}
+ul.insights li{padding:9px 12px;border-radius:10px;background:#f4f0e4;border:1px solid var(--line)}
+ul.insights li.bad{background:#f8ded7;border-color:#e4b3a6;color:#5e1d13}
+ul.insights li.watch{background:#f6edcf;border-color:#e3d3a2;color:#4f3805}
 .skip{position:absolute;left:-999px}.skip:focus{left:8px;top:8px;background:#fff;padding:6px 10px;z-index:99}
 @media(max-width:520px){header.top h1{font-size:28px}.kpi .v{font-size:27px}}
 @media print{.controls,.btn{display:none}}
@@ -94,7 +105,7 @@ const PAGE_NAMES = { Learn: "Learn (Home)", Rules: "Rules", Cards: "Cards guide"
 const FORMAT_NAMES = { "head-to-head": "One v One", domino: "Domino scoring", darts: "Darts scoring", league: "Group Play", knockout: "Knock Out", cup: "Switch Cup" };
 const FEATURE_NAMES = { share_app: "Shared the app", install_prompt: "Tapped Install", install_done: "Installed to home screen", signin: "Signed in with Google", feedback_open: "Opened feedback", club_joined: "Joined a shared club", puzzle_solved: "Solved a puzzle", referee_used: "Used the referee", hand_counter_used: "Counted a hand", export_data: "Downloaded their data" };
 const PLATFORM_NAMES = { ios: "iPhone / iPad", android: "Android", windows: "Windows", mac: "Mac", linux: "Linux", other: "Other" };
-const LEVEL_NAMES = { relaxed: "Relaxed", standard: "Standard", sharp: "Sharp" };
+const LEVEL_NAMES = { relaxed: "Easy", standard: "Medium", sharp: "Hard" };
 
 let state = { range: 30, data: null, demo: false };
 
@@ -248,6 +259,9 @@ function render() {
     <button class="btn" id="refresh">Refresh</button><button class="btn" id="csv">Download CSV</button>${state.demo ? "" : '<button class="btn" id="lock">Lock</button>'}</div></header>`);
   if (state.demo) html.push('<div class="banner" role="status"><b>Demo data.</b> These numbers are made up to show the layout. Nothing here is real.</div>');
 
+  /* Games played: totals, types, completion */
+  html.push(gamesPlayedHtml(view, rs, rangeName));
+
   /* Audience */
   const activeNow = get(todayDay.c, "active");
   const avgActive = view.length ? sum(view, "active") / view.length : 0;
@@ -270,8 +284,8 @@ function render() {
 
   /* Games v the computer */
   const lvl = Object.keys(LEVEL_NAMES).map((k) => ({ label: LEVEL_NAMES[k], value: get(T.c, "games.level." + k), won: get(T.c, "games.level." + k + ".won") }));
-  const opp = [1, 2, 3, 4, 5].map((k) => ({ label: k + (k === 1 ? " computer" : " computers"), value: get(T.c, "games.opp." + k), won: get(T.c, "games.opp." + k + ".won") }));
-  const place = [1, 2, 3, 4, 5, 6].map((k) => ({ label: ["1st", "2nd", "3rd", "4th", "5th", "6th"][k - 1], value: get(T.c, "games.place." + k), color: k === 1 ? C.you : C.cpu }));
+  const opp = [1, 2, 3, 4, 5, 6, 7].map((k) => ({ label: k + (k === 1 ? " computer" : " computers"), value: get(T.c, "games.opp." + k), won: get(T.c, "games.opp." + k + ".won") }));
+  const place = [1, 2, 3, 4, 5, 6, 7, 8].map((k) => ({ label: ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"][k - 1], value: get(T.c, "games.place." + k), color: k === 1 ? C.you : C.cpu }));
   const started_ = get(T.c, "games.started");
   html.push(`<section class="block" aria-labelledby="h-games"><h2 id="h-games">Games against the computer</h2><p class="lede">Competitive games on the Play tab. Practice games in Learn the Rules are counted separately and never as games.</p>
     <div class="kpis">
@@ -375,6 +389,150 @@ function render() {
   if (lock) lock.addEventListener("click", () => { try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {} showLogin(); });
 }
 
+/* ---------- games played: how much, of what, and how much of it is finished ---------- */
+const MODE_NAMES = { single: "Single game", match: "Match", lastout: "Last One Out", knockout: "Knock Out (retired)", group: "Group Play", cup: "Switch Cup", darts: "Darts scoring", dominoes: "Dominoes scoring" };
+const MODE_ORDER = ["single", "match", "lastout", "knockout", "group", "cup", "darts", "dominoes"];
+const FORMAT_ORDER = ["head-to-head", "domino", "darts", "league", "knockout", "cup"];
+const QUIT_LABELS = { 0: "Under 10 moves (just started)", 10: "10 to 29 moves", 30: "30 to 59 moves", 60: "60 moves or more (nearly done)" };
+const LOW = 60, WATCH = 85, MIN_SAMPLE = 5;
+
+/** Knock Out is no longer offered (replaced by Last One Out, 16 Nov 2026): it only appears while the chosen range still holds games played before. */
+const RETIRED = ["knockout"];
+
+/** Sums every key like `prefix + number` over the chosen days into { number: total }. */
+function sumPrefix(view, prefix) {
+  const out = {};
+  for (const d of view) for (const k in d.c) if (k.startsWith(prefix)) { const rest = k.slice(prefix.length); if (/^\d+$/.test(rest)) out[rest] = (out[rest] || 0) + d.c[k]; }
+  return out;
+}
+const done = (started, finished) => (started > 0 ? Math.min(100, Math.round((finished / started) * 100)) : null);
+function verdict(started, finished) {
+  const p = done(started, finished);
+  if (p === null) return { cls: "few", text: finished > 0 ? "starts not counted" : "no starts" };
+  if (started < MIN_SAMPLE) return { cls: "few", text: `${p}% · few starts` };
+  return { cls: p < LOW ? "bad" : p < WATCH ? "watch" : "ok", text: `${p}%` };
+}
+const pill = (v) => `<span class="pill ${v.cls}">${esc(v.text)}</span>`;
+
+/** A small table: head = ["Type", ...], rows = [[cells...]] where cells are already-escaped HTML. */
+function dataTable(head, rows, empty) {
+  if (!rows.length) return `<p class="empty">${esc(empty || "Nothing yet.")}</p>`;
+  return `<div class="tablewrap flat"><table><thead><tr>${head.map((h) => `<th scope="col">${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c, i) => (i === 0 ? `<th scope="row" class="rowhead">${c}</th>` : `<td>${c}</td>`)).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+
+function gamesPlayedHtml(view, rs, rangeName) {
+  const cpuDone = rs("games.finished"), onlineDone = rs("online.games.finished"), nightsDone = rs("nights.saved");
+  const total = cpuDone + onlineDone + nightsDone;
+
+  /* ---- computer game types ---- */
+  const cpuRows = MODE_ORDER.filter((m) => !RETIRED.includes(m) || rs("games.started.mode." + m) + rs("games.mode." + m) > 0).map((m) => ({ group: "Against the computer", key: m, label: MODE_NAMES[m], started: rs("games.started.mode." + m), finished: rs("games.mode." + m), won: rs("games.mode." + m + ".won") }));
+  const typed = cpuRows.reduce((t, r) => t + r.finished, 0), typedStarts = cpuRows.reduce((t, r) => t + r.started, 0);
+  const untypedDone = Math.max(0, cpuDone - typed), untypedStarts = Math.max(0, rs("games.started") - typedStarts);
+
+  /* ---- online ---- */
+  const onlineRows = MODE_ORDER.filter((m) => !RETIRED.includes(m) || rs("online.tables.created.mode." + m) + rs("online.tables.started.mode." + m) > 0).map((m) => ({ group: "Online with friends", key: m, label: MODE_NAMES[m], started: rs("online.tables.started.mode." + m), finished: rs("online.tables.finished.mode." + m), games: rs("online.games.mode." + m), auto: rs("online.games.withAuto.mode." + m), created: rs("online.tables.created.mode." + m) }));
+  const created = rs("online.tables.created"), startedTables = rs("online.tables.started"), finishedTables = rs("online.tables.finished");
+
+  /* ---- scoring ---- */
+  const scoreRows = FORMAT_ORDER.map((f) => ({ group: "Scoring a real night", key: f, label: FORMAT_NAMES[f], started: rs("nights.started.format." + f), finished: rs("nights.format." + f), players: rs("nights.format." + f + ".players") }));
+
+  /* ---- what stands out ---- */
+  const everyRow = [...cpuRows.map((r) => ({ ...r, unit: "games" })), ...onlineRows.map((r) => ({ ...r, unit: "tables" })), ...scoreRows.map((r) => ({ ...r, unit: "nights" }))];
+  const notes = [];
+  const weak = everyRow.filter((r) => r.started >= MIN_SAMPLE && done(r.started, r.finished) < WATCH).sort((a, b) => done(a.started, a.finished) - done(b.started, b.finished));
+  weak.slice(0, 5).forEach((r) => notes.push({ tone: done(r.started, r.finished) < LOW ? "bad" : "watch", text: `<b>${esc(r.label)}</b> (${esc(r.group.toLowerCase())}): only ${done(r.started, r.finished)}% of ${n0(r.started)} ${r.unit} started were finished.` }));
+  const popularity = (rows, vol, name) => {
+    const ranked = rows.filter((r) => vol(r) > 0).sort((a, b) => vol(b) - vol(a)), unplayed = rows.filter((r) => vol(r) === 0);
+    if (!ranked.length) return;
+    notes.push({ tone: "info", text: `Most played ${name}: <b>${esc(ranked[0].label)}</b> (${n0(vol(ranked[0]))}).` + (ranked.length > 1 ? ` Least played: <b>${esc(ranked[ranked.length - 1].label)}</b> (${n0(vol(ranked[ranked.length - 1]))}).` : "") });
+    if (unplayed.length) notes.push({ tone: "watch", text: `Not played at all ${esc(rangeName)}, ${name}: ${unplayed.map((r) => `<b>${esc(r.label)}</b>`).join(", ")}.` });
+  };
+  popularity(cpuRows, (r) => r.finished || r.started, "against the computer");
+  popularity(onlineRows, (r) => r.started, "online");
+  popularity(scoreRows, (r) => r.finished || r.started, "scoring types");
+  if (created >= 3 && created > startedTables) notes.push({ tone: created - startedTables > created * 0.4 ? "bad" : "watch", text: `<b>${n0(created - startedTables)} of ${n0(created)}</b> online tables were made but never started (${pct(created - startedTables, created)}).` });
+  const onlineGames = rs("online.games.finished");
+  if (onlineGames >= MIN_SAMPLE && rs("online.games.withAuto") / onlineGames >= 0.15) notes.push({ tone: "watch", text: `In <b>${pct(rs("online.games.withAuto"), onlineGames)}</b> of finished online games somebody went quiet and the computer played for them.` });
+  const quitTotal = rs("games.quit");
+  if (quitTotal >= MIN_SAMPLE) {
+    const bands = Object.keys(QUIT_LABELS).map((b) => ({ b, v: rs("games.quit.moves." + b) })).sort((a, c) => c.v - a.v);
+    if (bands[0].v) notes.push({ tone: "info", text: `Games against the computer are most often left <b>${esc(QUIT_LABELS[bands[0].b].toLowerCase())}</b> (${pct(bands[0].v, quitTotal)} of exits).` });
+  }
+  const insightHtml = notes.length ? `<ul class="insights">${notes.map((x) => `<li class="${x.tone}">${x.text}</li>`).join("")}</ul>` : '<p class="empty">Nothing stands out yet. Findings appear once there are a few games in the range.</p>';
+
+  /* ---- sections ---- */
+  const out = [];
+  out.push(`<section class="block" aria-labelledby="h-all"><h2 id="h-all">Games played</h2><p class="lede">Everything played ${esc(rangeName)}, in three kinds: finished games against the computer, finished games at online tables with friends, and real-card nights scored on a phone. Practice games never count.</p>
+    <div class="kpis">
+      ${kpi(n0(total), "Played in total", "finished, " + rangeName)}
+      ${kpi(n0(cpuDone), "Against the computer", pct(cpuDone, total) + " of all play")}
+      ${kpi(n0(onlineDone), "Online with friends", pct(onlineDone, total) + " of all play")}
+      ${kpi(n0(nightsDone), "Scored nights", pct(nightsDone, total) + " of all play")}
+    </div>
+    <div class="grid">
+      ${panel("What stands out", "Worked out from the numbers below. Red means a lot is being started and not finished.", insightHtml, true)}
+      ${panel("Played per day", "Finished games and saved nights.", dailyChart(view, [{ key: "games.finished", label: "Against the computer", color: C.you }, { key: "online.games.finished", label: "Online", color: C.other }, { key: "nights.saved", label: "Scored nights", color: C.cpu }], { label: "Played per day" }), true)}
+    </div></section>`);
+
+  const completionRows = (rows) => rows.map((r) => [esc(r.label), n0(r.started), n0(r.finished), n0(Math.max(0, r.started - r.finished)), pill(verdict(r.started, r.finished))]);
+  out.push(`<section class="block" aria-labelledby="h-fin"><h2 id="h-fin">What gets finished</h2><p class="lede">For every way of playing: how many were started, how many reached a result, and the gap between. A game still in progress, or one resumed later, makes a small gap that is not a problem. Look for gaps that are large and keep coming back. Under ${LOW}% (with at least ${MIN_SAMPLE} starts) is red.</p>
+    <div class="grid">
+      ${panel("Against the computer", "Games. A tournament or match counts each of its games.", dataTable(["Game type", "Started", "Finished", "Not finished", "Completion"], [...completionRows(cpuRows), ...(untypedDone || untypedStarts ? [["Before game types were counted", n0(untypedStarts), n0(untypedDone), "–", '<span class="pill few">not split</span>']] : [])]))}
+      ${panel("Online with friends", "Tables, from the first deal to the final result. Tables that were made and never started are in the funnel further down.", dataTable(["Game type", "Started", "Finished", "Not finished", "Completion"], [...completionRows(onlineRows)]))}
+      ${panel("Scoring a real night", "Nights: a scorecard begun, against a result saved.", dataTable(["Scoring type", "Started", "Saved", "Not saved", "Completion"], completionRows(scoreRows)))}
+    </div></section>`);
+
+  /* computer detail */
+  const levels = Object.keys(LEVEL_NAMES).map((k) => ({ label: LEVEL_NAMES[k], started: rs("games.started." + k), finished: rs("games.level." + k), won: rs("games.level." + k + ".won") }));
+  const startedBy = sumPrefix(view, "games.started.opp."), finishedBy = sumPrefix(view, "games.opp."), wonBy = {};
+  for (const d of view) for (const k in d.c) { const m = /^games\.opp\.(\d+)\.won$/.exec(k); if (m) wonBy[m[1]] = (wonBy[m[1]] || 0) + d.c[k]; }
+  const sizes = [1, 2, 3, 4, 5, 6, 7];
+  const quitRows = Object.keys(QUIT_LABELS).map((b) => ({ label: QUIT_LABELS[b], value: rs("games.quit.moves." + b), color: C.lost }));
+  const seriesRows = MODE_ORDER.filter((m) => m !== "single" && (!RETIRED.includes(m) || rs("series.started." + m) > 0)).map((m) => [esc(MODE_NAMES[m]), n0(rs("series.started." + m)), n0(rs("series.finished." + m)), n0(rs("series.left." + m)), pct(rs("series.won." + m), rs("series.finished." + m))]);
+  out.push(`<section class="block" aria-labelledby="h-cpu"><h2 id="h-cpu">Against the computer, in depth</h2><p class="lede">Which game types are chosen, how big the tables are, and where people stop.</p>
+    <div class="grid">
+      ${panel("Most and least played game types", "Finished games by type, " + rangeName + ".", hbars(cpuRows.map((r) => ({ label: r.label, value: r.finished, color: C.you, note: r.started ? `${n0(r.started)} started` : "", tip: `${r.label}: <b>${n0(r.finished)}</b> finished, ${n0(r.started)} started` })).sort((a, b) => b.value - a.value), { keepZero: true }))}
+      ${panel("Table size", "Computers at the table. Completion shows which sizes people give up on.", dataTable(["Computers", "Started", "Finished", "You won", "Completion"], sizes.map((n) => [`${n} computer${n === 1 ? "" : "s"}`, n0(startedBy[n] || 0), n0(finishedBy[n] || 0), pct(wonBy[n] || 0, finishedBy[n] || 0), pill(verdict(startedBy[n] || 0, finishedBy[n] || 0))]).filter((r) => r[1] !== "0" || r[2] !== "0"), "No games in this range."))}
+      ${panel("Computer level", "Easy, Medium and Hard.", dataTable(["Level", "Started", "Finished", "You won", "Completion"], levels.map((l) => [esc(l.label), n0(l.started), n0(l.finished), pct(l.won, l.finished), pill(verdict(l.started, l.finished))])))}
+      ${panel("Where games are left", "Moves played when someone pressed Exit with the game still going (it can be resumed, so some of these come back).", hbars(quitRows, { keepZero: true }))}
+      ${panel("Win rate by game type", "Share of finished games you won.", hbars(cpuRows.filter((r) => r.finished).map((r) => ({ label: r.label, value: Math.round((r.won / r.finished) * 100), color: C.you, note: `${n0(r.finished)} games`, tip: `${r.label}: you won <b>${r.won}</b> of <b>${r.finished}</b>` })), { fmt: (v) => v + "%", keepZero: true }))}
+      ${panel("Tournaments and matches as a whole", "A run of games, from the first deal to a champion.", dataTable(["Type", "Started", "Finished", "Left early", "You won"], seriesRows, "No tournaments yet."))}
+    </div></section>`);
+
+  /* online detail */
+  const humansAt = sumPrefix(view, "online.tables.humans."), seatsAt = sumPrefix(view, "online.tables.seats."), gameHumans = sumPrefix(view, "online.games.humans.");
+  const dist = (o, label) => Object.keys(o).map(Number).sort((a, b) => a - b).map((k) => ({ label: label(k), value: o[k], color: C.other }));
+  const people = rs("online.people"), compSeats = rs("online.computerSeats");
+  out.push(`<section class="block" aria-labelledby="h-online"><h2 id="h-online">Online tables, in depth</h2><p class="lede">Counted by the server, so a table is counted even if every phone closed the app. Tables last 24 hours.</p>
+    <div class="kpis">
+      ${kpi(n0(created), "Tables made", `${n0(rs("online.joins"))} friends joined`)}
+      ${kpi(pct(startedTables, created), "Made and started", `${n0(startedTables)} of ${n0(created)}`)}
+      ${kpi(n0(onlineDone), "Games finished", `${n0(finishedTables)} whole tables finished`)}
+      ${kpi(startedTables ? per(people, startedTables) : "–", "People per table", `${startedTables ? per(compSeats, startedTables) : "–"} computers fill the rest`)}
+      ${kpi(onlineDone ? per(rs("online.games.moves"), onlineDone, 0) : "–", "Moves per game", "turns taken by everyone")}
+      ${kpi(onlineDone ? pct(rs("online.games.withAuto"), onlineDone) : "–", "Games with a quiet player", `${n0(rs("online.autoMoves"))} moves played by the computer for them`)}
+    </div>
+    <div class="grid">
+      ${panel("The funnel", "From a table being made to a game being finished.", hbars([{ label: "Tables made", value: created, color: C.other }, { label: "Started", value: startedTables, color: C.you }, { label: "Games finished", value: onlineDone, color: C.you }, { label: "Whole tables finished", value: finishedTables, color: C.you }], { keepZero: true }))}
+      ${panel("Most and least played online game types", "Tables started, " + rangeName + ".", hbars(onlineRows.map((r) => ({ label: r.label, value: r.started, color: C.other, note: r.created ? `${n0(r.created)} made` : "" })).sort((a, b) => b.value - a.value), { keepZero: true }))}
+      ${panel("People at a table", "Real people when the game started (the rest are computers).", hbars(dist(humansAt, (k) => `${k} people`)))}
+      ${panel("Table size", "Seats in total, people and computers.", hbars(dist(seatsAt, (k) => `${k} seats`)))}
+      ${panel("Players in each finished game", "People at the table for each game that finished.", hbars(dist(gameHumans, (k) => `${k} people`)))}
+      ${panel("Who goes quiet", "Share of finished games where the computer had to play for a person, by game type.", hbars(onlineRows.filter((r) => r.games).map((r) => ({ label: r.label, value: Math.round((r.auto / r.games) * 100), color: C.lost, note: `${n0(r.games)} games`, tip: `${r.label}: <b>${r.auto}</b> of <b>${r.games}</b> games` })), { fmt: (v) => v + "%", keepZero: true }))}
+    </div></section>`);
+
+  /* scoring detail */
+  const startedSize = sumPrefix(view, "nights.started.size."), savedSize = sumPrefix(view, "nights.size.");
+  const sizeKeys = [...new Set([...Object.keys(startedSize), ...Object.keys(savedSize)])].map(Number).sort((a, b) => a - b);
+  out.push(`<section class="block" aria-labelledby="h-score"><h2 id="h-score">Scoring types, in depth</h2><p class="lede">Which scorekeepers are popular, which are rarely touched, and how many people play each.</p>
+    <div class="grid">
+      ${panel("Most and least popular", "Nights saved by scoring type (nights begun if none saved), " + rangeName + ".", hbars(scoreRows.map((r) => ({ label: r.label, value: r.finished || r.started, color: C.cpu, note: r.started ? `${n0(r.started)} begun` : "", tip: `${r.label}: <b>${n0(r.finished)}</b> saved, ${n0(r.started)} begun` })).sort((a, b) => b.value - a.value), { keepZero: true }))}
+      ${panel("Players per night", "Average people on each saved night.", hbars(scoreRows.filter((r) => r.finished).map((r) => ({ label: r.label, value: Number((r.players / r.finished).toFixed(1)), color: C.other, note: `${n0(r.finished)} nights` })), { fmt: (v) => String(v), keepZero: true }))}
+      ${panel("How many play", "Nights by number of players. Begun against saved shows which sizes get abandoned.", dataTable(["Players", "Begun", "Saved", "Completion"], sizeKeys.map((k) => [`${k} players`, n0(startedSize[k] || 0), n0(savedSize[k] || 0), pill(verdict(startedSize[k] || 0, savedSize[k] || 0))]), "No nights in this range."))}
+    </div></section>`);
+  return out.join("");
+}
+
 function hourChart(all, view) {
   const hours = Array.from({ length: 24 }, () => 0);
   const offset = -new Date().getTimezoneOffset() / 60;
@@ -446,7 +604,7 @@ function demoData() {
     const games = Math.round(active * (0.4 + rnd() * 0.5)), won = Math.round(games * (0.38 + rnd() * 0.12));
     add(c, "games.started", games + 1); add(c, "games.finished", games); add(c, "games.won", won); add(c, "games.lost", games - won); add(c, "games.moves", games * 31);
     add(c, "games.timed", games); add(c, "games.seconds", games * 330);
-    const lv = ["relaxed", "standard", "sharp"]; for (let g = 0; g < games; g++) { const l = lv[Math.floor(rnd() * 3)], o = 1 + Math.floor(rnd() * 4); add(c, "games.level." + l, 1); add(c, "games.opp." + o, 1); if (rnd() < 0.5 - lv.indexOf(l) * 0.1) { add(c, "games.level." + l + ".won", 1); add(c, "games.opp." + o + ".won", 1); } add(c, "games.place." + (1 + Math.floor(rnd() * (o + 1))), 1); }
+    const lv = ["relaxed", "standard", "sharp"]; for (let g = 0; g < games; g++) { const l = lv[Math.floor(rnd() * 3)], o = 1 + Math.floor(rnd() * rnd() * 7); add(c, "games.level." + l, 1); add(c, "games.started." + l, rnd() < 0.15 ? 2 : 1); add(c, "games.opp." + o, 1); add(c, "games.started.opp." + o, rnd() < 0.12 + o * 0.03 ? 2 : 1); if (rnd() < 0.5 - lv.indexOf(l) * 0.1) { add(c, "games.level." + l + ".won", 1); add(c, "games.opp." + o + ".won", 1); } add(c, "games.place." + (1 + Math.floor(rnd() * (o + 1))), 1); }
     add(c, "pen.dealtByCpu", Math.round(games * (3 + rnd() * 4))); add(c, "pen.dealtByYou", Math.round(games * (2 + rnd() * 3)));
     add(c, "pen.landedOnYou", Math.round(games * 4)); add(c, "pen.landedOnCpu", Math.round(games * 3.2)); add(c, "pen.ouch", Math.round(games * 0.1)); add(c, "pen.lastCard", Math.round(games * 0.08));
     add(c, "pen.missedYou", Math.round(games * 0.6)); add(c, "pen.missedCpu", Math.round(games * 0.8)); add(c, "draws.you", games * 6); add(c, "draws.cpu", games * 7); add(c, "cards.you", games * 14); add(c, "cards.cpu", games * 17);
@@ -454,6 +612,19 @@ function demoData() {
     add(c, "practice.start", Math.round(fresh * 0.8)); add(c, "practice.finish", Math.round(fresh * 0.5)); add(c, "practice.won", Math.round(fresh * 0.3));
     const nights = Math.round(active * 0.12); add(c, "nights.saved", nights); add(c, "nights.players", nights * 3.4 | 0);
     ["head-to-head", "domino", "darts", "league", "knockout", "cup"].forEach((f, k) => add(c, "nights.format." + f, Math.round(nights * [0.35, 0.15, 0.2, 0.12, 0.1, 0.08][k])));
+    const MODES = ["single", "match", "lastout", "group", "cup", "darts", "dominoes"], mw = [0.5, 0.06, 0.1, 0.12, 0.08, 0.06, 0.08];
+    MODES.forEach((m, k) => { const f = Math.round(games * mw[k]); const st = f + Math.round(f * (0.06 + k * 0.05) + rnd()); add(c, "games.started.mode." + m, st); add(c, "games.mode." + m, f); add(c, "games.mode." + m + ".won", Math.round(f * 0.42)); });
+    add(c, "games.quit", Math.round(games * 0.15)); [["0", 0.4], ["10", 0.3], ["30", 0.2], ["60", 0.1]].forEach(([b, w]) => add(c, "games.quit.moves." + b, Math.round(games * 0.15 * w)));
+    MODES.slice(1).forEach((m, k) => { const st = Math.round(rnd() * 3); add(c, "series.started." + m, st); add(c, "series.finished." + m, Math.round(st * (0.7 - k * 0.05))); add(c, "series.left." + m, Math.round(st * 0.3)); add(c, "series.won." + m, Math.round(st * 0.25)); });
+    const online = Math.round(active * 0.1), madeT = online + Math.round(online * 0.5 + rnd() * 2);
+    add(c, "online.tables.created", madeT); add(c, "online.joins", online * 2); add(c, "online.tables.started", online); add(c, "online.tables.finished", Math.round(online * 0.7));
+    add(c, "online.games.finished", Math.round(online * 1.8)); add(c, "online.games.moves", Math.round(online * 1.8 * 52)); add(c, "online.games.withAuto", Math.round(online * 0.4)); add(c, "online.autoMoves", Math.round(online * 3));
+    add(c, "online.people", online * 3); add(c, "online.computerSeats", online * 2);
+    MODES.forEach((m, k) => { const t = Math.round(online * [0.4, 0.2, 0.1, 0.1, 0.08, 0.06, 0.06][k]); add(c, "online.tables.created.mode." + m, t + 1); add(c, "online.tables.started.mode." + m, t); add(c, "online.tables.finished.mode." + m, Math.round(t * (0.8 - k * 0.1))); add(c, "online.games.mode." + m, Math.round(t * 2)); add(c, "online.games.withAuto.mode." + m, Math.round(t * 0.5)); });
+    [2, 3, 4, 5, 6].forEach((p, k) => { add(c, "online.tables.humans." + p, Math.round(online * [0.4, 0.3, 0.2, 0.07, 0.03][k])); add(c, "online.games.humans." + p, Math.round(online * 2 * [0.4, 0.3, 0.2, 0.07, 0.03][k])); });
+    [4, 5, 6, 8].forEach((p, k) => add(c, "online.tables.seats." + p, Math.round(online * [0.4, 0.3, 0.2, 0.1][k])));
+    ["head-to-head", "domino", "darts", "league", "knockout", "cup"].forEach((f, k) => { const stn = Math.round(nights * [0.35, 0.15, 0.2, 0.12, 0.1, 0.08][k]); add(c, "nights.started.format." + f, stn + Math.round(stn * (0.1 + k * 0.08) + rnd())); add(c, "nights.format." + f + ".players", stn * 3); });
+    [2, 3, 4, 5, 6].forEach((p, k) => { const w = [0.4, 0.3, 0.2, 0.07, 0.03][k]; add(c, "nights.started.size." + p, Math.round(nights * 1.3 * w) + 1); add(c, "nights.size." + p, Math.round(nights * w)); });
     days.push({ day, c, m: {} });
   }
   ["Learn", "Rules", "Play", "Table", "Score", "Club", "Me", "Puzzles", "Cards", "Questions"].forEach((p, k) => add({}, "view." + p, Math.round(900 / (k + 1))));

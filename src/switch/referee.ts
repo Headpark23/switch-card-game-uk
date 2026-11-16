@@ -20,7 +20,7 @@ export function refereeRuling(top: CardId, suit: Suit, situation: Situation, car
     ? { legal, verdict: `Yes, play the ${name}.`, why: "A 2 on top of a 2 stacks the penalty: the next player picks up 2 more, or answers with a 2 of their own." }
     : { legal, verdict: `No, not the ${name}.`, why: "When a 2 is on the table you may only play another 2. Otherwise you pick up the penalty cards and your turn ends." };
   if (situation === "black-king") return legal
-    ? { legal, verdict: `Yes, play the ${name}.`, why: rank === "K" && "SC".includes(suitOf(card)) ? "Another black king adds 5 to the pile to pick up." : "A red king takes 5 off the pile to pick up. Order matters when you lay several kings: black adds 5, red takes 5 off." }
+    ? { legal, verdict: `Yes, play the ${name}.`, why: rank === "K" && "SC".includes(suitOf(card)) ? "Another black king adds 5 to the pile to pick up." : "A red king takes 5 off the pile, but you still pick up what is left yourself. Order matters when you lay several kings: black adds 5, red takes 5 off." }
     : { legal, verdict: `No, not the ${name}.`, why: "Against a black king only a king can answer. Otherwise you pick up the 5 (or 10) cards." };
   if (situation === "miss-turn") return legal
     ? { legal, verdict: `Yes, play the ${name}.`, why: "An eight passes the missed turn on to the next player." }

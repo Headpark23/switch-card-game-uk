@@ -2,8 +2,9 @@ import { ArrowRight, Broadcast, CalendarPlus, ClockCounterClockwise, Club, Gradu
 import { useEffect, useState } from 'react';
 import { loadLink, wantJoinForm } from '../switch/clubSync';
 import { fetchShare, loadKeys } from '../switch/shareNight';
-import { readClub } from '../switch/clubStore';
-import { getActiveNight } from '../switch/activeNight';
+import { readClub, updateClub } from '../switch/clubStore';
+import { useConfirm } from '../Confirm';
+import { clearActiveNight, getActiveNight } from '../switch/activeNight';
 import { readActiveTable } from '../switch/activeTable';
 import { getComputerGames, getMeId } from '../switch/computerLog';
 import { modeInfo } from '../switch/series';
@@ -12,7 +13,7 @@ import { getProfiles, resolveHistoryPlayerId } from '../switch/profiles';
 import { powers } from '../content';
 import { Fan } from '../ui';
 
-const FORMAT_NAMES: Record<string, string> = { 'head-to-head': 'One v One', domino: 'Domino', darts: 'Darts', league: 'Group Play', knockout: 'Knock Out', cup: 'Switch Cup' };
+const FORMAT_NAMES: Record<string, string> = { 'head-to-head': 'One v One', domino: 'Dominoes', darts: 'Darts', league: 'Group Play', knockout: 'Last One Out', cup: 'Switch Cup' };
 const LEVEL_NAMES: Record<string, string> = { relaxed: 'Easy', standard: 'Medium', sharp: 'Hard' };
 
 /** The corner index of a playing card, so each launch tile reads as an ace dealt onto the table. */
@@ -39,6 +40,7 @@ type Props = {
   onResumeTable: () => void;
   onScore: () => void;
   onClub: () => void;
+  onShareClub: () => void;
   onAchievements: () => void;
   onRules: () => void;
   onPuzzles: () => void;
@@ -52,6 +54,8 @@ type Props = {
 
 /** HOME: a compact, personal dashboard on the photographic card-table background. */
 export default function HomeHub(props: Props) {
+  const [, refresh] = useState(0);
+  const [confirm, confirmSheet] = useConfirm();
   const club = readClub();
   const sharing = loadKeys();
   const [arrived, setArrived] = useState<string[]>([]);
@@ -81,10 +85,16 @@ export default function HomeHub(props: Props) {
     ...games.map((game): Row => ({ key: game.id, at: game.playedAt, title: game.won ? 'Beat the computer' : `Finished ${game.place}${['st', 'nd', 'rd'][game.place - 1] ?? 'th'} v the computer`, detail: `${game.mode && game.mode !== 'single' ? `${modeInfo(game.mode).name}${game.series ? (game.series.won ? ' · won' : ` · ${game.series.place}${['st', 'nd', 'rd'][game.series.place - 1] ?? 'th'} overall`) : ''} · ` : ''}${game.opponents === 1 ? '1 opponent' : `${game.opponents} opponents`} · ${LEVEL_NAMES[game.level] ?? game.level}`, won: game.won, open: props.onAchievements })),
   ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, 3);
 
-  const nightLabel = activeNight ? (activeNight.kind === 'score' ? FORMAT_NAMES[activeNight.session.format] : activeNight.kind === 'league' ? 'Group Play' : activeNight.kind === 'cup' ? 'Switch Cup' : 'Knock Out') : '';
+  const nightLabel = activeNight ? (activeNight.kind === 'score' ? FORMAT_NAMES[activeNight.session.format] : activeNight.kind === 'league' ? 'Group Play' : activeNight.kind === 'cup' ? 'Switch Cup' : 'Last One Out') : '';
   const nightTitle = activeNight?.kind === 'score' ? `Your game: ${activeNight.session.players.map((player) => player.name).join(' v ')}` : activeNight ? `Your ${nightLabel}` : '';
   const nightScore = activeNight?.kind === 'score' && activeNight.session.players.length === 2 && activeNight.session.format !== 'darts' ? ` · ${activeNight.session.players.map((player) => activeNight.session.scores[player.id] ?? 0).join('–')}` : '';
   const nightShare = sharing ? (arrived.length ? ` · ${arrived.join(' & ')} joined` : ' · sharing live') : '';
+  /** A game that was never finished can always be put away from here, so Home never nags about it for good. */
+  async function endNight() {
+    if (!await confirm({ title: 'End this game?', message: 'The scores so far are cleared and nothing is saved to your record.', confirmLabel: 'End game', destructive: true })) return;
+    updateClub((current) => clearActiveNight(current));
+    refresh((tick) => tick + 1);
+  }
   const power = powers[new Date().getDate() % powers.length];
 
   return <>
@@ -95,7 +105,7 @@ export default function HomeHub(props: Props) {
 
       {(activeTable || activeNight) && <div className="resume-stack">
         {activeTable && <button className="resume-card" onClick={props.onResumeTable}><span className="resume-dot" aria-hidden="true" /><span><strong>Resume your game</strong><small>Against {activeTable.opponents === 1 ? 'the computer' : `${activeTable.opponents} computers`} · {LEVEL_NAMES[activeTable.level]} · {activeTable.game.hands[0].length} cards in hand</small></span><ArrowRight size={17} /></button>}
-        {activeNight && <button className="resume-card night" onClick={props.onScore}><span className="resume-dot" aria-hidden="true" /><span><strong>{nightTitle}</strong><small>{nightLabel}{nightScore}{nightShare} · tap to carry on</small></span><ArrowRight size={17} /></button>}
+        {activeNight && <div className="resume-night"><button className="resume-card night" onClick={props.onScore}><span className="resume-dot" aria-hidden="true" /><span><strong>{nightTitle}</strong><small>{nightLabel}{nightScore}{nightShare} · tap to carry on</small></span><ArrowRight size={17} /></button><button className="text-link resume-end" onClick={endNight}>End this game</button></div>}
       </div>}
 
       <div className="home-tiles v2">
@@ -108,7 +118,7 @@ export default function HomeHub(props: Props) {
 
     <section className="home-lower" aria-label="More from Switch">
       {fresh
-        ? <button className="home-welcome" onClick={props.onRules}><Fan codes={['AS', '8D', '2H']} /><span><strong>New to Switch?</strong><em>Learn the rules in five moves, then practise with a guided game.</em></span><ArrowRight size={17} /></button>
+        ? <button className="home-welcome" onClick={props.onRules}><Fan codes={['AS', '8D', '2H']} /><span><strong>New to Switch?</strong><em>Open Learn the rules: five moves, then a guided practice game.</em></span><ArrowRight size={17} /></button>
         : <div className="home-recent">
           <div className="home-section-head"><h2>Recent</h2><button className="text-link" onClick={props.onHistory}><ClockCounterClockwise size={15} weight="bold" />All history</button></div>
           <ul>{recent.map((row) => <li key={row.key}><button onClick={row.open}><i className={row.won ? 'won' : ''} aria-hidden="true">{row.won ? '♥' : '♣'}</i><span><strong>{row.title}</strong><small>{row.detail}</small></span><em>{when(row.at)}</em></button></li>)}</ul>
@@ -116,10 +126,10 @@ export default function HomeHub(props: Props) {
 
       {loadLink()
         ? <button className="home-club-card linked" onClick={props.onClub}><UsersThree size={24} weight="fill" /><span><strong>Your club is shared</strong><em>Scores, players and leagues sync automatically. Tap to invite a friend.</em></span><ArrowRight size={15} /></button>
-        : <div className="home-club-card"><UsersThree size={24} weight="fill" /><span><strong>Playing with friends? Share your club</strong><em>Everyone's scores, leagues and stats in one place, updating by themselves.</em><span className="home-club-actions"><button className="primary" onClick={props.onClub}>Share my club</button><button className="secondary" onClick={() => { wantJoinForm(); props.onJoinClub(); }}>Join a club</button></span></span></div>}
+        : <div className="home-club-card"><UsersThree size={24} weight="fill" /><span><strong>Playing with friends? Share your club</strong><em>Everyone's scores, leagues and stats in one place, updating by themselves.</em><span className="home-club-actions"><button className="primary" onClick={props.onShareClub}>Share my club</button><button className="secondary" onClick={() => { wantJoinForm(); props.onJoinClub(); }}>Join a club</button></span></span></div>}
       <nav className="home-discover" aria-label="Discover">
-        <button onClick={props.onRules}><GraduationCap size={18} weight="bold" />Learn rules</button>
-        <button onClick={props.onPuzzles}><PuzzlePiece size={18} weight="bold" />Puzzles</button>
+        <button onClick={props.onRules}><GraduationCap size={18} weight="bold" />Learn the rules</button>
+        <button onClick={props.onPuzzles}><PuzzlePiece size={18} weight="bold" />Rules puzzles</button>
         <button onClick={props.onQuestions}><Question size={18} weight="bold" />Questions</button>
         <button onClick={props.onPlan}><CalendarPlus size={18} weight="bold" />Plan a night</button>
         <button onClick={props.onJoin}><Broadcast size={18} weight="bold" />Join a night</button>
@@ -127,5 +137,6 @@ export default function HomeHub(props: Props) {
 
       <button className="home-daily v2" onClick={() => props.onPower(power)}><Fan codes={power.cards.slice(0, 3)} /><span><strong>{power.name}</strong><em>{power.short} · today’s power card</em></span><ArrowRight size={15} /></button>
     </section>
+    {confirmSheet}
   </>;
 }

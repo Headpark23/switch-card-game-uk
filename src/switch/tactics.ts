@@ -51,7 +51,7 @@ function effectHint(card: CardId): string {
     case "J": return "A jack: play reverses, so with two players you go again.";
     case "K": return isBlackKing(card)
       ? "A black king: the computer must pick up 5."
-      : "A red king: only useful against a black king, where it cancels the 5.";
+      : "A red king: only useful against a black king, where it takes 5 off the pile-up (you still pick up any that is left).";
     case "A": return "Wild: plays on anything, then you choose the next suit.";
     default: return "An ordinary card with no special effect.";
   }

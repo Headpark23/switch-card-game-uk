@@ -106,10 +106,14 @@ export function claimByName(extensions: Extensions, name: string): Extensions {
 }
 
 /* ── Talking to the server ── */
+const NOT_FOUND = "We could not find a club with that code. Check it and try again.";
 async function call(method: "GET" | "POST" | "PUT", code: string | null, doc?: ClubDoc, since?: number): Promise<{ code: string; doc?: ClubDoc; updatedAt: number; unchanged?: boolean }> {
   const query = code ? `?code=${code}${since ? `&since=${since}` : ""}` : "";
-  const response = await fetch(`/api/club${query}`, { method, cache: "no-store", headers: { "content-type": "application/json" }, body: doc ? JSON.stringify({ doc }) : undefined });
+  let response: Response;
+  try { response = await fetch(`/api/club${query}`, { method, cache: "no-store", headers: { "content-type": "application/json" }, body: doc ? JSON.stringify({ doc }) : undefined }); }
+  catch { throw new Error("Could not reach the club. Check your connection and try again."); }
   const body = await response.json().catch(() => ({}));
+  if (response.status === 404 && code) throw new Error(NOT_FOUND);
   if (!response.ok) throw new Error(body.error || "Club sharing is unavailable right now.");
   return body;
 }
@@ -133,6 +137,7 @@ function writeClub(change: (extensions: Extensions) => Extensions): boolean {
 export async function previewClub(code: string): Promise<{ name: string; players: string[]; nights: number }> {
   const result = await call("GET", cleanClubCode(code));
   const doc = result.doc;
+  if (!doc) throw new Error(NOT_FOUND);
   const players = (doc?.profiles ?? []).filter((profile) => !profile.archived && isShareable(profile)).map((profile) => String(profile.name));
   return { name: doc?.name ?? "", players, nights: doc?.nights.length ?? 0 };
 }
@@ -151,6 +156,7 @@ export async function createClub(): Promise<string> {
 export async function joinClub(code: string, as: string): Promise<void> {
   const clean = cleanClubCode(code);
   const result = await call("GET", clean);
+  if (!result.doc) throw new Error(NOT_FOUND);
   saveLink({ code: clean, joinedAt: Date.now() });
   lastSent = ""; lastStamp = 0;
   writeClub((current) => claimByName(applyClub(current, result.doc as ClubDoc), as));

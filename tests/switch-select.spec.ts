@@ -4,7 +4,7 @@ test.describe.configure({ timeout: 60_000 });
 
 test("cards are selected in the player's own order and played with a button", async ({ page }) => {
   await page.goto("/?testDeck=partialKing");
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
   await page.getByRole("button", { name: "Select King of spades, legal move" }).click();
   await page.getByRole("button", { name: "Select King of hearts as another matching card" }).click();
@@ -21,7 +21,7 @@ test("cards are selected in the player's own order and played with a button", as
 
 test("an illegal card flashes red and says why", async ({ page }) => {
   await page.goto("/?testDeck=1");
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
   const bad = page.getByRole("button", { name: "Select Two of clubs, not currently playable" });
   await bad.click();
@@ -35,7 +35,7 @@ test("an illegal card flashes red and says why", async ({ page }) => {
 
 test("a played card visibly travels from the hand and takes over a second to land", async ({ page }) => {
   await page.goto("/?testDeck=1");
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
   await page.getByRole("button", { name: "Select Nine of hearts, legal move" }).click();
   await page.getByRole("button", { name: "Play selected" }).click();
@@ -46,7 +46,7 @@ test("a played card visibly travels from the hand and takes over a second to lan
 
 test("picking up sends card backs flying from the draw pile to your hand", async ({ page }) => {
   await page.goto("/?testDeck=1");
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
   await page.locator(".draw-pile").click();
   await expect(page.locator(".draw-flier").first()).toBeAttached();

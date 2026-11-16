@@ -14,6 +14,9 @@ import {
   applyTableAction, chooseTableAction, createTable, dealTo, isLegalTablePlay, isSeriesOver, MAX_SEATS, ONLINE_MAX_PLAYERS, pendingGames, POWER_START_CHANCE,
   penaliseMissedLastCard, resultOf, seriesOutcome, startSeries, submitGame, tablePlaces, validateSetup,
 } from "./_engine.js";
+import { aimedIds, voiceIds, voicePool } from "./_voices.js";
+import { attackOf, cardCandidates, caughtPool, hitPool, momentsOf } from "./_cardTalk.js";
+import { hasCounts, summarise, tableChanged, tableCreated, tableJoined } from "./_onlineStats.js";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const CODE = /^[A-Z2-9]{6}$/;
@@ -23,8 +26,8 @@ const SUITS = ["S", "H", "D", "C"];
 /** The seven computers of the Play lobby first, then more for big tables. */
 const COMPUTER_NAMES = ["John", "Paul", "George", "Ringo", "Ziggy", "Marley", "Bowie", "Elton", "Freddie", "Dolly", "Stevie", "Cher", "Prince", "Adele", "Elvis"];
 /** The ways to play at an online table. Knock Out with friends is "last one out leaves" (ruling 11; owner decision, 14 Nov 2026). */
-export const MODES = Object.freeze(["single", "knockout", "cup", "group", "darts", "dominoes"]);
-const MODE_NAMES = { single: "game", knockout: "Knock Out", cup: "Switch Cup", group: "Group Play", darts: "Darts match", dominoes: "Dominoes match" };
+export const MODES = Object.freeze(["single", "match", "lastout", "knockout", "cup", "group", "darts", "dominoes"]);
+const MODE_NAMES = { single: "game", match: "match", lastout: "Last One Out", knockout: "Knock Out", cup: "Switch Cup", group: "Group Play", darts: "Darts match", dominoes: "Dominoes match" };
 /** The most people at one online table (ruling 32). */
 export const MAX_PLAYERS = 16;
 
@@ -54,7 +57,7 @@ export const TIMING = Object.freeze({
 export const AWAY_AFTER = 2;
 
 /**
- * The 55 reactions: ten cheeky sayings, eight stickers and thirty-seven spicy sayings (swear words always masked). The server keeps only the id; the
+ * The reactions: ten cheeky sayings, eight stickers, thirty-seven spicy sayings (swear words always masked) and thirty favourites the computers send (Beatles, Bowie, Marley) and every computer's own lines (`api/_voices.js`: digs at people, digs at other computers and the ways they hit back). The server keeps only the id; the
  * words and drawings live in the app (`src/switch/reactions.ts`). A spicy id is shown as its clean stand-in on any
  * phone that has Spicy off, so the server never needs to know who wants swearing.
  */
@@ -64,6 +67,12 @@ export const REACTIONS = Object.freeze([
   "spicy-bollocks", "spicy-bugger", "spicy-bloody-hell", "spicy-sod-off", "spicy-jammy", "spicy-cheating", "spicy-pick-up-arse", "spicy-shite-hand", "spicy-holy-shit", "spicy-piss-off", "spicy-fucking-yes", "spicy-for-fucks-sake",
   "spicy-wanker", "spicy-prick", "spicy-arsehole", "spicy-fk-off", "spicy-what-the-f", "spicy-no-f-way", "spicy-dick-move", "spicy-twat", "spicy-crap", "spicy-damn", "spicy-hell", "spicy-git",
   "spicy-lucky-bastard", "spicy-shitshow", "spicy-bullshit", "spicy-pissed", "spicy-f-hell", "spicy-dickhead", "spicy-bellend", "spicy-tosser", "spicy-sodding", "spicy-bloody-lucky", "spicy-piss-take", "spicy-eat-shit", "spicy-knob",
+  // The computers' favourites: Beatles, Bowie and Marley stickers and sayings (mirrors CHARACTER_STICKERS and CHARACTER_SAYINGS).
+  "yellow-submarine", "walrus", "blue-meanie", "ziggy-bolt", "starman", "major-tom", "lion", "one-love",
+  "get-back", "let-it-be", "help", "dont-let-me-down", "come-together", "all-you-need", "twist-and-shout", "goo-goo", "hey-jude", "here-comes-the-sun", "little-help",
+  "lets-dance", "ground-control", "im-a-starman", "rebel-rebel", "changes",
+  "buffalo-soldier", "redemption", "get-up-stand-up", "one-love-saying", "every-little-thing", "jammin",
+  ...voiceIds(),
 ]);
 
 export class RoomError extends Error {
@@ -83,30 +92,41 @@ function cleanName(value) {
 }
 const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
+/** The computers the host asked for: known names only, no repeats, never more than the seats the computers could fill. */
+function cleanComputers(value, capacity) {
+  if (value === undefined || value === null) return {};
+  if (!Array.isArray(value)) throw new RoomError("Pick computers from the list.");
+  const names = value.filter((entry, index) => typeof entry === "string" && COMPUTER_NAMES.slice(0, 7).includes(entry) && value.indexOf(entry) === index).slice(0, Math.max(0, capacity - 1));
+  return names.length ? { computers: names } : {};
+}
+
 function humanSeat(name, token, now, host = false) {
   return { name, kind: "human", tokenHash: hash(token), host, joinedAt: now, seenAt: now, called: false, exposedAt: null, autoStreak: 0, autoTotal: 0, lastReactAt: 0 };
 }
 
 /** What the host chose: the way to play and its settings. Anything a tournament needs is checked by the app's own rules. */
-function cleanSetup({ mode, setsToWin, limit }, capacity, level) {
+function cleanSetup({ mode, setsToWin, limit, matchType, games, roundsToWin, computers }, capacity, level) {
+  const picked = cleanComputers(computers, capacity);
   const chosen = mode === undefined ? "single" : mode;
   if (!MODES.includes(chosen)) throw new RoomError("That way to play is not recognised.");
   if (capacity > ONLINE_MAX_PLAYERS[chosen]) throw new RoomError(chosen === "single" ? `A single game is for up to ${MAX_SEATS} players.` : `${MODE_NAMES[chosen]} is for up to ${ONLINE_MAX_PLAYERS[chosen]} players.`);
-  if (chosen === "single") return { mode: "single" };
-  const setup = { mode: chosen, opponents: capacity - 1, level, knockout: "last-out",
-    ...(chosen === "darts" ? { setsToWin: Number(setsToWin ?? 3) } : {}), ...(chosen === "dominoes" ? { limit: Number(limit ?? 100) } : {}) };
+  if (chosen === "single") return { mode: "single", ...picked };
+  // "Games": first to N wins or best of N. One game is just a single game, played the ordinary way.
+  if (chosen === "match" && Number(games ?? 1) === 1) return { mode: "single", ...picked };
+  const setup = { mode: chosen, opponents: capacity - 1, level, knockout: "last-out", ...picked,
+    ...(chosen === "match" ? { matchType, games: Number(games) } : {}), ...(chosen === "darts" ? { setsToWin: Number(setsToWin ?? 3) } : {}), ...(chosen === "lastout" && Number(roundsToWin ?? 1) > 1 ? { roundsToWin: Number(roundsToWin) } : {}), ...(chosen === "dominoes" ? { limit: Number(limit ?? 100) } : {}) };
   const problem = validateSetup(setup, ONLINE_MAX_PLAYERS[chosen]);
   if (problem) throw new RoomError(problem.replace(/, so at least \d+ computers?\./, "."));
   return setup;
 }
 
-export function createRoom({ seats, level, name, mode, setsToWin, limit }, token, now) {
+export function createRoom({ seats, level, name, mode, setsToWin, limit, matchType, games, roundsToWin, computers }, token, now) {
   const capacity = Number(seats);
   if (!Number.isInteger(capacity) || capacity < 2 || capacity > MAX_PLAYERS) throw new RoomError(`A table is for 2 to ${MAX_PLAYERS} players.`);
   const chosen = level === undefined ? "standard" : level;
   if (!LEVELS.includes(chosen)) throw new RoomError("Pick relaxed, standard or sharp computers.");
   return {
-    v: 3, rev: 0, createdAt: now, updatedAt: now, status: "lobby", capacity, level: chosen, setup: cleanSetup({ mode, setsToWin, limit }, capacity, chosen),
+    v: 3, rev: 0, createdAt: now, updatedAt: now, status: "lobby", capacity, level: chosen, setup: cleanSetup({ mode, setsToWin, limit, matchType, games, roundsToWin, computers }, capacity, chosen),
     gameNo: 0, reactSeq: 0, newsSeq: 0, seriesNo: 0,
     seats: [humanSeat(cleanName(name), token, now, true)], tables: [], reactions: [], news: [], history: [],
     series: null, ready: {},
@@ -183,7 +203,12 @@ export function startRoom(room, seatIndex, now, random = secureRandom) {
   if (room.status !== "lobby") throw new RoomError("The game has already started.", 409);
   const humans = room.seats.filter((seat) => seat.kind === "human");
   if (humans.length < 2) throw new RoomError("Wait for at least one friend to join first.", 409);
-  const free = COMPUTER_NAMES.filter((candidate) => !humans.some((seat) => sameName(seat.name, candidate)));
+  // The host may have picked which computers to face. Picks come first (unless a guest already has that name); other seats are drawn at random.
+  const wanted = (room.setup?.computers ?? []).filter((candidate) => !humans.some((seat) => sameName(seat.name, candidate)));
+  const open = (candidate) => !wanted.includes(candidate) && !humans.some((seat) => sameName(seat.name, candidate));
+  // The seven computers with their own voices are drawn at random first; the extra names only fill very big tables.
+  const rest = [...shuffled(COMPUTER_NAMES.slice(0, 7).filter(open), random), ...COMPUTER_NAMES.slice(7).filter(open)];
+  const free = [...wanted, ...rest];
   const computers = Array.from({ length: room.capacity - humans.length }, (_, index) => ({
     name: free[index] ?? `Computer ${index + 1}`, kind: "computer", host: false, called: true, exposedAt: null, autoStreak: 0, autoTotal: 0, seenAt: 0, lastReactAt: 0,
   }));
@@ -196,6 +221,7 @@ export function startRoom(room, seatIndex, now, random = secureRandom) {
 
 /* ── Tournaments and matches: many games, several at once ── */
 
+const matchText = (setup) => (setup.matchType === "best" ? `best of ${setup.games} games` : `first to ${setup.games} wins`);
 const keyOf = (room, key) => `${room.seriesNo}:${key}`;
 
 function beginSeries(room, now, random) {
@@ -203,7 +229,7 @@ function beginSeries(room, now, random) {
   const players = room.seats.map((seat, index) => ({ id: sid(index), name: seat.name }));
   room.series = startSeries({ ...room.setup, opponents: room.seats.length - 1, level: room.level }, random, `${room.code ?? "room"}-series-${room.seriesNo}`, players);
   room.ready = {};
-  news(room, `The ${MODE_NAMES[room.setup.mode]} begins: ${room.seats.length} players.`, now);
+  news(room, room.setup.mode === "match" ? `The match begins (${matchText(room.setup)}): ${room.seats.length} players.` : `The ${MODE_NAMES[room.setup.mode]} begins: ${room.seats.length} players.`, now);
   scheduleSeries(room, now, 0);
   dealDue(room, now, random);
 }
@@ -307,6 +333,13 @@ const BANTER_MOODS = Object.freeze({
   win: ["mic-drop", "read-em-and-weep", "smug-king", "seven-on-fire", "spicy-fucking-yes", "spicy-sod-off", "spicy-pick-up-arse", "spicy-eat-shit", "spicy-wanker", "spicy-fk-off"],
   lose: ["lucky-so-and-so", "salty", "crying-joker", "revenge-is-coming", "spicy-jammy", "spicy-bloody-hell", "spicy-shite-hand", "spicy-piss-off", "spicy-bollocks", "spicy-lucky-bastard", "spicy-bloody-lucky", "spicy-shitshow", "spicy-bullshit", "spicy-crap", "spicy-f-hell"],
 });
+/** What the Beatles, Bowie and Marley computers add in each mood, mirroring `THEMES` in `src/switch/reactions.ts`. */
+const BANTER_THEMES = Object.freeze({
+  beatles: { gloat: ["get-back", "yellow-submarine", "walrus", "come-together"], sulk: ["help", "dont-let-me-down", "blue-meanie", "let-it-be"], tease: ["twist-and-shout", "come-together", "yellow-submarine"], win: ["all-you-need", "twist-and-shout", "yellow-submarine", "here-comes-the-sun"], lose: ["let-it-be", "help", "dont-let-me-down", "blue-meanie"] },
+  bowie: { gloat: ["lets-dance", "im-a-starman", "ziggy-bolt", "rebel-rebel"], sulk: ["ground-control", "major-tom", "changes"], tease: ["starman", "lets-dance", "im-a-starman"], win: ["im-a-starman", "ziggy-bolt", "lets-dance", "starman"], lose: ["ground-control", "major-tom", "changes", "rebel-rebel"] },
+  marley: { gloat: ["buffalo-soldier", "lion", "get-up-stand-up"], sulk: ["redemption", "every-little-thing", "one-love"], tease: ["jammin", "buffalo-soldier", "lion"], win: ["jammin", "lion", "get-up-stand-up", "one-love-saying"], lose: ["redemption", "every-little-thing", "one-love-saying", "one-love"] },
+});
+const BANTER_BAND = Object.freeze({ John: "beatles", Paul: "beatles", George: "beatles", Ringo: "beatles", Ziggy: "bowie", Bowie: "bowie", Marley: "marley" });
 const BANTER_CHAT = Object.freeze({ John: 0.75, Paul: 0.55, George: 0.35, Ringo: 0.5, Ziggy: 0.6, Marley: 0.45, Bowie: 0.65 });
 /** A table hears at most one computer remark in this long (a win always gets one). */
 const BANTER_GAP_MS = 7_000;
@@ -319,29 +352,57 @@ function computerBanter(room, table, event, at, random = secureRandom) {
   if (!table.players.some((player) => room.seats[player].kind === "human")) return;
   if (event.kind !== "win" && at - (table.lastBanterAt ?? -Infinity) < BANTER_GAP_MS) return;
   const isComputer = (index) => typeof index === "number" && index >= 0 && room.seats[table.players[index]]?.kind === "computer";
+  const nameOf = (index) => room.seats[table.players[index]].name;
+  /** Who a remark is for: a computer by name, or a person at the table ("user"). */
+  const aim = (index) => (typeof index !== "number" || index < 0 ? undefined : isComputer(index) ? nameOf(index) : "user");
   const candidates = [];
-  if (event.kind === "penalty") {
-    if (isComputer(event.by) && event.by !== event.victim) candidates.push({ index: event.by, mood: "gloat", odds: Math.min(0.95, 0.45 + event.cards * 0.06) });
-    if (isComputer(event.victim)) candidates.push({ index: event.victim, mood: "sulk", odds: Math.min(0.9, 0.35 + event.cards * 0.05) });
+  if (event.kind === "play" || event.kind === "mistake") {
+    candidates.push(...cardCandidates(event, { seats: table.players.map((_, index) => index), isComputer, nameOf }));
+  } else if (event.kind === "penalty") {
+    const retorts = isComputer(event.by) && isComputer(event.victim) ? aimedIds(nameOf(event.victim), nameOf(event.by)) : [];
+    const hit = event.card && isComputer(event.victim) ? hitPool(nameOf(event.victim), event.card) : [];
+    if (isComputer(event.by) && event.by !== event.victim) candidates.push({ index: event.by, mood: "gloat", odds: Math.min(0.95, 0.45 + event.cards * 0.06), target: aim(event.victim), answer: retorts.length ? { index: event.victim, ids: retorts } : undefined });
+    if (isComputer(event.victim)) candidates.push({ index: event.victim, mood: "sulk", ids: hit.length ? hit : undefined, odds: Math.min(0.9, 0.35 + event.cards * 0.05), target: isComputer(event.by) ? aim(event.by) : undefined });
   } else if (event.kind === "spotted") {
-    if (isComputer(event.by)) candidates.push({ index: event.by, mood: "gloat", odds: 0.85 });
+    const caught = isComputer(event.by) ? caughtPool(nameOf(event.by), "lastCard") : [];
+    if (isComputer(event.by)) candidates.push({ index: event.by, mood: "gloat", ids: caught.length ? [...caught, ...caught] : undefined, odds: 0.85, target: aim(event.victim) });
   } else if (event.kind === "last-card") {
-    if (isComputer(event.seat)) candidates.push({ index: event.seat, mood: "tease", odds: 0.4 });
+    if (isComputer(event.seat)) candidates.push({ index: event.seat, mood: "tease", odds: 0.4, target: "user" });
   } else if (event.kind === "win") {
     const losers = table.players.map((_, index) => index).filter((index) => isComputer(index) && index !== event.winner);
-    if (isComputer(event.winner)) candidates.push({ index: event.winner, mood: "win", odds: 0.85 });
-    losers.forEach((index, n) => candidates.push({ index, mood: "lose", odds: n === losers.length - 1 ? 0.8 : 0.7 / losers.length }));
+    if (isComputer(event.winner)) candidates.push({ index: event.winner, mood: "win", odds: 0.85, target: "user" });
+    losers.forEach((index, n) => candidates.push({ index, mood: "lose", odds: n === losers.length - 1 ? 0.8 : 0.7 / losers.length, target: isComputer(event.winner) ? aim(event.winner) : undefined }));
   }
-  for (const candidate of candidates) {
-    const player = table.players[candidate.index];
-    const seat = room.seats[player];
-    if (random() >= candidate.odds * (0.5 + (BANTER_CHAT[seat.name] ?? 0.5))) continue;
-    const pool = BANTER_MOODS[candidate.mood];
+  const pick = (index, mood, ids, target) => {
+    const name = nameOf(index);
+    const pool = ids?.length ? ids : [...BANTER_MOODS[mood], ...(BANTER_THEMES[BANTER_BAND[name]]?.[mood] ?? []), ...voicePool(name, mood, target)];
+    // Nobody repeats a line they said recently while they have anything else to say (owner decision, 16 Nov 2026).
+    const recent = (table.recentLines ??= []);
+    const age = (id) => recent.lastIndexOf(id);
+    const oldest = Math.min(...pool.map(age));
+    const from = pool.filter((id) => age(id) === oldest);
+    const chosen = from[Math.floor(random() * from.length) % from.length];
+    recent.push(chosen);
+    if (recent.length > 40) recent.shift();
+    return chosen;
+  };
+  const say = (index, id) => {
+    const player = table.players[index];
     room.reactSeq += 1;
-    room.reactions.push({ n: room.reactSeq, player, id: pool[Math.floor(random() * pool.length) % pool.length], at });
+    room.reactions.push({ n: room.reactSeq, player, id, at });
     if (room.reactions.length > 20) room.reactions.splice(0, room.reactions.length - 20);
-    seat.lastReactAt = at;
+    room.seats[player].lastReactAt = at;
+  };
+  for (const candidate of candidates) {
+    // The card talk speaks for the seat in `seat` (the shared `_cardTalk.js` candidates); older candidates use `index`.
+    const index = candidate.index ?? candidate.seat;
+    const seat = room.seats[table.players[index]];
+    if (random() >= candidate.odds * (0.5 + (BANTER_CHAT[seat.name] ?? 0.5))) continue;
+    say(index, pick(index, candidate.mood, candidate.ids, candidate.target));
     table.lastBanterAt = at;
+    // A computer that has just been needled, or had a card played at it, may answer.
+    const answer = candidate.answer;
+    if (answer && random() < (answer.odds ?? 0.75)) say(answer.index ?? answer.seat, answer.ids[Math.floor(random() * answer.ids.length) % answer.ids.length]);
     return;
   }
 }
@@ -382,7 +443,13 @@ function playAction(room, table, seat, action, { at, lastCard, auto }) {
   table.game = after;
   table.turnAt = at;
   if (after.status === "won") finishTable(room, table, at);
-  if (action.type === "draw" && pickedUp >= 2) computerBanter(room, table, { kind: "penalty", victim: seat, by: penaltyFrom, cards: pickedUp }, at);
+  // What was played, what it did and who it landed on: the card talk is about the cards.
+  const attack = action.type === "play" ? attackOf(momentsOf({ cards: action.cards, pendingBefore: game.pendingPenalty, pendingAfter: after.pendingPenalty }), after.pendingPenalty) : null;
+  if (action.type === "play") computerBanter(room, table, { kind: "play", seat, cards: action.cards, pendingBefore: game.pendingPenalty, pendingAfter: after.pendingPenalty, won: after.status === "won" && after.winner === seat, next: after.status === "playing" ? after.turn : undefined }, at);
+  if (missed) computerBanter(room, table, { kind: "mistake", seat, what: "lastCard" }, at);
+  const attackBefore = table.lastAttack ?? undefined;
+  table.lastAttack = action.type === "play" && (attack === "two" || attack === "blackKing" || attack === "stack") ? attack : null;
+  if (action.type === "draw" && pickedUp >= 2) computerBanter(room, table, { kind: "penalty", victim: seat, by: penaltyFrom, cards: pickedUp, card: attackBefore }, at);
   if (after.status === "won" && after.winner !== null) computerBanter(room, table, { kind: "win", winner: after.winner }, at);
   else if (after.status === "playing" && after.hands[seat].length === 1 && game.hands[seat].length !== 1) computerBanter(room, table, { kind: "last-card", seat }, at);
 }
@@ -624,12 +691,29 @@ async function mutate(store, code, now, change, first = null) {
   throw new RoomError("The table is busy. Try again.", 503);
 }
 
-export async function handleRoom(request, store, now = Date.now(), random = secureRandom) {
-  try { return await route(request, store, now, random); }
+/**
+ * `observe`, when given, is told what each change added to the owner's anonymous counters (see _onlineStats.js).
+ * It is called only after a change was really saved, and a failure in it never touches the game.
+ */
+export async function handleRoom(request, store, now = Date.now(), random = secureRandom, observe = null) {
+  try { return await route(request, store, now, random, observe); }
   catch (error) { if (error instanceof RoomError) return json({ error: error.message }, error.status); throw error; }
 }
 
-async function route(request, store, now, random) {
+/** Like `mutate`, but reports what the change did to the counters once it has been saved. */
+async function mutateCounted(store, code, now, change, observe, first = null) {
+  let seen = null;
+  const outcome = await mutate(store, code, now, (room) => {
+    const before = observe ? summarise(room) : null;
+    const changed = change(room);
+    seen = changed && before ? tableChanged(before, summarise(room)) : null;
+    return changed;
+  }, first);
+  if (observe && outcome.written && seen && hasCounts(seen)) { try { await observe(seen); } catch { /* counting never affects a game */ } }
+  return outcome;
+}
+
+async function route(request, store, now, random, observe) {
   const url = new URL(request.url);
   const code = (url.searchParams.get("code") || "").toUpperCase();
   const op = url.searchParams.get("op") || "";
@@ -641,11 +725,11 @@ async function route(request, store, now, random) {
     const row = await load(store, code, now);
     const index = findSeat(row, token);
     if (index < 0) return json(publicSummary({ ...row, code }));
-    const outcome = await mutate(store, code, now, (room) => {
+    const outcome = await mutateCounted(store, code, now, (room) => {
       const seat = findSeat(room, token);
       const touched = touch(room, seat, now);
       return room.status !== "lobby" ? tick(room, now, random) || touched : touched;
-    }, row).catch((error) => { if (error instanceof RoomError && error.status === 503) return { room: { ...row, code } }; throw error; });
+    }, observe, row).catch((error) => { if (error instanceof RoomError && error.status === 503) return { room: { ...row, code } }; throw error; });
     return json(viewFor(outcome.room, findSeat(outcome.room, token), now, watch));
   }
 
@@ -657,11 +741,14 @@ async function route(request, store, now, random) {
 
   if (!code) {
     const seatToken = randomBytes(18).toString("hex");
-    const room = createRoom({ seats: body.seats, level: body.level, name: body.name, mode: body.mode, setsToWin: body.setsToWin, limit: body.limit }, seatToken, now);
+    const room = createRoom({ seats: body.seats, level: body.level, name: body.name, mode: body.mode, setsToWin: body.setsToWin, limit: body.limit, matchType: body.matchType, games: body.games, roundsToWin: body.roundsToWin, computers: body.computers }, seatToken, now);
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const fresh = newCode();
       room.code = fresh;
-      if (await store.create(fresh, room, Math.ceil(TIMING.ttlMs / 1000))) return json({ code: fresh, token: seatToken, view: viewFor(room, 0, now) }, 201);
+      if (await store.create(fresh, room, Math.ceil(TIMING.ttlMs / 1000))) {
+        if (observe) { try { await observe(tableCreated(room)); } catch { /* counting never affects a game */ } }
+        return json({ code: fresh, token: seatToken, view: viewFor(room, 0, now) }, 201);
+      }
     }
     throw new RoomError("Could not make a code. Try again.", 503);
   }
@@ -670,10 +757,11 @@ async function route(request, store, now, random) {
   if (op === "join") {
     const seatToken = randomBytes(18).toString("hex");
     const outcome = await mutate(store, code, now, (room) => { joinRoom(room, body.name, seatToken, now); return true; });
+    if (observe) { try { await observe(tableJoined()); } catch { /* counting never affects a game */ } }
     return json({ code, token: seatToken, view: viewFor(outcome.room, outcome.room.seats.length - 1, now) }, 201);
   }
 
-  const outcome = await mutate(store, code, now, (room) => {
+  const outcome = await mutateCounted(store, code, now, (room) => {
     const seatIndex = findSeat(room, token);
     if (seatIndex < 0) throw new RoomError("That seat is not yours, or the table has ended.", 403);
     touch(room, seatIndex, now);
@@ -686,7 +774,7 @@ async function route(request, store, now, random) {
     else if (op === "react") react(room, seatIndex, body.id, now);
     else throw new RoomError("Unknown request.");
     return true;
-  });
+  }, observe);
   // Starting a game shuffles the seats, so the answer is cut for wherever this token sits now, never the seat it had before.
   return json(viewFor(outcome.room, findSeat(outcome.room, token), now, watch));
 }

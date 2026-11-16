@@ -28,7 +28,7 @@ export const puzzles: readonly Puzzle[] = [
   { id: 'p1', title: 'Match the suit or the number', top: '7H', suit: 'H', penalty: null, hand: ['3H', '7C', '9S', 'KD', '2H', '5C'], why: 'Hearts match the suit; the 7 of clubs matches the number. Everything else fails both tests.' },
   { id: 'p2', title: 'The wild ace', top: '4S', suit: 'S', penalty: null, hand: ['AD', '9H', '6S', 'QC', '4D', '10H'], why: 'The ace is wild on any ordinary card. The 6 of spades matches the suit and the 4 of diamonds matches the number.' },
   { id: 'p3', title: 'Facing a two', top: '2D', suit: 'D', penalty: { kind: 'draw-two', cards: 2 }, hand: ['2S', '9D', 'AH', '2C', 'KD', '5D'], why: 'A two is active, so only another two can stop it. Matching the suit or an ace does not help.' },
-  { id: 'p4', title: 'Facing a black king', top: 'KS', suit: 'S', penalty: { kind: 'black-king', units: 1, cards: 5 }, hand: ['KC', '2S', 'KH', 'AS', '9S', 'KD'], why: 'You can pass the five on with the black king of clubs, or cancel with a red king. Nothing else counts.' },
+  { id: 'p4', title: 'Facing a black king', top: 'KS', suit: 'S', penalty: { kind: 'black-king', units: 1, cards: 5 }, hand: ['KC', '2S', 'KH', 'AS', '9S', 'KD'], why: 'You can pass the five on with the black king of clubs, or take the five off with a red king (you pick up nothing). Nothing else counts.' },
   { id: 'p5', title: 'Facing an eight', top: '8C', suit: 'C', penalty: { kind: 'miss-turn' }, hand: ['8H', '9C', 'AC', 'KS', '8D', '3C'], why: 'To avoid missing your turn you must play another eight. Matching the suit is not enough.' },
   { id: 'p6', title: 'Number beats suit', top: '9D', suit: 'D', penalty: null, hand: ['9S', '2D', 'JC', '9C', 'KH', '7S'], why: 'Both nines match the number, and the 2 of diamonds matches the suit.' },
   { id: 'p7', title: 'After an ace, the suit is chosen', top: 'AH', suit: 'C', penalty: null, hand: ['5C', 'AD', '5H', 'QC', '10S', 'JD'], why: 'The ace changed the suit to clubs. Hearts no longer matter; clubs do, and an ace is always wild.' },
@@ -36,7 +36,7 @@ export const puzzles: readonly Puzzle[] = [
   { id: 'p9', title: 'Doubling a two', top: '2H', suit: 'H', penalty: { kind: 'draw-two', cards: 2 }, hand: ['2D', '2S', '2C', '9H', 'KC', 'AD'], why: 'Every two stacks, adding two more cards. Only twos are legal here.' },
   { id: 'p10', title: 'A busy hand', top: 'QS', suit: 'S', penalty: null, hand: ['QH', 'JS', '3C', 'AH', '8S', 'QD'], why: 'Queens match the number, spades match the suit, and the ace is wild. Only the 3 of clubs is stuck.' },
   { id: 'p11', title: 'Which one is stuck?', top: '6C', suit: 'C', penalty: null, hand: ['6D', '9C', 'KS', '6H', 'JD', 'QH'], why: 'The sixes match the number and clubs match the suit, so the 9 of clubs is fine. The king of spades, jack of diamonds and queen of hearts do not match.' },
-  { id: 'p12', title: 'Facing two black kings', top: 'KC', suit: 'C', penalty: { kind: 'black-king', units: 2, cards: 10 }, hand: ['KS', 'KD', '2C', 'KH', 'AC', '9C'], why: 'Ten cards are on the line. Another black king passes it on, and each red king cancels one black king.' },
+  { id: 'p12', title: 'Facing two black kings', top: 'KC', suit: 'C', penalty: { kind: 'black-king', units: 2, cards: 10 }, hand: ['KS', 'KD', '2C', 'KH', 'AC', '9C'], why: 'Ten cards are on the line. Another black king passes it on, and each red king takes 5 off, but you still pick up what is left.' },
 ];
 
 const KEY = 'switchPuzzles';

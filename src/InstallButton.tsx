@@ -70,7 +70,15 @@ export function InstallBanner({ bottom }: { bottom: number }) {
   const { installed: done, install, sheet } = useInstall();
   const [hidden, setHidden] = useState(dismissedRecently);
   useEffect(() => { if (done) setHidden(true); }, [done]);
-  if (done || hidden) return null;
+  // While the bar shows, the page keeps room for it (a data flag on the app root that the CSS reads).
+  const showing = !done && !hidden;
+  useEffect(() => {
+    if (!showing) return;
+    const root = document.querySelector<HTMLElement>('.switch-app');
+    root?.setAttribute('data-install-banner', '');
+    return () => root?.removeAttribute('data-install-banner');
+  }, [showing]);
+  if (!showing) return null;
   return <>
     <div className="install-banner" role="region" aria-label="Install Switch" style={{ bottom }}>
       <DeviceMobile size={26} weight="fill" />

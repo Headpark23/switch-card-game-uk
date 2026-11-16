@@ -1,0 +1,10 @@
+export type VoiceMoodName = "gloat" | "sulk" | "tease" | "win" | "lose" | "reply";
+export const VOICE_MOODS: readonly VoiceMoodName[];
+export const VOICES: Readonly<Record<string, Record<VoiceMoodName | "user" | "any", readonly string[]> & { at: Record<string, readonly string[]> }>>;
+export function voiceId(name: string, kind: string, n: number): string;
+export function voiceAtId(name: string, other: string, n: number): string;
+export function voiceEntries(): { id: string; text: string }[];
+export function voiceIds(): string[];
+export function voicePool(name: string, mood: VoiceMoodName, target?: string): string[];
+export function hasAimedLines(name: string, other: string): boolean;
+export function aimedIds(name: string, other: string): string[];

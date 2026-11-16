@@ -34,10 +34,12 @@ export interface Timings {
   readonly announce: number;
   /** Picking up. */
   readonly draw: number;
+  /** Quick pace: shorter thinking floor and shorter reading time for effects (owner request, 16 Nov 2026). */
+  readonly quick?: boolean;
 }
 
 export const SPEEDS: Readonly<Record<Speed, Timings>> = {
-  quick: { highlight: 150, think: 350, flight: 230, gap: 140, announce: 550, draw: 450 },
+  quick: { highlight: 120, think: 350, flight: 200, gap: 110, announce: 450, draw: 380, quick: true },
   natural: { highlight: 200, think: 800, flight: 350, gap: 250, announce: 800, draw: 650 },
   relaxed: { highlight: 250, think: 1300, flight: 500, gap: 400, announce: 1200, draw: 900 },
 };
@@ -52,6 +54,9 @@ export const REDUCED: Timings = { highlight: 0, think: 400, flight: 0, gap: 320,
  */
 export const MIN_THINK_MS = 5000;
 export const FORCED_THINK_MS = 900;
+/** Quick pace thinks for this long over a move with choices, and reads an effect in a fraction of the usual time. */
+export const QUICK_THINK_MS = 1200;
+export const QUICK_FORCED_THINK_MS = 400;
 /** You have this long to say "Last Card" before a computer may spot that you did not. */
 export const LAST_CARD_GRACE_MS = 5000;
 
@@ -65,7 +70,7 @@ export function paceIsHuman(): boolean {
 
 /** The pace setting with the thinking floor applied. Animation speed is untouched. */
 export function withThinkingFloor(timings: Timings): Timings {
-  return paceIsHuman() ? { ...timings, think: Math.max(timings.think, MIN_THINK_MS) } : timings;
+  return paceIsHuman() ? { ...timings, think: Math.max(timings.think, timings.quick ? QUICK_THINK_MS : MIN_THINK_MS) } : timings;
 }
 
 export const SPEED_NAMES: Readonly<Record<Speed, string>> = { quick: "Quick", natural: "Natural", relaxed: "Relaxed" };
@@ -82,12 +87,17 @@ export function drawTiming(count: number, penalty: boolean, timings: Timings): {
   return { trip, stagger, shown, total: trip + (shown - 1) * stagger + (penalty ? timings.announce * 0.6 : timings.gap) };
 }
 
+/** A card's effect stays up long enough to read: 2.2 seconds, then about a third of a second a word (owner request, 16 Nov 2026). */
+export function announceReadingMs(text: string): number {
+  return Math.min(5500, 2200 + text.split(/\s+/).length * 330);
+}
+
 export function stepDuration(step: Step, timings: Timings): number {
   switch (step.kind) {
-    case "think": return step.forced ? Math.min(timings.think, FORCED_THINK_MS) : timings.think;
+    case "think": return step.forced ? Math.min(timings.think, timings.quick ? QUICK_FORCED_THINK_MS : FORCED_THINK_MS) : timings.think;
     case "card": return timings.flight + timings.gap;
     case "draw": return drawTiming(step.count, step.penalty === true, timings).total;
-    case "announce": return timings.announce;
+    case "announce": return paceIsHuman() ? Math.max(timings.announce, timings.quick ? Math.min(announceReadingMs(step.text) * 0.45, 1400) : announceReadingMs(step.text)) : timings.announce;
   }
 }
 
@@ -112,7 +122,12 @@ export function effectText(before: TableState, after: TableState, cards: readonl
   if (rank === "2" && pending?.kind === "draw-two") return `Twos: ${names[after.turn]} faces ${plural(pending.cards, "card")}`;
   if (rank === "K") {
     if (pending?.kind === "black-king") return `Black king: ${names[after.turn]} faces ${plural(pending.cards, "card")}`;
-    if (before.pendingPenalty?.kind === "black-king") return "Red king cancels the penalty";
+    if (before.pendingPenalty?.kind === "black-king") {
+      // A red king only reduces the pile-up. Whoever lays it picks up what is left (nothing, if it was all taken off).
+      const gained = after.hands[actor].length - (before.hands[actor].length - cards.length);
+      if (gained > 0) return `Red king takes 5 off: ${names[actor]} still pick${names[actor] === "You" ? "" : "s"} up ${gained}`;
+      return "Red king cancels the penalty";
+    }
     return null;
   }
   if (rank === "8" && pending?.kind === "miss-turn") return `Eight: ${names[after.turn]} misses a turn unless they hold an eight`;
@@ -158,6 +173,16 @@ export function planTurn(before: TableState, action: GameAction, after: TableSta
     steps.push({ kind: "draw", seat, count: after.hands[seat].length, ...(options.missedCall ? { penalty: true } : {}) });
     if (after.discardPile.length < before.discardPile.length + action.cards.length) {
       steps.push({ kind: "announce", seat, text: "Deck empty: the played pile is turned over to make a new deck", tone: "info" });
+    }
+  }
+  // A red king on a black-king pile-up takes 5 off, and the player who laid it picks up what is left.
+  if (rankOf(action.cards[action.cards.length - 1]) === "K" && before.pendingPenalty?.kind === "black-king" && !wentOut(after, seat)) {
+    const gained = after.hands[seat].length - (before.hands[seat].length - action.cards.length);
+    if (gained > 0) {
+      steps.push({ kind: "draw", seat, count: gained, penalty: true, ouch: before.hands[seat].length - action.cards.length === 1 });
+      if (after.discardPile.length < before.discardPile.length + action.cards.length) {
+        steps.push({ kind: "announce", seat, text: "Deck empty: the played pile is turned over to make a new deck", tone: "info" });
+      }
     }
   }
   // A play-on game: this player is out with a place, and everyone else carries on.

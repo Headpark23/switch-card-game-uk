@@ -1,6 +1,7 @@
 // The rules for combining two copies of a club. The server uses them to fold each phone's copy into the shared one,
 // and every phone uses them to fold the shared copy into its own. Nothing is ever dropped: players, nights and seasons
 // are matched by id, and where both copies have the same player the more recently changed one wins.
+// Demo data that an older version once shared is dropped here, so removing the sample club sticks.
 // A night someone deleted is remembered in `removed` so it does not come back from another phone.
 
 export const MAX_PROFILES = 80;
@@ -45,9 +46,9 @@ export function mergeClub(a, b) {
   return {
     name: typeof named?.name === "string" ? named.name : "",
     nameAt: Math.max(aAt, bAt),
-    profiles: union(a?.profiles, b?.profiles, newerProfile).slice(0, MAX_PROFILES),
-    nights,
-    seasons: union(a?.seasons, b?.seasons, preferSeason).slice(0, MAX_SEASONS),
+    profiles: union(a?.profiles, b?.profiles, newerProfile).filter(isShareable).slice(0, MAX_PROFILES),
+    nights: nights.filter(isShareable),
+    seasons: union(a?.seasons, b?.seasons, preferSeason).filter(isShareable).slice(0, MAX_SEASONS),
     removed,
   };
 }

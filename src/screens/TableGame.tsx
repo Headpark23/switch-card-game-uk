@@ -17,9 +17,12 @@ import { CardImage, CardShower, rank, suit, suitNames, suitSymbols } from '../ui
 import RealCards from './RealCards';
 import type { PlayMode } from '../switch/series';
 import { sortHand } from '../switch/sortHand';
-import { banterFor, reactionOf, type TableEvent } from '../switch/reactions';
+import { HahaBanner, hahaText, type Haha } from './HahaBanner';
+import { attackKind, banterFor, playEvent, reactionOf, type TableEvent } from '../switch/reactions';
 import { logReaction, type ReplayMove } from '../switch/gameReplay';
+import { GameEnding } from './GameEnding';
 import { beginReplay, Bubble, ReactionSheet, useBubbles, useReplayRecorder } from './tableTalk';
+import { SuitBadge, TableToggles, useTablePrefs } from './tablePrefs';
 
 import { COMPUTER_NAMES } from '../switch/presentation';
 export { COMPUTER_NAMES };
@@ -66,6 +69,19 @@ type Showing = { id: number; before: TableState; after: TableState; action: Game
 /** How long you have to say "Last Card" before a computer spots that you did not: five seconds. */
 const callGrace = () => (paceIsHuman() ? LAST_CARD_GRACE_MS : 1600);
 
+/**
+ * Now and then a computer forgets to say "Last Card" and is caught, the way people are (owner request, 15 Nov 2026).
+ * Easy forgets most, Hard hardly ever. Automated test browsers never forget unless a test sets `switchForgetLastCard` to a chance.
+ */
+const FORGET_CHANCE: Record<ComputerLevel, number> = { relaxed: 0.15, standard: 0.08, sharp: 0.03 };
+function forgetChance(level: ComputerLevel): number {
+  try {
+    const forced = window.localStorage.getItem('switchForgetLastCard');
+    if (forced !== null) return Number(forced) || 0;
+  } catch { /* storage blocked: use the normal chance */ }
+  return paceIsHuman() ? FORGET_CHANCE[level] ?? 0 : 0;
+}
+
 /** When this game is one of a tournament's games, the series screen runs the show: it names the seats and decides what happens next. */
 export type SeriesGame = { title: string; seriesId: string; mode: PlayMode; /** League rounds: players leave as they go out and the rest play on until every place is decided (ruling 24). */ playOn?: boolean; onFinished: (table: TableState, gameId: string) => void };
 
@@ -74,12 +90,24 @@ type Props = { opponents: number; level: ComputerLevel; resume?: ActiveTable | n
 /** Computers keep their banter to one remark every few seconds, however much is happening. */
 const BANTER_GAP_MS = 3500;
 
+/** "You" plus `count` computers picked at random from the seven, in a random seating order. */
+function randomNames(count: number): string[] {
+  const pool = [...COMPUTER_NAMES];
+  for (let i = pool.length - 1; i > 0; i -= 1) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  return ['You', ...pool.slice(0, count)];
+}
+
 export default function TableGame({ opponents, level, resume = null, seatNames, series, onExit, onOpenCards, onStartNight, onChange, onReplay }: Props) {
   const seats = opponents + 1;
-  const names = useMemo(() => seatNames ?? ['You', ...COMPUTER_NAMES.slice(0, opponents)], [opponents, seatNames]);
+  // A single game against the computer deals you a random set of opponents; a resumed game keeps the ones it started with.
+  const [drawn, setDrawn] = useState<string[]>(() => (resume ? (resume.names && resume.names.length === opponents + 1 ? [...resume.names] : ['You', ...COMPUTER_NAMES.slice(0, opponents)]) : randomNames(opponents)));
+  const names = useMemo(() => seatNames ?? drawn, [seatNames, drawn]);
   const [gameId, setGameId] = useState(() => resume?.id ?? newTableGameId());
   const [game, setGame] = useState<TableState>(() => resume?.game ?? createTable(seats, Math.random, pickDealer(seats), { playOn: series?.playOn, powerStartChance: POWER_START_CHANCE }));
   const [showing, setShowing] = useState<Showing | null>(null);
+  // The table stays up after the last card so you can see how it ended; this is the game you have read the ending of.
+  const [endSeenFor, setEndSeenFor] = useState<string | null>(null);
+  const lastPlay = useRef<{ seat: number; cards: CardId[] } | null>(null);
   const [recent, setRecent] = useState<string[]>(() => (resume ? ['Game resumed where you left it.'] : []));
   const [staged, setStaged] = useState<CardId[]>([]);
   const [aceChoice, setAceChoice] = useState<CardId[] | null>(null);
@@ -88,6 +116,8 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   // "Last Card" is the player's own job: the button is always there, nothing prompts for it, and forgetting costs two cards.
   const [lastCalled, setLastCalledState] = useState(() => resume?.lastCardCalled ?? false);
   const calledRef = useRef(lastCalled);
+  /** The computer seat that has just gone down to one card without saying "Last Card". It is caught once its move has been shown. */
+  const forgotRef = useRef<number | null>(null);
   /** Whether Last Card had been called at the moment the final card of your hand was selected (ruling 20: it must come first). */
   const calledBeforeFinalRef = useRef(false);
   const setLastCalled = (value: boolean) => { calledRef.current = value; setLastCalledState(value); };
@@ -96,7 +126,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   const timings = useMemo(() => withThinkingFloor(prefersReducedMotion() ? REDUCED : SPEEDS[speed]), [speed]);
   const logged = useRef<string | null>(null);
   // Anonymous counts for the owner's dashboard (who dealt the penalty cards, how the game ended). Never read back by the game.
-  const stats = useTableTelemetry(gameId, opponents, level);
+  const stats = useTableTelemetry(gameId, opponents, level, series?.mode ?? 'single');
   const showId = useRef(0);
   /** Set the moment a move is submitted, so a double tap can never send it twice. Released when the turn has been shown. */
   const busy = useRef(false);
@@ -107,10 +137,12 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   // Table talk: your reactions, the computers' banter, and a recording of the whole game for its replay.
   const [reactOpen, setReactOpen] = useState(false);
   const { bubbles, say } = useBubbles(paceIsHuman() ? 3600 : 1200);
+  const prefs = useTablePrefs();
   const [talk, setTalk] = useState<{ seat: number; id: string }[]>([]);
   const computers = useMemo(() => names.map((_, seat) => seat).filter((seat) => seat !== 0), [names]);
   const recorder = useReplayRecorder(gameId, () => beginReplay(gameId, game, names, computers, false));
   const penaltyBy = useRef<number | null>(null);
+  const penaltyCard = useRef<'two' | 'blackKing' | 'stack' | undefined>(undefined);
   const queuedBanter = useRef<TableEvent[]>([]);
   const lastBanterAt = useRef(0);
 
@@ -118,7 +150,12 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   const visible = shown;
   const yourMove = !showing && game.status === 'playing' && game.turn === 0;
   const canAct = yourMove;
-  const hand = showing && showing.before.turn === 0 && showing.action.type === 'draw' ? showing.before.hands[0] : game.hands[0];
+  const rawHand = showing && showing.before.turn === 0 && showing.action.type === 'draw' ? showing.before.hands[0] : game.hands[0];
+  // Sort is a setting, not a one-off: while it is on, the hand is shown sorted and new cards slot straight in.
+  const [sortOn, setSortOn] = useState(false);
+  const [haha, setHaha] = useState<Haha>(null);
+  const shout = (name: string) => setHaha((current) => ({ id: (current?.id ?? 0) + 1, text: hahaText(name) }));
+  const hand = useMemo(() => (sortOn ? sortHand(rawHand) : rawHand), [sortOn, rawHand]);
   const pending = game.pendingPenalty;
   const missTurn = pending?.kind === 'miss-turn';
   const pendingDraw = pickups(game);
@@ -130,14 +167,18 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   // A play-on game: once you are out the computers finish the round. Your place is already fixed.
   const youOutAt = game.playOn && game.status === 'playing' ? (game.out ?? []).indexOf(0) + 1 : 0;
   const outAfter = (showing ? showing.before : game).out ?? [];
-  const finished = game.status === 'won' && !showing;
+  const gameOver = game.status === 'won' && !showing;
+  // A person gets a proper ending (who won, with what, and what everyone was left holding). Automated runs skip it.
+  const showEnding = paceIsHuman() || (() => { try { return window.localStorage.getItem('switchShowEnding') === '1'; } catch { return false; } })();
+  const finished = gameOver && (endSeenFor === gameId || !showEnding);
+  const ending = gameOver && !finished;
 
   const push = (line: string) => setRecent((current) => [...current.slice(-3), line]);
 
   /** Someone at the table says something: the bubble, the replay and the reaction stats all hear it. */
   function speak(seat: number, id: string) {
     if (!reactionOf(id)) return;
-    say(seat, id);
+    say(seat, id, { priority: seat === 0 });
     setTalk((current) => [...current.slice(-5), { seat, id }]);
     recorder.react({ seat, from: names[seat], id });
     logReaction({ gameId, at: new Date().toISOString(), move: gameRef.current.move, from: names[seat], mine: seat === 0, computer: seat !== 0, online: false, id });
@@ -151,6 +192,9 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     if (!remark) return;
     lastBanterAt.current = now;
     speak(remark.seat, remark.id);
+    // The computer who was just needled may hit back, in its own words, a couple of seconds later.
+    const { answer } = remark;
+    if (answer) window.setTimeout(() => speak(answer.seat, answer.id), 2600);
   }
 
   function sayQueued() {
@@ -162,16 +206,20 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   /** What the table saw of a move, for the replay, and anything in it worth a comment. */
   function record(before: TableState, action: GameAction, after: TableState) {
     const seat = before.turn;
+    if (action.type === 'play') lastPlay.current = { seat, cards: [...action.cards] };
     const type: ReplayMove['type'] = action.type === 'play' ? 'play' : action.type === 'draw' ? 'draw' : 'miss';
     recorder.move({ seat, type, ...(action.type === 'play' ? { cards: [...action.cards], suit: after.currentSuit } : {}), counts: after.hands.map((cards) => cards.length) });
     const events: TableEvent[] = [];
-    if (action.type === 'draw' && pickups(before) > 0) events.push({ kind: 'penalty', victim: seat, by: penaltyBy.current, cards: after.hands[seat].length - before.hands[seat].length });
+    // What was played, what it did and who it landed on: the card talk is about the cards.
+    if (action.type === 'play') events.push(playEvent(seat, action.cards, before.pendingPenalty, after.pendingPenalty, after.status === 'won' && after.winner === seat, after.status === 'playing' ? after.turn : undefined));
+    if (action.type === 'draw' && pickups(before) > 0) events.push({ kind: 'penalty', victim: seat, by: penaltyBy.current, cards: after.hands[seat].length - before.hands[seat].length, card: penaltyCard.current });
     if (action.type === 'play') {
+      penaltyCard.current = attackKind(action.cards, before.pendingPenalty, after.pendingPenalty);
       const top = action.cards[action.cards.length - 1];
       penaltyBy.current = rank(top) === '2' || rank(top) === 'K' ? seat : null;
-    } else penaltyBy.current = null;
+    } else { penaltyBy.current = null; penaltyCard.current = undefined; }
     if (after.status === 'won' && after.winner !== null) events.push({ kind: 'win', winner: after.winner });
-    else if (after.status === 'playing' && after.hands[seat].length === 1 && before.hands[seat].length !== 1) events.push({ kind: 'last-card', seat });
+    else if (after.status === 'playing' && after.hands[seat].length === 1 && before.hands[seat].length !== 1 && forgotRef.current !== seat) events.push({ kind: 'last-card', seat });
     queuedBanter.current.push(...events);
   }
 
@@ -179,9 +227,11 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     stats.onMove(before, action, after);
     record(before, action, after);
     showId.current += 1;
-    const steps = planTurn(before, action, after, names, { think, missedCall });
+    // A computer that is about to be caught for forgetting never announces "Last Card" first: it only says it when it really does.
+    const forgetting = forgotRef.current;
+    const steps = planTurn(before, action, after, names, { think, missedCall, called: names.map((_, index) => index !== forgetting) });
     let line = describe(before, after, names[before.turn], action);
-    if (before.turn !== 0 && after.status === 'playing' && after.hands[before.turn].length === 1) line += ` ${names[before.turn]} says "Last Card".`;
+    if (before.turn !== 0 && after.status === 'playing' && after.hands[before.turn].length === 1 && forgotRef.current !== before.turn) line += ` ${names[before.turn]} says "Last Card".`;
     if (missedCall) line += ' You had not said "Last Card", so you pick up two.';
     setGame(after);
     setShowing({ id: showId.current, before, after, action, steps, at: 0, line });
@@ -194,6 +244,18 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
       push(showing.line);
       setShowing(null);
       busy.current = false;
+      // A computer that went down to one card without saying "Last Card" is caught, and picks up two.
+      const forgot = forgotRef.current;
+      forgotRef.current = null;
+      if (forgot !== null && gameRef.current.status === 'playing' && gameRef.current.hands[forgot]?.length === 1) {
+        const caught = dealTo(gameRef.current, forgot, 2);
+        shout(names[forgot]);
+        cue('penalty');
+        push(`${names[forgot]} forgot to say "Last Card" and picks up two cards.`);
+        recorder.move({ seat: forgot, type: 'spot', counts: caught.hands.map((cards) => cards.length) });
+        queuedBanter.current.push({ kind: 'mistake', seat: forgot, what: 'lastCard' });
+        setGame(caught);
+      }
       sayQueued();
       return;
     }
@@ -268,6 +330,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
       let spotted = false;
       if (before.hands[0].length === 1 && !calledRef.current) {
         spotted = true;
+        shout('You');
         cue('penalty');
         before = dealTo(before, 0, 2);
         setGame(before);
@@ -276,7 +339,10 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
         queuedBanter.current.push({ kind: 'spotted', victim: 0, by: before.turn });
       }
       const action = chooseTableAction(before, Math.random, level, { personality: names[before.turn] });
-      show(before, action, applyTableAction(before, action), !spotted);
+      const result = applyTableAction(before, action);
+      const seat = before.turn;
+      forgotRef.current = result.status === 'playing' && result.hands[seat].length === 1 && before.hands[seat].length !== 1 && Math.random() < forgetChance(level) ? seat : null;
+      show(before, action, result, !spotted);
     }, exposed ? timings.highlight + callGrace() : timings.highlight);
     return () => window.clearTimeout(timer);
   }, [showing, game.status, game.turn, game.move, lastCalled, level, timings]);
@@ -284,7 +350,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   // An unfinished game is kept so it can be resumed; a finished one is logged once, under its own id, and forgotten.
   useEffect(() => {
     // A game inside a tournament is never saved for resuming; the tournament screen owns what happens next.
-    if (game.status === 'playing') { if (!series) saveActiveTable({ id: gameId, opponents, level, game, awaitingLastCard: false, lastCardCalled: lastCalled }); return; }
+    if (game.status === 'playing') { if (!series) saveActiveTable({ id: gameId, opponents, level, game, names: drawn, awaitingLastCard: false, lastCardCalled: lastCalled }); return; }
     if (logged.current === gameId) return;
     logged.current = gameId;
     recorder.finish(game.winner);
@@ -294,10 +360,12 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     if (!series) clearActiveTable();
   }, [game, lastCalled, gameId, opponents, level]);
 
-  useEffect(() => { if (finished) cue(youWon ? 'win' : 'bad'); }, [finished, youWon]);
+  useEffect(() => { if (gameOver) cue(youWon ? 'win' : 'bad'); }, [gameOver, youWon]);
 
   function refuse(cards: CardId[], reason: string) {
     cue('bad');
+    // Someone at the table notices you trying a card that cannot be played.
+    if (!busy.current) banter({ kind: 'mistake', seat: 0, what: 'illegal' });
     setFlash(cards);
     setWarn(reason);
     window.setTimeout(() => setFlash((current) => (current === cards ? [] : current)), 1100);
@@ -336,7 +404,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     // Playing out your last cards (two tens to win, or a seven that cannot) needs "Last Card" first.
     const emptied = cards.length === before.hands[0].length;
     const missed = emptied && !calledBeforeFinalRef.current;
-    if (missed) { cue('penalty'); after = penaliseMissedLastCard(after, 0); }
+    if (missed) { cue('penalty'); shout('You'); after = penaliseMissedLastCard(after, 0); }
     // The call is used up by an emptied hand (a pickup means saying it again) and by any play that leaves two or more.
     if (emptied || after.hands[0].length > 1) setLastCalled(false);
     show(before, action, after, false, missed);
@@ -346,7 +414,8 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
 
   function playStaged() {
     if (!staged.length || busy.current) return;
-    if (rank(staged[0]) === 'A') { setAceChoice(staged); return; }
+    // An ace played as your last card keeps its own suit (ruling 34), so there is nothing to choose.
+    if (rank(staged[0]) === 'A' && staged.length < hand.length) { setAceChoice(staged); return; }
     if (!isLegalTablePlay(game, { type: 'play', cards: staged })) {
       refuse([...staged], 'Those cards cannot be played in that order. Try a different order, or play fewer cards.');
       return;
@@ -370,14 +439,18 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     if (game.status !== 'playing' || lastCalled) return;
     cue('good');
     setLastCalled(true);
+    // Ruling 26 (amended): with a single card left, that card is both the first and the final card, so a call made
+    // while it is selected, before Play is pressed, still counts.
+    if (hand.length === 1) calledBeforeFinalRef.current = true;
   }
 
   function again() {
     busy.current = false;
     setShowing(null);
     setRecent([]); setStaged([]); setAceChoice(null); setHint(false); setLastCalled(false); setTalk([]);
-    penaltyBy.current = null; queuedBanter.current = [];
+    penaltyBy.current = null; penaltyCard.current = undefined; queuedBanter.current = [];
     setGameId(newTableGameId());
+    if (!seatNames) setDrawn(randomNames(opponents));
     setGame(createTable(seats, Math.random, pickDealer(seats), { playOn: series?.playOn, powerStartChance: POWER_START_CHANCE }));
   }
 
@@ -409,6 +482,8 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     : pending?.kind === 'black-king' ? `Play another black king, or a red king to cancel 5, or pick up ${pendingDraw}.`
     : missTurn ? 'Play another eight to pass the missed turn, or accept it.'
     : legalCards.length ? `You can play ${legalCards.map(cardIdLabel).join(', ')}. You may also pick up one card instead.` : 'You have no legal card. Pick up one card.';
+
+  if (ending) return <GameEnding game={game} names={names} played={lastPlay.current && lastPlay.current.seat === (game.winner ?? 0) ? lastPlay.current.cards : undefined} onContinue={() => setEndSeenFor(gameId)} />;
 
   if (finished && series) {
     return <section className="tutorial game-tutorial table-game" aria-label="Game over">
@@ -444,6 +519,10 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     </section>;
   }
 
+  /** Both sit directly above the hand, where the hint buttons were, so the cards stay in view and the choice is next to them. */
+  const MULTI_ACTION = <div className="multi-action"><p><b>{staged.length === 1 ? '1 card selected' : `${staged.length} cards selected`}</b>{staged.length > 1 && <small>They land in the order you tapped them, and the last one sets the suit.</small>}</p><button className="primary" onClick={playStaged} disabled={!canAct}>Play selected</button><button className="text-link" onClick={() => setStaged([])}>Clear selection</button></div>;
+  const SUIT_CHOOSER = <div className="suit-choice" role="dialog" aria-label="Choose a suit"><p>Choose the suit for your ace</p><div>{(['S', 'H', 'D', 'C'] as Suit[]).map((chosen) => <button key={chosen} className={chosen === 'H' || chosen === 'D' ? 'red' : ''} onClick={() => { const cards = aceChoice!; setAceChoice(null); commit(cards, chosen); }}>{suitSymbols[chosen]}<span>{suitNames[chosen]}</span></button>)}</div><button className="text-link" onClick={() => setAceChoice(null)}>Cancel</button></div>;
+
   const activeName = names[visible.active];
   const status = yourMove ? 'YOUR MOVE' : visible.thinking ? `${activeName.toUpperCase()} IS CHOOSING` : visible.active === 0 ? 'YOU PLAY' : `${activeName.toUpperCase()} TO PLAY`;
   const pile = visible.discardPile.slice(-3);
@@ -451,20 +530,23 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   const drawingTiming = drawTiming(drawingNow?.count ?? 0, drawingNow?.penalty === true, timings);
   const ouchFor = (seat: number) => drawingNow?.ouch && drawingNow.seat === seat
     ? <span key={`ouch-${showing?.id}`} className="ouch" aria-hidden="true" data-testid="ouch" style={{ animationDelay: `${Math.round(drawingTiming.trip)}ms` }}>Ouch!</span> : null;
-  const notice = warn || (visible.announce ? visible.announce.text + '.'
-    : visible.thinking ? `${activeName} is choosing a move…`
-    : visible.flying ? `${activeName === 'You' ? 'You play' : `${activeName} plays`} ${cardIdLabel(visible.flying.card)}${visible.flying.count > 1 ? ` (${visible.flying.index + 1} of ${visible.flying.count})` : ''}.`
-    : visible.drawing ? `${activeName === 'You' ? 'You pick' : `${activeName} picks`} up ${visible.drawing.count} card${visible.drawing.count === 1 ? '' : 's'}.`
+  // The description of a move holds steady while the move is shown and stays up while the next player thinks.
+  const lastLine = recent[recent.length - 1];
+  const notice = warn || (!prefs.moves ? '' : visible.announce ? visible.announce.text + '.'
+    : visible.thinking ? (lastLine ?? `${activeName} is choosing a move…`)
+    : (visible.flying || visible.drawing) && showing ? showing.line
     : yourMove ? (recent.length === 0 ? (openingNote(game, names) ?? `${names[game.dealer]} dealt.`) + (game.turn === game.dealer ? " You play." : " You play first.") : recent[recent.length - 1]) : recent[recent.length - 1] ?? openingNote(game, names) ?? `${names[game.dealer]} dealt.`);
 
   return <section ref={sectionRef} className="tutorial game-tutorial table-game" aria-label={series ? series.title : `Game against ${opponents === 1 ? 'the computer' : `${opponents} computers`}`} data-active-seat={visible.active} data-showing={showing ? 'yes' : 'no'}>
+    <HahaBanner haha={haha} />
     <div className={'turn-banner ' + (visible.active === 0 ? 'you' : 'computer')}>
       <span className="turn-dot" aria-hidden="true" />
       <span className="turn-status" aria-live="polite" data-testid="turn-status">{status}</span>
       <em className="dealer-chip" aria-label={`Dealer: ${names[game.dealer]}`}>Dealer · {names[game.dealer]}</em>
-      <button onClick={onExit}>Exit</button>
+      <TableToggles prefs={prefs} />
+      <button onClick={() => { if (game.status === 'playing') stats.onLeave(game.move); onExit(); }}>Exit</button>
     </div>
-    {series && <p className="series-strip" data-testid="series-strip">{series.title}</p>}
+    {series &&<p className="series-strip" data-testid="series-strip">{series.title}</p>}
     <div className={`seat-row seats-${opponents}${opponents > 4 ? ' many' : ''}`} role="list" aria-label="Players at the table">
       {names.slice(1).map((name, index) => {
         const seat = index + 1;
@@ -475,38 +557,37 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
           <span className="seat-fan" aria-hidden="true">{Array.from({ length: Math.min(5, count) }, (_, i) => <CardImage code="back" key={i} />)}</span>
           <strong className={count === 1 ? 'last' : ''}>{outAfter.includes(seat) ? 'Out' : `${count} card${count === 1 ? '' : 's'}`}</strong>{ouchFor(seat)}
           <span className="seat-state" aria-hidden="true">{outAfter.includes(seat) ? `Out: ${ordinal(outAfter.indexOf(seat) + 1)}` : active ? (visible.thinking ? <><i className="think-dots"><b /><b /><b /></i>Choosing</> : 'Playing') : count === 1 ? 'Last card' : ' '}</span>
-          {bubbles[seat] && <Bubble key={bubbles[seat].n} n={bubbles[seat].n} id={bubbles[seat].id} name={name} />}
+          {prefs.talk && bubbles[seat] && <Bubble key={bubbles[seat].n} n={bubbles[seat].n} id={bubbles[seat].id} name={name} leaving={bubbles[seat].leaving} />}
         </div>;
       })}
     </div>
     <div className="game-table">
-      <button className="draw-pile" onClick={pickUp} disabled={!canAct || !!staged.length || missTurn} aria-label={missTurn ? 'Draw pile unavailable while resolving the eight' : pendingDraw ? `Pick up ${pendingDraw} cards` : legalCards.length ? 'Pick up one card instead of playing' : 'Draw a card'}><CardImage code="back" />{drawingNow?.penalty && <span key={`count-${showing?.id}`} className="draw-count" aria-hidden="true" data-testid="draw-count" style={{ animationDuration: `${drawingTiming.total}ms` }}>+{drawingNow.count}</span>}<span>{!yourMove ? 'Deck' : missTurn ? 'Eight played' : pendingDraw ? `Pick up ${pendingDraw}` : legalCards.length ? 'Pick up instead' : 'Draw'}</span></button>
+      <button className="draw-pile" onClick={pickUp} disabled={!canAct || !!staged.length || missTurn} aria-label={missTurn ? 'Pick up unavailable while resolving the eight' : pendingDraw ? `Pick up ${pendingDraw} cards` : legalCards.length ? 'Pick up one card instead of playing' : 'Pick up a card'}><CardImage code="back" />{drawingNow?.penalty && <span key={`count-${showing?.id}`} className="draw-count" aria-hidden="true" data-testid="draw-count" style={{ animationDuration: `${drawingTiming.total}ms` }}>+{drawingNow.count}</span>}<span>{!yourMove ? 'Deck' : missTurn ? 'Eight played' : pendingDraw ? `Pick up ${pendingDraw}` : 'Pick up'}</span></button>
       <div className="discard-pile">
         <span className="pile-wrap" data-testid="discard-pile" data-top={pile[pile.length - 1]} data-order={visible.discardPile.slice(-6).join(' ')}>
           {pile.map((card, index) => <span key={card} className={'pile-card depth-' + (pile.length - 1 - index)}><CardImage code={card} /></span>)}
           {visible.flying && <span ref={flyRef} key={`fly-${showing?.id}-${visible.flying.index}`} className="pile-card flying" data-testid="flying-card" data-card={visible.flying.card}><CardImage code={visible.flying.card} /></span>}
         </span>
-        <span>Suit <b className={visible.currentSuit === 'H' || visible.currentSuit === 'D' ? 'red' : ''}>{suitSymbols[visible.currentSuit]} {suitNames[visible.currentSuit]}</b></span>
+        <SuitBadge suit={visible.currentSuit} aceKey={visible.announce?.text.startsWith('Ace:') ? `${showing?.id}` : null} />
         {seats > 2 && <span className="direction" aria-label={`Play goes ${visible.direction === 1 ? 'clockwise' : 'anticlockwise'}`}>{visible.direction === 1 ? <ArrowClockwise size={14} weight="bold" /> : <ArrowCounterClockwise size={14} weight="bold" />}{visible.direction === 1 ? 'Clockwise' : 'Anticlockwise'}</span>}
       </div>
-      {visible.announce && <div key={`${showing?.id}-${showing?.at}`} className={'table-announce ' + visible.announce.tone} data-testid="table-announce" aria-hidden="true">{visible.announce.text}</div>}
+      {prefs.moves && visible.announce && <div key={`${showing?.id}-${showing?.at}`} className={'table-announce ' + visible.announce.tone} data-testid="table-announce" aria-hidden="true">{visible.announce.text}</div>}
     </div>
     <p className={'game-notice' + (warn && yourMove ? ' warn' : '')} aria-live="polite" role={warn ? 'alert' : undefined}>{notice}</p>
-    {recent.length > 1 && <ul className="move-log" aria-label="Recent moves">{recent.slice(0, -1).map((line, index) => <li key={index}>{line}</li>)}</ul>}
+    {prefs.moves && recent.length > 1 && <ul className="move-log" aria-label="Recent moves">{recent.slice(0, -1).map((line, index) => <li key={index}>{line}</li>)}</ul>}
     <div className={'your-seat' + (visible.active === 0 ? ' turn' : '')} data-seat="0">
       {ouchFor(0)}
-      {bubbles[0] && <Bubble key={bubbles[0].n} n={bubbles[0].n} id={bubbles[0].id} name="You" />}
+      {prefs.talk && bubbles[0] && <Bubble key={bubbles[0].n} n={bubbles[0].n} id={bubbles[0].id} name="You" leaving={bubbles[0].leaving} />}
       {yourMove && <span className="your-move-tag" aria-hidden="true">Your move</span>}
       {yourMove && missTurn && <div className="miss-turn-action"><strong>An eight was played</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you miss this turn.'}</p><button className="primary" onClick={pickUp}>Accept missed turn <ArrowRight size={18} /></button></div>}
       {youOutAt > 0 && <div className="out-panel" role="status" data-testid="you-are-out"><strong>You are out: {ordinal(youOutAt)} place.</strong><p>The others play on for the places still to be decided.</p><button className="secondary" onClick={skipToResult}>Skip to the result <ArrowRight size={18} /></button></div>}
       {youOutAt === 0 && <>
-          {staged.length === 0 && <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!canAct}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={cycleSpeed} aria-label={`Computer pace: ${SPEED_NAMES[speed]}. Tap to change`}><Timer size={16} />{SPEED_NAMES[speed]}</button><button className="pace-button sort-button" onClick={() => setGame((current) => ({ ...current, hands: current.hands.map((cards, seat) => (seat === 0 ? sortHand(cards) : cards)) }))}><SortAscending size={16} />Sort</button></div>}
+          {staged.length === 0 ? <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!canAct}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={cycleSpeed} aria-label={`Computer pace: ${SPEED_NAMES[speed]}. Tap to change`}><Timer size={16} />{SPEED_NAMES[speed]}</button><button className="pace-button sort-button" onClick={() => setSortOn((on) => !on)} aria-pressed={sortOn}><SortAscending size={16} weight={sortOn ? 'fill' : 'regular'} />{sortOn ? 'Sorted' : 'Sort'}</button></div> : aceChoice ? SUIT_CHOOSER : MULTI_ACTION}
           {hint && yourMove && <p className="game-hint"><Lightbulb size={17} />{hintText}</p>}
-          <div className="hand-row"><span>{hand.length} in hand</span><button className="pace-button react-button" onClick={() => setReactOpen(true)} aria-label="Send a reaction" data-testid="react-button"><ChatCircleText size={17} />React</button><button className={'last-card-button' + (lastCalled ? ' called' : '')} onClick={callLastCard} aria-pressed={lastCalled} data-testid="last-card-button" aria-label={lastCalled ? 'Last Card called' : 'Call Last Card'}><HandPalm size={20} weight={lastCalled ? 'fill' : 'regular'} /><span>{lastCalled ? 'Called' : 'Last Card'}</span></button></div>
-          <div className={'player-hand' + (hand.length > 10 ? ' dense' : '') + (hand.length > 8 ? ' two-rows' : '')} style={{ '--n': hand.length, '--per': Math.ceil(hand.length / 2) } as CSSProperties} aria-label="Your hand">
+          <div className="hand-row"><span>{hand.length} in hand</span><button className="pace-button react-button" onClick={() => setReactOpen(true)} aria-label="Send a reaction" data-testid="react-button"><ChatCircleText size={17} />React</button><button className={'last-card-button' + (lastCalled ? ' called' : hand.length > 3 ? ' idle' : ' due')} onClick={callLastCard} aria-pressed={lastCalled} data-testid="last-card-button" aria-label={lastCalled ? 'Last Card called' : 'Call Last Card'}><HandPalm size={20} weight={lastCalled ? 'fill' : 'regular'} /><span>{lastCalled ? 'Called' : 'Last Card'}</span></button></div>
+          <div className={'player-hand' + (hand.length > 10 ? ' dense' : '') + (hand.length > 5 ? ' two-rows' : '')} style={{ '--n': hand.length, '--per': Math.ceil(hand.length / 2) } as CSSProperties} aria-label="Your hand">
             {hand.map((card, index) => <button key={card} style={{ '--i': 0, zIndex: index + 1 } as CSSProperties} data-card={card} onClick={() => chooseCard(card)} className={(hint && yourMove && canPlay(card) ? 'playable ' : '') + (staged.includes(card) ? 'selected ' : '') + (flash.includes(card) ? 'illegal' : '')} disabled={!canAct} aria-label={staged.includes(card) ? `Deselect ${cardIdLabel(card)}` : `Select ${cardIdLabel(card)}${canPlay(card) ? ', legal move' : ', not currently playable'}`}><CardImage code={card} />{staged.includes(card) && <i className="order-badge" aria-hidden="true">{staged.indexOf(card) + 1}</i>}</button>)}
           </div>
-          {staged.length > 0 && <div className="multi-action"><p>{staged.length === 1 ? '1 card selected' : `${staged.length} cards selected. They land in the order you tapped them, and the last one sets the suit.`}</p><button className="primary" onClick={playStaged} disabled={!canAct}>Play selected</button><button className="text-link" onClick={() => setStaged([])}>Clear selection</button></div>}
         </>}
     </div>
     <ReactionSheet open={reactOpen} onOpenChange={setReactOpen} description="The computers hear it, and some of them answer back." onPick={(id) => {
@@ -517,7 +598,6 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
       lastBanterAt.current = 0;
       window.setTimeout(() => { if (!busy.current) sayQueued(); }, paceIsHuman() ? 1400 : 200);
     }} />
-    {aceChoice && <div className="suit-choice" role="dialog" aria-label="Choose a suit"><p>Choose the suit for your ace</p><div>{(['S', 'H', 'D', 'C'] as Suit[]).map((chosen) => <button key={chosen} className={chosen === 'H' || chosen === 'D' ? 'red' : ''} onClick={() => { const cards = aceChoice; setAceChoice(null); commit(cards, chosen); }}>{suitSymbols[chosen]}<span>{suitNames[chosen]}</span></button>)}</div><button className="text-link" onClick={() => setAceChoice(null)}>Cancel</button></div>}
   </section>;
 }
 

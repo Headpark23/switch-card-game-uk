@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { ArrowRight, CaretLeft, Crown, Minus, Plus } from '@phosphor-icons/react';
 import { cue } from '../feedback';
 import { KeyboardInput, useKeyboard } from '../mobile';
-import { trackNightSaved } from '../switch/telemetry';
+import { trackNightSaved, trackNightStarted } from '../switch/telemetry';
 import { addNight, createNightRecord, type NightCompletion, type SwitchNightRecord } from '../switch/history';
 import { ShareButton } from '../ShareButton';
 import { getClubName, nightShareCard } from '../switch/club';
 import { ensureProfiles, getProfiles } from '../switch/profiles';
 import { converge } from '../switch/clubSync';
+import { withNightProfiles, withoutNewProfiles } from '../switch/clubStore';
 import { loadScorekeeper, saveScorekeeper, SCOREKEEPER_STORAGE_KEY } from '../switch/storage';
 import type { Player } from '../switch/types';
 import DealerBar from './DealerBar';
@@ -46,7 +47,8 @@ export default function QuickNight({ onBack, onHistory }: { onBack: () => void; 
       const ensured = ensureProfiles(converge(loaded.state.extensions), typed);
       setPlayers([...ensured.players]);
       setDealerState(pickDealer(ensured.players.map((player) => player.id)));
-      persist(ensured.extensions, ensured.players);
+      persist(withoutNewProfiles(ensured.extensions, getProfiles(converge(loaded.state.extensions))), ensured.players);
+      trackNightStarted('head-to-head', ensured.players.length);
       keyboard.hide(); setError(''); cue('good');
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not start.'); }
   }
@@ -71,7 +73,7 @@ export default function QuickNight({ onBack, onHistory }: { onBack: () => void; 
     const current = loadScorekeeper(raw).state.extensions;
     const place = cleanPlace(placeName, placeCountry);
     const night = createNightRecord(`Quick night · ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`, completion, undefined, undefined, place);
-    const added = addNight(current, night);
+    const added = addNight(withNightProfiles(current, players), night);
     trackNightSaved(night.format, night.players.length, false);
     persist(place ? putLastPlace(added, place) : added, players);
     setSavedNight(night);
@@ -93,11 +95,11 @@ export default function QuickNight({ onBack, onHistory }: { onBack: () => void; 
     <h1 id="quick-title">{players ? 'Who won that round?' : 'Who is playing?'}</h1>
     {!players ? <>
       {saved.length > 0 && <div className="player-tokens" aria-label="Saved players">{saved.map((profile) => <button key={profile.id} data-colour={profile.colour} onClick={() => pickSaved(profile.name)}>{profile.name}</button>)}</div>}
-      <div className="player-fields">{names.map((name, index) => <label key={index}><span>Player {index + 1}</span><KeyboardInput value={name} placeholder="Enter name" onChange={(event) => setNames((current) => current.map((entry, i) => (i === index ? event.target.value : entry)))} /></label>)}</div>
+      <div className="player-fields">{names.map((name, index) => <label key={index}><span>Player {index + 1}</span><KeyboardInput aria-invalid={Boolean(error) && !name.trim()} value={name} placeholder="Enter name" onChange={(event) => setNames((current) => current.map((entry, i) => (i === index ? event.target.value : entry)))} /></label>)}</div>
       <div className="quick-count"><button aria-label="Remove a player" disabled={names.length <= 2} onClick={() => setNames((current) => current.slice(0, -1))}><Minus size={18} /></button><span>{names.length} players</span><button aria-label="Add a player" disabled={names.length >= 6} onClick={() => setNames((current) => [...current, ''])}><Plus size={18} /></button></div>
       {error && <p className="score-error" role="alert">{error}</p>}
       <VenueFields name={placeName} country={placeCountry} onName={setPlaceName} onCountry={setPlaceCountry} />
-      <button className="primary quick-start" onClick={begin}>Deal the cards <ArrowRight size={18} /></button>
+      <button className="primary quick-start" onClick={begin}>Start the night <ArrowRight size={18} /></button>
     </> : <>
       {dealer && <DealerBar dealer={dealer} nameOf={(id) => players.find((player) => player.id === id)?.name ?? 'Player'} onPass={() => setDealerState(passDeal(dealer))} onPick={(id) => setDealerState(setDealer(dealer, id))} />}
       <p className="quick-round">Round {rounds.length + 1}. Tap the winner as soon as someone plays their last card.</p>

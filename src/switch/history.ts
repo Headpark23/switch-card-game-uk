@@ -1,7 +1,7 @@
 import type { CupState } from "./cup";
 import type { League, PlayoffBracket } from "./leagues";
 import { rankLeague } from "./leagues";
-import type { KnockoutState } from "./knockout";
+import { roundWins, roundsToWin, type KnockoutState } from "./knockout";
 import { isGameMatch, type ScoreFormat, type ScoreSession } from "./scoring";
 import type { Player } from "./types";
 import type { Place } from "./places";
@@ -40,10 +40,10 @@ type ReadyPlayoffs = {
 const HISTORY_KEY = "switchNightHistory";
 const FORMAT_LABELS: Record<ScoreFormat, string> = {
   "head-to-head": "One v One",
-  domino: "Domino",
+  domino: "Dominoes",
   darts: "Darts",
   league: "Group Play",
-  knockout: "Knock Out",
+  knockout: "Last One Out",
   cup: "Switch Cup",
 };
 
@@ -153,15 +153,20 @@ export function completionFromSession(session: ScoreSession): NightCompletion | 
 
 export function completionFromKnockout(state: KnockoutState): NightCompletion | null {
   if (!state.championId) return null;
-  const lines = state.eliminatedIds.map((id) => `${playerName(state.players, id)} — LOST`);
-  lines.push(`${playerName(state.players, state.championId)} — CHAMPION`);
+  const name = (id: string) => playerName(state.players, id);
+  const target = roundsToWin(state);
+  const finished = [...(state.rounds ?? []), { eliminatedIds: state.eliminatedIds, winnerId: state.championId }];
+  const roundLines = (round: { eliminatedIds: readonly string[]; winnerId: string }) => [...round.eliminatedIds.map((id) => `${name(id)} — LOST`), `${name(round.winnerId)} — ${target > 1 ? "round win" : "CHAMPION"}`];
+  const wins = roundWins(state);
   return {
     format: "knockout",
     formatLabel: FORMAT_LABELS.knockout,
     players: clone(state.players),
     winnerIds: [state.championId],
-    outcome: `${playerName(state.players, state.championId)} won`,
-    details: [{ heading: "Elimination order", lines }],
+    outcome: target > 1 ? `${name(state.championId)} won, first to ${target} round wins` : `${name(state.championId)} won`,
+    details: target > 1
+      ? [{ heading: `Round wins · first to ${target}`, lines: state.players.map((player) => `${player.name} — ${wins[player.id] ?? 0}`) }, ...finished.map((round, index) => ({ heading: `Round ${index + 1}`, lines: roundLines(round) }))]
+      : [{ heading: "Elimination order", lines: roundLines(finished[0]) }],
   };
 }
 

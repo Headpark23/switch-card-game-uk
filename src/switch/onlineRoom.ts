@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ComputerLevel } from "./ai";
 import type { TableState } from "./table";
-import type { PlayMode, SeriesOutcome, SeriesState } from "./series";
+import { matchLabel, type MatchType, type PlayMode, type SeriesOutcome, type SeriesState } from "./series";
 import type { CardId, Suit } from "./types";
 
 /**
@@ -49,7 +49,7 @@ export interface RoomResult {
 }
 
 /** What the host chose: the way to play and its settings (Darts sets, Dominoes number). */
-export interface RoomSetup { readonly mode: PlayMode; readonly setsToWin?: number; readonly limit?: number }
+export interface RoomSetup { readonly mode: PlayMode; readonly setsToWin?: number; readonly limit?: number; readonly matchType?: MatchType; readonly games?: number; /** Last One Out: round wins that take the table (absent is one round). */ readonly roundsToWin?: number; /** Computers the host asked for, by name; other empty seats are drawn at random. */ readonly computers?: readonly string[] }
 
 /** A tournament or match at the table. Player ids are "p0", "p1"…; `me` is yours. Its games run side by side. */
 export interface RoomSeries {
@@ -176,12 +176,16 @@ export function clearSeat(): void {
 }
 
 /** Each way to play is shown by its own little hand of cards, as in the Play lobby. */
-export const ONLINE_MODE_CARDS: Record<PlayMode, string[]> = { single: ["AS", "KH"], knockout: ["KS", "KC"], group: ["QH", "QD", "JS"], cup: ["10H", "10S"], darts: ["7S", "7H"], dominoes: ["6C", "6D", "6S"] };
+export const ONLINE_MODE_CARDS: Record<PlayMode, string[]> = { single: ["AS", "KH"], match: ["AS", "AH", "AD"], lastout: ["KS", "KH", "KD"], knockout: ["KS", "KC"], group: ["QH", "QD", "JS"], cup: ["10H", "10S"], darts: ["7S", "7H"], dominoes: ["6C", "6D", "6S"] };
 
 /** What each way to play means at a table of friends. Knock Out here is the game-night version (ruling 11). */
-export function onlineModeBlurb(mode: PlayMode): string {
+export function onlineModeBlurb(mode: PlayMode, setup?: RoomSetup): string {
   switch (mode) {
     case "single": return "One game of Switch. First out wins.";
+    case "match": return setup?.matchType === "best"
+      ? `Best of ${setup.games ?? 3} games: most wins takes it, and it ends as soon as nobody can catch the leader. Level at the end? Play on until someone is ahead.`
+      : `First to ${setup?.games ?? 3} wins takes the match. Every game is ordinary Switch.`;
+    case "lastout": return `Everyone plays the same game. Whoever is left holding cards drops out, until one player is left.${(setup?.roundsToWin ?? 1) > 1 ? ` That is a round win: first to ${setup?.roundsToWin} round wins takes the table.` : ""} More than eight are split across tables.`;
     case "knockout": return "Everyone plays each round; more than eight are split across tables. Whoever is left holding cards at a table is out, until one player is left.";
     case "cup": return "Head-to-head matches, drawn at random, all played at the same time. Win yours to go through.";
     case "group": return "Two leagues playing side by side, then the championship and plate play-offs. For 6 to 16 players.";
@@ -190,9 +194,16 @@ export function onlineModeBlurb(mode: PlayMode): string {
   }
 }
 
+/** What a table is called on screen: "Best of 5 games", "First to 3 wins", or the way to play. */
+export function tableName(mode: PlayMode, setup: RoomSetup | undefined, fallback: string): string {
+  return mode === "match" ? matchLabel(setup?.matchType, setup?.games) : mode === "lastout" && (setup?.roundsToWin ?? 1) > 1 ? `Last One Out · first to ${setup?.roundsToWin} round wins` : fallback;
+}
+
 export const cleanTableCode = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
 export const tableLink = (code: string) => `${window.location.origin}/?table=${code}`;
-export const tableInvite = (code: string, host: string, what = "a game of Switch") => `${host} has set up ${what}. Open the Switch app, tap Play, then "Join with a code" and enter ${code}. Or open ${tableLink(code)}`;
+export const tableInvite = (code: string, host: string, what = "a game of Switch") => `${host} has set up ${what}. Tap to join:
+${tableLink(code)}
+Or open Switch, tap Play, then "Join with a code" and enter ${code}.`;
 
 export async function createTable(name: string, seats: number, level: ComputerLevel, setup: RoomSetup = { mode: "single" }): Promise<{ code: string; token: string; view: RoomView }> {
   return request("POST", {}, null, { name, seats, level, ...setup });

@@ -33,6 +33,12 @@ export async function countOnServer(keys) {
   try { await bump(statsStore, { add: Object.fromEntries(keys.map((key) => [key, 1])), max: {} }); } catch { /* a missed count is fine */ }
 }
 
+/** Adds ready-made increments (already worked out and capped by the server itself, such as online table counts). */
+export async function recordIncrements(increments) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
+  try { await bump(statsStore, increments); } catch { /* a missed count is fine */ }
+}
+
 /** Counts phone-style events (such as a visit) from the server's own side. */
 export async function recordOnServer(events) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return;

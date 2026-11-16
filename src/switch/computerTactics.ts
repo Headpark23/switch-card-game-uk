@@ -1,4 +1,4 @@
-import { isBlackKing, isRedKing, rankOf } from "./cards";
+import { isBlackKing, isRedKing, rankOf, suitOf } from "./cards";
 import type { ComputerLevel } from "./ai";
 import type { CardId, PendingPenalty, RandomSource, Suit } from "./types";
 
@@ -138,6 +138,24 @@ export function chanceHolds(view: TacticView, wanted: number, holding: number): 
   for (let index = 0; index < holding; index += 1) miss *= (pool - wanted - index) / (pool - index);
   return clamp(1 - miss, 0, 1);
 }
+
+/**
+ * How well a hand hangs together: the number of pairs of cards that share a suit or a number. A connected hand has
+ * more ways to answer whatever lands next, so Hard prefers plays that leave one (measured in scripts/ai-levels.mjs:
+ * about three points of win rate over Medium heads up; with three or more players it measured slightly worse, so it is used heads up only). Counted from the computer's own cards only.
+ */
+export function handCohesion(hand: readonly CardId[]): number {
+  let links = 0;
+  for (let first = 0; first < hand.length; first += 1) {
+    for (let second = first + 1; second < hand.length; second += 1) {
+      if (suitOf(hand[first]) === suitOf(hand[second]) || rankOf(hand[first]) === rankOf(hand[second])) links += 1;
+    }
+  }
+  return links;
+}
+
+/** What each link in the hand is worth to Hard, against 100 for each card played. Tuned by self-play. */
+export const COHESION_VALUE = 70;
 
 /** How much the computer minds spending a play: aces most, ordinary cards not at all. */
 function holdValue(cards: readonly CardId[]): number {

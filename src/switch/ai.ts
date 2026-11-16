@@ -1,6 +1,6 @@
 import { rankOf, suitOf } from "./cards";
 import { applyAction, forcesPickup, isPlayableDuringPenalty, legalMoves } from "./rules";
-import { bestChain, NO_TACTICS, shouldPickUp, tacticScore, tacticWeights, type PlayOutcome, type TacticView, type TacticWeights } from "./computerTactics";
+import { bestChain, COHESION_VALUE, handCohesion, NO_TACTICS, shouldPickUp, tacticScore, tacticWeights, type PlayOutcome, type TacticView, type TacticWeights } from "./computerTactics";
 import type { CardId, GameAction, GameState, RandomSource } from "./types";
 
 /**
@@ -169,6 +169,8 @@ function scoreSharp(state: GameState, action: GameAction, context: Context): num
     score += remaining.filter((card) => suitOf(card) === next.currentSuit).length * 12;
   }
 
+  // Hard keeps its hand connected: cards that share a suit or a number can answer each other.
+  score += handCohesion(remaining) * COHESION_VALUE;
   if (remaining.length === 1 && (rankOf(remaining[0]) === "7" || rankOf(remaining[0]) === "J")) score -= 150;
   if (remaining.length === 1 && rankOf(remaining[0]) === "A" && context.weights.aces <= 0) score += 60;
 

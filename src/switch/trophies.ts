@@ -64,7 +64,7 @@ export function deriveTrophyRoom(profile: LocalProfile, nights: readonly SwitchN
   }
   // Winning a tournament or match against the computers earns a cup too, sized by how many sat down.
   const cpuFormat: Record<string, { format: string; label: string }> = {
-    knockout: { format: "knockout", label: "Knock Out" }, group: { format: "league", label: "Group Play" }, cup: { format: "cup", label: "Switch Cup" },
+    match: { format: "head-to-head", label: "Switch match" }, lastout: { format: "knockout", label: "Last One Out" }, knockout: { format: "knockout", label: "Knock Out" }, group: { format: "league", label: "Group Play" }, cup: { format: "cup", label: "Switch Cup" },
     darts: { format: "darts", label: "Darts scoring" }, dominoes: { format: "domino", label: "Dominoes scoring" },
   };
   for (const game of seriesGames(computerGames.filter((entry) => entry.playerId === profile.id))) {

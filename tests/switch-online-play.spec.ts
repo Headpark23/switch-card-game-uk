@@ -18,7 +18,7 @@ const phone = { width: 430, height: 932 };
 
 test("the reactions the app offers are exactly the ones the server accepts", () => {
   expect(REACTIONS.map((entry) => entry.id).sort()).toEqual([...SERVER_REACTIONS].sort());
-  expect(REACTIONS).toHaveLength(55);
+  expect(REACTIONS).toHaveLength(SERVER_REACTIONS.length);
 });
 
 async function openFriends(page: Page) {
@@ -82,8 +82,10 @@ test("two phones: one starts a table, the other joins with the link, the host de
   // A reaction from the friend appears on the host's phone.
   await friend.getByRole("button", { name: "Send a reaction" }).click();
   await friend.locator('[data-reaction="read-em-and-weep"]').click();
-  await expect(host.getByTestId("reaction-bubble")).toBeVisible({ timeout: 10_000 });
-  await expect(host.getByTestId("reaction-bubble")).toContainText("Read 'em and weep");
+  // Computers at the table may be talking about their own cards too, so look for this friend's bubble.
+  const bubble = host.locator('[data-testid="reaction-bubble"][data-reaction-shown="read-em-and-weep"]');
+  await expect(bubble).toBeVisible({ timeout: 10_000 });
+  await expect(bubble).toContainText("Read 'em and weep");
 });
 
 test("a table code that does not exist says so", async ({ browser }) => {

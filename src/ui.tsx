@@ -67,7 +67,7 @@ export function CoachPanel({ meaning, options, sheetOptions = options, lesson, a
       ? <button className="coach-strip" onClick={() => setOpen(true)} aria-label="Why & tactics: see the coach's pick"><span className="pick-cards" aria-hidden="true"><CardImage code="back" /></span><span className="strip-text"><b>Your move</b><small>Stuck? Tap for the coach's pick and every card explained.</small></span><span className="strip-go" aria-hidden="true">Coach ›</span></button>
       : advice && advice.kind !== 'accept'
       ? <button className="coach-strip" onClick={() => setOpen(true)} aria-label={`Why & tactics: ${advice.headline}`}><span className="pick-cards" aria-hidden="true">{advice.cards.slice(0, 2).map((card) => <CardImage key={card} code={card} />)}{!advice.cards.length && <CardImage code="back" />}</span><span className="strip-text"><b>{advice.headline}</b><small>{advice.reasons[0]}</small></span><span className="strip-go" aria-hidden="true">Why ›</span></button>
-      : meaning ? <button className="coach-strip quiet" onClick={() => setOpen(true)} aria-label="What that means"><span className="strip-text"><small>{meaning}</small></span><span className="strip-go" aria-hidden="true">More ›</span></button> : null
+      : meaning ? <button className="coach-strip quiet" onClick={() => setOpen(true)} aria-label="Why & tactics: what that means"><span className="strip-text"><small>{meaning}</small></span><span className="strip-go" aria-hidden="true">More ›</span></button> : null
     : null;
   if (compact) return <>{strip}{detail && <BottomSheet open={open} onOpenChange={setOpen} title={advice ? (lesson?.title ?? "Coach's pick") : lesson!.title}>
       <div className="lesson">

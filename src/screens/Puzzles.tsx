@@ -9,7 +9,7 @@ import { CardImage, suitNames } from '../ui';
 const penaltyText = (kind: string | undefined, cards?: number) =>
   kind === 'draw-two' ? `A two is active: ${cards} cards to pick up.` : kind === 'black-king' ? `A black king is active: ${cards} cards to pick up.` : kind === 'miss-turn' ? 'An eight is active: you miss a turn.' : '';
 
-export default function Puzzles({ onBack, onTutorial }: { onBack: () => void; onTutorial: () => void }) {
+export default function Puzzles({ onBack, onTutorial, backLabel = 'Back' }: { onBack: () => void; onTutorial: () => void; backLabel?: string }) {
   const [progress, setProgress] = useState<PuzzleProgress>(loadProgress);
   const next = useMemo(() => puzzles.findIndex((puzzle) => !progress.solved.includes(puzzle.id)), [progress.solved]);
   const [index, setIndex] = useState(() => (next < 0 ? 0 : next));
@@ -36,9 +36,9 @@ export default function Puzzles({ onBack, onTutorial }: { onBack: () => void; on
   }
 
   return <section className="puzzles" aria-labelledby="puzzle-title">
-    <button className="text-link back-link" onClick={onBack}><CaretLeft size={15} weight="bold" />Rules</button>
-    <p className="eyebrow">PUZZLE {index + 1} OF {puzzles.length}</p>
+    <button className="text-link back-link" onClick={onBack}><CaretLeft size={15} weight="bold" />{backLabel}</button>
     <h1 id="puzzle-title">What can you play?</h1>
+    <p className="puzzle-count">Puzzle {index + 1} of {puzzles.length}</p>
     <div className="puzzle-badge"><Trophy size={20} weight="fill" /><span><strong>{badge.name}</strong><small>{badge.next}</small></span><em aria-label={`Streak ${progress.streak}`}><Fire size={15} weight="fill" aria-hidden="true" /> {progress.streak}</em></div>
     <div className="puzzle-card">
       <h2>{puzzle.title}</h2>
@@ -58,7 +58,7 @@ export default function Puzzles({ onBack, onTutorial }: { onBack: () => void; on
         : null}
       {result
         ? <button className="primary" onClick={advance}>Next puzzle <ArrowRight size={18} /></button>
-        : <button className="primary" disabled={!picked.length} onClick={check}>Check my answer</button>}
+        : <><button className="primary" disabled={!picked.length} onClick={check} aria-describedby="puzzle-hint">Check my answer</button>{!picked.length && <p className="puzzle-hint" id="puzzle-hint">Tap a card to answer.</p>}</>}
     </div>
     <button className="secondary" onClick={onTutorial}>Practise in a full guided game</button>
   </section>;

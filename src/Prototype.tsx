@@ -3,6 +3,7 @@ import { ArrowRight, House, Cards, Club, MagnifyingGlass, X, DownloadSimple, Che
 import { readActiveTable } from './switch/activeTable';
 import { loadSeat } from './switch/onlineRoom';
 import { readClub, updateClub } from './switch/clubStore';
+import { loadAccount, syncNow } from './auth';
 import { recoverMyGames } from './switch/identity';
 import { syncJoinedNights } from './switch/joinedNights';
 import { flushSharedResults } from './switch/shareNight';
@@ -48,7 +49,7 @@ const ReplayScreen = lazy(() => import('./screens/ReplayScreen'));
 /** Each way to play gets its own little hand of cards in place of a number or an icon. */
 const MODE_CARDS: Record<string, string[]> = {
   'One v One': ['AS', 'AH'],
-  'Knock Out': ['2C', '8S', 'KS'],
+  'Last One Out': ['2C', '8S', 'KS'],
   'Group Play': ['QH', 'QS', 'QC'],
   'Darts Scoring': ['3H', '3S', '3D'],
   'Domino Scoring': ['5D', '6D'],
@@ -99,6 +100,7 @@ export default function Prototype() {
   const urlClub = (() => { try { return new URLSearchParams(window.location.search).get('club') ? true : false; } catch { return false; } })();
   const urlTable = (() => { try { return (new URLSearchParams(window.location.search).get('table') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); } catch { return ''; } })();
   const [inviteCode, setInviteCode] = useState(urlTable);
+  const [nightCode, setNightCode] = useState(urlNight);
   const [page, setPage] = useState<Page>(urlNight ? 'Watch' : urlTable ? 'Friends' : urlClub ? 'Club' : 'Learn');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<(typeof powers)[number] | null>(null);
@@ -107,8 +109,10 @@ export default function Prototype() {
   const [planOpen, setPlanOpen] = useState(false);
   const [scoreView, setScoreView] = useState<ScoreView>('score');
   const [clubView, setClubView] = useState<ScoreView>('stats');
+  /** Which door of the Club screen Home opened: share my club, or join one. Passed down as `startMode` once the Club screen takes it. */
+  const [clubMode, setClubMode] = useState<'share' | 'join' | undefined>(undefined);
   const [meSection, setMeSection] = useState<'overview' | 'badges'>('overview');
-  const [table, setTable] = useState<{ opponents: number; level: ComputerLevel; resume: boolean; deal: number }>({ opponents: 2, level: 'standard', resume: false, deal: 0 });
+  const [table, setTable] = useState<{ opponents: number; level: ComputerLevel; resume: boolean; deal: number; names?: string[] }>({ opponents: 2, level: 'standard', resume: false, deal: 0 });
   /** Where a learning page goes back to: the rules guide, or Home when it was opened from Home. */
   const [learnBack, setLearnBack] = useState<'Learn' | 'Rules'>('Learn');
   /** The game being replayed, and the screen to go back to afterwards. */
@@ -118,6 +122,20 @@ export default function Prototype() {
   const { bottomInset, isKeyboardVisible } = useKeyboardInsets();
   // One-off repair: games left on the automatic "You" player rejoin the owner's real name.
   useState(() => { try { if (recoverMyGames(readClub())) updateClub((current) => recoverMyGames(current) ?? current); } catch { /* leave saved data alone */ } return 0; });
+  // A signed-in person's club follows them: it is brought together with the cloud copy when the app opens and whenever it comes back into view.
+  useEffect(() => {
+    let last = 0;
+    const run = () => {
+      const account = loadAccount();
+      if (!account || Date.now() - last < 120_000) return;
+      last = Date.now();
+      syncNow(account).then((outcome) => { if (outcome === 'merged' || outcome === 'downloaded') updateClub((current) => current); }).catch(() => { /* the Sync now button explains what went wrong */ });
+    };
+    const onVisible = () => { if (document.visibilityState === 'visible') run(); };
+    run();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
   // Results from nights this phone joined arrive here, even when they were saved while the app was closed.
   const [arrived, setArrived] = useState<SwitchNightRecord[]>([]);
   useEffect(() => {
@@ -162,20 +180,26 @@ export default function Prototype() {
     setQuery('');
     setScrollKey('');
   }
+  /** Any code, typed or from a link, goes to the right place: a table of friends, a scored night or a shared club. */
+  const openCode = (kind: 'table' | 'night' | 'club', code: string) => {
+    if (kind === 'table') { setInviteCode(code); go('Friends'); }
+    else if (kind === 'night') { setNightCode(code); go('Watch'); }
+    else window.location.assign(`/?club=${code}`);
+  };
   const openRules = () => { try { window.localStorage.setItem('switchWelcome', 'done'); } catch { /* storage unavailable */ } setRuleStep(0); go('Rules'); };
   const startGuidedGame = () => go('Tutorial');
   const [seriesAtTable, setSeriesAtTable] = useState(false);
   const [seriesRun, setSeriesRun] = useState<{ setup: SeriesSetup; run: number } | null>(null);
   const startSeriesPlay = (setup: SeriesSetup) => { setSeriesRun((current) => ({ setup, run: (current?.run ?? 0) + 1 })); go('Series'); };
-  const dealMeIn = (opponents: number, level: ComputerLevel) => { setTable((current) => ({ opponents, level, resume: false, deal: current.deal + 1 })); go('Table'); };
+  const dealMeIn = (opponents: number, level: ComputerLevel, computers?: string[]) => { setTable((current) => ({ opponents, level, resume: false, deal: current.deal + 1, names: computers ? ['You', ...computers] : undefined })); go('Table'); };
   const resumeTable = () => {
     const saved = readActiveTable();
     if (!saved) { go('Play'); return; }
-    setTable((current) => ({ opponents: saved.opponents, level: saved.level, resume: true, deal: current.deal + 1 }));
+    setTable((current) => ({ opponents: saved.opponents, level: saved.level, resume: true, deal: current.deal + 1, names: undefined }));
     go('Table');
   };
   const openScore = (view: ScoreView = 'score') => { setScoreView(view); go('Score'); };
-  const openClub = (view: ScoreView = clubView) => { setClubView(view); go('Club'); };
+  const openClub = (view: ScoreView = clubView, mode?: 'share' | 'join') => { setClubView(view); setClubMode(mode); go('Club'); };
   const openMe = (section: 'overview' | 'badges' = 'overview') => { setMeSection(section); go('Me'); };
   const openTab = (tab: Tab) => {
     if (tab === 'Home') go('Learn');
@@ -190,10 +214,28 @@ export default function Prototype() {
 
   const result = rules.filter((r) => (r.q + ' ' + r.a).toLowerCase().includes(query.toLowerCase()));
   return <div className="switch-app" onFocusCapture={resetDeviceScroll} data-section={section}>
+    <a className="skip-link" href="#main-content" onClick={(event) => { event.preventDefault(); document.getElementById('main-content')?.focus(); }}>Skip to content</a>
+    {/* Navigation comes first in the DOM so keyboard users reach it before the page; CSS keeps it at the bottom (phone) or left (website). While typing, the keyboard needs the room: the tab bar steps aside and returns when it closes. */}
+    {!isKeyboardVisible && <nav className="bottom-tabs v2" aria-label="Main navigation" style={{ bottom: bottomInset, ['--nav-extend' as string]: `${bottomInset}px` }}>
+      <button className="side-brand" onClick={() => openTab('Home')} aria-label="Switch home"><Club weight="fill" size={26} /><span><b>SWITCH</b><i>Your game-night club</i></span></button>
+      {TABS.map(({ tab, label, Icon, pip }) => {
+        const active = section === tab;
+        return <button key={tab} className={active ? 'active' : ''} data-tab={tab} aria-current={active ? 'page' : undefined} onClick={() => openTab(tab)}><span className="tab-card"><Icon weight={active ? 'fill' : 'bold'} size={19} /></span><span className="tab-label">{label}</span></button>;
+      })}
+      <div className="side-more" role="group" aria-label="Learn and join">
+        <p>Learn &amp; join</p>
+        <button onClick={openRules}><GraduationCap size={18} weight="bold" />Learn the rules</button>
+        <button onClick={() => go('Puzzles')}><PuzzlePiece size={18} weight="bold" />Rules puzzles</button>
+        <button onClick={() => go('Questions')}><Question size={18} weight="bold" />Questions</button>
+        <button onClick={() => setPlanOpen(true)}><CalendarPlus size={18} weight="bold" />Plan a night</button>
+        <button onClick={() => go('Watch')}><Broadcast size={18} weight="bold" />Join a night</button>
+        <button onClick={() => go('Privacy')}><ShieldCheck size={18} weight="bold" />Privacy</button>
+      </div>
+    </nav>}
     <MobileScroll key={page} className="switch-scroll">
-      <main className={'switch-content ' + (page === 'Learn' ? 'home' : 'interior') + (page === 'Tutorial' || page === 'Table' || page === 'Online' || (page === 'Series' && seriesAtTable) ? ' tutorial-page' : '') + (page === 'Cards' ? ' cards-page' : '') + (page === 'Rules' ? ' rules-page' : '')}>
+      <main id="main-content" tabIndex={-1} className={'switch-content ' + (page === 'Learn' ? 'home' : 'interior') + (page === 'Tutorial' || page === 'Table' || page === 'Online' || (page === 'Series' && seriesAtTable) ? ' tutorial-page' : '') + (page === 'Cards' ? ' cards-page' : '') + (page === 'Rules' ? ' rules-page' : '')}>
         {page === 'Learn' && <>
-          <HomeHub key={shownClubTick} onPlay={() => go('Play')} onResumeTable={resumeTable} onScore={() => openScore('score')} onClub={() => openClub('stats')} onAchievements={() => openMe('badges')} onRules={openRules} onPuzzles={() => go('Puzzles')} onQuestions={() => go('Questions')} onPlan={() => setPlanOpen(true)} onJoin={() => go('Watch')} onJoinClub={() => openClub('stats')} onHistory={() => openClub('history')} onPower={setSelected} />
+          <HomeHub key={shownClubTick} onPlay={() => go('Play')} onResumeTable={resumeTable} onScore={() => openScore('score')} onClub={() => openClub('stats')} onShareClub={() => openClub('stats', 'share')} onAchievements={() => openMe('badges')} onRules={openRules} onPuzzles={() => go('Puzzles')} onQuestions={() => go('Questions')} onPlan={() => setPlanOpen(true)} onJoin={() => go('Watch')} onJoinClub={() => openClub('stats', 'join')} onHistory={() => openClub('history')} onPower={setSelected} />
           <AccountPanel home />
         </>}
         {page === 'Rules' && <>
@@ -263,41 +305,24 @@ export default function Prototype() {
           </>}
           <Suspense fallback={<Loading />}>
             {page === 'Score' && <SwitchScorekeeper section="score" onBack={() => go('Learn')} backLabel="Home" initialView={scoreView} onView={setScoreView} onQuick={() => go('Quick')} onModes={() => go('Modes')} />}
-            {page === 'Club' && <SwitchScorekeeper key={shownClubTick} section="club" onBack={() => go('Learn')} backLabel="Home" initialView={clubView} onView={setClubView} />}
+            {page === 'Club' && <SwitchScorekeeper key={shownClubTick} section="club" startMode={clubMode} onBack={() => go('Learn')} backLabel="Home" initialView={clubView} onView={setClubView} />}
             {page === 'Play' && <PlayLobby onDeal={dealMeIn} onStartSeries={startSeriesPlay} onResume={resumeTable} onMe={() => openMe('overview')} onLearn={openRules} onFriends={() => go(loadSeat() ? 'Online' : 'Friends')} />}
-            {page === 'Friends' && <FriendsTable initialCode={inviteCode} onBack={() => { setInviteCode(''); go('Play'); }} onSeated={() => { setInviteCode(''); go('Online'); }} />}
+            {page === 'Friends' && <FriendsTable key={inviteCode} initialCode={inviteCode} onOpenCode={openCode} onBack={() => { setInviteCode(''); go('Play'); }} onSeated={() => { setInviteCode(''); go('Online'); }} />}
             {page === 'Online' && <OnlineTable onLeave={() => go('Play')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onReplay={openReplay} />}
-            {page === 'Table' && <TableGame key={table.deal} opponents={table.opponents} level={table.level} resume={table.resume ? readActiveTable() : null} onExit={() => go('Play')} onChange={() => go('Play')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onReplay={openReplay} />}
+            {page === 'Table' && <TableGame key={table.deal} opponents={table.opponents} level={table.level} resume={table.resume ? readActiveTable() : null} seatNames={table.resume ? undefined : table.names} onExit={() => go('Play')} onChange={() => go('Play')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onReplay={openReplay} />}
             {page === 'Series' && seriesRun && <SeriesPlay key={seriesRun.run} setup={seriesRun.setup} onTable={setSeriesAtTable} onExit={() => go('Play')} onChange={() => go('Play')} onMe={() => openMe('overview')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} />}
-            {page === 'Me' && <MePage key={meSection} initialSection={meSection} onPlay={() => go('Play')} onClub={() => openClub('stats')} onPrivacy={() => go('Privacy')} onReplay={openReplay} />}
+            {page === 'Me' && <MePage key={meSection} initialSection={meSection} onPlay={() => go('Play')} onClub={() => openClub('stats')} onPrivacy={() => go('Privacy')} onReplay={openReplay} onBack={() => go('Learn')} />}
             {page === 'Replay' && replayOf && <ReplayScreen gameId={replayOf.id} onBack={() => (replayOf.back === 'Me' ? openMe('overview') : go(replayOf.back))} />}
             {page === 'Tutorial' && <GuidedGame onExit={() => go('Rules')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onOpenPuzzles={() => go('Puzzles')} onPlayForReal={() => go('Play')} onStatusChange={onGameStatus} />}
             {page === 'Quick' && <QuickNight onBack={() => openScore('score')} onHistory={() => openClub('history')} />}
-            {page === 'Watch' && <WatchNight initialCode={urlNight} initialAs={urlAs} onBack={() => go('Learn')} />}
-            {page === 'Puzzles' && <Puzzles onBack={() => go(learnBack)} onTutorial={startGuidedGame} />}
+            {page === 'Watch' && <WatchNight key={nightCode} initialCode={nightCode} initialAs={nightCode === urlNight ? urlAs : ''} onOpenCode={openCode} onBack={() => go('Learn')} />}
+            {page === 'Puzzles' && <Puzzles backLabel={learnBack === 'Rules' ? 'Learn the rules' : 'Home'} onBack={() => go(learnBack)} onTutorial={startGuidedGame} />}
             {page === 'Privacy' && <Privacy onBack={() => openMe('overview')} />}
           </Suspense>
         </>}
         {page !== 'Tutorial' && page !== 'Table' && page !== 'Online' && !(page === 'Series' && seriesAtTable) && page !== 'Cards' && <Suspense fallback={null}><AppFooter page={page} onPrivacy={() => go('Privacy')} /></Suspense>}
       </main>
     </MobileScroll>
-    {/* While typing, the keyboard needs the room: the tab bar steps aside and returns when it closes. */}
-    {!isKeyboardVisible && <nav className="bottom-tabs v2" aria-label="Main navigation" style={{ bottom: bottomInset, ['--nav-extend' as string]: `${bottomInset}px` }}>
-      <button className="side-brand" onClick={() => openTab('Home')} aria-label="Switch home"><Club weight="fill" size={26} /><span><b>SWITCH</b><i>Your game-night club</i></span></button>
-      {TABS.map(({ tab, label, Icon, pip }) => {
-        const active = section === tab;
-        return <button key={tab} className={active ? 'active' : ''} data-tab={tab} aria-current={active ? 'page' : undefined} onClick={() => openTab(tab)}><span className="tab-card"><Icon weight={active ? 'fill' : 'bold'} size={19} /></span><span className="tab-label">{label}</span></button>;
-      })}
-      <div className="side-more" role="group" aria-label="Learn and join">
-        <p>Learn &amp; join</p>
-        <button onClick={openRules}><GraduationCap size={18} weight="bold" />Learn the rules</button>
-        <button onClick={() => go('Puzzles')}><PuzzlePiece size={18} weight="bold" />Rules puzzles</button>
-        <button onClick={() => go('Questions')}><Question size={18} weight="bold" />Questions</button>
-        <button onClick={() => setPlanOpen(true)}><CalendarPlus size={18} weight="bold" />Plan a night</button>
-        <button onClick={() => go('Watch')}><Broadcast size={18} weight="bold" />Join a night</button>
-        <button onClick={() => go('Privacy')}><ShieldCheck size={18} weight="bold" />Privacy</button>
-      </div>
-    </nav>}
     {page === 'Learn' && <InstallBanner bottom={bottomInset + 92} />}
     <NightReminder open={planOpen} onOpenChange={setPlanOpen} />
     <BottomSheet open={arrived.length > 0 && page !== 'Watch'} onOpenChange={(open) => { if (!open) setArrived([]); }} title={arrived.length === 1 ? 'A result has come in' : `${arrived.length} results have come in`} description="From a night you joined with a code. Added to your history and stats." snap={0.5}>

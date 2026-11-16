@@ -61,4 +61,11 @@ test("History offers to remove sample data and shows the real, empty state after
   await page.getByRole("button", { name: "Remove sample" }).click();
   await expect(page.getByText("No completed nights saved yet.")).toBeVisible();
   await expect(page.getByText("Showing sample data. It is not your real record.")).toHaveCount(0);
+  // Once removed it stays removed: the offer does not come back, even after a reload.
+  await expect(page.getByRole("button", { name: "Load sample club" })).toHaveCount(0);
+  await page.reload();
+  await page.getByRole("navigation").getByRole("button", { name: "Club", exact: true }).click();
+  await page.getByRole("button", { name: "History", exact: true }).click();
+  await expect(page.getByText("No completed nights saved yet.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Load sample club" })).toHaveCount(0);
 });

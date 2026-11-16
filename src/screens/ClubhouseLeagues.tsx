@@ -60,7 +60,7 @@ export default function ClubhouseLeagues({ extensions, onChange }: Props) {
     <SampleDataBar offer={profiles.length < 2} extensions={extensions} onChange={onChange} />
     
     <h2 id="leagues-title">Seasons</h2>
-    <p className="intro">Your long-running table across many game nights — separate from the one-night Group Play format. Three points for a win, one for taking part. You choose which saved nights count.</p>
+    <p className="intro">Your long-running table across many game nights — separate from the one-night Group Play format. Each night a player is in counts: 3 points for winning it, 1 point for playing without winning. You choose which saved nights count.</p>
 
     {seasons.map((season) => {
       const standings = seasonStandings(season, nights, allProfiles);

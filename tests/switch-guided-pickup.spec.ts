@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 /** Guided practice shows the same pick-up animation as the table: cards slide from the deck, a penalty floats its count, and a last card says Ouch. */
 test("forgetting Last Card in practice slides two cards from the deck, floats +2 and says Ouch", async ({ page }) => {
   await page.goto("/?testDeck=lastCard");
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
   await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible();
 
@@ -23,7 +23,7 @@ test("forgetting Last Card in practice slides two cards from the deck, floats +2
 
 test("an ordinary single pick-up in practice slides one card and shows no penalty count", async ({ page }) => {
   await page.goto("/?testDeck=lastCard");
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
   await expect(page.getByText("GUIDED GAME · YOUR TURN")).toBeVisible();
   await page.getByRole("button", { name: "Pick up one card instead of playing" }).click();

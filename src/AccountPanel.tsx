@@ -5,7 +5,7 @@ import { createSession, loadAccount, saveAccount, SIGN_IN_AVAILABLE, signOut, st
 const MESSAGES: Record<SyncOutcome, string> = {
   uploaded: 'Your club is backed up to the cloud.',
   downloaded: 'Your club was restored from the cloud.',
-  merged: 'Your club was combined with the cloud copy on this account.',
+  merged: 'Your club was combined with the cloud copy. Games from all your devices now count in your stats.',
   'up-to-date': 'Everything is already in sync.',
 };
 

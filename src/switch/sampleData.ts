@@ -39,6 +39,15 @@ function rng(seed: number): () => number {
 const idOf = (name: string) => `${SAMPLE_PREFIX}${name.toLowerCase()}`;
 const playerOf = (name: string): Player => ({ id: idOf(name), name });
 
+/** Once a person removes the sample club it is never offered again (owner request, 16 Nov 2026). New key: switchSampleDismissed. */
+const DISMISSED_KEY = "switchSampleDismissed";
+export function sampleDismissed(): boolean {
+  try { return window.localStorage.getItem(DISMISSED_KEY) === "1"; } catch { return false; }
+}
+export function dismissSample(): void {
+  try { window.localStorage.setItem(DISMISSED_KEY, "1"); } catch { /* storage blocked: it returns next time */ }
+}
+
 export function hasSampleData(extensions: Extensions): boolean {
   return getProfiles(extensions).some((profile) => profile.id.startsWith(SAMPLE_PREFIX));
 }
@@ -58,7 +67,7 @@ function buildNights(now: Date): SwitchNightRecord[] {
   const random = rng(20261107);
   const nights: SwitchNightRecord[] = [];
   const formats = ["domino", "head-to-head", "knockout", "darts", "cup", "domino", "knockout", "head-to-head", "cup", "darts", "domino", "knockout", "head-to-head", "cup", "domino", "knockout", "darts", "head-to-head"] as const;
-  const labels = { domino: "Domino", "head-to-head": "One v One", darts: "Darts", knockout: "Knock Out", cup: "Switch Cup" } as const;
+  const labels = { domino: "Dominoes", "head-to-head": "One v One", darts: "Darts", knockout: "Last One Out", cup: "Switch Cup" } as const;
   formats.forEach((format, index) => {
     const when = new Date(now.getTime() - (formats.length - index) * 4 * 86_400_000);
     when.setHours(20, 15, 0, 0);
@@ -107,6 +116,6 @@ export function addSampleData(extensions: Extensions, now: Date = new Date()): R
 export function removeSampleData(extensions: Extensions): Record<string, unknown> {
   const isDemo = (id: string) => id.startsWith(SAMPLE_PREFIX);
   let next: Record<string, unknown> = putProfiles(extensions, getProfiles(extensions).filter((profile) => !isDemo(profile.id)));
-  next = { ...next, switchNightHistory: getHistory(next).filter((night) => !isDemo(night.id)) };
-  return putSeasons(next, getSeasons(next).filter((season) => !isDemo(season.id)));
+  next = { ...next, switchNightHistory: getHistory(next).filter((night) => !isDemo(night.id) && !night.players.some((player) => isDemo(player.id))) };
+  return putSeasons(next, getSeasons(next).filter((season) => !isDemo(season.id) && !season.profileIds.some(isDemo)));
 }

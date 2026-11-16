@@ -5,27 +5,29 @@ async function openClubhouse(page: Page) {
   await page.getByRole("navigation").getByRole("button", { name: "Club", exact: true }).click();
 }
 
-test("score setup creates and reuses stable local profiles", async ({ page }) => {
+test("typed names join the club only once a night is saved, then are reused", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
   const names = page.getByPlaceholder("Enter name");
   await names.nth(0).fill("Alex");
   await names.nth(1).fill("Blair");
-  await page.getByRole("button", { name: "Start Domino" }).click();
+  await page.getByLabel("Games to win").fill("1");
+  await page.getByRole("button", { name: "Start One v One" }).click();
 
   let saved = await page.evaluate(() => JSON.parse(localStorage.getItem("switchScoreKeeper") ?? "{}"));
-  expect(saved.extensions.switchProfiles).toHaveLength(2);
-  const alexId = saved.extensions.switchProfiles.find((profile: { name: string }) => profile.name === "Alex").id;
-  expect(saved.players[0].id).toBe(alexId);
+  expect(saved.extensions.switchProfiles ?? []).toHaveLength(0);
+  const alexId = saved.players[0].id;
 
+  await page.getByRole("button", { name: "Win game" }).first().click();
+  await page.getByRole("button", { name: "Save completed night" }).click();
+  saved = await page.evaluate(() => JSON.parse(localStorage.getItem("switchScoreKeeper") ?? "{}"));
+  expect(saved.extensions.switchProfiles).toHaveLength(2);
+  expect(saved.extensions.switchProfiles.find((profile: { name: string }) => profile.name === "Alex").id).toBe(alexId);
+
+  await page.getByRole("button", { name: "Scorecard" }).click();
   await page.getByRole("button", { name: "Change game type" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "End game" }).click();
   await expect(page.getByRole("button", { name: "Use saved player Alex" })).toBeVisible();
-  await names.nth(0).fill(" alex ");
-  await page.getByRole("button", { name: "Start Domino" }).click();
-  saved = await page.evaluate(() => JSON.parse(localStorage.getItem("switchScoreKeeper") ?? "{}"));
-  expect(saved.extensions.switchProfiles).toHaveLength(2);
-  expect(saved.players[0].id).toBe(alexId);
 });
 
 test("stats show real saved performance, chart values, form and milestones", async ({ page }) => {

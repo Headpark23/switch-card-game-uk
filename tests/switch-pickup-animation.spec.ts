@@ -41,7 +41,7 @@ test("a penalty on a player with several cards floats the count but never says O
 
 test("an ordinary single pick-up slides one card and shows no penalty count", async ({ page }) => {
   await resumeSeeded(page, { hands: [["9S"], ["4D", "5D"], ["6D", "9D"]], discard: ["3H"], suit: "H" });
-  await page.getByRole("button", { name: "Draw a card" }).click();
+  await page.getByRole("button", { name: "Pick up a card" }).click();
   await expect(page.locator(".draw-flier")).toHaveCount(1);
   await expect(page.getByTestId("draw-count")).toHaveCount(0);
   await expect(page.getByTestId("ouch")).toHaveCount(0);

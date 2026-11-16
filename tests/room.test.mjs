@@ -18,8 +18,8 @@ function seeded(seed) {
 }
 
 const T0 = 1_700_000_000_000;
-async function call(store, { method = "POST", code, op, token, body }, now, random = seeded(1)) {
-  const query = [code ? `code=${code}` : "", op ? `op=${op}` : ""].filter(Boolean).join("&");
+async function call(store, { method = "POST", code, op, token, body, watch }, now, random = seeded(1)) {
+  const query = [code ? `code=${code}` : "", op ? `op=${op}` : "", watch ? `watch=${watch}` : ""].filter(Boolean).join("&");
   const request = new Request(`https://example.test/api/room${query ? `?${query}` : ""}`, { method, headers: { ...(token ? { "x-seat-token": token } : {}), "content-type": "application/json" }, body: method === "GET" ? undefined : JSON.stringify(body ?? {}) });
   const response = await handleRoom(request, store, now, random);
   return { status: response.status, body: await response.json() };
@@ -310,8 +310,10 @@ test("computers play on their own, one after another, in the order of the table"
   assert.ok(t.room().seats.some((seat, index) => seat.kind === "computer" && t.room().moves.some((move) => move.seat === index && move.computer)), "a computer played");
 });
 
-test("reactions: only the 55 fixed ones, one at a time, shown to everyone", async () => {
-  assert.equal(REACTIONS.length, 55);
+test("reactions: only the fixed ones (85 for people, plus the computers' own lines), one at a time, shown to everyone", async () => {
+  assert.equal(new Set(REACTIONS).size, REACTIONS.length);
+  assert.ok(REACTIONS.length >= 85);
+  assert.ok(REACTIONS.includes("john-play-blackKing-1") && REACTIONS.includes("paul-at-john-1"));
   assert.equal(REACTIONS.filter((id) => id.startsWith("spicy-")).length, 37);
   const t = await table(["Ana", "Ben"], 3, { seed: 2 });
   assert.equal((await call(t.store, { code: t.code, op: "react", token: t.tokens[0], body: { id: "hello-there" } }, T0 + 10)).status, 400);
@@ -442,8 +444,16 @@ async function playSeries(mode, capacity, extra = {}, seed = 5) {
       if (!view.game) continue;
       const hidden = view.you.watching ? view.game.hands : view.game.hands.slice(1);
       assert.ok(hidden.every((hand) => hand.every((card) => card === "back")), "only your own cards are ever shown");
-      if (view.you.watching) {
+      // Someone who is not in a game being played sees how their last game ended, and can choose any game being played to watch.
+      const live = view.tables?.find((entry) => entry.playing && !entry.you);
+      if (live && !view.table?.playing) {
+        const looking = (await call(store, { method: "GET", code, token, watch: live.id }, now, random)).body;
+        assert.equal(looking.you.watching, true, "choosing a live game watches it");
+        assert.equal(looking.table.id, live.id);
+        assert.ok(looking.game.hands.every((hand) => hand.every((card) => card === "back")), "a watcher sees every hand face down");
         watched += 1;
+      }
+      if (view.you.watching) {
         assert.equal(view.seats.some((seat) => seat.you), false);
         if (view.table?.playing) assert.equal((await call(store, { code, op: "move", token, body: { action: { type: "draw" } } }, now, random)).status, 409, "a watcher cannot move");
       }
@@ -466,7 +476,7 @@ async function playSeries(mode, capacity, extra = {}, seed = 5) {
   return { room: room(), games, watched, maxLive, view: async (who) => (await call(store, { method: "GET", code, token: tokens[who] }, now, random)).body };
 }
 
-for (const [mode, capacity, extra] of [["darts", 3, { setsToWin: 3 }], ["dominoes", 4, { limit: 30 }], ["knockout", 4, {}], ["cup", 4, {}], ["group", 6, {}]]) {
+for (const [mode, capacity, extra] of [["darts", 3, { setsToWin: 3 }], ["dominoes", 4, { limit: 30 }], ["lastout", 5, {}], ["knockout", 4, {}], ["cup", 4, {}], ["group", 6, {}]]) {
   test(`online ${mode}: a whole tournament is played to the end, one game at a time, and nobody sees another hand`, async () => {
     const played = await playSeries(mode, capacity, extra);
     const final = await played.view(0);
@@ -475,9 +485,38 @@ for (const [mode, capacity, extra] of [["darts", 3, { setsToWin: 3 }], ["dominoe
     assert.ok(final.series.outcome.winnerId);
     assert.equal(final.series.outcome.order.length, capacity);
     assert.ok(final.series.state.base.games >= 1, "games were played");
-    if (mode === "knockout") assert.equal(played.room.series.kind, "lastout", "Knock Out with friends: last one out leaves");
+    if (mode === "knockout" || mode === "lastout") assert.equal(played.room.series.kind, "lastout", "last one out leaves, one more game each time");
   });
 }
+
+test("online Last One Out: five become four, then three, then two, and the last one standing wins", async () => {
+  const played = await playSeries("lastout", 5, {});
+  const final = await played.view(0);
+  assert.equal(final.series.over, true);
+  assert.equal(final.series.state.part.out.length, 4, "four players drop out, one by one");
+  assert.equal(final.series.outcome.order.length, 5);
+  assert.equal(final.series.state.base.games, 4, "5 players, 4 games: 5, 4, 3, then the 1 v 1 final");
+});
+
+test("the host can pick which computers fill the empty seats, and the rest are drawn at random", async () => {
+  const store = memoryStore();
+  const random = seeded(11);
+  const made = await call(store, { body: { seats: 5, level: "standard", name: "Ana", mode: "lastout", computers: ["Bowie", "Marley", "Bowie", "Nobody"] } }, T0, random);
+  assert.equal(made.status, 201, JSON.stringify(made.body));
+  assert.deepEqual(made.body.view.setup.computers, ["Bowie", "Marley"], "only known names, once each");
+  const joined = await call(store, { code: made.body.code, op: "join", body: { name: "Ben" } }, T0, random);
+  assert.ok(joined.status < 300, JSON.stringify(joined.body));
+  const started = await call(store, { code: made.body.code, op: "start", token: made.body.token }, T0, random);
+  assert.equal(started.status, 200, JSON.stringify(started.body));
+  const computers = store.rows.get(made.body.code).seats.filter((seat) => seat.kind === "computer").map((seat) => seat.name);
+  assert.equal(computers.length, 3);
+  assert.ok(computers.includes("Bowie") && computers.includes("Marley"), "the picked computers sit down");
+  assert.equal(new Set(computers).size, 3, "nobody twice");
+  const plain = await call(store, { body: { seats: 4, level: "standard", name: "Cat" } }, T0, random);
+  assert.equal(plain.body.view.setup.computers, undefined, "no picks means a surprise table");
+  const bad = await call(store, { body: { seats: 4, level: "standard", name: "Dee", computers: "Bowie" } }, T0, random);
+  assert.equal(bad.status, 400);
+});
 
 test("a big table plays its games at the same time: every Cup match of a round, both leagues, Knock Out split across tables", async () => {
   for (const [mode, capacity, tables] of [["cup", 12, 6], ["group", 12, 2], ["knockout", 12, 2], ["cup", 16, 8], ["group", 16, 3], ["knockout", 16, 2]]) {
@@ -495,10 +534,30 @@ test("a big table plays its games at the same time: every Cup match of a round, 
 
 test("online Knock Out: whoever is left holding cards is out, and the people who are out watch the rest", async () => {
   const played = await playSeries("knockout", 5, {}, 9);
-  assert.ok(played.watched > 0 || played.room.series.part.out.slice(0, -1).every((id) => played.room.seats[Number(id.slice(1))].kind === "computer"), "a person knocked out early watches");
+  const humanOutEarly = played.room.series.part.out.slice(0, -1).some((id) => played.room.seats[Number(id.slice(1))].kind === "human");
+  assert.ok(played.watched > 0 || !humanOutEarly, "a person knocked out early can watch the rest");
   const order = played.room.series.part;
   assert.equal(order.remaining.length, 1);
   assert.equal(order.out.length, 4);
+});
+
+test("online Last One Out can be first to several round wins: everyone is dealt back in after each round", async () => {
+  const played = await playSeries("lastout", 4, { roundsToWin: 3 }, 11);
+  const state = played.room.series;
+  assert.equal(state.part.remaining.length, 1, "the last round was played down to one player");
+  const wins = state.roundWins;
+  assert.equal(wins[state.part.championId], 3, "the champion has three round wins");
+  assert.ok(Object.values(wins).every((count) => count <= 3), "nobody went past the target");
+  assert.ok(state.rounds >= 3, "at least three rounds were played");
+  const final = await played.view(0);
+  assert.equal(final.series.over, true);
+  assert.equal(final.series.outcome.order[0], state.part.championId);
+});
+
+test("a one-off Last One Out ignores rounds and a bad round count is refused", async () => {
+  const store = memoryStore();
+  const bad = await call(store, { body: { seats: 4, level: "standard", name: "Ana", mode: "lastout", roundsToWin: 12 } }, T0, seeded(1));
+  assert.equal(bad.status, 400);
 });
 
 test("a tournament needs enough players: Group Play needs six, Knock Out three", async () => {
@@ -511,4 +570,47 @@ test("a tournament needs enough players: Group Play needs six, Knock Out three",
   assert.equal((await call(store, { body: { seats: 17, name: "Ana", mode: "cup" } }, T0)).status, 400, "no more than sixteen");
   assert.equal((await call(store, { body: { seats: 9, name: "Ana", mode: "darts" } }, T0)).status, 400, "Darts is everyone in one game: eight at most");
   assert.equal((await call(store, { body: { seats: 9, name: "Ana" } }, T0)).status, 400, "a single game: eight at most");
+});
+
+test("the owner's anonymous counters see tables made, started and finished, and only ever numbers", async () => {
+  const { tableChanged } = await import("../api/_onlineStats.js");
+  const seen = [];
+  const observe = async (increments) => { seen.push(increments); };
+  const store = memoryStore();
+  const random = seeded(5);
+  const ask = async (opts, now) => {
+    const query = [opts.code ? `code=${opts.code}` : "", opts.op ? `op=${opts.op}` : ""].filter(Boolean).join("&");
+    const request = new Request(`https://example.test/api/room${query ? `?${query}` : ""}`, { method: opts.method ?? "POST", headers: { ...(opts.token ? { "x-seat-token": opts.token } : {}), "content-type": "application/json" }, body: (opts.method ?? "POST") === "GET" ? undefined : JSON.stringify(opts.body ?? {}) });
+    const response = await handleRoom(request, store, now, random, observe);
+    return { status: response.status, body: await response.json() };
+  };
+  const made = await ask({ body: { seats: 4, level: "standard", name: "Alice Secret" } }, T0);
+  assert.equal(seen[0].add["online.tables.created"], 1);
+  assert.equal(seen[0].add["online.tables.created.mode.single"], 1);
+  assert.equal(seen[0].add["online.tables.created.size.4"], 1);
+  const joined = await ask({ code: made.body.code, op: "join", body: { name: "Bob Private" } }, T0);
+  assert.equal(seen[1].add["online.joins"], 1);
+  await ask({ code: made.body.code, op: "start", token: made.body.token }, T0);
+  const started = seen[2];
+  assert.equal(started.add["online.tables.started"], 1);
+  assert.equal(started.add["online.tables.humans.2"], 1);
+  assert.equal(started.add["online.tables.seats.4"], 1);
+  assert.equal(started.add["online.computerSeats"], 2);
+  // Poll with nothing due: nothing is counted.
+  const before = seen.length;
+  await ask({ method: "GET", code: made.body.code, token: joined.body.token }, T0 + 1000);
+  assert.equal(seen.length, before, "a quiet poll adds no counts");
+  // Play the whole game out by letting time pass: the computer covers for both people.
+  // Someone is always looking, as a phone with the app open is (it polls every few seconds).
+  for (let now = T0 + 5_000; now < T0 + 4 * 3_600_000 && !seen.some((s) => s.add["online.games.finished"]); now += 5_000) await ask({ method: "GET", code: made.body.code, token: made.body.token }, now);
+  const finished = seen.find((s) => s.add["online.games.finished"]);
+  assert.ok(finished, "the finished game is counted once");
+  assert.equal(seen.filter((s) => s.add["online.games.finished"]).length, 1);
+  assert.equal(finished.add["online.games.mode.single"], 1);
+  assert.equal(finished.add["online.tables.finished"], 1);
+  assert.ok(finished.add["online.games.withAuto"] >= 1, "people who went quiet are counted");
+  const text = JSON.stringify(seen);
+  assert.ok(!/Alice|Bob|Secret|Private|[A-Z2-9]{6}/.test(text.replace(/online\.[a-zA-Z.0-9]+/g, "")), "only counter names and numbers");
+  assert.ok(seen.every((s) => Object.values(s.add).every((v) => Number.isInteger(v))));
+  assert.equal(typeof tableChanged, "function");
 });

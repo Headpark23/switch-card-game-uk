@@ -26,26 +26,56 @@ export function useReplayRecorder(id: string, begin: () => GameReplay) {
 
 export { beginReplay };
 
-/** Who said what, beside their seat, for a few seconds. */
+type Spoken = { n: number; id: string; leaving?: boolean };
+
+/** How long a remark stays up: long enough to read it (about 2 seconds, then a third of a second a word). */
+export function readingMs(id: string, scale = 1): number {
+  const reaction = reactionOf(id);
+  if (!reaction) return 0;
+  const words = reaction.sticker ? 3 : reaction.text.split(/\s+/).length;
+  return Math.round(Math.min(6500, 2300 + words * 380) * scale);
+}
+
+/**
+ * Who said what, beside their seat. Remarks float in one at a time and stay up long enough to read, so one never sits on
+ * top of another: the next waits its turn (owner decision, 16 Nov 2026). What you say yourself jumps the queue.
+ * `holdMs` is the usual 3600 for a human pace; a smaller number (a fast game) shortens every wait in proportion.
+ */
 export function useBubbles(holdMs = 3600) {
-  const [bubbles, setBubbles] = useState<Record<number, { n: number; id: string }>>({});
+  const [bubbles, setBubbles] = useState<Record<number, Spoken>>({});
   const counter = useRef(0);
+  const queue = useRef<{ seat: number; id: string; n: number }[]>([]);
+  const busy = useRef(false);
   const timers = useRef<number[]>([]);
+  const scale = holdMs / 3600;
   useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
-  function say(seat: number, id: string) {
+  const later = (fn: () => void, ms: number) => { timers.current.push(window.setTimeout(fn, ms)); };
+  function next() {
+    const item = queue.current.shift();
+    if (!item) { busy.current = false; return; }
+    busy.current = true;
+    const hold = readingMs(item.id, scale);
+    setBubbles({ [item.seat]: { n: item.n, id: item.id } });
+    // A short fade before it goes, then a breath, then the next remark.
+    later(() => setBubbles((current) => (current[item.seat]?.n === item.n ? { [item.seat]: { n: item.n, id: item.id, leaving: true } } : current)), Math.max(0, hold - 320));
+    later(() => { setBubbles((current) => (current[item.seat]?.n === item.n ? {} : current)); later(next, Math.round(260 * scale)); }, hold);
+  }
+  function say(seat: number, id: string, { priority = false }: { priority?: boolean } = {}) {
     counter.current += 1;
-    const n = counter.current;
-    setBubbles((current) => ({ ...current, [seat]: { n, id } }));
-    timers.current.push(window.setTimeout(() => setBubbles((current) => (current[seat]?.n === n ? Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== seat)) : current)), holdMs));
+    const item = { seat, id, n: counter.current };
+    // Never let a backlog build: the table only needs the latest couple of remarks.
+    if (priority) queue.current.unshift(item); else queue.current.push(item);
+    if (queue.current.length > 3) queue.current.splice(priority ? 3 : 0, queue.current.length - 3);
+    if (!busy.current) next();
   }
   return { bubbles, say };
 }
 
 /** The bubble itself: a sticker or a saying, with the words always there for a screen reader. */
-export function Bubble({ id, name, n }: { id: string; name: string; n: number }) {
+export function Bubble({ id, name, n, leaving }: { id: string; name: string; n: number; leaving?: boolean }) {
   const reaction = reactionOf(id);
   if (!reaction) return null;
-  return <span key={n} className={'reaction-bubble' + (reaction.sticker ? ' sticker' : '')} role="status" data-testid="reaction-bubble" data-reaction-shown={id}>
+  return <span key={n} className={'reaction-bubble' + (reaction.sticker ? ' sticker' : '') + (leaving ? ' leaving' : '')} role="status" data-testid="reaction-bubble" data-reaction-shown={id}>
     {reaction.sticker ? <Sticker id={reaction.sticker} size={46} /> : reaction.text}
     <i className="sr-only">{name}: {reaction.text}</i>
   </span>;

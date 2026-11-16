@@ -36,15 +36,16 @@ for (const scenario of [
 
   await host.goto("/");
   await host.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
-  await host.getByRole("button", { name: "One v One" }).click();
+  await host.getByRole("button", { name: "One v One", exact: true }).click();
   const names = host.getByPlaceholder("Enter name");
   await names.nth(0).fill("Mark"); await names.nth(1).fill("Rebecca");
   await host.getByLabel("Games to win").fill("2");
   await host.getByRole("button", { name: "Start One v One" }).click();
   // One tap sends the game to Rebecca. The phone's share sheet (WhatsApp, Messages) is stood in for by a recorder.
   await host.evaluate(() => { (navigator as unknown as { share: (data: { text: string }) => Promise<void> }).share = async (data) => { (window as unknown as { sent: string }).sent = data.text; }; });
+  await host.getByText("Invite friends to follow on their phones").click();
   await host.getByRole("button", { name: "Send to Rebecca" }).click();
-  const code = (await host.getByText(/^[A-Z2-9]{6}$/).first().textContent())!.trim();
+  const code = (await host.locator(".night-code").first().textContent())!.trim();
   await expect.poll(() => host.evaluate(() => (window as unknown as { sent?: string }).sent ?? "")).toContain("night=");
   const link = (await host.evaluate(() => (window as unknown as { sent: string }).sent)).match(/https?:\/\/\S+/)![0];
   expect(link).toContain(`night=${code}`);
@@ -82,12 +83,13 @@ test("only the person who started the game can change its scores; the friend wat
 
   await host.goto("/");
   await host.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
-  await host.getByRole("button", { name: "One v One" }).click();
+  await host.getByRole("button", { name: "One v One", exact: true }).click();
   const names = host.getByPlaceholder("Enter name");
   await names.nth(0).fill("Rebecca"); await names.nth(1).fill("Martin");
   await host.getByLabel("Games to win").fill("3");
   await host.getByRole("button", { name: "Start One v One" }).click();
   await host.evaluate(() => { (navigator as unknown as { share: (data: { text: string }) => Promise<void> }).share = async (data) => { (window as unknown as { sent: string }).sent = data.text; }; });
+  await host.getByText("Invite friends to follow on their phones").click();
   await host.getByRole("button", { name: "Send to Martin" }).click();
   await expect.poll(() => host.evaluate(() => (window as unknown as { sent?: string }).sent ?? "")).toContain("night=");
   const link = (await host.evaluate(() => (window as unknown as { sent: string }).sent)).match(/https?:\/\/\S+/)![0];
@@ -129,7 +131,7 @@ test("when the host finishes the game it is finished for the friend too, and the
   const startGame = async (page: typeof host) => {
     await page.goto("/");
     await page.getByRole("navigation").getByRole("button", { name: "Score", exact: true }).click();
-    await page.getByRole("button", { name: "One v One" }).click();
+    await page.getByRole("button", { name: "One v One", exact: true }).click();
     const names = page.getByPlaceholder("Enter name");
     await names.nth(0).fill("Rebecca"); await names.nth(1).fill("Martin");
     await page.getByLabel("Games to win").fill("1");
@@ -141,6 +143,7 @@ test("when the host finishes the game it is finished for the friend too, and the
 
   await startGame(host);
   await host.evaluate(() => { (navigator as unknown as { share: (data: { text: string }) => Promise<void> }).share = async (data) => { (window as unknown as { sent: string }).sent = data.text; }; });
+  await host.getByText("Invite friends to follow on their phones").click();
   await host.getByRole("button", { name: "Send to Martin" }).click();
   await expect.poll(() => host.evaluate(() => (window as unknown as { sent?: string }).sent ?? "")).toContain("night=");
   const link = (await host.evaluate(() => (window as unknown as { sent: string }).sent)).match(/https?:\/\/\S+/)![0];

@@ -190,6 +190,15 @@ test("four of a kind to win: Last Card goes in before the fourth card", async ({
   await expect(page.getByText(/You won the/)).toBeVisible({ timeout: 10_000 });
 });
 
+test("with one card left, selecting it then pressing Last Card before Play still wins", async ({ page }) => {
+  await seedTable(page, { hands: [["10H"], ["3C", "4C", "8C"]], discard: ["4D", "6H"], suit: "H", turn: 0 });
+  await resume(page);
+  await page.getByRole("button", { name: /Select Ten of hearts/ }).click();
+  await page.getByTestId("last-card-button").click();
+  await page.getByRole("button", { name: "Play selected" }).click();
+  await expect(page.getByText(/You won the/)).toBeVisible({ timeout: 10_000 });
+});
+
 test("Play selected never leaves the phone: a big hand and four cards selected, scrolled to the top or the bottom", async ({ page }) => {
   const hand = ["6C", "6S", "6D", "6H", "3C", "4C", "9C", "10C", "3D", "4D", "9D", "10D", "QD", "QC"];
   const seven = ["3H", "4H", "5H", "7H", "9H", "10H", "JH"];
@@ -209,9 +218,22 @@ test("Play selected never leaves the phone: a big hand and four cards selected, 
   }
 });
 
-test("a computer takes at least five seconds over its move", async ({ page }) => {
+test("Quick pace: a computer thinks for about a second, not five", async ({ page }) => {
   test.setTimeout(40_000);
   await seedTable(page, { hands: [["9C", "3D"], ["3C", "4C", "8C"]], discard: ["4D", "6C"], suit: "C", turn: 1 }, { switchRealPace: "1" });
+  await resume(page);
+  const top = () => page.getByTestId("discard-pile").getAttribute("data-top");
+  const start = Date.now();
+  await expect(page.getByTestId("turn-status")).toContainText("CHOOSING");
+  const before = await top();
+  await expect.poll(top, { timeout: 15_000, intervals: [100] }).not.toBe(before);
+  expect(Date.now() - start).toBeLessThan(3500);
+});
+
+test("a computer takes at least five seconds over its move", async ({ page }) => {
+  test.setTimeout(40_000);
+  await seedTable(page, { hands: [["9C", "3D"], ["3C", "4C", "8C"]], discard: ["4D", "6C"], suit: "C", turn: 1 }, { switchRealPace: "1", switchTableSpeed: "natural" });
+  await page.addInitScript(() => localStorage.setItem("switchTableSpeed", "natural"));
   await resume(page);
   const top = () => page.getByTestId("discard-pile").getAttribute("data-top");
   const start = Date.now();
@@ -230,6 +252,7 @@ test("you have five seconds to say Last Card before a computer spots it", async 
   await expect(page.locator(".player-hand button")).toHaveCount(1);
   // By about six seconds the computer has spotted it and you pick up two.
   await expect(page.locator(".player-hand button")).toHaveCount(3, { timeout: 4000 });
+  await expect(page.getByTestId("haha-banner")).toContainText("HAHA - you never said Last Card");
 });
 
 test("saying Last Card inside the five seconds means nothing is spotted", async ({ page }) => {
@@ -240,6 +263,13 @@ test("saying Last Card inside the five seconds means nothing is spotted", async 
   await page.getByTestId("last-card-button").click();
   await page.waitForTimeout(9000);
   await expect(page.locator(".player-hand button")).toHaveCount(1);
+});
+
+test("a computer can forget to say Last Card, and is caught with a HAHA and two more cards", async ({ page }) => {
+  await seedTable(page, { hands: [["9H", "QS", "KD"], ["3C", "4C"]], discard: ["4D", "6C"], suit: "C", turn: 1 }, { switchForgetLastCard: "1" });
+  await resume(page);
+  await expect(page.getByTestId("haha-banner")).toContainText("HAHA - John never said Last Card", { timeout: 15_000 });
+  await expect(page.getByText('John forgot to say "Last Card" and picks up two cards.')).toBeVisible();
 });
 
 test("an eight makes the next player miss a turn, and the highlight follows the engine", async ({ page }) => {
@@ -312,7 +342,7 @@ test("guided practice is unranked: it never writes a competitive result", async 
   const source = await (await request.get("/src/screens/GuidedGame.tsx")).text();
   expect(source).not.toContain("logComputerGame(");
   await page.goto("/");
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
   await expect(page.getByText(/GUIDED GAME/)).toBeVisible();
   await expect(page.getByRole("navigation").getByRole("button", { name: "Home", exact: true })).toHaveAttribute("aria-current", "page");
@@ -360,4 +390,22 @@ test("moving around every section leaves saved records untouched", async ({ page
   expect(after.extensions.switchComputerGames).toEqual(before.extensions.switchComputerGames);
   expect(after.extensions.switchProfiles).toEqual(before.extensions.switchProfiles);
   expect(after.extensions.futureField).toEqual({ keep: true });
+});
+
+test("Sort stays on: cards you pick up slot in sorted", async ({ page }) => {
+  test.setTimeout(40_000);
+  await seedTable(page, { hands: [["KC", "2D", "KH", "9S", "2S"], ["3C", "4C", "8C"]], discard: ["4D", "6C"], suit: "C", turn: 0 });
+  await resume(page);
+  const order = () => page.locator(".player-hand button").evaluateAll((els) => els.map((el) => el.getAttribute("data-card")));
+  await page.locator(".sort-button").click();
+  const sorted = await order();
+  expect(sorted.slice(0, 2).sort()).toEqual(["2D", "2S"]);
+  // Picking up adds a card; the hand must stay sorted rather than put it on the end.
+  await page.getByRole("button", { name: /pick up/i }).first().click();
+  await page.waitForTimeout(6000);
+  const after = await order();
+  expect(after.length).toBeGreaterThan(sorted.length);
+  const rank = (c: string) => "A23456789TJQK".indexOf(c.slice(0, -1) === "10" ? "T" : c.slice(0, -1));
+  const pairs = after.filter((c) => after.filter((d) => rank(d) === rank(c)).length > 1);
+  expect(after.slice(0, pairs.length)).toEqual(pairs);
 });

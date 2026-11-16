@@ -81,7 +81,7 @@ test("an unplayable tap says why, and keeps the rule wording", async ({ page }) 
 
 test("the guided game shows what happened and the options on your turn", async ({ page }) => {
   await page.goto("/?testDeck=1");
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
   // Hints are optional: the strip offers the coach without naming the move until asked.
   await expect(page.getByRole("button", { name: "Why & tactics: see the coach's pick" })).toBeVisible();
@@ -102,7 +102,7 @@ test("the guided game shows what happened and the options on your turn", async (
 
 test("every move has a lesson card with what was played and what you could play", async ({ page }) => {
   await page.goto("/?testDeck=1");
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
   await page.getByRole("button", { name: "Select Nine of hearts, legal move" }).click();
   await page.getByRole("button", { name: "Play selected" }).click();
@@ -124,7 +124,7 @@ test("every move has a lesson card with what was played and what you could play"
 
 test("a guidance card comes up every turn, and the computer waits for you to close it", async ({ page }) => {
   await page.goto("/?testDeck=1&guide=1");
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
 
   // The opening card.
@@ -154,7 +154,7 @@ test("a guidance card comes up every turn, and the computer waits for you to clo
 
 test("by default no guidance card covers the table; the quiet strip opens it on request", async ({ page }) => {
   await page.goto("/?testDeck=1");
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
   const sheet = page.getByRole("dialog");
   await expect(sheet).toHaveCount(0);
@@ -172,7 +172,7 @@ test("by default no guidance card covers the table; the quiet strip opens it on 
 
 test("matching-card selection exposes full names and truthful states", async ({ page }) => {
   await page.goto("/?testDeck=partialKing");
-  await page.getByRole("button", { name: "Learn rules" }).click();
+  await page.getByRole("button", { name: "Learn the rules", exact: true }).click();
   await page.getByRole("button", { name: /Guided practice game/ }).click();
   await page.getByRole("button", { name: "Select King of spades, legal move" }).click();
   await expect(page.getByRole("button", { name: "Deselect King of spades, number 1 in your play" })).toBeVisible();

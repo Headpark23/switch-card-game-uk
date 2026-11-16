@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { ArrowRight, BookOpen, Lightning, Robot, UsersThree } from '@phosphor-icons/react';
+import { ArrowRight, BookOpen, Check, Lightning, Robot, Shuffle, UsersThree } from '@phosphor-icons/react';
 import { readActiveTable, readSpeed, saveSpeed } from '../switch/activeTable';
 import { SPEED_NAMES, type Speed } from '../switch/presentation';
-import { COMPUTER_NAMES } from '../switch/presentation';
 import { LEVEL_NAMES, LEVEL_NOTES, type ComputerLevel } from '../switch/ai';
 import { PERSONALITIES, TACTICS, tacticWeights, type TacticId } from '../switch/computerTactics';
 
@@ -16,7 +15,7 @@ function leansOn(level: ComputerLevel, personality: string): string {
 import { getComputerGames, getMeId, summariseComputerGames } from '../switch/computerLog';
 import { readClub } from '../switch/clubStore';
 import { loadSeat } from '../switch/onlineRoom';
-import { MODES, modeInfo, validateSetup, type PlayMode, type SeriesSetup } from '../switch/series';
+import { ROUND_CHOICES, roundsLabel, roundsNote, chooseComputers, COMPUTER_MODES, COMPUTER_NAMES_IN_ORDER, MATCH_BEST_OF, MATCH_FIRST_TO, matchCountFor, matchLabel, modeInfo, validateSetup, type MatchType, type PlayMode, type SeriesSetup } from '../switch/series';
 import { CardImage, FeltHeader, MiniFan } from '../ui';
 
 const LEVELS: readonly { id: ComputerLevel; name: string; note: string }[] = [
@@ -26,9 +25,10 @@ const LEVELS: readonly { id: ComputerLevel; name: string; note: string }[] = [
 ];
 const KEY = 'switchTable';
 
-type Choice = { opponents: number; level: ComputerLevel; mode: PlayMode; setsToWin: 3 | 5; limit: number };
-const DEFAULT_CHOICE: Choice = { opponents: 1, level: 'standard', mode: 'single', setsToWin: 3, limit: 100 };
-const MODE_CARDS: Record<PlayMode, string[]> = { single: ['AS', 'KH'], knockout: ['KS', 'KC'], group: ['QH', 'QD', 'JS'], cup: ['10H', '10S'], darts: ['7S', '7H'], dominoes: ['6C', '6D', '6S'] };
+type Choice = { picks: string[]; opponents: number; level: ComputerLevel; mode: PlayMode; setsToWin: 3 | 5; limit: number; matchType: MatchType; games: number; roundsToWin: number };
+/** "Games" with one game is an ordinary single game: the default, and what an older saved "single" becomes. */
+const DEFAULT_CHOICE: Choice = { picks: [], opponents: 1, level: 'standard', mode: 'match', setsToWin: 3, limit: 100, matchType: 'first', games: 1, roundsToWin: 1 };
+const MODE_CARDS: Record<PlayMode, string[]> = { single: ['AS', 'KH'], match: ['AS', 'AH', 'AD'], lastout: ['KS', 'KH', 'KD'], knockout: ['KS', 'KC'], group: ['QH', 'QD', 'JS'], cup: ['10H', '10S'], darts: ['7S', '7H'], dominoes: ['6C', '6D', '6S'] };
 const LIMIT_CHIPS = [50, 100, 150, 200];
 
 /** The fewest computers a way of playing needs, so the picker never offers a table it cannot run. */
@@ -37,16 +37,20 @@ const fewestComputers = (mode: PlayMode) => modeInfo(mode).minPlayers - 1;
 export function loadTableChoice(): Choice {
   try {
     const saved = JSON.parse(window.localStorage.getItem(KEY) || 'null') as Partial<Choice> | null;
-    const mode = MODES.find((entry) => entry.id === saved?.mode)?.id ?? 'single';
+    const mode = COMPUTER_MODES.find((entry) => entry.id === saved?.mode)?.id ?? 'match';
+    const matchType: MatchType = saved?.matchType === 'best' ? 'best' : 'first';
+    const games = matchCountFor(matchType, Number.isInteger(saved?.games) ? saved!.games! : 1);
     const opponents = saved && Number.isInteger(saved.opponents) && saved.opponents! >= 1 && saved.opponents! <= 7 ? Math.max(saved.opponents!, fewestComputers(mode)) : Math.max(1, fewestComputers(mode));
     const level = LEVELS.find((entry) => entry.id === saved?.level)?.id ?? 'standard';
     const limit = Number.isInteger(saved?.limit) && saved!.limit! >= 10 && saved!.limit! <= 999 ? saved!.limit! : DEFAULT_CHOICE.limit;
-    return { opponents, level, mode, setsToWin: saved?.setsToWin === 5 ? 5 : 3, limit };
+    const picks = Array.isArray(saved?.picks) ? saved!.picks!.filter((name, index, all) => (COMPUTER_NAMES_IN_ORDER as readonly string[]).includes(name) && all.indexOf(name) === index).slice(0, opponents) : [];
+    const roundsToWin = Number.isInteger(saved?.roundsToWin) && saved!.roundsToWin! >= 1 && saved!.roundsToWin! <= ROUND_CHOICES.length ? saved!.roundsToWin! : 1;
+    return { picks, opponents, level, mode, setsToWin: saved?.setsToWin === 5 ? 5 : 3, limit, matchType, games, roundsToWin };
   } catch { return DEFAULT_CHOICE; }
 }
 
 type Props = {
-  onDeal: (opponents: number, level: ComputerLevel) => void;
+  onDeal: (opponents: number, level: ComputerLevel, computers?: string[]) => void;
   onStartSeries: (setup: SeriesSetup) => void;
   onResume: () => void;
   onMe: () => void;
@@ -65,12 +69,19 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
   const set = (next: Partial<Choice>) => {
     const merged = { ...choice, ...next };
     merged.opponents = Math.max(merged.opponents, fewestComputers(merged.mode));
+    merged.picks = merged.picks.slice(0, merged.opponents);
     setChoice(merged);
     try { window.localStorage.setItem(KEY, JSON.stringify(merged)); window.localStorage.setItem('switchComputerLevel', merged.level); } catch { /* the choice lasts for this visit */ }
   };
   const pace = (next: Speed) => { setSpeed(next); saveSpeed(next); };
-  const setup: SeriesSetup | null = choice.mode === 'single' ? null : { mode: choice.mode, opponents: choice.opponents, level: choice.level, setsToWin: choice.setsToWin, limit: choice.limit };
+  const singleGame = choice.mode === 'match' && choice.games === 1;
+  /** The computers you will face: the ones you picked, with any other seats left to chance. Nothing picked is a surprise table. */
+  const deal = () => chooseComputers(choice.opponents, choice.picks);
+  const setup: SeriesSetup | null = singleGame || choice.mode === 'single' ? null
+    : { mode: choice.mode as SeriesSetup['mode'], opponents: choice.opponents, level: choice.level, setsToWin: choice.setsToWin, limit: choice.limit, ...(choice.mode === 'match' ? { matchType: choice.matchType, games: choice.games } : {}), ...(choice.mode === 'lastout' && choice.roundsToWin > 1 ? { roundsToWin: choice.roundsToWin } : {}) };
   const problem = setup ? validateSetup(setup) : null;
+  const pickMatchType = (next: MatchType) => set({ matchType: next, games: matchCountFor(next, choice.games) });
+  const startLabel = choice.mode === 'match' ? matchLabel(choice.matchType, choice.games) : choice.mode === 'lastout' && choice.roundsToWin > 1 ? `Last One Out · ${roundsLabel(choice.roundsToWin).toLowerCase()}` : modeInfo(choice.mode).name;
 
   return <section className="play-lobby" aria-labelledby="play-title">
     <FeltHeader compact id="play-title" title="Take a seat." intro="Play Switch against up to seven computers, as a single game or a whole tournament. Every game counts towards your record." cards={['AS', 'KH']} />
@@ -83,12 +94,17 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
     <div className="lobby-setup">
     <div className="lobby-group" role="group" aria-label="Game type">
       <h2>What are we playing?</h2>
-      <div className="mode-grid">{MODES.map((entry) => <button key={entry.id} aria-pressed={choice.mode === entry.id} className={choice.mode === entry.id ? 'active' : ''} onClick={() => set({ mode: entry.id })}><MiniFan codes={MODE_CARDS[entry.id]} /><b>{entry.name}</b></button>)}</div>
-      <p className="lobby-note" data-testid="mode-note">{modeInfo(choice.mode).blurb}</p>
+      <div className="mode-grid">{COMPUTER_MODES.map((entry) => <button key={entry.id} aria-label={entry.name} aria-describedby={`mode-blurb-${entry.id}`} aria-pressed={choice.mode === entry.id} className={choice.mode === entry.id ? 'active' : ''} onClick={() => set({ mode: entry.id })}><MiniFan codes={MODE_CARDS[entry.id]} /><span className="mode-text"><b>{entry.name}</b><small id={`mode-blurb-${entry.id}`}>{entry.blurb}</small></span></button>)}</div>
+      <div className="mode-detail" data-testid="mode-detail" aria-live="polite">
+        <h3>How {modeInfo(choice.mode).name} plays</h3>
+        <p className="mode-short" data-testid="mode-note">{modeInfo(choice.mode).blurb}</p>
+        {modeInfo(choice.mode).how.map((line, index) => <p key={index}>{line}</p>)}
+        <p className="mode-scoring"><strong>Scoring.</strong> {modeInfo(choice.mode).scoring}</p>
+      </div>
     </div>
 
     <div className="lobby-table" aria-label="Your table">
-      <div className={`lobby-seats seats-${choice.opponents}`} aria-hidden="true">{Array.from({ length: choice.opponents }, (_, index) => <span key={index} className="lobby-seat"><CardImage code="back" /><i>{COMPUTER_NAMES[index]}</i></span>)}</div>
+      <div className={`lobby-seats seats-${choice.opponents}`} aria-hidden="true">{Array.from({ length: choice.opponents }, (_, index) => <span key={index} className="lobby-seat"><CardImage code="back" /><i>{choice.picks[index] ?? '?'}</i></span>)}</div>
       <div className="lobby-you" aria-hidden="true"><span>You</span></div>
     </div>
 
@@ -107,14 +123,18 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
       <div className="seg three">{LEVELS.map((entry) => <button key={entry.id} aria-pressed={choice.level === entry.id} className={choice.level === entry.id ? 'active' : ''} onClick={() => set({ level: entry.id })}><b>{entry.name}</b><small>{entry.note}</small></button>)}</div>
     </div>
 
-    <div className="lobby-group" role="group" aria-label="Who you are playing">
-      <h2>Who you are playing</h2>
-      <ul className="personalities">{PERSONALITIES.slice(0, choice.opponents).map((personality) => <li key={personality.id}>
-        <span className="personality-top"><strong>{personality.name}</strong><em>{personality.title}</em></span>
-        <span>{personality.blurb}</span>
-        <small>{leansOn(choice.level, personality.id)}</small>
-      </li>)}</ul>
-    </div>
+    {choice.mode === 'match' && <div className="lobby-group" role="group" aria-label="Number of games">
+      <h2>How many games?</h2>
+      <div className="seg two compact">{([['first', 'First to'], ['best', 'Best of']] as const).map(([id, label]) => <button key={id} aria-pressed={choice.matchType === id} className={choice.matchType === id ? 'active' : ''} onClick={() => pickMatchType(id)}><b>{label}</b></button>)}</div>
+      <div className="seg five compact">{(choice.matchType === 'best' ? MATCH_BEST_OF : MATCH_FIRST_TO).map((count) => <button key={count} aria-pressed={choice.games === count} className={choice.games === count ? 'active' : ''} onClick={() => set({ games: count })} aria-label={`${choice.matchType === 'best' ? 'Best of' : 'First to'} ${count}`}><b>{count}</b></button>)}</div>
+      <p className="lobby-note" data-testid="match-note">{matchLabel(choice.matchType, choice.games)}.{choice.games === 1 ? ' One game of Switch: first out wins.' : choice.matchType === 'best' ? ' Most wins takes it, and it stops as soon as nobody can catch the leader.' : ' Every game is ordinary Switch.'}</p>
+    </div>}
+
+    {choice.mode === 'lastout' && <div className="lobby-group" role="group" aria-label="Rounds to win">
+      <h2>How many rounds?</h2>
+      <div className="seg five compact">{ROUND_CHOICES.map((count) => <button key={count} aria-pressed={choice.roundsToWin === count} className={choice.roundsToWin === count ? 'active' : ''} onClick={() => set({ roundsToWin: count })} aria-label={count === 1 ? 'One-off game' : `First to ${count} round wins`}><b>{count === 1 ? 'One-off' : `First to ${count}`}</b></button>)}</div>
+      <p className="lobby-note" data-testid="rounds-note">{roundsNote(choice.roundsToWin)}</p>
+    </div>}
 
     {choice.mode === 'darts' && <div className="lobby-group" role="group" aria-label="Sets to win">
       <h2>Sets to win the match</h2>
@@ -133,10 +153,25 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
       <p className="lobby-note">After every game the cards left in each hand add to that player's total: ace 1 up to king 13. The first to reach {choice.limit} loses. The lowest total wins.</p>
     </div>}
 
+    <div className="lobby-group" role="group" aria-label="Who you are playing">
+      <h2>Who do you want to play?</h2>
+      <p className="lobby-note" data-testid="picker-note">{choice.picks.length === 0 ? `Surprise me: ${choice.opponents === 1 ? 'a computer is' : `${choice.opponents} computers are`} drawn at random.` : choice.picks.length >= choice.opponents ? `Your table is set: ${choice.picks.join(', ')}.` : `${choice.picks.join(', ')} picked. ${choice.opponents - choice.picks.length} more ${choice.opponents - choice.picks.length === 1 ? 'seat is' : 'seats are'} drawn at random.`}</p>
+      <div className="pick-actions"><button aria-pressed={choice.picks.length === 0} className={choice.picks.length === 0 ? 'active' : ''} onClick={() => set({ picks: [] })}><Shuffle size={16} weight="bold" />Pick at random</button></div>
+      <ul className="personalities pickable">{PERSONALITIES.map((personality) => {
+        const picked = choice.picks.includes(personality.name);
+        const full = !picked && choice.picks.length >= choice.opponents;
+        return <li key={personality.id}><button aria-pressed={picked} disabled={full} className={picked ? 'active' : ''} aria-label={`${picked ? 'Remove' : 'Pick'} ${personality.name}`} onClick={() => set({ picks: picked ? choice.picks.filter((name) => name !== personality.name) : [...choice.picks, personality.name] })}>
+          <span className="personality-top"><strong>{personality.name}</strong><em>{personality.title}</em>{picked && <Check size={16} weight="bold" className="picked-tick" />}</span>
+          <span>{personality.blurb}</span>
+          <small>{leansOn(choice.level, personality.id)}</small>
+        </button></li>;
+      })}</ul>
+    </div>
+
     </div>
     <div className="lobby-side">
     {problem && <p className="lobby-note center" role="alert">{problem}</p>}
-    <button className="primary deal-button" disabled={!!problem} onClick={() => (setup ? onStartSeries(setup) : onDeal(choice.opponents, choice.level))}><Lightning size={20} weight="fill" />{setup ? `Start ${modeInfo(choice.mode).name}` : active ? 'Deal a new game' : 'Deal me in'}</button>
+    <button className="primary deal-button" disabled={!!problem} onClick={() => (setup ? onStartSeries({ ...setup, computers: deal() }) : onDeal(choice.opponents, choice.level, choice.picks.length ? deal() : undefined))}><Lightning size={20} weight="fill" />{setup ? `Start ${startLabel}` : active ? 'Deal a new game' : 'Deal me in'}</button>
     {active && <p className="lobby-note center">Dealing a new game drops the unfinished one without counting it.</p>}
 
     <div className="lobby-group" role="group" aria-label="Computer pace">
