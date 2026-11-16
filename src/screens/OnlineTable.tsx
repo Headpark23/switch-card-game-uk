@@ -10,11 +10,12 @@ import { cue } from '../feedback';
 import { logComputerGame, logOnlineNight, logSeriesResult } from '../switch/logGame';
 import { getComputerGames } from '../switch/computerLog';
 import { readClub } from '../switch/clubStore';
-import { drawTiming, planTurn, REDUCED, SPEEDS, stepDuration, visibleAt, type Step } from '../switch/presentation';
+import { drawTiming, paceIsHuman, planTurn, REDUCED, SPEEDS, stepDuration, visibleAt, type Step } from '../switch/presentation';
 import { readSpeed } from '../switch/activeTable';
 import { modeInfo, pendingGames, seriesPlayerName, standings } from '../switch/series';
 import { clearSeat, loadSeat, onlineModeBlurb, reactionOf, tableInvite, tableName, useRoom, type RoomView } from '../switch/onlineRoom';
 import { logReaction } from '../switch/gameReplay';
+import { GameEnding } from './GameEnding';
 import { beginReplay, Bubble, ReactionSheet, useBubbles, useReplayRecorder } from './tableTalk';
 import { sortHand } from '../switch/sortHand';
 import { HahaBanner, hahaText, type Haha } from './HahaBanner';
@@ -201,7 +202,13 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
   const legal = yourMove ? tableLegalMoves(game, 0) : [];
   const canPlay = (card: CardId) => legal.some((action) => action.type === 'play' && action.cards.length === 1 && action.cards[0] === card);
   const legalCards = hand.filter(canPlay);
-  const finished = game.status === 'won' && !showing;
+  const gameOver = game.status === 'won' && !showing;
+  // The ending comes first, then the results (owner decision, 16 Nov 2026). Automated runs skip it unless asked.
+  const [endSeenFor, setEndSeenFor] = useState<string | null>(null);
+  const showEnding = paceIsHuman() || (() => { try { return window.localStorage.getItem('switchShowEnding') === '1'; } catch { return false; } })();
+  const endKey = `${view.code}-${view.gameNo}`;
+  const finished = gameOver && (endSeenFor === endKey || !showEnding);
+  const ending = gameOver && !finished;
   const youWon = !watching && game.winner === 0;
   const lastCalled = called || (!watching && view.seats[0].lastCardCalled);
   const outList = (showing ? showing.before : game).out ?? [];
@@ -336,7 +343,7 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
     return () => window.clearInterval(timer);
   }, [view.clock?.seat, view.table?.playing, view.series?.next?.readyAt]);
 
-  useEffect(() => { if (finished && !watching) cue(youWon ? 'win' : 'bad'); }, [finished, youWon]);
+  useEffect(() => { if (gameOver && !watching) cue(youWon ? 'win' : 'bad'); }, [gameOver, youWon]);
 
   function refuse(cards: CardId[], reason: string) {
     cue('bad');
@@ -434,6 +441,11 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
     return bubble && reaction ? <Bubble key={bubble.n} n={bubble.n} id={bubble.id} name={names[index]} leaving={bubble.leaving} /> : null;
   };
 
+  if (ending) {
+    const winnerSeat = game.winner ?? 0;
+    const lastMove = [...(view.moves ?? [])].reverse().find((move) => move.seat === winnerSeat && move.cards && move.cards.length > 0);
+    return <GameEnding game={game} names={names} watching={watching} played={lastMove?.cards ? [...lastMove.cards] : undefined} onContinue={() => setEndSeenFor(endKey)} />;
+  }
   if (finished) return <Finished view={view} room={room} game={game} names={names} watching={watching} youWon={youWon} warn={warn} setWarn={setWarn} onReact={() => setReactOpen(true)} onReplay={!watching && onReplay ? () => onReplay(gameId) : undefined} onWatch={onWatch} onLeave={onLeave} onOpenCards={onOpenCards} onStartNight={onStartNight}>
     <ReactionSheet open={reactOpen} onOpenChange={setReactOpen} onPick={react} />
   </Finished>;

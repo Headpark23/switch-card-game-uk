@@ -20,6 +20,7 @@ import { sortHand } from '../switch/sortHand';
 import { HahaBanner, hahaText, type Haha } from './HahaBanner';
 import { attackKind, banterFor, playEvent, reactionOf, type TableEvent } from '../switch/reactions';
 import { logReaction, type ReplayMove } from '../switch/gameReplay';
+import { GameEnding } from './GameEnding';
 import { beginReplay, Bubble, ReactionSheet, useBubbles, useReplayRecorder } from './tableTalk';
 
 import { COMPUTER_NAMES } from '../switch/presentation';
@@ -478,34 +479,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     : missTurn ? 'Play another eight to pass the missed turn, or accept it.'
     : legalCards.length ? `You can play ${legalCards.map(cardIdLabel).join(', ')}. You may also pick up one card instead.` : 'You have no legal card. Pick up one card.';
 
-  if (ending) {
-    const winner = game.winner ?? 0;
-    const winnerName = winner === 0 ? 'You' : names[winner];
-    const played = lastPlay.current && lastPlay.current.seat === winner ? lastPlay.current.cards : game.discardPile.slice(-1);
-    const winningRank = rank(played[played.length - 1]);
-    const power: Record<string, string> = { '2': 'a two', '8': 'an eight', K: 'a king', A: 'an ace' };
-    const powerLeft = hand.filter((card) => ['2', '8', 'K', 'A', 'J', '7'].includes(rank(card)));
-    const order = [...game.hands.keys()].filter((seat) => seat !== winner).sort((a, b) => game.hands[a].length - game.hands[b].length || a - b);
-    const why: string[] = [];
-    if (!youWon) {
-      why.push(`${winnerName} played their last card first. You were still holding ${hand.length} card${hand.length === 1 ? '' : 's'}.`);
-      if (power[winningRank]) why.push(`Going out on ${power[winningRank]} is allowed, so it still wins the game.`);
-      if (hand.length === 1) why.push('So close: you were one card away.');
-      if (powerLeft.length) why.push(`You were left holding ${powerLeft.map(cardIdLabel).join(', ')}. Power cards kept to the end are the usual way to lose a close game, so use them while they help.`);
-    }
-    return <section className="tutorial game-tutorial table-game" aria-label="How the game ended" data-testid="game-ending">
-      <div className="completion game-ending">
-        <CheckCircle size={52} weight="light" />
-        <h1>{youWon ? <>You went<br />out.</> : <>{winnerName} went<br />out.</>}</h1>
-        <p>{winnerName} played {played.length > 1 ? 'the last cards' : 'the last card'}:</p>
-        <div className="end-played" aria-label="The winning play">{played.map((card) => <CardImage key={card} code={card} />)}</div>
-        {why.length > 0 && <div className="end-why" data-testid="end-why"><strong>Why you lost</strong>{why.map((line) => <p key={line}>{line}</p>)}</div>}
-        <h2 className="end-heading">What everyone was holding</h2>
-        <ul className="end-hands" aria-label="Cards left in each hand">{order.map((seat) => <li key={seat} className={seat === 0 ? 'me' : ''}><b>{seat === 0 ? 'You' : names[seat]}</b><span>{game.hands[seat].length === 0 ? 'Out' : `${game.hands[seat].length} left`}</span><div>{game.hands[seat].map((card) => <CardImage key={card} code={card} />)}</div></li>)}</ul>
-        <button className="primary" data-testid="end-continue" onClick={() => setEndSeenFor(gameId)}>See the results <ArrowRight size={18} /></button>
-      </div>
-    </section>;
-  }
+  if (ending) return <GameEnding game={game} names={names} played={lastPlay.current && lastPlay.current.seat === (game.winner ?? 0) ? lastPlay.current.cards : undefined} onContinue={() => setEndSeenFor(gameId)} />;
 
   if (finished && series) {
     return <section className="tutorial game-tutorial table-game" aria-label="Game over">
