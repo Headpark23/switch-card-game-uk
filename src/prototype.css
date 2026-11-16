@@ -1286,3 +1286,7 @@
 .table-game .seat-row.many .seat:nth-child(4n+3) .reaction-bubble:not(.sticker),.table-game .seat-row.many .seat:nth-child(4n) .reaction-bubble:not(.sticker){left:auto;right:0;translate:0 0}
 /* The effect pill sits just below the table, over the notice line that says the same thing, so it never covers a card or the suit badge. */
 .table-game .table-announce{bottom:auto;top:100%;margin-top:3px;width:max-content;white-space:nowrap}
+/* The big suit badge is only a pop-up for an ace: it floats over the suit line instead of taking room. */
+.game-tutorial .discard-pile{position:relative}
+.game-tutorial .discard-pile>span.suit-badge{position:absolute;left:50%;bottom:-18px;margin:0;translate:-50% 0;z-index:6;white-space:nowrap;animation:suit-pop .5s cubic-bezier(.2,1.5,.4,1) both,suit-away .35s ease-in 3.15s both}
+@keyframes suit-away{to{opacity:0}}

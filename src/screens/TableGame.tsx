@@ -566,7 +566,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
           {pile.map((card, index) => <span key={card} className={'pile-card depth-' + (pile.length - 1 - index)}><CardImage code={card} /></span>)}
           {visible.flying && <span ref={flyRef} key={`fly-${showing?.id}-${visible.flying.index}`} className="pile-card flying" data-testid="flying-card" data-card={visible.flying.card}><CardImage code={visible.flying.card} /></span>}
         </span>
-        <SuitBadge suit={visible.currentSuit} />
+        <SuitBadge suit={visible.currentSuit} aceKey={visible.announce?.text.startsWith('Ace:') ? `${showing?.id}` : null} />
         {seats > 2 && <span className="direction" aria-label={`Play goes ${visible.direction === 1 ? 'clockwise' : 'anticlockwise'}`}>{visible.direction === 1 ? <ArrowClockwise size={14} weight="bold" /> : <ArrowCounterClockwise size={14} weight="bold" />}{visible.direction === 1 ? 'Clockwise' : 'Anticlockwise'}</span>}
       </div>
       {prefs.moves && visible.announce && <div key={`${showing?.id}-${showing?.at}`} className={'table-announce ' + visible.announce.tone} data-testid="table-announce" aria-hidden="true">{visible.announce.text}</div>}

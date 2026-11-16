@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChatCircleDots, ListBullets } from '@phosphor-icons/react';
 import type { Suit } from '../switch/types';
 import { suitNames, suitSymbols } from '../ui';
@@ -29,10 +29,23 @@ export function TableToggles({ prefs }: { prefs: ReturnType<typeof useTablePrefs
   </span>;
 }
 
-/** The suit in play, big enough to read across the table. It pops when it changes (an ace). */
-export function SuitBadge({ suit }: { suit: Suit }) {
+/**
+ * The suit in play: quiet small text all the time, and a big badge that pops up for a few seconds when an ace is played
+ * (owner request, 16 Nov 2026). `aceKey` is set while an ace's effect is on the table.
+ */
+export function SuitBadge({ suit, aceKey }: { suit: Suit; aceKey: string | null }) {
+  const [popped, setPopped] = useState<string | null>(null);
+  useEffect(() => {
+    if (!aceKey) return;
+    setPopped(aceKey);
+    // Not cleared when the ace's effect line ends: the pop-up outlasts it by design.
+    window.setTimeout(() => setPopped((current) => (current === aceKey ? null : current)), 3500);
+  }, [aceKey]);
   const red = suit === 'H' || suit === 'D';
-  return <span key={suit} className={'suit-badge' + (red ? ' red' : '')} data-testid="suit-badge" data-suit={suit} role="status" aria-label={`Suit in play: ${suitNames[suit]}`}>
-    <i aria-hidden="true">{suitSymbols[suit]}</i><b>{suitNames[suit]}</b>
-  </span>;
+  return <>
+    <span className="suit-line">Suit <b className={red ? 'red' : ''}>{suitSymbols[suit]} {suitNames[suit]}</b></span>
+    {popped && <span key={popped} className={'suit-badge' + (red ? ' red' : '')} data-testid="suit-badge" data-suit={suit} role="status" aria-label={`Suit in play: ${suitNames[suit]}`}>
+      <i aria-hidden="true">{suitSymbols[suit]}</i><b>{suitNames[suit]}</b>
+    </span>}
+  </>;
 }
