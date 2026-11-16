@@ -230,7 +230,7 @@ test("the game ends on the table: who went out, with what, why you lost and ever
   // The ending comes first: the winner, the winning card, why you lost, and every hand face up.
   const ending = page.getByTestId("game-ending");
   await expect(ending).toBeVisible({ timeout: 15_000 });
-  await expect(ending.getByRole("heading", { name: /John went/ })).toBeVisible();
+  await expect(ending.getByRole("heading", { name: /John won/ })).toBeVisible();
   await expect(page.getByTestId("end-why")).toContainText("still holding 2 cards");
   await expect(ending.getByRole("list", { name: "Cards left in each hand" })).toContainText("You");
   await expect(page.getByRole("heading", { name: /John won/ })).toHaveCount(0);

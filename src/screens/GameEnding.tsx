@@ -29,8 +29,8 @@ export function GameEnding({ game, names, played, watching = false, onContinue }
   return <section className="tutorial game-tutorial table-game" aria-label="How the game ended" data-testid="game-ending">
     <div className="completion game-ending">
       <CheckCircle size={52} weight="light" />
-      <h1>{youWon ? <>You went<br />out.</> : <>{winnerName} went<br />out.</>}</h1>
-      <p>{winnerName} played {last.length > 1 ? 'the last cards' : 'the last card'}:</p>
+      <h1>{youWon ? <>You won!</> : <>{winnerName} won.</>}</h1>
+      <p>{youWon ? 'You' : winnerName} played {last.length > 1 ? 'the last cards' : 'the last card'}:</p>
       <div className="end-played" aria-label="The winning play">{last.map((card) => <CardImage key={card} code={card} />)}</div>
       {why.length > 0 && <div className="end-why" data-testid="end-why"><strong>Why you lost</strong>{why.map((line) => <p key={line}>{line}</p>)}</div>}
       <h2 className="end-heading">{order.every((seat) => seat === 0 || hidden(game.hands[seat])) ? 'Cards left in each hand' : 'What everyone was holding'}</h2>
