@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CLUB_REFRESH } from '../switch/clubSync';
-import { ArrowRight, CaretLeft, Fire, Pencil, Robot } from '@phosphor-icons/react';
+import { ArrowRight, CaretLeft, Pencil, Robot } from '@phosphor-icons/react';
 import { FeltHeader } from '../ui';
 import { KeyboardInput, useKeyboard } from '../mobile';
 import { BadgeButton, BadgeSheet, BadgeWall, PassportBook } from './Badges';
@@ -24,6 +24,7 @@ import { SPEED_NAMES, type Speed } from '../switch/presentation';
 import { feedbackEnabled, setFeedbackEnabled } from '../feedback';
 import { AccountPanel } from '../AccountPanel';
 import InstallButton from '../InstallButton';
+import HistoryPanel, { type HistoryCategory, type HistoryEntry } from './HistoryPanel';
 
 type Section = 'overview' | 'history' | 'computer' | 'badges' | 'passport' | 'trophies' | 'settings';
 const SECTIONS: readonly { id: Section; label: string }[] = [
@@ -31,6 +32,9 @@ const SECTIONS: readonly { id: Section; label: string }[] = [
 ];
 const LEVEL_NAMES: Record<string, string> = { relaxed: 'Easy', standard: 'Medium', sharp: 'Hard' };
 const FORMAT_NAMES: Record<string, string> = { 'head-to-head': 'One v One', domino: 'Dominoes', darts: 'Darts', league: 'Group Play', knockout: 'Last One Out', cup: 'Switch Cup' };
+
+/** Scored-at-home formats named the same way as the matching way to play on the app, so charts group them together. */
+const HOME_TYPES: Record<string, string> = { 'head-to-head': 'One v One', domino: 'Dominoes scoring', darts: 'Darts scoring', league: 'Group Play', knockout: 'Last One Out', cup: 'Switch Cup' };
 
 function Bar({ label, value, total }: { label: string; value: number; total: number }) {
   return <div className="me-bar"><span>{label}</span><i aria-hidden="true"><b style={{ width: `${total ? Math.round((value / total) * 100) : 0}%` }} /></i><em>{value}/{total}</em></div>;
@@ -48,7 +52,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, in
   const [soundOn, setSoundOn] = useState(feedbackEnabled);
   const [spicyOn, setSpicyOn] = useState(spicyTalk);
   const [speed, setSpeed] = useState<Speed>(readSpeed);
-  const [filter, setFilter] = useState<'all' | 'nights' | 'computer'>('all');
+  const [filter, setFilter] = useState<HistoryCategory>('all');
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState('');
@@ -99,11 +103,18 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, in
   const nightRecord = { played: myNights.length, won: myNights.filter((night) => night.players.some((player) => resolveHistoryPlayerId(player, allProfiles) === me.id && night.winnerIds.includes(player.id))).length };
   const wonNight = (night: (typeof nights)[number]) => night.players.some((player) => resolveHistoryPlayerId(player, allProfiles) === me.id && night.winnerIds.includes(player.id));
 
-  type Row = { key: string; when: string; kind: 'night' | 'computer'; title: string; detail: string; won: boolean; open: () => void };
-  const rows: Row[] = [
-    ...(filter !== 'computer' ? myNights.map((night): Row => ({ key: night.id, when: night.completedAt, kind: 'night', title: night.title, detail: `${FORMAT_NAMES[night.format] ?? night.formatLabel} · ${night.players.length} players${night.place ? ` · ${night.place.name}, ${countryName(night.place.country)}` : ''}`, won: wonNight(night), open: () => setOpenNight(night) })) : []),
-    ...(filter !== 'nights' ? games.map((game): Row => ({ key: game.id, when: game.playedAt, kind: 'computer', title: game.won ? (game.online ? 'Won online' : 'Beat the computer') : `Finished ${game.place}${['st', 'nd', 'rd'][game.place - 1] ?? 'th'}${game.rivals?.find((rival) => rival.place === 1) ? ` · ${game.rivals.find((rival) => rival.place === 1)?.name} won` : ''}`, detail: `${gameMode(game) === 'single' ? '' : `${modeInfo(gameMode(game)).name}${game.series ? (game.series.won ? ' · won the whole thing' : ` · finished ${game.series.place}${['st', 'nd', 'rd'][game.series.place - 1] ?? 'th'} overall`) : ''} · `}${game.online ? `Online · ${game.opponents + 1} players` : game.opponents === 1 ? '1 opponent' : `${game.opponents} opponents`} · ${LEVEL_NAMES[game.level]} · ${game.moves} moves`, won: game.won, open: () => setOpenGame(game) })) : []),
-  ].sort((a, b) => Date.parse(b.when) - Date.parse(a.when));
+  const ordinal = (place: number) => `${place}${['st', 'nd', 'rd'][place - 1] ?? 'th'}`;
+  const rows: HistoryEntry[] = [
+    ...myNights.map((night): HistoryEntry => ({ key: night.id, when: night.completedAt, kind: 'home', type: HOME_TYPES[night.format] ?? night.formatLabel, title: night.title, detail: `${FORMAT_NAMES[night.format] ?? night.formatLabel} · ${night.players.length} players${night.place ? ` · ${night.place.name}, ${countryName(night.place.country)}` : ''}`, won: wonNight(night), open: () => setOpenNight(night) })),
+    ...games.map((game): HistoryEntry => {
+      const winner = game.rivals?.find((rival) => rival.place === 1)?.name;
+      const mode = gameMode(game);
+      return { key: game.id, when: game.playedAt, kind: game.online ? 'online' : 'computer', type: modeInfo(mode).name,
+        title: game.won ? (game.online ? 'Won online' : 'Beat the computer') : `Finished ${ordinal(game.place)}`,
+        detail: `${!game.won && winner ? `${winner} won · ` : ''}${mode === 'single' ? '' : `${modeInfo(mode).name}${game.series ? (game.series.won ? ' · won the whole thing' : ` · finished ${ordinal(game.series.place)} overall`) : ''} · `}${game.online ? `Online · ${game.opponents + 1} players` : game.opponents === 1 ? '1 opponent' : `${game.opponents} opponents`} · ${LEVEL_NAMES[game.level]} · ${game.moves} moves`,
+        won: game.won, open: () => setOpenGame(game) };
+    }),
+  ];
 
   const rename = async () => {
     keyboard.hide();
@@ -143,12 +154,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, in
       <button className="text-link" onClick={onClub}>Whole-club stats and seasons <ArrowRight size={16} /></button>
     </>}
 
-    {section === 'history' && <>
-      <div className="profile-chips" role="group" aria-label="Filter history">{([['all', 'Everything'], ['nights', 'Game nights'], ['computer', 'v Computer']] as const).map(([id, label]) => <button key={id} className={filter === id ? 'active' : ''} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}</div>
-      {rows.length === 0 ? <p className="history-empty">Nothing here yet. Play the computer, or save a game night, and it lands in this list.</p>
-        : <><p className="dash-note">{nightRecord.played + summary.games} {nightRecord.played + summary.games === 1 ? 'game' : 'games'} · {nightRecord.won + summary.wins} won · {nightRecord.played - nightRecord.won + summary.losses} lost. Tap any game for the full score.</p>
-          <ul className="me-history" aria-label="Your game history">{rows.slice(0, 200).map((row) => <li key={row.key} className={row.won ? 'won' : 'lost'}><button type="button" className="me-history-row" onClick={row.open} aria-label={`${row.title}, ${row.won ? 'won' : 'lost'}, ${new Date(row.when).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}. Show full score`}><span className={'me-dot ' + row.kind} aria-hidden="true">{row.kind === 'computer' ? <Robot size={16} weight="fill" /> : <Fire size={16} weight="fill" />}</span><span><strong>{row.title}</strong><small>{row.detail}</small></span><span className="me-result"><b className={row.won ? 'win' : 'loss'}>{row.won ? 'Won' : 'Lost'}</b><em>{new Date(row.when).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</em></span></button></li>)}</ul></>}
-    </>}
+    {section === 'history' && <HistoryPanel entries={rows} category={filter} onCategory={setFilter} />}
 
     {section === 'computer' && <>
       {summary.games === 0
