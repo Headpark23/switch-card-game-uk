@@ -30,7 +30,7 @@ const SECTIONS: readonly { id: Section; label: string }[] = [
   { id: 'overview', label: 'Me' }, { id: 'history', label: 'History' }, { id: 'computer', label: 'Computer' }, { id: 'badges', label: 'Badges' }, { id: 'passport', label: 'Passport' }, { id: 'trophies', label: 'Trophies' }, { id: 'settings', label: 'Settings' },
 ];
 const LEVEL_NAMES: Record<string, string> = { relaxed: 'Easy', standard: 'Medium', sharp: 'Hard' };
-const FORMAT_NAMES: Record<string, string> = { 'head-to-head': 'One v One', domino: 'Dominoes', darts: 'Darts', league: 'Group Play', knockout: 'Knock Out', cup: 'Switch Cup' };
+const FORMAT_NAMES: Record<string, string> = { 'head-to-head': 'One v One', domino: 'Dominoes', darts: 'Darts', league: 'Group Play', knockout: 'Last One Out', cup: 'Switch Cup' };
 
 function Bar({ label, value, total }: { label: string; value: number; total: number }) {
   return <div className="me-bar"><span>{label}</span><i aria-hidden="true"><b style={{ width: `${total ? Math.round((value / total) * 100) : 0}%` }} /></i><em>{value}/{total}</em></div>;

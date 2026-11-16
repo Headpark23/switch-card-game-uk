@@ -8,7 +8,7 @@ import { readClub } from '../switch/clubStore';
 import { getMeId } from '../switch/computerLog';
 import { getProfiles } from '../switch/profiles';
 import { FeltHeader, MiniFan } from '../ui';
-import { MATCH_BEST_OF, MATCH_FIRST_TO, matchLabel, modeInfo, ONLINE_MAX_PLAYERS, ONLINE_MODES, type MatchType, type PlayMode } from '../switch/series';
+import { ROUND_CHOICES, roundsNote, MATCH_BEST_OF, MATCH_FIRST_TO, matchLabel, modeInfo, ONLINE_MAX_PLAYERS, ONLINE_MODES, type MatchType, type PlayMode } from '../switch/series';
 import { onlineModeBlurb, ONLINE_MODE_CARDS } from '../switch/onlineRoom';
 import { fetchShare } from '../switch/shareNight';
 import { readCode, type CodeKind } from '../switch/joinCode';
@@ -49,6 +49,7 @@ export default function FriendsTable({ initialCode = '', onBack, onSeated, onOpe
   const [games, setGames] = useState<number>(1);
   const pickMatchType = (next: MatchType) => { setMatchType(next); setGames((current) => (next === 'best' ? (current === 2 ? 3 : MATCH_BEST_OF.includes(current as never) ? current : 3) : MATCH_FIRST_TO.includes(current as never) ? current : Math.min(5, Math.ceil(current / 2)))); };
   const [setsToWin, setSetsToWin] = useState<3 | 5>(3);
+  const [roundsToWin, setRoundsToWin] = useState(1);
   const [limit, setLimit] = useState(100);
   /** Computers the host wants at the table. Empty means a surprise: any empty seat is drawn at random. */
   const [picks, setPicks] = useState<string[]>([]);
@@ -89,7 +90,7 @@ export default function FriendsTable({ initialCode = '', onBack, onSeated, onOpe
     if (!cleanName || busy) return;
     keyboard.hide(); setBusy(true); setProblem(''); remember();
     try {
-      const made = await createTable(cleanName, seats, level, { mode, ...(picked.length ? { computers: picked } : {}), ...(mode === 'match' ? { matchType, games } : {}), ...(mode === 'darts' ? { setsToWin } : {}), ...(mode === 'dominoes' ? { limit } : {}) });
+      const made = await createTable(cleanName, seats, level, { mode, ...(picked.length ? { computers: picked } : {}), ...(mode === 'match' ? { matchType, games } : {}), ...(mode === 'darts' ? { setsToWin } : {}), ...(mode === 'lastout' && roundsToWin > 1 ? { roundsToWin } : {}), ...(mode === 'dominoes' ? { limit } : {}) });
       saveSeat({ code: made.code, token: made.token, name: cleanName });
       onSeated();
     } catch (reason) { setProblem(reason instanceof Error ? reason.message : 'Could not start the table.'); }
@@ -128,7 +129,7 @@ export default function FriendsTable({ initialCode = '', onBack, onSeated, onOpe
         <div className="mode-grid">{ONLINE_MODES.map((entry) => <button key={entry.id} aria-label={entry.name} aria-describedby={`online-mode-blurb-${entry.id}`} aria-pressed={mode === entry.id} className={mode === entry.id ? 'active' : ''} onClick={() => pickMode(entry.id)}><MiniFan codes={ONLINE_MODE_CARDS[entry.id]} /><span className="mode-text"><b>{entry.name}</b><small id={`online-mode-blurb-${entry.id}`}>{entry.blurb}</small></span></button>)}</div>
         <div className="mode-detail" data-testid="online-mode-detail" aria-live="polite">
           <h3>How {modeInfo(mode).name} plays</h3>
-          <p className="mode-short" data-testid="online-mode-note">{onlineModeBlurb(mode, { mode, matchType, games })}</p>
+          <p className="mode-short" data-testid="online-mode-note">{onlineModeBlurb(mode, { mode, matchType, games, roundsToWin })}</p>
           {modeInfo(mode).how.map((line, index) => <p key={index}>{line}</p>)}
           <p className="mode-scoring"><strong>Scoring.</strong> {modeInfo(mode).scoring}</p>
         </div>
@@ -138,6 +139,11 @@ export default function FriendsTable({ initialCode = '', onBack, onSeated, onOpe
         <div className="seg two compact">{([['first', 'First to'], ['best', 'Best of']] as const).map(([id, label]) => <button key={id} aria-pressed={matchType === id} className={matchType === id ? 'active' : ''} onClick={() => pickMatchType(id)}><b>{label}</b></button>)}</div>
         <div className="seg five compact">{(matchType === 'best' ? MATCH_BEST_OF : MATCH_FIRST_TO).map((count) => <button key={count} aria-pressed={games === count} className={games === count ? 'active' : ''} onClick={() => setGames(count)} aria-label={`${matchType === 'best' ? 'Best of' : 'First to'} ${count}`}><b>{count}</b></button>)}</div>
         <p className="lobby-note" data-testid="match-note">{matchLabel(matchType, games)}.{games === 1 ? ' One game of Switch: first out wins.' : matchType === 'best' ? ' Most wins takes it, and it stops as soon as nobody can catch the leader.' : ' Every game is ordinary Switch.'}</p>
+      </div>}
+      {mode === 'lastout' && <div className="lobby-group" role="group" aria-label="Rounds to win">
+        <h2>How many rounds?</h2>
+        <div className="seg five compact">{ROUND_CHOICES.map((count) => <button key={count} aria-pressed={roundsToWin === count} className={roundsToWin === count ? 'active' : ''} onClick={() => setRoundsToWin(count)} aria-label={count === 1 ? 'One-off game' : `First to ${count} round wins`}><b>{count === 1 ? 'One-off' : `First to ${count}`}</b></button>)}</div>
+        <p className="lobby-note" data-testid="rounds-note">{roundsNote(roundsToWin)}</p>
       </div>}
       {mode === 'darts' && <div className="lobby-group" role="group" aria-label="Sets to win">
         <h2>Sets to win the match</h2>

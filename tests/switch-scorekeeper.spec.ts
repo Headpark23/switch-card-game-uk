@@ -42,12 +42,12 @@ test("unreadable saved scores stay untouched until explicit setup", async ({ pag
 
 test("six-player LOST mode reaches one champion", async ({ page }) => {
   await openScorekeeper(page);
-  await page.getByRole("button", { name: "Knock Out", exact: true }).click();
+  await page.getByRole("button", { name: "Last One Out", exact: true }).click();
   await page.getByRole("button", { name: "More players" }).click();
   await page.getByRole("button", { name: "More players" }).click();
   await page.getByRole("button", { name: "More players" }).click();
   await fillVisibleNames(page);
-  await page.getByRole("button", { name: "Start Knock Out" }).click();
+  await page.getByRole("button", { name: "Start Last One Out" }).click();
   for (let index = 0; index < 5; index += 1) await page.getByRole("button", { name: "LOST" }).last().click();
   await expect(page.getByText("CHAMPION", { exact: true })).toBeVisible();
 });
@@ -57,7 +57,7 @@ test("two complete leagues create championship and plate playoffs", async ({ pag
   await page.getByRole("button", { name: "Group Play", exact: true }).click();
   await fillVisibleNames(page);
   await page.getByRole("button", { name: "Start Group Play" }).click();
-  await expect(page.getByRole("heading", { name: "Knock Out playoffs" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Last One Out playoffs" })).toHaveCount(0);
   // Four rounds per league. Players finish in the same order each time, so nothing is level.
   const places = ["1st", "2nd", "3rd"];
   for (let round = 0; round < 4; round += 1) {
@@ -65,7 +65,7 @@ test("two complete leagues create championship and plate playoffs", async ({ pag
       for (let place = 0; place < 3; place += 1) await page.getByRole("button", { name: `Player ${first + place} finished ${places[place]}` }).click();
     }
   }
-  await expect(page.getByRole("heading", { name: "Knock Out playoffs" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Last One Out playoffs" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Championship" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Plate" })).toBeVisible();
 });
@@ -191,24 +191,47 @@ test("a league finished level on points and wins asks for a deciding game", asyn
     for (let place = 0; place < 3; place += 1) await page.getByRole("button", { name: `Player ${4 + order[place]} finished ${places[place]}` }).click();
   }
   await expect(page.getByText(/are level on points and round wins. They play one deciding game/).first()).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Knock Out playoffs" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Last One Out playoffs" })).toHaveCount(0);
   await page.getByRole("button", { name: "Player 1 won" }).first().click();
   await page.getByRole("button", { name: "Player 5 won" }).first().click();
-  await expect(page.getByRole("heading", { name: "Knock Out playoffs" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Last One Out playoffs" })).toBeVisible();
 });
 
-test("Knock Out drops the round's last player each round until one champion remains", async ({ page }) => {
+test("Last One Out drops the round's last player each round until one champion remains", async ({ page }) => {
   await openScorekeeper(page);
-  await page.getByRole("button", { name: "Knock Out", exact: true }).click();
+  await page.getByRole("button", { name: "Last One Out", exact: true }).click();
   for (let index = 0; index < 3; index += 1) await page.getByRole("button", { name: "More players" }).click();
   await fillVisibleNames(page);
-  await page.getByRole("button", { name: "Start Knock Out" }).click();
+  await page.getByRole("button", { name: "Start Last One Out" }).click();
   for (const left of [6, 5, 4, 3, 2]) {
     await expect(page.getByText(new RegExp(`${left} still playing`))).toBeVisible();
     await page.getByRole("button", { name: "LOST" }).first().click();
   }
   await expect(page.getByText("CHAMPION", { exact: true })).toBeVisible();
   await expect(page.getByText("LOST", { exact: true })).toHaveCount(5);
+});
+
+test("Last One Out can be first to several round wins: everyone is back in each round", async ({ page }) => {
+  await openScorekeeper(page);
+  await page.getByRole("button", { name: "Last One Out", exact: true }).click();
+  await expect(page.getByText("One-off game")).toBeVisible();
+  await page.getByRole("button", { name: "More rounds to win" }).click();
+  await expect(page.getByText("First to 2 round wins")).toBeVisible();
+  await fillVisibleNames(page);
+  await page.getByRole("button", { name: "Start Last One Out" }).click();
+  // Round 1: three players, the first two tapped LOST go out, the third wins the round.
+  await expect(page.getByText(/Round 1 · first to 2 round wins/)).toBeVisible();
+  await page.getByRole("button", { name: "LOST" }).first().click();
+  await page.getByRole("button", { name: "LOST" }).first().click();
+  await expect(page.getByText("wins round 1!")).toBeVisible();
+  await expect(page.getByText(/CHAMPION/)).toHaveCount(0);
+  await page.getByRole("button", { name: /Start round 2/ }).click();
+  await expect(page.getByText(/Round 2 · first to 2 round wins/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "LOST" })).toHaveCount(3);
+  // The same player (the last in the list) wins round 2 and the night.
+  await page.getByRole("button", { name: "LOST" }).first().click();
+  await page.getByRole("button", { name: "LOST" }).first().click();
+  await expect(page.getByText("CHAMPION · 2 round wins", { exact: true })).toBeVisible();
 });
 
 test("One v One is played to a number of games: first to N wins", async ({ page }) => {
@@ -290,7 +313,7 @@ test("a 4, 4 and 3 player league night plays through to playoffs with a plate by
       for (let place = 0; place < size - 1; place += 1) await page.getByRole("button", { name: `Player ${first + place} finished ${places[place]}` }).click();
     }
   }
-  await expect(page.getByRole("heading", { name: "Knock Out playoffs" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Last One Out playoffs" })).toBeVisible();
   await expect(page.getByText(/Game 1 of 4/)).toBeVisible();
 });
 
@@ -379,7 +402,7 @@ test("four leagues of six reach the playoffs without crashing", async ({ page })
     if (!await next.count()) break;
     await next.click();
   }
-  await expect(page.getByRole("heading", { name: "Knock Out playoffs" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Last One Out playoffs" })).toBeVisible();
   await expect(page.getByText(/Game 1 of 7 · 8 still playing/)).toBeVisible();
   await expect(page.getByText(/Game 1 of 15 · 16 still playing/)).toBeVisible();
 });
@@ -393,7 +416,7 @@ test("a league night saves only after the playoffs, crediting the champion and p
   for (let round = 0; round < 4; round += 1) {
     for (const first of [1, 5]) for (let place = 0; place < 3; place += 1) await page.getByRole("button", { name: `Player ${first + place} finished ${places[place]}` }).click();
   }
-  await expect(page.getByRole("heading", { name: "Knock Out playoffs" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Last One Out playoffs" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save completed night" })).toHaveCount(0);
   await expect(page.getByText(/then the championship and plate knockouts/)).toBeVisible();
 
@@ -466,7 +489,7 @@ test("a single league finishes with a final and a plate, and can be saved", asyn
   await page.getByRole("button", { name: "Start Group Play" }).click();
   const places = ["1st", "2nd", "3rd"];
   for (let round = 0; round < 4; round += 1) for (let place = 0; place < 3; place += 1) await page.getByRole("button", { name: `Player ${place + 1} finished ${places[place]}` }).click();
-  await expect(page.getByRole("heading", { name: "Knock Out playoffs" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Last One Out playoffs" })).toBeVisible();
   await expect(page.locator(".playoff-group h3").first()).toHaveText("Final");
   for (const group of [0, 1]) await page.locator(".playoff-group").nth(group).getByRole("button", { name: "LOST" }).last().click();
   await expect(page.getByText("Player 1 won the championship; Player 3 won the plate")).toBeVisible();

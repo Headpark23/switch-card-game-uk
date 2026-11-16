@@ -63,9 +63,9 @@ test("an unfinished Domino match resumes after refresh with undo history", async
 
 test("Knockout and Cup progress resume after refresh", async ({ page }) => {
   await openScorekeeper(page);
-  await page.getByRole("button", { name: "Knock Out", exact: true }).click();
+  await page.getByRole("button", { name: "Last One Out", exact: true }).click();
   await fillNames(page);
-  await page.getByRole("button", { name: "Start Knock Out" }).click();
+  await page.getByRole("button", { name: "Start Last One Out" }).click();
   await page.getByRole("button", { name: "LOST" }).first().click();
   await reopenScorekeeper(page);
   await expect(page.getByText("2 still playing", { exact: true })).toBeVisible();

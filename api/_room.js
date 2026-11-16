@@ -105,7 +105,7 @@ function humanSeat(name, token, now, host = false) {
 }
 
 /** What the host chose: the way to play and its settings. Anything a tournament needs is checked by the app's own rules. */
-function cleanSetup({ mode, setsToWin, limit, matchType, games, computers }, capacity, level) {
+function cleanSetup({ mode, setsToWin, limit, matchType, games, roundsToWin, computers }, capacity, level) {
   const picked = cleanComputers(computers, capacity);
   const chosen = mode === undefined ? "single" : mode;
   if (!MODES.includes(chosen)) throw new RoomError("That way to play is not recognised.");
@@ -114,19 +114,19 @@ function cleanSetup({ mode, setsToWin, limit, matchType, games, computers }, cap
   // "Games": first to N wins or best of N. One game is just a single game, played the ordinary way.
   if (chosen === "match" && Number(games ?? 1) === 1) return { mode: "single", ...picked };
   const setup = { mode: chosen, opponents: capacity - 1, level, knockout: "last-out", ...picked,
-    ...(chosen === "match" ? { matchType, games: Number(games) } : {}), ...(chosen === "darts" ? { setsToWin: Number(setsToWin ?? 3) } : {}), ...(chosen === "dominoes" ? { limit: Number(limit ?? 100) } : {}) };
+    ...(chosen === "match" ? { matchType, games: Number(games) } : {}), ...(chosen === "darts" ? { setsToWin: Number(setsToWin ?? 3) } : {}), ...(chosen === "lastout" && Number(roundsToWin ?? 1) > 1 ? { roundsToWin: Number(roundsToWin) } : {}), ...(chosen === "dominoes" ? { limit: Number(limit ?? 100) } : {}) };
   const problem = validateSetup(setup, ONLINE_MAX_PLAYERS[chosen]);
   if (problem) throw new RoomError(problem.replace(/, so at least \d+ computers?\./, "."));
   return setup;
 }
 
-export function createRoom({ seats, level, name, mode, setsToWin, limit, matchType, games, computers }, token, now) {
+export function createRoom({ seats, level, name, mode, setsToWin, limit, matchType, games, roundsToWin, computers }, token, now) {
   const capacity = Number(seats);
   if (!Number.isInteger(capacity) || capacity < 2 || capacity > MAX_PLAYERS) throw new RoomError(`A table is for 2 to ${MAX_PLAYERS} players.`);
   const chosen = level === undefined ? "standard" : level;
   if (!LEVELS.includes(chosen)) throw new RoomError("Pick relaxed, standard or sharp computers.");
   return {
-    v: 3, rev: 0, createdAt: now, updatedAt: now, status: "lobby", capacity, level: chosen, setup: cleanSetup({ mode, setsToWin, limit, matchType, games, computers }, capacity, chosen),
+    v: 3, rev: 0, createdAt: now, updatedAt: now, status: "lobby", capacity, level: chosen, setup: cleanSetup({ mode, setsToWin, limit, matchType, games, roundsToWin, computers }, capacity, chosen),
     gameNo: 0, reactSeq: 0, newsSeq: 0, seriesNo: 0,
     seats: [humanSeat(cleanName(name), token, now, true)], tables: [], reactions: [], news: [], history: [],
     series: null, ready: {},
@@ -741,7 +741,7 @@ async function route(request, store, now, random, observe) {
 
   if (!code) {
     const seatToken = randomBytes(18).toString("hex");
-    const room = createRoom({ seats: body.seats, level: body.level, name: body.name, mode: body.mode, setsToWin: body.setsToWin, limit: body.limit, matchType: body.matchType, games: body.games, computers: body.computers }, seatToken, now);
+    const room = createRoom({ seats: body.seats, level: body.level, name: body.name, mode: body.mode, setsToWin: body.setsToWin, limit: body.limit, matchType: body.matchType, games: body.games, roundsToWin: body.roundsToWin, computers: body.computers }, seatToken, now);
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const fresh = newCode();
       room.code = fresh;

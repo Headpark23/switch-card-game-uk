@@ -49,7 +49,7 @@ const ReplayScreen = lazy(() => import('./screens/ReplayScreen'));
 /** Each way to play gets its own little hand of cards in place of a number or an icon. */
 const MODE_CARDS: Record<string, string[]> = {
   'One v One': ['AS', 'AH'],
-  'Knock Out': ['2C', '8S', 'KS'],
+  'Last One Out': ['2C', '8S', 'KS'],
   'Group Play': ['QH', 'QS', 'QC'],
   'Darts Scoring': ['3H', '3S', '3D'],
   'Domino Scoring': ['5D', '6D'],

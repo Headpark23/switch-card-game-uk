@@ -189,3 +189,14 @@ test("Last One Out: the last player holding cards drops out, game after game, un
   expect(list.every((game) => game.mode === "lastout")).toBe(true);
   expect(list.filter((game) => game.series)).toHaveLength(1);
 });
+
+test("Last One Out lets you choose how many rounds to win: a one-off game or first to several", async ({ page }) => {
+  await openPlay(page, { mode: "lastout", opponents: 2, level: "relaxed" });
+  const rounds = page.getByRole("group", { name: "Rounds to win" });
+  await expect(rounds.getByRole("button", { name: "One-off game" })).toHaveAttribute("aria-pressed", "true");
+  await rounds.getByRole("button", { name: "First to 3 round wins" }).click();
+  await expect(page.getByTestId("rounds-note")).toContainText("First to 3 round wins takes the series");
+  await page.getByRole("button", { name: /Start Last One Out · first to 3 round wins/ }).click();
+  await expect(page.getByTestId("series-play")).toBeVisible();
+  await expect(page.locator(".series-board")).toContainText("Round 1 · first to 3 round wins");
+});

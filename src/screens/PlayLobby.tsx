@@ -15,7 +15,7 @@ function leansOn(level: ComputerLevel, personality: string): string {
 import { getComputerGames, getMeId, summariseComputerGames } from '../switch/computerLog';
 import { readClub } from '../switch/clubStore';
 import { loadSeat } from '../switch/onlineRoom';
-import { chooseComputers, COMPUTER_MODES, COMPUTER_NAMES_IN_ORDER, MATCH_BEST_OF, MATCH_FIRST_TO, matchCountFor, matchLabel, modeInfo, validateSetup, type MatchType, type PlayMode, type SeriesSetup } from '../switch/series';
+import { ROUND_CHOICES, roundsLabel, roundsNote, chooseComputers, COMPUTER_MODES, COMPUTER_NAMES_IN_ORDER, MATCH_BEST_OF, MATCH_FIRST_TO, matchCountFor, matchLabel, modeInfo, validateSetup, type MatchType, type PlayMode, type SeriesSetup } from '../switch/series';
 import { CardImage, FeltHeader, MiniFan } from '../ui';
 
 const LEVELS: readonly { id: ComputerLevel; name: string; note: string }[] = [
@@ -25,9 +25,9 @@ const LEVELS: readonly { id: ComputerLevel; name: string; note: string }[] = [
 ];
 const KEY = 'switchTable';
 
-type Choice = { picks: string[]; opponents: number; level: ComputerLevel; mode: PlayMode; setsToWin: 3 | 5; limit: number; matchType: MatchType; games: number };
+type Choice = { picks: string[]; opponents: number; level: ComputerLevel; mode: PlayMode; setsToWin: 3 | 5; limit: number; matchType: MatchType; games: number; roundsToWin: number };
 /** "Games" with one game is an ordinary single game: the default, and what an older saved "single" becomes. */
-const DEFAULT_CHOICE: Choice = { picks: [], opponents: 1, level: 'standard', mode: 'match', setsToWin: 3, limit: 100, matchType: 'first', games: 1 };
+const DEFAULT_CHOICE: Choice = { picks: [], opponents: 1, level: 'standard', mode: 'match', setsToWin: 3, limit: 100, matchType: 'first', games: 1, roundsToWin: 1 };
 const MODE_CARDS: Record<PlayMode, string[]> = { single: ['AS', 'KH'], match: ['AS', 'AH', 'AD'], lastout: ['KS', 'KH', 'KD'], knockout: ['KS', 'KC'], group: ['QH', 'QD', 'JS'], cup: ['10H', '10S'], darts: ['7S', '7H'], dominoes: ['6C', '6D', '6S'] };
 const LIMIT_CHIPS = [50, 100, 150, 200];
 
@@ -44,7 +44,8 @@ export function loadTableChoice(): Choice {
     const level = LEVELS.find((entry) => entry.id === saved?.level)?.id ?? 'standard';
     const limit = Number.isInteger(saved?.limit) && saved!.limit! >= 10 && saved!.limit! <= 999 ? saved!.limit! : DEFAULT_CHOICE.limit;
     const picks = Array.isArray(saved?.picks) ? saved!.picks!.filter((name, index, all) => (COMPUTER_NAMES_IN_ORDER as readonly string[]).includes(name) && all.indexOf(name) === index).slice(0, opponents) : [];
-    return { picks, opponents, level, mode, setsToWin: saved?.setsToWin === 5 ? 5 : 3, limit, matchType, games };
+    const roundsToWin = Number.isInteger(saved?.roundsToWin) && saved!.roundsToWin! >= 1 && saved!.roundsToWin! <= ROUND_CHOICES.length ? saved!.roundsToWin! : 1;
+    return { picks, opponents, level, mode, setsToWin: saved?.setsToWin === 5 ? 5 : 3, limit, matchType, games, roundsToWin };
   } catch { return DEFAULT_CHOICE; }
 }
 
@@ -77,10 +78,10 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
   /** The computers you will face: the ones you picked, with any other seats left to chance. Nothing picked is a surprise table. */
   const deal = () => chooseComputers(choice.opponents, choice.picks);
   const setup: SeriesSetup | null = singleGame || choice.mode === 'single' ? null
-    : { mode: choice.mode as SeriesSetup['mode'], opponents: choice.opponents, level: choice.level, setsToWin: choice.setsToWin, limit: choice.limit, ...(choice.mode === 'match' ? { matchType: choice.matchType, games: choice.games } : {}) };
+    : { mode: choice.mode as SeriesSetup['mode'], opponents: choice.opponents, level: choice.level, setsToWin: choice.setsToWin, limit: choice.limit, ...(choice.mode === 'match' ? { matchType: choice.matchType, games: choice.games } : {}), ...(choice.mode === 'lastout' && choice.roundsToWin > 1 ? { roundsToWin: choice.roundsToWin } : {}) };
   const problem = setup ? validateSetup(setup) : null;
   const pickMatchType = (next: MatchType) => set({ matchType: next, games: matchCountFor(next, choice.games) });
-  const startLabel = choice.mode === 'match' ? matchLabel(choice.matchType, choice.games) : modeInfo(choice.mode).name;
+  const startLabel = choice.mode === 'match' ? matchLabel(choice.matchType, choice.games) : choice.mode === 'lastout' && choice.roundsToWin > 1 ? `Last One Out · ${roundsLabel(choice.roundsToWin).toLowerCase()}` : modeInfo(choice.mode).name;
 
   return <section className="play-lobby" aria-labelledby="play-title">
     <FeltHeader compact id="play-title" title="Take a seat." intro="Play Switch against up to seven computers, as a single game or a whole tournament. Every game counts towards your record." cards={['AS', 'KH']} />
@@ -127,6 +128,12 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
       <div className="seg two compact">{([['first', 'First to'], ['best', 'Best of']] as const).map(([id, label]) => <button key={id} aria-pressed={choice.matchType === id} className={choice.matchType === id ? 'active' : ''} onClick={() => pickMatchType(id)}><b>{label}</b></button>)}</div>
       <div className="seg five compact">{(choice.matchType === 'best' ? MATCH_BEST_OF : MATCH_FIRST_TO).map((count) => <button key={count} aria-pressed={choice.games === count} className={choice.games === count ? 'active' : ''} onClick={() => set({ games: count })} aria-label={`${choice.matchType === 'best' ? 'Best of' : 'First to'} ${count}`}><b>{count}</b></button>)}</div>
       <p className="lobby-note" data-testid="match-note">{matchLabel(choice.matchType, choice.games)}.{choice.games === 1 ? ' One game of Switch: first out wins.' : choice.matchType === 'best' ? ' Most wins takes it, and it stops as soon as nobody can catch the leader.' : ' Every game is ordinary Switch.'}</p>
+    </div>}
+
+    {choice.mode === 'lastout' && <div className="lobby-group" role="group" aria-label="Rounds to win">
+      <h2>How many rounds?</h2>
+      <div className="seg five compact">{ROUND_CHOICES.map((count) => <button key={count} aria-pressed={choice.roundsToWin === count} className={choice.roundsToWin === count ? 'active' : ''} onClick={() => set({ roundsToWin: count })} aria-label={count === 1 ? 'One-off game' : `First to ${count} round wins`}><b>{count === 1 ? 'One-off' : `First to ${count}`}</b></button>)}</div>
+      <p className="lobby-note" data-testid="rounds-note">{roundsNote(choice.roundsToWin)}</p>
     </div>}
 
     {choice.mode === 'darts' && <div className="lobby-group" role="group" aria-label="Sets to win">

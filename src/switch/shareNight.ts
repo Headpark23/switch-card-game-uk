@@ -1,5 +1,5 @@
 import type { CupState } from "./cup";
-import type { KnockoutState } from "./knockout";
+import { roundWins, roundsToWin, type KnockoutState } from "./knockout";
 import { rankLeague, type League } from "./leagues";
 import { isGameMatch, scoreWinnerId, type ScoreSession } from "./scoring";
 import type { SwitchNightRecord } from "./history";
@@ -36,8 +36,10 @@ function buildBoard(input: { club?: string; host?: string; session: ScoreSession
   }
   if (knockout) {
     const still = knockout.players.filter((player) => !knockout.eliminatedIds.includes(player.id));
-    const lines = knockout.players.map((player) => ({ label: player.name, value: knockout.championId === player.id ? "CHAMPION" : knockout.eliminatedIds.includes(player.id) ? "Out" : "Still in", lead: knockout.championId === player.id }));
-    return { title, format: "knockout", status: knockout.championId ? "We have a champion" : `${still.length} still playing`, lines };
+    const target = roundsToWin(knockout);
+    const wins = roundWins(knockout);
+    const lines = knockout.players.map((player) => ({ label: player.name, value: `${knockout.championId === player.id ? "CHAMPION" : knockout.eliminatedIds.includes(player.id) ? "Out" : "Still in"}${target > 1 ? ` · ${wins[player.id] ?? 0} round win${wins[player.id] === 1 ? "" : "s"}` : ""}`, lead: knockout.championId === player.id }));
+    return { title, format: "knockout", status: knockout.championId ? "We have a champion" : target > 1 ? `Round ${(knockout.rounds?.length ?? 0) + 1} · first to ${target} round wins · ${still.length} still playing` : `${still.length} still playing`, lines };
   }
   if (cup) {
     const round = cup.rounds.at(-1);

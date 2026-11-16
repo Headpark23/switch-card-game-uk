@@ -541,6 +541,25 @@ test("online Knock Out: whoever is left holding cards is out, and the people who
   assert.equal(order.out.length, 4);
 });
 
+test("online Last One Out can be first to several round wins: everyone is dealt back in after each round", async () => {
+  const played = await playSeries("lastout", 4, { roundsToWin: 3 }, 11);
+  const state = played.room.series;
+  assert.equal(state.part.remaining.length, 1, "the last round was played down to one player");
+  const wins = state.roundWins;
+  assert.equal(wins[state.part.championId], 3, "the champion has three round wins");
+  assert.ok(Object.values(wins).every((count) => count <= 3), "nobody went past the target");
+  assert.ok(state.rounds >= 3, "at least three rounds were played");
+  const final = await played.view(0);
+  assert.equal(final.series.over, true);
+  assert.equal(final.series.outcome.order[0], state.part.championId);
+});
+
+test("a one-off Last One Out ignores rounds and a bad round count is refused", async () => {
+  const store = memoryStore();
+  const bad = await call(store, { body: { seats: 4, level: "standard", name: "Ana", mode: "lastout", roundsToWin: 12 } }, T0, seeded(1));
+  assert.equal(bad.status, 400);
+});
+
 test("a tournament needs enough players: Group Play needs six, Knock Out three", async () => {
   const store = memoryStore();
   assert.equal((await call(store, { body: { seats: 5, name: "Ana", mode: "group" } }, T0)).status, 400);

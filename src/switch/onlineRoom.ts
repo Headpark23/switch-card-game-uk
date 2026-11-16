@@ -49,7 +49,7 @@ export interface RoomResult {
 }
 
 /** What the host chose: the way to play and its settings (Darts sets, Dominoes number). */
-export interface RoomSetup { readonly mode: PlayMode; readonly setsToWin?: number; readonly limit?: number; readonly matchType?: MatchType; readonly games?: number; /** Computers the host asked for, by name; other empty seats are drawn at random. */ readonly computers?: readonly string[] }
+export interface RoomSetup { readonly mode: PlayMode; readonly setsToWin?: number; readonly limit?: number; readonly matchType?: MatchType; readonly games?: number; /** Last One Out: round wins that take the table (absent is one round). */ readonly roundsToWin?: number; /** Computers the host asked for, by name; other empty seats are drawn at random. */ readonly computers?: readonly string[] }
 
 /** A tournament or match at the table. Player ids are "p0", "p1"…; `me` is yours. Its games run side by side. */
 export interface RoomSeries {
@@ -185,7 +185,7 @@ export function onlineModeBlurb(mode: PlayMode, setup?: RoomSetup): string {
     case "match": return setup?.matchType === "best"
       ? `Best of ${setup.games ?? 3} games: most wins takes it, and it ends as soon as nobody can catch the leader. Level at the end? Play on until someone is ahead.`
       : `First to ${setup?.games ?? 3} wins takes the match. Every game is ordinary Switch.`;
-    case "lastout": return "Everyone plays the same game. Whoever is left holding cards drops out, until one player is left. More than eight are split across tables.";
+    case "lastout": return `Everyone plays the same game. Whoever is left holding cards drops out, until one player is left.${(setup?.roundsToWin ?? 1) > 1 ? ` That is a round win: first to ${setup?.roundsToWin} round wins takes the table.` : ""} More than eight are split across tables.`;
     case "knockout": return "Everyone plays each round; more than eight are split across tables. Whoever is left holding cards at a table is out, until one player is left.";
     case "cup": return "Head-to-head matches, drawn at random, all played at the same time. Win yours to go through.";
     case "group": return "Two leagues playing side by side, then the championship and plate play-offs. For 6 to 16 players.";
@@ -196,7 +196,7 @@ export function onlineModeBlurb(mode: PlayMode, setup?: RoomSetup): string {
 
 /** What a table is called on screen: "Best of 5 games", "First to 3 wins", or the way to play. */
 export function tableName(mode: PlayMode, setup: RoomSetup | undefined, fallback: string): string {
-  return mode === "match" ? matchLabel(setup?.matchType, setup?.games) : fallback;
+  return mode === "match" ? matchLabel(setup?.matchType, setup?.games) : mode === "lastout" && (setup?.roundsToWin ?? 1) > 1 ? `Last One Out · first to ${setup?.roundsToWin} round wins` : fallback;
 }
 
 export const cleanTableCode = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);

@@ -13,7 +13,7 @@ import { getProfiles, resolveHistoryPlayerId } from '../switch/profiles';
 import { powers } from '../content';
 import { Fan } from '../ui';
 
-const FORMAT_NAMES: Record<string, string> = { 'head-to-head': 'One v One', domino: 'Dominoes', darts: 'Darts', league: 'Group Play', knockout: 'Knock Out', cup: 'Switch Cup' };
+const FORMAT_NAMES: Record<string, string> = { 'head-to-head': 'One v One', domino: 'Dominoes', darts: 'Darts', league: 'Group Play', knockout: 'Last One Out', cup: 'Switch Cup' };
 const LEVEL_NAMES: Record<string, string> = { relaxed: 'Easy', standard: 'Medium', sharp: 'Hard' };
 
 /** The corner index of a playing card, so each launch tile reads as an ace dealt onto the table. */
@@ -85,7 +85,7 @@ export default function HomeHub(props: Props) {
     ...games.map((game): Row => ({ key: game.id, at: game.playedAt, title: game.won ? 'Beat the computer' : `Finished ${game.place}${['st', 'nd', 'rd'][game.place - 1] ?? 'th'} v the computer`, detail: `${game.mode && game.mode !== 'single' ? `${modeInfo(game.mode).name}${game.series ? (game.series.won ? ' · won' : ` · ${game.series.place}${['st', 'nd', 'rd'][game.series.place - 1] ?? 'th'} overall`) : ''} · ` : ''}${game.opponents === 1 ? '1 opponent' : `${game.opponents} opponents`} · ${LEVEL_NAMES[game.level] ?? game.level}`, won: game.won, open: props.onAchievements })),
   ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, 3);
 
-  const nightLabel = activeNight ? (activeNight.kind === 'score' ? FORMAT_NAMES[activeNight.session.format] : activeNight.kind === 'league' ? 'Group Play' : activeNight.kind === 'cup' ? 'Switch Cup' : 'Knock Out') : '';
+  const nightLabel = activeNight ? (activeNight.kind === 'score' ? FORMAT_NAMES[activeNight.session.format] : activeNight.kind === 'league' ? 'Group Play' : activeNight.kind === 'cup' ? 'Switch Cup' : 'Last One Out') : '';
   const nightTitle = activeNight?.kind === 'score' ? `Your game: ${activeNight.session.players.map((player) => player.name).join(' v ')}` : activeNight ? `Your ${nightLabel}` : '';
   const nightScore = activeNight?.kind === 'score' && activeNight.session.players.length === 2 && activeNight.session.format !== 'darts' ? ` · ${activeNight.session.players.map((player) => activeNight.session.scores[player.id] ?? 0).join('–')}` : '';
   const nightShare = sharing ? (arrived.length ? ` · ${arrived.join(' & ')} joined` : ' · sharing live') : '';
