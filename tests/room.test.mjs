@@ -462,6 +462,8 @@ async function playSeries(mode, capacity, extra = {}, seed = 5) {
     if (over) break;
     const live = r.tables.filter((table) => table.game.status === "playing");
     maxLive = Math.max(maxLive, live.length);
+    // Ruling 38: one deck, so no game ever has more than six players, and there is always a pile to pick up from.
+    for (const table of live) assert.ok(table.players.length <= 6, `${mode} with ${capacity}: a game of ${table.players.length} players`);
     const mine = live.find((table) => r.seats[table.players[table.game.turn]].kind === "human");
     if (mine) {
       const player = mine.players[mine.game.turn];
@@ -518,8 +520,8 @@ test("the host can pick which computers fill the empty seats, and the rest are d
   assert.equal(bad.status, 400);
 });
 
-test("a big table plays its games at the same time: every Cup match of a round, both leagues, Knock Out split across tables", async () => {
-  for (const [mode, capacity, tables] of [["cup", 12, 6], ["group", 12, 2], ["knockout", 12, 2], ["cup", 16, 8], ["group", 16, 3], ["knockout", 16, 2]]) {
+test("a big table plays its games at the same time: every Cup match of a round, both leagues, Knock Out split onto tables of up to six", async () => {
+  for (const [mode, capacity, tables] of [["cup", 12, 6], ["group", 12, 3] /* two leagues of 6, then a plate of 8 split onto two tables beside the championship */, ["knockout", 12, 2], ["lastout", 12, 2], ["cup", 16, 8], ["knockout", 16, 3], ["lastout", 16, 3], ["group", 7, 2]]) {
     const played = await playSeries(mode, capacity, {}, 3);
     assert.equal(played.maxLive, tables, `${mode} with ${capacity}: ${tables} games at once`);
     const final = await played.view(0);
@@ -568,8 +570,11 @@ test("a tournament needs enough players: Group Play needs six, Knock Out three",
   assert.equal((await call(store, { body: { seats: 3, name: "Ana", mode: "chess" } }, T0)).status, 400);
   assert.equal((await call(store, { body: { seats: 16, name: "Ana", mode: "cup" } }, T0)).status, 201, "a Cup for sixteen");
   assert.equal((await call(store, { body: { seats: 17, name: "Ana", mode: "cup" } }, T0)).status, 400, "no more than sixteen");
-  assert.equal((await call(store, { body: { seats: 9, name: "Ana", mode: "darts" } }, T0)).status, 400, "Darts is everyone in one game: eight at most");
-  assert.equal((await call(store, { body: { seats: 9, name: "Ana" } }, T0)).status, 400, "a single game: eight at most");
+  assert.equal((await call(store, { body: { seats: 7, name: "Ana", mode: "darts" } }, T0)).status, 400, "Darts is everyone in one game: six at most (ruling 38)");
+  assert.equal((await call(store, { body: { seats: 7, name: "Ana" } }, T0)).status, 400, "a single game: six at most (ruling 38)");
+  assert.equal((await call(store, { body: { seats: 6, name: "Ana" } }, T0)).status, 201, "a single game of six");
+  assert.equal((await call(store, { body: { seats: 12, name: "Ana", mode: "group" } }, T0)).status, 201, "Group Play for twelve: two leagues of six");
+  assert.equal((await call(store, { body: { seats: 13, name: "Ana", mode: "group" } }, T0)).status, 400, "Group Play: no league bigger than six");
 });
 
 test("the owner's anonymous counters see tables made, started and finished, and only ever numbers", async () => {

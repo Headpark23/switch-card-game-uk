@@ -47,10 +47,10 @@ export interface TableSetup {
   readonly playOn?: boolean;
 }
 
-/** You plus seven computers. */
-export const MAX_SEATS = 8;
+/** One deck only (ruling 38): six players take 42 cards and leave a pile of nine to pick up from. You plus five computers. */
+export const MAX_SEATS = 6;
 
-/** Ruling 21: one deck deals seven each to six players; seven or eight players play with two decks. */
+/** Always one deck for a new table (ruling 38). Two decks only for a 7 or 8 seat game saved before that ruling, so it can still be finished and counted. */
 export function decksFor(seats: number): 1 | 2 {
   return seats > 6 ? 2 : 1;
 }

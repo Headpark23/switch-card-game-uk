@@ -54,7 +54,7 @@ test("a table can be set up as best of or first to; one game is just a single ga
   expect(createRoom({ seats: 4, level: "standard", name: "Mark", mode: "match", matchType: "first", games: 1 }, "t", 1).setup).toEqual({ mode: "single" });
   expect(createRoom({ seats: 4, level: "standard", name: "Mark" }, "t", 1).setup).toEqual({ mode: "single" });
   expect(() => createRoom({ seats: 4, level: "standard", name: "Mark", mode: "match", matchType: "best", games: 4 }, "t", 1)).toThrow(/odd/);
-  expect(() => createRoom({ seats: 12, level: "standard", name: "Mark", mode: "match", matchType: "best", games: 3 }, "t", 1)).toThrow(/up to 8/);
+  expect(() => createRoom({ seats: 12, level: "standard", name: "Mark", mode: "match", matchType: "best", games: 3 }, "t", 1)).toThrow(/up to 6/);
 });
 
 test("a best of 3 table plays several games and announces the winner", () => {

@@ -17,7 +17,7 @@ Your game-night club, with four ways to play:
 - If someone wanders off, a countdown warns them and the computer plays their move.
 
 **Play against the computer**
-- Take on 1 to 7 computer players (up to 8 at the table, with two decks for big games).
+- Take on 1 to 5 computer players (up to 6 at the table, one normal deck, always a pile to pick up from).
 - Easy, Medium or Hard. Every computer has its own personality and favourite tactics.
 - Single game, Knock Out, Group Play leagues with play-offs, Switch Cup, and Darts or Dominoes scoring.
 - Every game counts towards your record, streaks, trophies and badges.
@@ -41,7 +41,7 @@ Works offline for playing the computer, learning and scoring. Online tables, sha
 
 **Keywords:** switch card game, card game, last card, black jack card game, crazy eights, online card game with friends, family card game, game night, score keeper, scoreboard, leaderboard
 
-Note: "Uno" is used only on the website (page title and meta description, for Google search). Keep it out of the Play Store listing: Uno is a Mattel trademark and Google Play's metadata policy does not allow references to other products' names.
+Note: the other game is never named anywhere, the website included (owner decision, 18 Nov 2026). The website only hints at it ("that colourful shop-bought card game where you shout when you're down to one", "no special cards"). Keep any hint out of the Play Store listing too: Uno is a Mattel trademark and Google Play's metadata policy does not allow references to other products' names.
 
 **Category:** Games > Card (or Utilities > Reference if the store prefers a companion classification)
 **Age rating:** NEEDS RE-ANSWERING (15 Nov 2026). It was 4+, but "spicy talk" adds thirty-seven reactions of masked swearing (F#~k, b@stard; off by default, opt-in per phone). Masked profanity still counts as profanity for most raters, so answer the IARC / Apple questionnaire honestly (say the language is censored, optional and user-enabled) and accept whatever rating comes back; do not publish as 4+ unless the questionnaire itself returns that. Otherwise: no ads, no purchases; shared nights and clubs show only names and scores to people holding the code; online tables are private by code, with a fixed set of 55 reactions (18 clean, 37 spicy) and no free-text chat. In the questionnaire answer "users can interact" yes, "free-text chat" no.

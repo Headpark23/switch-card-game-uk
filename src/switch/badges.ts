@@ -84,8 +84,8 @@ export const BADGES: readonly BadgeDefinition[] = [
   b("cpu-every-mode", "Every game type", "Win a Knock Out, Group Play, Switch Cup, Darts and Dominoes match", "computer", "platinum", "Diamond", 5, "cpuModesWon"),
   b("cpu-series-ten", "Tournament regular", "Finish 10 tournaments or matches against the computers", "computer", "silver", "CalendarCheck", 10, "cpuSeries"),
   b("cpu-series-streak", "Tournament run", "Win 3 tournaments or matches in a row", "computer", "gold", "Fire", 3, "cpuSeriesStreak"),
-  b("cpu-eight-play", "Full house of eight", "Play a game at a table of 8", "computer", "bronze", "UsersFour", 1, "cpuEightPlayed"),
-  b("cpu-eight-win", "Master of eight", "Win a game at a table of 8", "computer", "platinum", "ShieldStar", 1, "cpuEight"),
+  b("cpu-eight-play", "Full house", "Play a game at a full table of 6", "computer", "bronze", "UsersFour", 1, "cpuEightPlayed"),
+  b("cpu-eight-win", "Master of the full table", "Win a game at a full table of 6", "computer", "platinum", "ShieldStar", 1, "cpuEight"),
   b("first-venue", "Home ground", "Record where you played", "travel", "bronze", "MapPin", 1, "venues"),
   b("three-venues", "Regular haunts", "Play at 3 different venues", "travel", "bronze", "MapTrifold", 3, "venues"),
   b("ten-venues", "Venue hopper", "Play at 10 different venues", "travel", "silver", "Compass", 10, "venues"),
@@ -196,7 +196,8 @@ export function measureBadges(
     cpuFast: cpuWon.filter((game) => game.moves <= 25).length,
     cpuKo: seriesWon("knockout") + seriesWon("lastout"), cpuGroup: seriesWon("group"), cpuCup: seriesWon("cup"), cpuDarts: seriesWon("darts"), cpuDominoes: seriesWon("dominoes"),
     cpuModesWon: modesWon, cpuSeries: finished.length, cpuSeriesStreak: seriesBest,
-    cpuEightPlayed: mine.filter((game) => game.opponents >= 7).length, cpuEight: cpuWon.filter((game) => game.opponents >= 7).length,
+    // A full table is six (ruling 38). Games at 7 or 8 from before that still count, so nobody loses a badge.
+    cpuEightPlayed: mine.filter((game) => game.opponents >= 5).length, cpuEight: cpuWon.filter((game) => game.opponents >= 5).length,
     venues: venues.size, countries: countries.size, homeWins, awayWins, placedNights: placed,
   };
 }

@@ -42,7 +42,8 @@ test("a league game scores 4, 3, 2 and 1 in the order players went out, and the 
     const series = await import("/src/switch/series.ts");
     const table = await import("/src/switch/table.ts");
     const ai = await import("/src/switch/tableAi.ts");
-    let state = series.startSeries({ mode: "group", opponents: 7, level: "standard" }, Math.random);
+    // Eight people at an online table: two leagues of 4 (against the computer a table is at most 6, ruling 38).
+    let state = series.startSeries({ mode: "group", opponents: 7, level: "standard" }, Math.random, "online-8", Array.from({ length: 8 }, (_, index) => ({ id: `p${index}`, name: `Player ${index + 1}` })));
     const waiting = series.pendingGames(state);
     const kinds = { league: waiting.map((game: any) => game.playOn === true) };
     const knockout = series.pendingGames(series.startSeries({ mode: "knockout", opponents: 3, level: "standard" }, Math.random)).map((game: any) => game.playOn === true);
@@ -79,7 +80,7 @@ test("play-on games finish with every place given once at every table size, with
     const table = await import("/src/switch/table.ts");
     const ai = await import("/src/switch/tableAi.ts");
     const problems: string[] = [];
-    for (let seats = 2; seats <= 8; seats += 1) {
+    for (let seats = 2; seats <= 6; seats += 1) {
       for (let round = 0; round < 8; round += 1) {
         let state = table.createTable(seats, Math.random, round % seats, { playOn: true });
         const total = state.hands.flat().length + state.drawPile.length + state.discardPile.length;
@@ -138,7 +139,8 @@ test("play-off knockouts: 4 play on and the last holding cards is out, then 3, t
   await page.goto("/");
   const out = await page.evaluate(async () => {
     const series = await import("/src/switch/series.ts");
-    let state = series.startSeries({ mode: "group", opponents: 7, level: "standard" }, Math.random);
+    // Eight people at an online table, so each play-off starts with four (ruling 28).
+    let state = series.startSeries({ mode: "group", opponents: 7, level: "standard" }, Math.random, "online-8", Array.from({ length: 8 }, (_, index) => ({ id: `p${index}`, name: `Player ${index + 1}` })));
     const log: { key: string; size: number; playOn: boolean; title: string; loser: string; lastOut: boolean }[] = [];
     let guard = 0;
     while (!series.isSeriesOver(state) && guard++ < 200) {

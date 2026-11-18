@@ -78,21 +78,25 @@ test("darts: three legs make a set and the sets decide the match", async ({ page
   expect(out.winner).toBe(out.me);
 });
 
-test("two decks at 7 and 8 players: 104 cards, seven each, no duplicate card ids", async ({ page }) => {
+test("one deck only (ruling 38): up to six players, seven each, a pile left to pick up from, and no seventh seat", async ({ page }) => {
   await page.goto("/");
   const out = await page.evaluate(async () => {
     const table = await import("/src/switch/table.ts");
-    return [6, 7, 8].map((seats) => {
+    const series = await import("/src/switch/series.ts");
+    const sizes = [2, 3, 4, 5, 6].map((seats) => {
       const game = table.createTable(seats, Math.random, 0);
       const all = [...game.hands.flat(), ...game.drawPile, ...game.discardPile];
-      return { seats, total: all.length, unique: new Set(all).size, hand: game.hands[0].length };
+      return { seats, total: all.length, unique: new Set(all).size, hand: game.hands[0].length, pile: game.drawPile.length };
     });
+    let seventh = "";
+    try { table.createTable(7, Math.random, 0); } catch (error) { seventh = String((error as Error).message); }
+    return { sizes, seventh, maxComputers: series.MAX_COMPUTERS, sevenComputers: series.validateSetup({ mode: "single", opponents: 6, level: "standard" }) };
   });
-  expect(out).toEqual([
-    { seats: 6, total: 52, unique: 52, hand: 7 },
-    { seats: 7, total: 104, unique: 104, hand: 7 },
-    { seats: 8, total: 104, unique: 104, hand: 7 },
-  ]);
+  for (const size of out.sizes) expect(size).toMatchObject({ total: 52, unique: 52, hand: 7 });
+  expect(out.sizes.at(-1)!.pile).toBe(52 - 6 * 7 - 1);
+  expect(out.seventh).toContain("2 to 6");
+  expect(out.maxComputers).toBe(5);
+  expect(out.sevenComputers).toContain("1 to 5 computers");
 });
 
 test("Knock Out is head to head: every game has two players, winners go through, one champion at the end", async ({ page }) => {
@@ -100,7 +104,7 @@ test("Knock Out is head to head: every game has two players, winners go through,
   const report = await page.evaluate(async () => {
     const series = await import("/src/switch/series.ts");
     const problems: string[] = [];
-    for (let players = 3; players <= 8; players += 1) {
+    for (let players = 3; players <= 6; players += 1) {
       for (let run = 0; run < 5; run += 1) {
         let state = series.startSeries({ mode: "knockout", opponents: players - 1, level: "standard" }, Math.random);
         let guard = 0;

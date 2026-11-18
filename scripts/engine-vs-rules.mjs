@@ -6,7 +6,7 @@ import { legalPlays, newGame, rng, step, STYLES, rankOf } from "./table-sim.mjs"
 export function buildCases(games) {
 
 const snapshots = [];
-for (const n of [2, 3, 4, 7, 8]) {
+for (const n of [2, 3, 4, 5, 6]) {
   for (let i = 0; i < games; i++) {
     const random = rng(9000 + i * 7 + n);
     const g = newGame(n, random);

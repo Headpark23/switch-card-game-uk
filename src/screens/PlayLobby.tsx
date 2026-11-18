@@ -15,7 +15,7 @@ function leansOn(level: ComputerLevel, personality: string): string {
 import { getComputerGames, getMeId, summariseComputerGames } from '../switch/computerLog';
 import { readClub } from '../switch/clubStore';
 import { loadSeat } from '../switch/onlineRoom';
-import { ROUND_CHOICES, roundsLabel, roundsNote, chooseComputers, COMPUTER_MODES, COMPUTER_NAMES_IN_ORDER, MATCH_BEST_OF, MATCH_FIRST_TO, matchCountFor, matchLabel, modeInfo, validateSetup, type MatchType, type PlayMode, type SeriesSetup } from '../switch/series';
+import { ROUND_CHOICES, roundsLabel, roundsNote, chooseComputers, COMPUTER_MODES, COMPUTER_NAMES_IN_ORDER, MAX_COMPUTERS, MATCH_BEST_OF, MATCH_FIRST_TO, matchCountFor, matchLabel, modeInfo, validateSetup, type MatchType, type PlayMode, type SeriesSetup } from '../switch/series';
 import { CardImage, FeltHeader, MiniFan } from '../ui';
 
 const LEVELS: readonly { id: ComputerLevel; name: string; note: string }[] = [
@@ -40,7 +40,7 @@ export function loadTableChoice(): Choice {
     const mode = COMPUTER_MODES.find((entry) => entry.id === saved?.mode)?.id ?? 'match';
     const matchType: MatchType = saved?.matchType === 'best' ? 'best' : 'first';
     const games = matchCountFor(matchType, Number.isInteger(saved?.games) ? saved!.games! : 1);
-    const opponents = saved && Number.isInteger(saved.opponents) && saved.opponents! >= 1 && saved.opponents! <= 7 ? Math.max(saved.opponents!, fewestComputers(mode)) : Math.max(1, fewestComputers(mode));
+    const opponents = saved && Number.isInteger(saved.opponents) && saved.opponents! >= 1 && saved.opponents! <= MAX_COMPUTERS ? Math.max(saved.opponents!, fewestComputers(mode)) : Math.max(1, fewestComputers(mode));
     const level = LEVELS.find((entry) => entry.id === saved?.level)?.id ?? 'standard';
     const limit = Number.isInteger(saved?.limit) && saved!.limit! >= 10 && saved!.limit! <= 999 ? saved!.limit! : DEFAULT_CHOICE.limit;
     const picks = Array.isArray(saved?.picks) ? saved!.picks!.filter((name, index, all) => (COMPUTER_NAMES_IN_ORDER as readonly string[]).includes(name) && all.indexOf(name) === index).slice(0, opponents) : [];
@@ -58,7 +58,7 @@ type Props = {
   onFriends: () => void;
 };
 
-/** PLAY: the competitive game against 1 to 7 computers, as a single game or a tournament. Guided practice lives in Learn the Rules, apart from this. */
+/** PLAY: the competitive game against 1 to 5 computers, as a single game or a tournament. Guided practice lives in Learn the Rules, apart from this. */
 export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLearn, onFriends }: Props) {
   const [choice, setChoice] = useState(loadTableChoice);
   const [speed, setSpeed] = useState<Speed>(readSpeed);
@@ -84,7 +84,7 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
   const startLabel = choice.mode === 'match' ? matchLabel(choice.matchType, choice.games) : choice.mode === 'lastout' && choice.roundsToWin > 1 ? `Last One Out · ${roundsLabel(choice.roundsToWin).toLowerCase()}` : modeInfo(choice.mode).name;
 
   return <section className="play-lobby" aria-labelledby="play-title">
-    <FeltHeader compact id="play-title" title="Take a seat." intro="Play Switch against up to seven computers, as a single game or a whole tournament. Every game counts towards your record." cards={['AS', 'KH']} />
+    <FeltHeader compact id="play-title" title="Take a seat." intro="Play Switch against up to five computers, as a single game or a whole tournament. Every game counts towards your record." cards={['AS', 'KH']} />
 
     {active && <button className="resume-card" onClick={onResume}><span className="resume-dot" aria-hidden="true" /><span><strong>Resume your game</strong><small>Against {active.opponents === 1 ? 'the computer' : `${active.opponents} computers`} · {LEVELS.find((entry) => entry.id === active.level)?.name} · {active.game.hands[0].length} cards in hand</small></span><ArrowRight size={17} /></button>}
 
@@ -110,10 +110,9 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
 
     <div className="lobby-group" role="group" aria-label="Computer opponents">
       <h2>Play against</h2>
-      <div className="seg seven">{[1, 2, 3, 4, 5, 6, 7].map((count) => <button key={count} aria-pressed={choice.opponents === count} className={choice.opponents === count ? 'active' : ''} disabled={count < fewestComputers(choice.mode)} onClick={() => set({ opponents: count })} aria-label={`${count} ${count === 1 ? 'opponent' : 'opponents'}`}><b>{count}</b></button>)}</div>
+      <div className="seg five">{Array.from({ length: MAX_COMPUTERS }, (_, index) => index + 1).map((count) => <button key={count} aria-pressed={choice.opponents === count} className={choice.opponents === count ? 'active' : ''} disabled={count < fewestComputers(choice.mode)} onClick={() => set({ opponents: count })} aria-label={`${count} ${count === 1 ? 'opponent' : 'opponents'}`}><b>{count}</b></button>)}</div>
       <p className="lobby-note">
         {choice.opponents === 1 ? 'Head to head. A jack brings play straight back to whoever played it.' : `A table of ${choice.opponents + 1}. Jacks reverse the direction, and the deal passes clockwise.`}
-        {choice.opponents >= 6 ? ' Seven or eight players use two decks.' : ''}
         {choice.mode === 'group' ? ` Group Play splits ${choice.opponents + 1} players into two leagues.` : ''}
       </p>
     </div>

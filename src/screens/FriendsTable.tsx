@@ -37,6 +37,9 @@ type Props = {
   onOpenCode?: (kind: CodeKind, code: string) => void;
 };
 
+/** Bigger online nights split onto several tables of up to 6 (rulings 32 and 38). */
+const BIG_NIGHTS = [8, 10, 12, 14, 16];
+
 /** PLAY WITH FRIENDS: start a private table or join one with a code. Computers fill any empty seats. */
 export default function FriendsTable({ initialCode = '', onBack, onSeated, onOpenCode }: Props) {
   const keyboard = useKeyboard();
@@ -156,9 +159,9 @@ export default function FriendsTable({ initialCode = '', onBack, onSeated, onOpe
       </div>}
       <div className="lobby-group" role="group" aria-label="Seats at the table">
         <h2>How many seats?</h2>
-        <div className="seg seven">{[2, 3, 4, 5, 6, 7, 8].map((count) => <button key={count} aria-pressed={seats === count} className={seats === count ? 'active' : ''} disabled={count < fewest} onClick={() => setSeats(count)} aria-label={`${count} seats`}><b>{count}</b></button>)}</div>
-        {most > 8 && <><p className="seat-row-label">Bigger nights</p><div className="seg four compact">{[10, 12, 14, 16].map((count) => <button key={count} aria-pressed={seats === count} className={seats === count ? 'active' : ''} onClick={() => setSeats(count)} aria-label={`${count} seats`}><b>{count}</b></button>)}</div></>}
-        <p className="lobby-note">{fewest > 2 ? `${modeInfo(mode).name} needs at least ${fewest} seats. ` : ''}{most > 8 ? 'Up to 16: the games are played at the same time, on several tables. ' : 'Up to 8, everyone in one game. '}Your guests take seats as they join. Any seat still empty when you start is played by a computer.{seats >= 7 && seats <= 8 ? ' Seven or eight at one game use two decks.' : ''}</p>
+        <div className="seg five">{[2, 3, 4, 5, 6].map((count) => <button key={count} aria-pressed={seats === count} className={seats === count ? 'active' : ''} disabled={count < fewest} onClick={() => setSeats(count)} aria-label={`${count} seats`}><b>{count}</b></button>)}</div>
+        {most > 6 && <><p className="seat-row-label">Bigger nights</p><div className={`seg compact ${BIG_NIGHTS.filter((count) => count <= most).length === 5 ? 'five' : 'trio'}`}>{BIG_NIGHTS.filter((count) => count <= most).map((count) => <button key={count} aria-pressed={seats === count} className={seats === count ? 'active' : ''} onClick={() => setSeats(count)} aria-label={`${count} seats`}><b>{count}</b></button>)}</div></>}
+        <p className="lobby-note">{fewest > 2 ? `${modeInfo(mode).name} needs at least ${fewest} seats. ` : ''}{most > 6 ? `Up to ${most}: the games are played at the same time, on tables of up to 6. ` : 'Up to 6, everyone in one game. '}Your guests take seats as they join. Any seat still empty when you start is played by a computer.</p>
       </div>
       <div className="lobby-group" role="group" aria-label="Computers at the table">
         <h2>Which computers fill empty seats?</h2>

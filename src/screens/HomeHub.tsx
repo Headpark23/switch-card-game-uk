@@ -109,7 +109,7 @@ export default function HomeHub(props: Props) {
       </div>}
 
       <div className="home-tiles v2">
-        <button className="home-tile red" onClick={props.onPlay}><TileIndex suit="♥" /><strong>Play cards</strong><small>Against 1 to 7 computers</small></button>
+        <button className="home-tile red" onClick={props.onPlay}><TileIndex suit="♥" /><strong>Play cards</strong><small>Against 1 to 5 computers</small></button>
         <button className="home-tile" onClick={props.onScore}><TileIndex suit="♣" /><strong>Keep score</strong><small>Real cards, real table</small></button>
         <button className="home-tile" onClick={props.onClub}><TileIndex suit="♠" /><strong>My club</strong><small>Stats, seasons, trophies</small></button>
         <button className="home-tile red" onClick={props.onAchievements}><TileIndex suit="♦" /><strong>Achievements</strong><small>Badges and passport</small></button>

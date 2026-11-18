@@ -188,7 +188,7 @@ export function onlineModeBlurb(mode: PlayMode, setup?: RoomSetup): string {
     case "lastout": return `Everyone plays the same game. Whoever is left holding cards drops out, until one player is left.${(setup?.roundsToWin ?? 1) > 1 ? ` That is a round win: first to ${setup?.roundsToWin} round wins takes the table.` : ""} More than eight are split across tables.`;
     case "knockout": return "Everyone plays each round; more than eight are split across tables. Whoever is left holding cards at a table is out, until one player is left.";
     case "cup": return "Head-to-head matches, drawn at random, all played at the same time. Win yours to go through.";
-    case "group": return "Two leagues playing side by side, then the championship and plate play-offs. For 6 to 16 players.";
+    case "group": return "Two leagues playing side by side, then the championship and plate play-offs. For 6 to 12 players.";
     case "darts": return "Each game is a leg. Three legs win a set; first to the sets wins the match.";
     case "dominoes": return "Cards left in hand add up after every game. First to the number loses.";
   }

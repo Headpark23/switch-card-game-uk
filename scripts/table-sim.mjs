@@ -1,9 +1,8 @@
-// Plays full Switch games for 2-8 players (7 and 8 use two decks, ruling 21), straight from the WRITTEN rules (src/content.ts),
+// Plays full Switch games for 2-6 players with one deck (ruling 38), straight from the WRITTEN rules (src/content.ts),
 // independent of src/switch/rules.ts. Used to find places where the rules do not make sense.
 // Usage: node scripts/table-sim.mjs [players] [games] [seed] [--story]
 const SUITS = ["S", "H", "D", "C"];
 const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
-// A card from the second deck carries a trailing apostrophe and plays exactly like its twin.
 const face = (c) => (c.endsWith("'") ? c.slice(0, -1) : c);
 export const rankOf = (c) => face(c).slice(0, -1);
 export const suitOf = (c) => face(c).slice(-1);
@@ -23,8 +22,9 @@ export function rng(seed) {
 }
 
 export function newGame(n, random) {
-  const one = RANKS.flatMap((r) => SUITS.map((s) => r + s));
-  const deck = n > 6 ? [...one, ...one.map((c) => c + "'")] : one;
+  // One deck only, so 2 to 6 players: six take 42 cards and leave a pile to pick up from (ruling 38).
+  if (!Number.isInteger(n) || n < 2 || n > 6) throw new Error(`Switch is for 2 to 6 players, not ${n}.`);
+  const deck = RANKS.flatMap((r) => SUITS.map((s) => r + s));
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
     [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -174,7 +174,7 @@ export const STYLES = {
 export function check(g, label) {
   const all = [...g.hands.flat(), ...g.draw, ...g.discard];
   const problems = [];
-  const expected = g.n > 6 ? 104 : 52;
+  const expected = 52;
   if (all.length !== expected || new Set(all).size !== expected) problems.push(`${label}: cards not conserved (${all.length} cards, ${new Set(all).size} unique)`);
   if (g.penalty && g.penalty.kind === "two" && g.penalty.cards > (g.n > 6 ? 16 : 8)) problems.push(`${label}: two-penalty above ${g.n > 6 ? 16 : 8}`);
   return problems;

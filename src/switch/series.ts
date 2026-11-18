@@ -16,7 +16,8 @@ export type PlayMode = "single" | "match" | "lastout" | "knockout" | "group" | "
 
 export const COMPUTER_NAMES_IN_ORDER = ["John", "Paul", "George", "Ringo", "Ziggy", "Marley", "Bowie"] as const;
 export const ME_ID = "me";
-export const MAX_COMPUTERS = 7;
+/** You plus five computers is a full table of six, all one deck can deal while leaving a pile to pick up from (ruling 38). */
+export const MAX_COMPUTERS = 5;
 
 export interface ModeInfo {
   readonly id: PlayMode;
@@ -33,21 +34,21 @@ export interface ModeInfo {
 }
 
 export const MODES: readonly ModeInfo[] = [
-  { id: "single", name: "Single game", short: "Single", blurb: "One game of Switch. First out wins.", minPlayers: 2, maxPlayers: 8,
+  { id: "single", name: "Single game", short: "Single", blurb: "One game of Switch. First out wins.", minPlayers: 2, maxPlayers: 6,
     how: ["One ordinary game of Switch. Everyone is dealt a hand and the first player to get rid of every card wins."], scoring: "No points. A win or a loss goes in your record." },
-  { id: "match", name: "Games", short: "Games", blurb: "Play a set number of games. Best of 3, 5 or more, or first to a number of wins.", minPlayers: 2, maxPlayers: 8,
+  { id: "match", name: "Games", short: "Games", blurb: "Play a set number of games. Best of 3, 5 or more, or first to a number of wins.", minPlayers: 2, maxPlayers: 6,
     how: ["The same players play game after game. Pick \"First to\" a number of wins, or \"Best of\" a number of games.", "In a best of, the match stops as soon as nobody can catch the leader. If you are level after the last game, extra games are dealt until someone is ahead."], scoring: "One win per game won. Most wins takes the match." },
-  { id: "lastout", name: "Last One Out", short: "Last One Out", blurb: "Everyone plays. The last player still holding cards drops out. Last player left wins.", minPlayers: 3, maxPlayers: 8,
+  { id: "lastout", name: "Last One Out", short: "Last One Out", blurb: "Everyone plays. The last player still holding cards drops out. Last player left wins.", minPlayers: 3, maxPlayers: 6,
     how: ["Everyone plays the same game together. When one player is left holding cards, they drop out.", "The rest are dealt in again and play on: five become four, four become three, three become two. The last two play a 1 v 1 final. The last player standing wins the round.", "Choose how many rounds to play: a one-off game, or first to 2, 3, 4 or 5 round wins. Between rounds everyone is dealt back in."], scoring: "One round win for the last player standing. First to your chosen number of round wins takes the series; a one-off is a single round. Going out early keeps you in." },
-  { id: "knockout", name: "Knock Out", short: "Knock Out", blurb: "1 v 1 games. Win yours to go through to the next round, until one is left.", minPlayers: 3, maxPlayers: 8,
+  { id: "knockout", name: "Knock Out", short: "Knock Out", blurb: "1 v 1 games. Win yours to go through to the next round, until one is left.", minPlayers: 3, maxPlayers: 6,
     how: ["Players are drawn into pairs and each pair plays a 1 v 1 game. Win yours and you go through to the next round; lose and you are out.", "If there is an odd number, one player gets a bye straight through. Rounds repeat until one player is left."], scoring: "No points. Your place is how far you got. The last one standing wins." },
-  { id: "group", name: "Group Play", short: "Group Play", blurb: "Two leagues, then the championship and plate knockouts.", minPlayers: 6, maxPlayers: 8,
+  { id: "group", name: "Group Play", short: "Group Play", blurb: "Two leagues, then the championship and plate knockouts.", minPlayers: 6, maxPlayers: 6,
     how: ["Players are split into two leagues. Each league plays as many games as it has players, and every game is played on after the first player goes out, until every place is settled.", "The top two in each league go through to the championship. Everyone else plays for the plate. Both are knock-outs: the last player holding cards drops out each game, until a 1 v 1 final."], scoring: "League points: the first out scores as many points as there are players in the league, the next one less, down to 1 for the last. Level on points? Most wins, then one deciding game." },
-  { id: "cup", name: "Switch Cup", short: "Switch Cup", blurb: "Head-to-head knockout rounds. Win your match to go through.", minPlayers: 2, maxPlayers: 8,
+  { id: "cup", name: "Switch Cup", short: "Switch Cup", blurb: "Head-to-head knockout rounds. Win your match to go through.", minPlayers: 2, maxPlayers: 6,
     how: ["A bracket of head-to-head matches, drawn at random. Win your match to go through to the next round. A bye takes you straight through if the numbers are odd.", "The final decides the Cup."], scoring: "No points. Winning every match wins the Cup." },
-  { id: "darts", name: "Darts scoring", short: "Darts", blurb: "Each game is a leg. Three legs win a set; win the sets to win the match.", minPlayers: 2, maxPlayers: 8,
+  { id: "darts", name: "Darts scoring", short: "Darts", blurb: "Each game is a leg. Three legs win a set; win the sets to win the match.", minPlayers: 2, maxPlayers: 6,
     how: ["Scored like darts. Every game of Switch is a leg: win a game to win a leg.", "Win three legs to win a set. The legs then reset. Keep going until someone has won the sets needed (3 or 5)."], scoring: "Legs win sets, sets win the match. First to 3 or 5 sets wins." },
-  { id: "dominoes", name: "Dominoes scoring", short: "Dominoes", blurb: "Cards left in hand add up. First to your number loses.", minPlayers: 2, maxPlayers: 8,
+  { id: "dominoes", name: "Dominoes scoring", short: "Dominoes", blurb: "Cards left in hand add up. First to your number loses.", minPlayers: 2, maxPlayers: 6,
     how: ["After every game, the cards left in each player's hand are added to that player's running total.", "Keep playing games until someone reaches the number you chose. That player loses."], scoring: "Ace is 1 up to king 13 (jack 11, queen 12). The winner of a game adds nothing. The lowest total wins." },
 ];
 
@@ -116,14 +117,14 @@ export function chooseComputers(count: number, picks: readonly string[] = [], ra
 }
 
 /** The most players a way of playing can take at an online table: tournaments split into several games at once. */
-export const ONLINE_MAX_PLAYERS: Readonly<Record<PlayMode, number>> = { single: 8, match: 8, darts: 8, dominoes: 8, lastout: 16, knockout: 16, cup: 16, group: 16 };
+export const ONLINE_MAX_PLAYERS: Readonly<Record<PlayMode, number>> = { single: 6, match: 6, darts: 6, dominoes: 6, lastout: 16, knockout: 16, cup: 16, group: 12 };
 
-/** `maxPlayers` is 8 against the computer; an online table allows more for tournaments (ONLINE_MAX_PLAYERS). */
+/** `maxPlayers` is 6 against the computer; an online table allows more for tournaments (ONLINE_MAX_PLAYERS). */
 export function validateSetup(setup: SeriesSetup, maxPlayers = MAX_COMPUTERS + 1): string | null {
   const info = modeInfo(setup.mode);
   const players = setup.opponents + 1;
-  if (!Number.isInteger(setup.opponents) || setup.opponents < 1 || players > maxPlayers) return maxPlayers === MAX_COMPUTERS + 1 ? "Choose 1 to 7 computers." : `${info.name} is for up to ${maxPlayers} players.`;
-  if (players > 8 && (setup.mode === "darts" || setup.mode === "dominoes" || setup.mode === "match")) return `${info.name} is for up to 8 players: everyone plays in every game.`;
+  if (!Number.isInteger(setup.opponents) || setup.opponents < 1 || players > maxPlayers) return maxPlayers === MAX_COMPUTERS + 1 ? `Choose 1 to ${MAX_COMPUTERS} computers.` : `${info.name} is for up to ${maxPlayers} players.`;
+  if (players > TABLE_MAX && (setup.mode === "darts" || setup.mode === "dominoes" || setup.mode === "match")) return `${info.name} is for up to ${TABLE_MAX} players: everyone plays in every game.`;
   if (players < info.minPlayers) return `${info.name} needs at least ${info.minPlayers} players, so at least ${info.minPlayers - 1} computers.`;
   if (setup.mode === "match") {
     const games = setup.games;
@@ -213,7 +214,7 @@ interface KnockoutPart {
   readonly out: readonly string[];
   readonly championId: string | null;
   /**
-   * More than 8 left cannot sit at one game (ruling 32): they are drawn onto tables of up to 8 that play at the same
+   * More than 6 left cannot sit at one game (rulings 32 and 38): they are drawn onto tables of up to 6 that play at the same
    * time, and the last one holding cards at each table is out. `heats` are those tables; `heatLosers` who went at each.
    */
   readonly heats?: readonly (readonly string[])[] | null;
@@ -221,10 +222,10 @@ interface KnockoutPart {
   readonly round?: number;
 }
 
-/** The most players at one game of Switch: two decks (ruling 21). */
-const TABLE_MAX = 8;
+/** The most players at one game of Switch: one deck, with a pile left to pick up from (ruling 38). */
+export const TABLE_MAX = 6;
 
-/** Splits players as evenly as possible onto the fewest tables of up to 8. */
+/** Splits players as evenly as possible onto the fewest tables of up to 6. */
 function drawTables(ids: readonly string[], random: RandomSource): string[][] {
   const order = shuffled(ids, random);
   const count = Math.ceil(order.length / TABLE_MAX);
@@ -271,7 +272,7 @@ function shuffled<T>(items: readonly T[], random: RandomSource): T[] {
   return result;
 }
 
-/** League sizes for a group of `players`: 6 is 3 and 3, 7 is 4 and 3, 8 is 4 and 4 (ruling 16). */
+/** League sizes for a group of `players`: 6 is 3 and 3, 7 is 4 and 3, 12 is 6 and 6 (rulings 16 and 38: a league is 3 to 6). */
 export function leagueSizes(players: number): [number, number] {
   const second = Math.floor(players / 2);
   return [players - second, second];

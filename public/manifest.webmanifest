@@ -1,7 +1,7 @@
 {
   "name": "Switch — Your game-night club",
   "short_name": "Switch",
-  "description": "The card game like Uno for grown-ups, played with a normal deck. Play friends online or up to 7 computers, learn the rules, keep score on card night, and share your club.",
+  "description": "No special cards, just a normal deck and a shout of “Last Card!”. Play friends online or up to 5 computers, learn the rules, keep score on card night, and share your club.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
