@@ -214,7 +214,7 @@ export async function lookupTable(code: string): Promise<RoomSummary> {
 export async function joinTable(code: string, name: string): Promise<{ code: string; token: string; view: RoomView }> {
   return request("POST", { code, op: "join" }, null, { name });
 }
-export async function sendToTable(seat: SavedSeat, op: "start" | "move" | "call" | "react" | "again", body?: unknown, watch: string | null = null): Promise<RoomView> {
+export async function sendToTable(seat: SavedSeat, op: "start" | "move" | "call" | "missed" | "react" | "again", body?: unknown, watch: string | null = null): Promise<RoomView> {
   return request("POST", { code: seat.code, op, ...(watch ? { watch } : {}) }, seat.token, body);
 }
 
@@ -278,7 +278,7 @@ export function useRoom(seat: SavedSeat | null, watch: string | null = null) {
   // Choosing another game to watch shows it straight away.
   useEffect(() => { pollNow.current(); }, [watch]);
 
-  const send = useCallback(async (op: "start" | "move" | "call" | "react" | "again", body?: unknown) => {
+  const send = useCallback(async (op: "start" | "move" | "call" | "missed" | "react" | "again", body?: unknown) => {
     if (!seat) throw new RoomApiError("No table.", 0);
     const next = await sendToTable(seat, op, body, watchRef.current);
     accept(next);

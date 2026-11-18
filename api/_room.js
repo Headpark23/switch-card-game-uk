@@ -41,8 +41,13 @@ export const TIMING = Object.freeze({
   awayMs: 5_000,
   /** The pause before a computer seat plays. Games with only computers play at this pace too, in real time. */
   computerMs: 2_000,
-  /** How long someone holding one card has to say "Last Card" before the table spots it. */
+  /** How long someone holding one card has to say "Last Card" before the table spots it. Counted on their own phone. */
   spotMs: 5_000,
+  /**
+   * Their phone keeps the five seconds and reports a miss itself, so a slow network never eats into them and a call
+   * already pressed is never beaten by another phone's look at the table. This is only for a phone that went quiet.
+   */
+  spotBackstopMs: 15_000,
   /** A move that reaches the server this soon after the deadline still beats the computer. */
   leniencyMs: 1_000,
   /** If nobody at all has been seen for this long, the clocks stop and start again when someone returns. */
@@ -502,8 +507,39 @@ function dueFor(room, table) {
   return { at: table.turnAt + TIMING.graceMs + wait, auto: true };
 }
 
-/** Five seconds to say "Last Card" from when the move reached the table, plus a second for the call to travel, whoever is looking. */
-const SPOT_AFTER = TIMING.spotMs + TIMING.leniencyMs;
+/**
+ * Owner report, 18 Nov 2026: a call pressed in time was still penalised. The five seconds are now kept by the phone of
+ * the person holding one card (see `reportMissedLastCard`); the table only spots on its own clock if that phone has gone quiet.
+ */
+const SPOT_AFTER = TIMING.spotBackstopMs;
+
+/** Whether this seat is holding one card, has not said "Last Card", and can be spotted. */
+function spottable(room, table, seat) {
+  const person = seatOf(room, table, seat);
+  return person.kind === "human" && person.exposedAt !== null && person.exposedAt !== undefined && !person.called && table.game.hands[seat].length === 1;
+}
+
+/** Caught holding one card without saying "Last Card": two cards. */
+function spotSeat(room, table, seat, at) {
+  const person = seatOf(room, table, seat);
+  table.game = dealTo(table.game, seat, 2);
+  person.exposedAt = null;
+  computerBanter(room, table, { kind: "spotted", victim: seat, by: table.players.findIndex((_, index) => index !== seat && seatOf(room, table, index).kind === "computer") }, at);
+  recordMove(table, { seat, type: "spot", cards: [], auto: false, computer: false, missedLastCard: true, counts: table.game.hands.map((hand) => hand.length), at });
+}
+
+/**
+ * The phone of someone holding one card says their five seconds ran out with no call. It only ever reports when the
+ * person did not press Last Card on it, so a press always wins. A report that comes too soon is ignored.
+ */
+export function reportMissedLastCard(room, player, now) {
+  const table = activeTableOf(room, player);
+  if (!table) return;
+  const seat = table.players.indexOf(player);
+  if (!spottable(room, table, seat)) return;
+  if (now < room.seats[player].exposedAt + TIMING.spotMs) return;
+  spotSeat(room, table, seat, now);
+}
 
 /** The next thing due anywhere in the room: a missed "Last Card" spotted, a move played for someone, or a game dealt. */
 function nextEvent(room) {
@@ -512,8 +548,7 @@ function nextEvent(room) {
   for (const table of room.tables) {
     if (!active(table)) continue;
     table.players.forEach((player, seat) => {
-      const person = room.seats[player];
-      if (person.exposedAt !== null && person.exposedAt !== undefined && !person.called && table.game.hands[seat].length === 1) consider({ kind: "spot", at: person.exposedAt + SPOT_AFTER, table, seat });
+      if (spottable(room, table, seat)) consider({ kind: "spot", at: room.seats[player].exposedAt + SPOT_AFTER, table, seat });
     });
     const due = dueFor(room, table);
     consider({ kind: "move", at: due.at, auto: due.auto, table });
@@ -534,14 +569,7 @@ export function tick(room, now, random = secureRandom) {
     changed = true;
     if (event.kind === "deal") { dealDue(room, event.at, random); continue; }
     const { table } = event;
-    if (event.kind === "spot") {
-      const person = seatOf(room, table, event.seat);
-      table.game = dealTo(table.game, event.seat, 2);
-      person.exposedAt = null;
-      computerBanter(room, table, { kind: "spotted", victim: event.seat, by: table.players.findIndex((_, index) => index !== event.seat && seatOf(room, table, index).kind === "computer") }, event.at);
-      recordMove(table, { seat: event.seat, type: "spot", cards: [], auto: false, computer: false, missedLastCard: true, counts: table.game.hands.map((hand) => hand.length), at: event.at });
-      continue;
-    }
+    if (event.kind === "spot") { spotSeat(room, table, event.seat, event.at); continue; }
     // A computer seat plays as itself (its personality and tactics). When the computer plays for a person who ran out of
     // time, it plays plainly, with no tactics: it is covering for them, not out to win (owner decision, 14 Nov 2026).
     const mover = seatOf(room, table, table.game.turn);
@@ -771,6 +799,7 @@ async function route(request, store, now, random, observe) {
     else if (op === "again") againRoom(room, seatIndex, now, random);
     else if (op === "move") humanMove(room, seatIndex, body, now);
     else if (op === "call") callLastCard(room, seatIndex);
+    else if (op === "missed") reportMissedLastCard(room, seatIndex, now);
     else if (op === "react") react(room, seatIndex, body.id, now);
     else throw new RoomError("Unknown request.");
     return true;

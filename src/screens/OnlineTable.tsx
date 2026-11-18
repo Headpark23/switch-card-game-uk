@@ -10,10 +10,10 @@ import { cue } from '../feedback';
 import { logComputerGame, logOnlineNight, logSeriesResult } from '../switch/logGame';
 import { getComputerGames } from '../switch/computerLog';
 import { readClub } from '../switch/clubStore';
-import { drawTiming, paceIsHuman, planTurn, REDUCED, SPEEDS, stepDuration, visibleAt, type Step } from '../switch/presentation';
+import { drawTiming, LAST_CARD_GRACE_MS, paceIsHuman, planTurn, REDUCED, SPEEDS, stepDuration, visibleAt, type Step } from '../switch/presentation';
 import { readSpeed } from '../switch/activeTable';
 import { modeInfo, pendingGames, seriesPlayerName, standings } from '../switch/series';
-import { clearSeat, loadSeat, onlineModeBlurb, reactionOf, tableInvite, tableName, useRoom, type RoomView } from '../switch/onlineRoom';
+import { clearSeat, loadSeat, onlineModeBlurb, reactionOf, RoomApiError, tableInvite, tableName, useRoom, type RoomView } from '../switch/onlineRoom';
 import { logReaction } from '../switch/gameReplay';
 import { GameEnding } from './GameEnding';
 import { beginReplay, Bubble, ReactionSheet, useBubbles, useReplayRecorder } from './tableTalk';
@@ -420,10 +420,53 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
     if (watching || game.status !== 'playing' || lastCalled) return;
     cue('good');
     setCalled(true);
-    // Said after choosing the final card it is too late (ruling 26): the table is only told when it still counts.
-    if (staged.length > 0 && staged.length === hand.length) return;
-    room.send('call').catch(() => { /* the next move carries the call too */ });
+    // Ruling 26 (amended): with a single card left, that card is both the first and the final card, so a call made
+    // while it is selected, before Play is pressed, still counts.
+    if (hand.length === 1) calledBeforeFinal.current = true;
+    // Said after choosing the final card of a set it is too late (ruling 26): the table is only told when it still counts.
+    else if (staged.length > 0 && staged.length === hand.length) return;
+    void tellTableLastCard();
   }
+
+  /**
+   * A call pressed on this phone must reach the table: a dropped or busy request is tried again until the table has it.
+   * Until then this phone never reports a miss, so a press can never be beaten by the clock (owner report, 18 Nov 2026).
+   */
+  const callSending = useRef(false);
+  async function tellTableLastCard() {
+    if (callSending.current) return;
+    callSending.current = true;
+    try {
+      for (let attempt = 0; attempt < 12; attempt += 1) {
+        if (!calledRef.current) return;
+        try { await room.send('call'); return; } catch (reason) {
+          // The game has ended or moved on without this seat: there is nothing left to call for.
+          if (reason instanceof RoomApiError && [403, 404, 409].includes(reason.status)) return;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, attempt < 3 ? 400 : 1000));
+      }
+      setCalled(false);
+      setWarn('Your "Last Card" could not reach the table. Check your connection and press it again.');
+    } finally { callSending.current = false; }
+  }
+
+  // Your five seconds to say "Last Card" are kept here, on your own phone, from the moment it shows you holding one
+  // card. Only when they run out with no call does this phone tell the table, which then makes you pick up two.
+  const exposed = !watching && game.status === 'playing' && youOutAt === 0 && game.hands[0]?.length === 1 && !lastCalled;
+  const missTimer = useRef(0);
+  useEffect(() => {
+    if (!exposed) { window.clearTimeout(missTimer.current); missTimer.current = 0; return; }
+    if (missTimer.current) return;
+    const check = () => {
+      if (calledRef.current || callSending.current) { missTimer.current = 0; return; }
+      // A move of yours is on its way: it settles the call itself, so look again once it has landed.
+      if (busy.current) { missTimer.current = window.setTimeout(check, 500); return; }
+      missTimer.current = 0;
+      room.send('missed').catch(() => { /* the table spots it on its own clock if this never arrives */ });
+    };
+    missTimer.current = window.setTimeout(check, LAST_CARD_GRACE_MS);
+  }, [exposed]);
+  useEffect(() => () => window.clearTimeout(missTimer.current), []);
 
   function react(id: string) {
     setReactOpen(false);

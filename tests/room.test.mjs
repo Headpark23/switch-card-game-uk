@@ -197,16 +197,22 @@ test("saying Last Card first wins; the call can be made on its own or with the p
   assert.equal(alsoWon.body.status, "finished");
 });
 
-test("holding one card without saying Last Card is spotted after five seconds, and the call prevents it", async () => {
+test("holding one card without saying Last Card is spotted when your own phone says your five seconds ran out, and the call prevents it", async () => {
   const quiet = await staged(["5H", "KD"], { others: 4 });
   await call(quiet.store, { code: quiet.code, op: "move", token: quiet.tokens[quiet.who], body: { action: { type: "play", cards: ["5H"] } } }, T0 + 10);
   assert.equal(quiet.room().game.hands[quiet.seat].length, 1);
   const other = 1 - quiet.who;
   await call(quiet.store, { method: "GET", code: quiet.code, token: quiet.tokens[other] }, T0 + 3_000);
   assert.equal(quiet.room().game.hands[quiet.seat].length, 1, "not yet");
-  await call(quiet.store, { method: "GET", code: quiet.code, token: quiet.tokens[other] }, T0 + 6_100);
+  // A report sooner than five seconds is ignored; your phone reports once its five seconds have run out.
+  await call(quiet.store, { code: quiet.code, op: "missed", token: quiet.tokens[quiet.who] }, T0 + 4_000);
+  assert.equal(quiet.room().game.hands[quiet.seat].length, 1, "too soon to be spotted");
+  await call(quiet.store, { code: quiet.code, op: "missed", token: quiet.tokens[quiet.who] }, T0 + 5_300);
   assert.equal(quiet.room().game.hands[quiet.seat].length, 3, "spotted: two cards");
-  assert.equal(quiet.room().moves.some((move) => move.type === "spot"), true);
+  assert.equal(quiet.room().moves.filter((move) => move.type === "spot").length, 1);
+  // A second report for the same miss changes nothing.
+  await call(quiet.store, { code: quiet.code, op: "missed", token: quiet.tokens[quiet.who] }, T0 + 5_600);
+  assert.equal(quiet.room().game.hands[quiet.seat].length, 3, "spotted once only");
 
   const loud = await staged(["5H", "KD"], { others: 4 });
   await call(loud.store, { code: loud.code, op: "move", token: loud.tokens[loud.who], body: { action: { type: "play", cards: ["5H"] }, lastCard: true } }, T0 + 10);
@@ -416,8 +422,40 @@ test("you get the full five seconds to say Last Card, even when other phones are
 
   const silent = await staged(["5H", "KD"], { others: 4 });
   await call(silent.store, { code: silent.code, op: "move", token: silent.tokens[silent.who], body: { action: { type: "play", cards: ["5H"] } } }, T0 + 10);
-  await call(silent.store, { method: "GET", code: silent.code, token: silent.tokens[1 - silent.who] }, T0 + 6_100);
-  assert.equal(silent.room().game.hands[silent.seat].length, 3, "never called: two cards");
+  await call(silent.store, { method: "GET", code: silent.code, token: silent.tokens[1 - silent.who] }, T0 + 5_000 + 4_000);
+  assert.equal(silent.room().game.hands[silent.seat].length, 1, "another phone's clock never spots it");
+  await call(silent.store, { method: "GET", code: silent.code, token: silent.tokens[1 - silent.who] }, T0 + 10 + TIMING.spotBackstopMs);
+  assert.equal(silent.room().game.hands[silent.seat].length, 3, "never called, and the phone went quiet: two cards");
+});
+
+test("owner report, 18 Nov 2026: a Last Card pressed in time is never beaten by other phones, a slow network or a retry", async () => {
+  // Other phones keep looking at the table; the call is slow to arrive (a weak signal, a busy server, a retry).
+  const slow = await staged(["5H", "KD"], { others: 4 });
+  await call(slow.store, { code: slow.code, op: "move", token: slow.tokens[slow.who], body: { action: { type: "play", cards: ["5H"] } } }, T0 + 10);
+  const other = 1 - slow.who;
+  for (let at = T0 + 1_500; at < T0 + 11_000; at += 1_500) await call(slow.store, { method: "GET", code: slow.code, token: slow.tokens[other] }, at);
+  assert.equal(slow.room().game.hands[slow.seat].length, 1, "only the phone holding the card decides the five seconds are up");
+  await call(slow.store, { code: slow.code, op: "call", token: slow.tokens[slow.who] }, T0 + 11_000);
+  // Even a stray miss report after the call changes nothing.
+  await call(slow.store, { code: slow.code, op: "missed", token: slow.tokens[slow.who] }, T0 + 11_100);
+  await call(slow.store, { method: "GET", code: slow.code, token: slow.tokens[other] }, T0 + 30_000);
+  assert.equal(slow.room().game.hands[slow.seat].length, 1, "called: never spotted");
+  assert.equal(slow.room().moves.some((move) => move.type === "spot"), false);
+  // Saying it again, as a retried request does, is harmless, and the last card then wins.
+  await call(slow.store, { code: slow.code, op: "call", token: slow.tokens[slow.who] }, T0 + 30_100);
+  assert.equal(slow.room().seats[slow.room().table[slow.seat]].called, true);
+
+  // Accepting a missed turn (an eight played at you) keeps your call.
+  const eight = await staged(["5H", "KD"], { others: 4 });
+  await call(eight.store, { code: eight.code, op: "call", token: eight.tokens[eight.who] }, T0 + 5);
+  await call(eight.store, { code: eight.code, op: "move", token: eight.tokens[eight.who], body: { action: { type: "play", cards: ["5H"] } } }, T0 + 10);
+  const row = eight.store.rows.get(eight.code).tables.at(-1);
+  row.game.turn = eight.seat;
+  row.game.pendingPenalty = { kind: "miss-turn" };
+  await call(eight.store, { code: eight.code, op: "move", token: eight.tokens[eight.who], body: { action: { type: "accept-missed-turn" } } }, T0 + 1_000);
+  await call(eight.store, { code: eight.code, op: "missed", token: eight.tokens[eight.who] }, T0 + 7_000);
+  await call(eight.store, { method: "GET", code: eight.code, token: eight.tokens[1 - eight.who] }, T0 + 30_000);
+  assert.equal(eight.room().game.hands[eight.seat].length, 1, "the call survives a missed turn");
 });
 
 /** Plays a whole online tournament: people move when it is their turn, time passes for computers and between games. */
