@@ -432,7 +432,8 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     show(before, action, applyTableAction(before, action), false);
     setStaged([]);
     setHint(false);
-    setLastCalled(false);
+    // Picking up cards means saying "Last Card" again later. Accepting a missed turn picks up nothing, so a call already made stands.
+    if (!missTurn) setLastCalled(false);
   }
 
   function callLastCard() {

@@ -410,7 +410,9 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
   function pickUp() {
     if (!yourMove || busy.current) return;
     cue(pendingDraw ? 'penalty' : 'draw');
-    setStaged([]); setHint(false); setCalled(false);
+    setStaged([]); setHint(false);
+    // Accepting a missed turn picks up nothing, so a call already made stands.
+    if (!missTurn) setCalled(false);
     void submit(missTurn ? { type: 'accept-missed-turn' } : { type: 'draw' });
   }
 
