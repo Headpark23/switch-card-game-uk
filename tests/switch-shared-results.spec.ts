@@ -120,9 +120,11 @@ test("my history opens the full record of a night: date, venue and every score",
   await page.reload();
   await page.getByRole("navigation").getByRole("button", { name: "Me", exact: true }).click();
   await page.getByRole("button", { name: "History", exact: true }).click();
-  await expect(page.getByText("1 game · 0 won · 1 lost. Tap any game for the full score.")).toBeVisible();
+  await expect(page.getByRole("img", { name: /^0 won, 1 lost,/ })).toBeVisible();
+  // A row opens to a one-line summary; "Full score" opens the whole record (History tabs, 16 Nov 2026).
   await page.getByRole("button", { name: /Friday, lost/ }).click();
-  await expect(page.getByText("You lost")).toBeVisible();
+  await page.getByRole("button", { name: "Full score" }).click();
+  await expect(page.getByTestId("bottom-sheet").getByText("You lost")).toBeVisible();
   await expect(page.getByTestId("bottom-sheet").getByText("The Crown, United Kingdom")).toBeVisible();
   await expect(page.getByText("Game 2: Rebecca won (1–1)")).toBeVisible();
 });

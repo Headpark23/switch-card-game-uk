@@ -65,11 +65,11 @@ test("a shared club: players, nights and stats reach every phone, in both direct
   // The night played before she joined is in her history, as a win.
   await friend.getByRole("navigation").getByRole("button", { name: "Me", exact: true }).click();
   await friend.getByRole("button", { name: "History", exact: true }).click();
-  await expect(friend.getByText(/1 game · 1 won · 0 lost/)).toBeVisible();
+  await expect(friend.getByRole("img", { name: /^1 won, 0 lost,/ })).toBeVisible();
 
   // The host plays and saves another night. Nobody touches Rebecca's phone.
   await playNight(host, "Mark", "Rebecca", "first");
-  await expect(friend.getByText(/2 games · 1 won · 1 lost/)).toBeVisible({ timeout: 60_000 });
+  await expect(friend.getByRole("img", { name: /^1 won, 1 lost,/ })).toBeVisible({ timeout: 60_000 });
 
   // And the other way: a player and a night added on Rebecca's phone reach the host.
   await playNight(friend, "Rebecca", "Dave", "first");

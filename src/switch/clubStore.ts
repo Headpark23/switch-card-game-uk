@@ -17,6 +17,23 @@ export function readClub(): Extensions {
   }
 }
 
+const sameValue = (left: unknown, right: unknown) => left === right || JSON.stringify(left) === JSON.stringify(right);
+
+/**
+ * A screen that read the club earlier (`base`) and now wants it to be `intended` writes only what it changed onto the
+ * club as it is now (`current`). Anything saved elsewhere in the meantime (another tab, a club sync, a joined night)
+ * is kept, so a tap on one screen never wipes a game saved by another.
+ */
+export function applyOwnChanges(base: Extensions, intended: Extensions, current: Extensions): Extensions {
+  const next: Extensions = { ...current };
+  for (const key of new Set([...Object.keys(base), ...Object.keys(intended)])) {
+    if (sameValue(base[key], intended[key])) continue;
+    if (key in intended) next[key] = intended[key];
+    else delete next[key];
+  }
+  return next;
+}
+
 /**
  * Changes the club and saves it. Screens that are not the scorekeeper (the computer games, the Me page)
  * use this so they never touch the scorekeeper's own scores. Unreadable saved data is left alone.

@@ -9,7 +9,7 @@ import { canStartNextRound, createKnockout, createPlayoffKnockout, markLost, MAX
 import { trackNightSaved, trackNightStarted } from '../switch/telemetry';
 import { addNight, completionFromCup, completionFromKnockout, completionFromLeagues, completionFromSession, createNightRecord } from '../switch/history';
 import { ensureProfiles, getProfiles } from '../switch/profiles';
-import { converge } from '../switch/clubSync';
+import { CLUB_REFRESH, converge } from '../switch/clubSync';
 import ClubhouseLeagues from './ClubhouseLeagues';
 import ShareNight from './ShareNight';
 import { myNames } from '../switch/joinedNights';
@@ -24,7 +24,7 @@ import { applyScoreCommand, scoreWinnerId, createSession, ScoreValidationError, 
 import { loadScorekeeper, saveScorekeeper, SCOREKEEPER_STORAGE_KEY, type ScorekeeperState } from '../switch/storage';
 import type { Player } from '../switch/types';
 import { getClubName } from '../switch/club';
-import { announceClubWritten, withNightProfiles, withoutNewProfiles } from '../switch/clubStore';
+import { announceClubWritten, applyOwnChanges, CLUB_WRITTEN, withNightProfiles, withoutNewProfiles } from '../switch/clubStore';
 import { useConfirm } from '../Confirm';
 import { clearActiveNight, getActiveNight, putActiveNight, type ActiveNight } from '../switch/activeNight';
 import DealerBar from './DealerBar';
@@ -96,6 +96,13 @@ export default function SwitchScorekeeper({onBack,backLabel='Home',initialView='
   /** Passes the deal clockwise (or steps it back when a result is undone), keeping the seats in step with who is still in. */
   function turnDeal(key:string,delta:number,seats?:readonly string[]){const current=dealersRef.current[key];if(!current)return;let next=current;if(delta>0){for(let i=0;i<delta;i+=1)next=passDeal(next);if(seats)next=withSeats(next,seats);}else{if(seats)next=withSeats(next,seats);for(let i=0;i<-delta;i+=1)next=undoDeal(next);}setDealersNow({...dealersRef.current,[key]:next});}
   useEffect(()=>{setView(initialView);},[initialView]);
+  // Keep this screen's copy of the club current while it is open: a club sync, a joined night or another tab may save.
+  useEffect(()=>{
+    const refresh=()=>{try{const fresh=loadScorekeeper(window.localStorage.getItem(SCOREKEEPER_STORAGE_KEY));if(fresh.status==='loaded')setStoredExtensions({...fresh.state.extensions});}catch{/* storage unavailable */}};
+    const onStorage=(event:StorageEvent)=>{if(event.key===SCOREKEEPER_STORAGE_KEY)refresh();};
+    window.addEventListener(CLUB_WRITTEN,refresh);window.addEventListener(CLUB_REFRESH,refresh);window.addEventListener('storage',onStorage);
+    return()=>{window.removeEventListener(CLUB_WRITTEN,refresh);window.removeEventListener(CLUB_REFRESH,refresh);window.removeEventListener('storage',onStorage);};
+  },[]);
   const requiredCount=format==='league'?sizes.reduce((total,size)=>total+size,0):format==='knockout'?Math.min(6,Math.max(3,players.length)):format==='cup'?Math.min(10,Math.max(2,players.length)):2;
   const visiblePlayers=players.slice(0,requiredCount);
   const savedPlayers=getProfiles(storedExtensions).filter(profile=>!profile.archived);
@@ -125,9 +132,18 @@ export default function SwitchScorekeeper({onBack,backLabel='Home',initialView='
   function chooseFormat(next:ScoreFormat){setEmptyNames(false);setCupOrder(null);setFormat(next);setSession(null);setKnockout(null);setCup(null);setLeagueStarted(false);setSavedCurrent(false);setError('');const count=next==='league'?sizes.reduce((total,size)=>total+size,0):next==='knockout'?Math.min(6,Math.max(3,players.length)):next==='cup'?Math.min(10,Math.max(2,players.length)):2;resizePlayers(count);/* Choosing another game type ends the one in progress, so Home stops offering to carry it on. */if(getActiveNight(storedExtensions))persist(visiblePlayers,{},clearActiveNight(storedExtensions),true);}
   function persist(nextPlayers:readonly Player[],scores:Record<string,number>,extensionUpdates:Record<string,unknown>={},replaceExtensions=false){
     const merged=replaceExtensions?{...extensionUpdates}:{...storedExtensions,...extensionUpdates};
-    const nextExtensions=Object.keys(dealersRef.current).length?putDealers(merged,dealersRef.current):clearDealers(merged);
+    const intended=Object.keys(dealersRef.current).length?putDealers(merged,dealersRef.current):clearDealers(merged);
+    // Nobody loses a score: write only what this screen changed onto the club as it is saved now, so a game or night
+    // saved elsewhere since this screen read the club (another tab, a club sync, a joined night) is never wiped.
+    let currentRaw:string|null=savedRaw;
+    try{currentRaw=window.localStorage.getItem(SCOREKEEPER_STORAGE_KEY);}catch{/* storage unavailable */}
+    const current=loadScorekeeper(currentRaw);
+    const readable=current.status!=='unreadable';
+    const nextExtensions=readable?applyOwnChanges(storedExtensions,intended,current.state.extensions):intended;
     const state:ScorekeeperState={schemaVersion:1,selectedFormat:format,players:nextPlayers,scores,target:Number(target)||100,extensions:nextExtensions};
-    const raw=saveScorekeeper(savedRaw,state,{replaceExtensions});window.localStorage.setItem(SCOREKEEPER_STORAGE_KEY,raw);setSavedRaw(raw);
+    const raw=readable?saveScorekeeper(currentRaw,state,{replaceExtensions:true}):saveScorekeeper(savedRaw,state,{replaceExtensions});
+    try{window.localStorage.setItem(SCOREKEEPER_STORAGE_KEY,raw);}catch{/* storage unavailable: the scorecard still works for this visit */}
+    setSavedRaw(raw);
     announceClubWritten();
     setStoredExtensions(nextExtensions);
   }

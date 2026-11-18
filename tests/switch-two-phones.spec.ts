@@ -69,7 +69,7 @@ for (const scenario of [
   else { await expect(friend.getByText("A result has come in")).toBeVisible({ timeout: 60_000 }); await friend.getByRole("button", { name: "Close", exact: true }).click(); }
   await friend.getByRole("navigation").getByRole("button", { name: "Me", exact: true }).click();
   await friend.getByRole("button", { name: "History", exact: true }).click();
-  await expect(friend.getByText(/1 game · 1 won · 0 lost/)).toBeVisible();
+  await expect(friend.getByRole("img", { name: /^1 won, 0 lost,/ })).toBeVisible();
   await hostContext.close(); await friendContext.close();
 });
 
