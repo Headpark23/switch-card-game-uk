@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CLUB_REFRESH } from '../switch/clubSync';
-import { ArrowRight, CaretLeft, Pencil, Robot } from '@phosphor-icons/react';
+import { ArrowRight, CaretLeft, ChartLineUp, Pencil, Robot } from '@phosphor-icons/react';
+import { FormCard, StatSheet, type StatData, type StatGame, type StatId } from './MeCharts';
 import { FeltHeader } from '../ui';
 import { KeyboardInput, useKeyboard } from '../mobile';
 import { BadgeButton, BadgeSheet, BadgeWall, PassportBook } from './Badges';
@@ -60,6 +61,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, in
   const [confirm, confirmSheet] = useConfirm();
   const [openNight, setOpenNight] = useState<SwitchNightRecord | null>(null);
   const [openGame, setOpenGame] = useState<ComputerGame | null>(null);
+  const [stat, setStat] = useState<StatId | null>(null);
   // Run the change once on its own first, so a mistake shows as a message instead of blanking the page.
   const apply = (change: (current: Record<string, unknown>) => Record<string, unknown>) => { change(readClub()); setExtensions(updateClub(change)); };
 
@@ -103,6 +105,16 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, in
   const nightRecord = { played: myNights.length, won: myNights.filter((night) => night.players.some((player) => resolveHistoryPlayerId(player, allProfiles) === me.id && night.winnerIds.includes(player.id))).length };
   const wonNight = (night: (typeof nights)[number]) => night.players.some((player) => resolveHistoryPlayerId(player, allProfiles) === me.id && night.winnerIds.includes(player.id));
 
+  const statData: StatData = {
+    games: [
+      ...myNights.map((night): StatGame => ({ when: night.completedAt, won: wonNight(night), kind: 'home' })),
+      ...games.map((game): StatGame => ({ when: game.playedAt, won: game.won, kind: game.online ? 'online' : 'computer' })),
+    ],
+    nights: myNights.map((night): StatGame => ({ when: night.completedAt, won: wonNight(night), kind: 'home' })),
+    computer: games.map((game) => ({ when: game.playedAt, won: game.won, level: game.level })),
+    stamps,
+  };
+
   const ordinal = (place: number) => `${place}${['st', 'nd', 'rd'][place - 1] ?? 'th'}`;
   const rows: HistoryEntry[] = [
     ...myNights.map((night): HistoryEntry => ({ key: night.id, when: night.completedAt, kind: 'home', type: HOME_TYPES[night.format] ?? night.formatLabel, title: night.title, detail: `${FORMAT_NAMES[night.format] ?? night.formatLabel} · ${night.players.length} players${night.place ? ` · ${night.place.name}, ${countryName(night.place.country)}` : ''}`, won: wonNight(night), open: () => setOpenNight(night) })),
@@ -128,19 +140,21 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, in
     <div className="club-tabs me-tabs" role="group" aria-label="Me sections">{SECTIONS.map((item) => <button key={item.id} className={section === item.id ? 'active' : ''} aria-pressed={section === item.id} onClick={() => { keyboard.hide(); setSection(item.id); }}>{item.label}</button>)}</div>
 
     {section === 'overview' && <>
-      <div className="me-tiles" aria-label="Your record">
-        <div><b>{nightRecord.played + summary.games}</b><span>Games played</span></div>
-        <div><b>{nightRecord.won + summary.wins}</b><span>Won</span></div>
-        <div><b>{nightRecord.played - nightRecord.won + summary.losses}</b><span>Lost</span></div>
-        <div><b>{stats.wins}</b><span>Night wins</span></div>
-        <div><b>{stats.appearances ? percent(stats.winRate) : '–'}</b><span>Night win rate</span></div>
-        <div><b>{stats.bestWinStreak}</b><span>Best streak</span></div>
-        <div><b>{summary.wins}</b><span>Beat computer</span></div>
-        <div><b>{summary.games ? percent(summary.winRate) : '–'}</b><span>v computer</span></div>
-        <div><b>{stamps.length}</b><span>Countries</span></div>
+      <div className="me-tiles" aria-label="Your record. Tap a number for its chart.">
+        {([
+          ['played', nightRecord.played + summary.games, 'Games played'],
+          ['won', nightRecord.won + summary.wins, 'Won'],
+          ['lost', nightRecord.played - nightRecord.won + summary.losses, 'Lost'],
+          ['nightWins', stats.wins, 'Night wins'],
+          ['nightRate', stats.appearances ? percent(stats.winRate) : '–', 'Night win rate'],
+          ['streak', stats.bestWinStreak, 'Best streak'],
+          ['beat', summary.wins, 'Beat computer'],
+          ['vsRate', summary.games ? percent(summary.winRate) : '–', 'v computer'],
+          ['countries', stamps.length, 'Countries'],
+        ] as const).map(([id, value, label]) => <button key={id} type="button" data-stat={id} aria-label={`${label}: ${value}. Show chart`} onClick={() => { keyboard.hide(); setStat(id); }}><b>{value}</b><span>{label}</span><ChartLineUp size={13} weight="bold" aria-hidden="true" /></button>)}
       </div>
-      {summary.form.length > 0 && <div className="me-form" aria-label="Recent games against the computer"><span>Lately v computer</span>{summary.form.map((result, index) => <i key={index} className={result === 'W' ? 'win' : 'loss'}>{result}</i>)}</div>}
-      <TableTalkStats />
+      <FormCard games={statData.games} />
+      <StatSheet stat={stat} data={statData} onClose={() => setStat(null)} />
       <button className="primary" onClick={onPlay}><Robot size={19} weight="bold" />Play the computer</button>
       {nextUp.length > 0 && <><h3>Next badges</h3><ul className="next-badges">{nextUp.map((badge) => <li key={badge.id}><BadgeButton badge={badge} size={46} onOpen={setOpenBadge}><span><strong>{badge.label}</strong><small>{badge.hint}</small></span><em>{badge.have}/{badge.need}</em></BadgeButton></li>)}</ul></>}
       {earned.length > 0 && <><h3>Latest badges</h3><div className="chip-row" aria-label="Badges earned">{earned.slice(-6).reverse().map((badge) => <BadgeButton key={badge.id} badge={badge} size={46} onOpen={setOpenBadge} />)}</div></>}
@@ -193,6 +207,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, in
           {[1, 2, 3, 4, 5, 6, 7].map((count) => <Bar key={count} label={count === 1 ? 'Head to head' : `You + ${count} computers`} value={summary.byOpponents[count]?.wins ?? 0} total={summary.byOpponents[count]?.games ?? 0} />)}
           <button className="primary" onClick={onPlay}>Play again <ArrowRight size={18} /></button>
         </>}
+      <TableTalkStats />
     </>}
 
     <NightDetail night={openNight} game={openGame} meId={me.id} profiles={allProfiles} onClose={() => { setOpenNight(null); setOpenGame(null); }} onReplay={onReplay ? (id) => { setOpenGame(null); onReplay(id); } : undefined} />

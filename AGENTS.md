@@ -179,3 +179,6 @@ Darts: first to three legs wins a set. Knock Out: whoever finishes last in a rou
 - Switch is only ever played with one deck and there must always be a pile to pick up from, so a game has at most 6 players (ruling 38). Never add a second deck. Old 7 or 8 player games may still be resumed and always count.
 - Limits on stored history are acceptable: a shared club keeps the newest 400 nights and the computer-game log keeps 2,000 games. Do not raise or remove them without asking.
 - The website title and descriptions never name another company's game. They may hint at it (the "Last Card!" call, a normal deck, no special cards).
+
+## Me page (owner decision, 18 Nov 2026)
+- Table talk does not get the main billing on Me. The overview shows the nine numbers as tappable tiles (each opens a small chart in a sheet, `src/screens/MeCharts.tsx`) and a "Your form" card; Table talk stats live under Me > Computer. Each chart's headline must restate the tile's number (`tests/switch-me-charts.spec.ts`).

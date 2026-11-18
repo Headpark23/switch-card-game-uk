@@ -141,6 +141,7 @@ test("react at the computer table, finish the game, then watch it back with the 
 
   // The same replay opens from Me > History.
   await page.getByRole("navigation").getByRole("button", { name: "Me", exact: true }).click();
+  await page.getByRole("button", { name: "Computer", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Table talk" })).toBeVisible();
 });
 
