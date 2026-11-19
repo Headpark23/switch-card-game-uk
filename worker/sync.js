@@ -58,6 +58,9 @@ function cookieFrom(request, name) {
   return null;
 }
 
+/** Who is signed in on this request (the verified Google account in the session cookie), or null. */
+export const sessionFromRequest = (request, secret) => readSession(cookieFrom(request, COOKIE), secret);
+
 const sessionCookie = (value, maxAge) => `${COOKIE}=${value}; Max-Age=${maxAge}; Path=/; HttpOnly; Secure; SameSite=Lax`;
 
 export async function verifyGoogleToken(token, clientId, fetcher = fetch) {

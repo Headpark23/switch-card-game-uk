@@ -386,7 +386,7 @@ function render() {
   document.getElementById("refresh").addEventListener("click", () => load());
   document.getElementById("csv").addEventListener("click", () => downloadCsv(all));
   const lock = document.getElementById("lock");
-  if (lock) lock.addEventListener("click", () => { try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {} showLogin(); });
+  if (lock) lock.addEventListener("click", async () => { try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {} try { await fetch("/api/auth/logout", { method: "POST" }); } catch (e) {} load(); });
 }
 
 /* ---------- games played: how much, of what, and how much of it is finished ---------- */
@@ -565,26 +565,54 @@ function downloadCsv(all) {
 }
 
 /* ---------- loading and sign-in ---------- */
-function showLogin(message) {
-  app.innerHTML = `<form class="login" id="loginForm"><h1>Switch dashboard</h1><p>Owner only. Enter the dashboard token you set as STATS_TOKEN.</p>
+/* The owner signs in with Google (the same account the app uses; the server checks it against STATS_OWNER_EMAIL).
+   A token typed into the fallback box still works. */
+function showLogin(message, info) {
+  info = info || {};
+  const google = info.clientId ? '<div id="gbtn" style="display:flex;justify-content:center;margin:6px 0 14px;min-height:44px"></div>' : "";
+  app.innerHTML = `<form class="login" id="loginForm"><h1>Switch dashboard</h1><p>Owner only. ${info.clientId ? "Sign in with the Google account that owns the app." : "Enter the dashboard token you set as STATS_TOKEN."}</p>
     ${message ? `<div class="banner error" role="alert">${esc(message)}</div>` : ""}
-    <label for="tok" style="font-size:13px">Token</label><input id="tok" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" required>
-    <button class="btn primary" style="width:100%">Open dashboard</button><p style="margin-top:14px">Or <a href="#demo" id="demoLink">preview the layout with made-up numbers</a>.</p></form>`;
-  document.getElementById("loginForm").addEventListener("submit", (e) => { e.preventDefault(); try { sessionStorage.setItem(TOKEN_KEY, document.getElementById("tok").value.trim()); } catch (x) {} load(); });
+    ${google}
+    <details${info.clientId ? "" : " open"}><summary style="cursor:pointer;font-size:13px;margin-bottom:8px">Use a token instead</summary>
+    <label for="tok" style="font-size:13px">Token</label><input id="tok" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button class="btn primary" style="width:100%">Open dashboard</button></details>
+    <p style="margin-top:14px">Or <a href="#demo" id="demoLink">preview the layout with made-up numbers</a>.</p></form>`;
+  document.getElementById("loginForm").addEventListener("submit", (e) => { e.preventDefault(); const t = document.getElementById("tok").value.trim(); if (!t) return; try { sessionStorage.setItem(TOKEN_KEY, t); } catch (x) {} load(); });
   document.getElementById("demoLink").addEventListener("click", () => setTimeout(boot, 0));
+  if (info.clientId) mountGoogleButton(info.clientId);
+}
+
+function mountGoogleButton(clientId) {
+  const draw = () => {
+    const host = document.getElementById("gbtn");
+    if (!host || !window.google || !google.accounts || !google.accounts.id) return;
+    google.accounts.id.initialize({ client_id: clientId, callback: async (response) => {
+      try {
+        const res = await fetch("/api/auth/google", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ credential: response.credential }) });
+        if (!res.ok) return showLogin("Google sign-in did not work. Try again.", { clientId });
+      } catch (e) { return showLogin("Could not reach the server. Check your connection and try again.", { clientId }); }
+      load();
+    } });
+    google.accounts.id.renderButton(host, { theme: "outline", size: "large", text: "signin_with", width: 280 });
+  };
+  if (window.google && google.accounts) return draw();
+  if (document.getElementById("gsi")) return;
+  const tag = document.createElement("script");
+  tag.id = "gsi"; tag.src = "https://accounts.google.com/gsi/client"; tag.async = true; tag.onload = draw;
+  document.head.appendChild(tag);
 }
 
 async function load() {
   if (state.demo) { state.data = demoData(); render(); return; }
   let token = "";
   try { token = sessionStorage.getItem(TOKEN_KEY) || ""; } catch (e) {}
-  if (!token) return showLogin();
   app.innerHTML = '<p class="empty" role="status">Loading the numbers…</p>';
   try {
-    const res = await fetch("/api/stats?days=730", { headers: { authorization: "Bearer " + token }, cache: "no-store" });
+    // The signed-in Google session travels as a cookie; a typed token is sent too when there is one.
+    const res = await fetch("/api/stats?days=730", { headers: token ? { authorization: "Bearer " + token } : {}, cache: "no-store", credentials: "same-origin" });
     const body = await res.json().catch(() => ({}));
-    if (res.status === 401) { try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {} return showLogin(body.error || "That token is not right."); }
-    if (!res.ok) return showLogin(body.error || "The numbers could not be loaded.");
+    if (res.status === 401) { try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {} return showLogin(token && !body.signedInAs ? "That token is not right." : body.error, body); }
+    if (!res.ok) return showLogin(body.error || "The numbers could not be loaded.", body);
     state.data = body; render();
   } catch (e) { showLogin("Could not reach the server. Check your connection and try again."); }
 }

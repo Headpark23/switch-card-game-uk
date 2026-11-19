@@ -224,6 +224,19 @@ export function authorised(request, token) {
   return timingSafeEqual(a, b);
 }
 
+/**
+ * Who may open the owner dashboard: the owner's signed-in Google account (STATS_OWNER_EMAIL, compared case-insensitively against the
+ * verified email in the app's session cookie), or the old STATS_TOKEN. `session` is the signed-in account, or null.
+ * Returns { ok, signedInAs, configured } so the page can say "that account is not the owner" and the endpoint knows when it is switched off.
+ */
+export function dashboardAccess(request, { token, ownerEmail, session }) {
+  const owner = String(ownerEmail ?? "").trim().toLowerCase();
+  const configured = Boolean(owner) || String(token ?? "").length >= 12;
+  const email = String(session?.email ?? "").trim().toLowerCase();
+  const ownerSignedIn = Boolean(owner) && Boolean(email) && email === owner;
+  return { ok: ownerSignedIn || authorised(request, token), signedInAs: email || null, configured };
+}
+
 /** Merges day files into the dashboard's numbers: every day, the lifetime totals and the all-time peaks. */
 export async function readStats(store, { days = 120 } = {}) {
   const names = (await store.list()).filter((name) => /^\d{4}-\d{2}-\d{2}$/.test(name)).sort();

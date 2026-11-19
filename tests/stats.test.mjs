@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { authorised, bump, countersFor, dayKey, handleCollect, readStats, tally } from "../api/_stats.js";
+import { authorised, bump, dashboardAccess, countersFor, dayKey, handleCollect, readStats, tally } from "../api/_stats.js";
 import { buildSnapshot } from "../api/_statsSnapshot.js";
 
 const NOW = Date.parse("2026-11-14T20:30:00Z");
@@ -76,6 +76,19 @@ test("one unreadable day file is skipped instead of taking the dashboard down", 
   const stats = await readStats(store, { days: 30 });
   assert.equal(stats.days.length, 1);
   assert.equal(stats.totals.c.visits, 2);
+});
+
+test("the owner opens the dashboard by Google account or token, and nobody else does", () => {
+  const req = (auth) => new Request("https://x.test/api/stats", { headers: auth ? { authorization: `Bearer ${auth}` } : {} });
+  const owner = { ownerEmail: "Owner@Example.com", token: undefined };
+  assert.equal(dashboardAccess(req(), { ...owner, session: { email: "owner@example.com" } }).ok, true);
+  assert.equal(dashboardAccess(req(), { ...owner, session: { email: "someone@example.com" } }).ok, false);
+  assert.equal(dashboardAccess(req(), { ...owner, session: { email: "someone@example.com" } }).signedInAs, "someone@example.com");
+  assert.equal(dashboardAccess(req(), { ...owner, session: null }).ok, false);
+  assert.equal(dashboardAccess(req(), { ownerEmail: "", token: "x".repeat(12), session: { email: "" } }).ok, false);
+  assert.equal(dashboardAccess(req("x".repeat(12)), { ownerEmail: "", token: "x".repeat(12), session: null }).ok, true);
+  assert.equal(dashboardAccess(req(), { ownerEmail: "", token: undefined, session: { email: "owner@example.com" } }).configured, false);
+  assert.equal(dashboardAccess(req(), { ownerEmail: "owner@example.com", token: undefined, session: null }).configured, true);
 });
 
 test("what is stored is only numbers: no ids, names, addresses or user agents", async () => {

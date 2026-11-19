@@ -4,10 +4,12 @@
 
 ## Switching it on
 
-1. In the Vercel project, add an environment variable `STATS_TOKEN`: any long secret (12 characters or more). Redeploy.
-2. Open `https://<your site>/stats.html` and paste the token. It is kept for that browser tab only (`sessionStorage`); "Lock" forgets it.
+Owner sign-in (19 Nov 2026, replaces typing a token each time):
 
-Without `STATS_TOKEN` the data endpoint answers 503 and the dashboard stays off. Wrong tokens get 401, rate-limited to 20 tries a minute.
+1. In the Vercel project, add an environment variable `STATS_OWNER_EMAIL`: the Google account that owns the app. Redeploy. (`GOOGLE_CLIENT_ID` and `SESSION_SECRET` are already set for the app's own sign-in.)
+2. Open `https://<your site>/stats.html` and press "Sign in with Google". The app's session cookie lasts a year, so on that browser you are simply let in. Any other Google account is told it is not the owner. "Lock" signs you out.
+
+`STATS_TOKEN` (12 characters or more) still works as a fallback under "Use a token instead". With neither variable set the data endpoint answers 503 and the dashboard stays off. Failed attempts are rate-limited to 20 a minute.
 
 ## What is counted, and how
 
