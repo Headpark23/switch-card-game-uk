@@ -20,3 +20,12 @@ test("ignores other sites and other methods, and stores only a number", async ()
   await handleHit(req("POST", { "x-forwarded-for": "1.2.3.4", "user-agent": "secret" }), store);
   assert.deepEqual(await store.read(), { hits: 1 });
 });
+
+test("a counter that adds on its own still counts when the earlier total cannot be read", async () => {
+  let added = 0;
+  const store = { increment: async () => { added += 1; }, read: async () => { throw new Error("suspended"); } };
+  const response = await handleHit(req("POST"), store);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {});
+  assert.equal(added, 1);
+});

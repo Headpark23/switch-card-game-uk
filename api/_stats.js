@@ -193,6 +193,8 @@ export async function bump(store, increments, now = Date.now()) {
   const empty = !Object.keys(increments.add).length && !Object.keys(increments.max).length;
   if (empty) return;
   const day = dayKey(now);
+  // A store that can add atomically (Redis) does so in one round trip; the plain read-then-write path stays for simple stores.
+  if (typeof store.increment === "function") return store.increment(day, increments);
   const doc = (await store.read(day)) ?? { day, c: {}, m: {} };
   doc.c ??= {}; doc.m ??= {};
   for (const [key, n] of Object.entries(increments.add)) doc.c[key] = (doc.c[key] ?? 0) + n;

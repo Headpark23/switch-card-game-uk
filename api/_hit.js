@@ -6,6 +6,11 @@ export async function handleHit(request, store) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
   const origin = request.headers.get("Origin");
   if (origin && origin !== new URL(request.url).origin) return json({ error: "Wrong origin" }, 403);
+  if (typeof store.increment === "function") {
+    // Counting never waits on the earlier total: if it cannot be read yet, the visit is still counted and no number is shown.
+    await store.increment();
+    return json({ hits: await store.read().then((row) => row.hits, () => undefined) });
+  }
   const current = (await store.read())?.hits ?? 0;
   const hits = Number.isFinite(current) ? current + 1 : 1;
   await store.write({ hits });

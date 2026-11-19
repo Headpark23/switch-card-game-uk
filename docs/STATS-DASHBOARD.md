@@ -19,7 +19,7 @@ Owner sign-in (19 Nov 2026, replaces typing a token each time):
 | Server events | `api/hit.js`, `api/_clubHandler.js`, `api/_nightHandler.js` | Visits per day, shared clubs created, club syncs, live nights shared, friends who joined. |
 | Server snapshot | `GET /api/stats` (`api/_statsSnapshot.js`) | Cloud backups, shared clubs and their sizes and formats, live shared nights, read from the stored files. Counts only. |
 
-Counters are kept as one small file per UTC day, `stats/days/YYYY-MM-DD.json` in the private blob store. Nothing but named numbers is stored: no id, name, score, club, address or user agent. `tests/stats.test.mjs` checks this.
+Counters are kept in Redis (the same Upstash database as online tables): per UTC day, two hashes `switch:stats:c:DAY` (counters) and `switch:stats:m:DAY` (peaks), a set `switch:stats:days`, all with a 800-day expiry, added to atomically in one command (`api/_statsStore.js`). The footer's lifetime visits are `switch:hits:base` + `switch:hits:delta` (`api/_hitStore.js`). Until 19 Nov 2026 counters were one Blob file per day (`stats/days/YYYY-MM-DD.json`), rewritten on every event; that used up Blob's monthly operations and Vercel suspended the store, taking shared clubs and nights down with it. Those older days are still read from Blob when it is reachable, and the old visit total is copied across once. Blob now holds only shared clubs, nights and cloud backups. Nothing but named numbers is stored: no id, name, score, club, address or user agent. `tests/stats.test.mjs` checks this.
 
 ## Games played, and what gets finished (16 Nov 2026)
 
@@ -38,7 +38,7 @@ Notes: unfinished = started minus finished, so a game still going or resumed lat
 ## Limits to keep in mind
 
 - "Devices" are phones or browsers, not people, and there is no id to join days together, so weekly or monthly unique users cannot be calculated. Clearing site data makes a phone look new.
-- Day files are updated read-then-write, so two events in the same instant can lose one. These are trend figures.
+- Counters are added atomically, so no event is lost to a race. Days from before 19 Nov 2026 can be missing while Blob is suspended.
 - Phones that opt out (Me > Privacy), send Do Not Track or Global Privacy Control, or are automated browsers are not counted.
 - Counting began on the day the first event arrived. Lifetime visits before that are only in the footer counter.
 

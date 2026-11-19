@@ -1,7 +1,7 @@
 // A picture of what exists on the server right now, taken from the stored files themselves rather than from counters:
 // cloud backups, shared clubs and live shared nights. Nothing personal leaves this file: only counts and sizes.
 const DAY = 86_400_000;
-const CLUB_SAMPLE = 150;
+const CLUB_SAMPLE = 60; // each club read is a Blob operation, and the allowance is monthly
 
 /** `io.list(prefix)` gives [{ pathname, size, uploadedAt }]; `io.read(pathname)` gives parsed JSON or null. */
 export async function buildSnapshot(io, now = Date.now()) {

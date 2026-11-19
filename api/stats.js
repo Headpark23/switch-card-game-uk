@@ -3,7 +3,8 @@
 import { get, list } from "@vercel/blob";
 import { dashboardAccess, readStats } from "./_stats.js";
 import { sessionFromRequest } from "../worker/sync.js";
-import { statsStore } from "./_statsStore.js";
+import { statsStore, statsConfigured } from "./_statsStore.js";
+import { hitStore } from "./_hitStore.js";
 import { buildSnapshot } from "./_statsSnapshot.js";
 import { makeLimiter, tooMany } from "./_limit.js";
 
@@ -40,15 +41,16 @@ export default {
       // The client ID is public (it is in the app's own page). signedInAs is only ever the caller's own verified account.
       return reply({ error: access.signedInAs ? "That Google account is not the owner." : "Sign in to open the dashboard.", signedInAs: access.signedInAs, clientId: process.env.GOOGLE_CLIENT_ID || null }, 401);
     }
-    if (!process.env.BLOB_READ_WRITE_TOKEN) return reply({ error: "Storage is not connected." }, 503);
+    if (!statsConfigured()) return reply({ error: "Counting storage (Redis) is not connected." }, 503);
     try {
       const days = Math.min(730, Math.max(7, Number(new URL(request.url).searchParams.get("days")) || 120));
       const [stats, snapshot, hits] = await Promise.all([
         readStats(statsStore, { days }),
-        buildSnapshot({ list: listAll, read: readJson }),
-        readJson("site/hits.json").catch(() => null),
+        // The server picture reads Blob (shared clubs and nights). When Blob is unavailable the rest of the dashboard still opens.
+        process.env.BLOB_READ_WRITE_TOKEN ? buildSnapshot({ list: listAll, read: readJson }).catch(() => null) : null,
+        hitStore.read().catch(() => null),
       ]);
-      return reply({ generatedAt: new Date().toISOString(), hits: hits?.hits ?? 0, ...stats, snapshot });
+      return reply({ generatedAt: new Date().toISOString(), hits: hits ? hits.hits : null, ...stats, snapshot });
     } catch (error) {
       // Say why in the server log (the message only, never the data) so "could not be read" can be diagnosed.
       console.error("stats: could not read the numbers:", error instanceof Error ? `${error.name}: ${error.message}` : "unknown error");

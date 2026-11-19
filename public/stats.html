@@ -270,7 +270,7 @@ function render() {
       ${kpi(n0(get(T.c, "devices.total")), "Devices counted", `${n0(get(T.c, "devices.new"))} brand new · ${n0(get(T.c, "devices.existing"))} already had Switch`)}
       ${kpi(n0(rs("devices.new")), "New devices", rangeName)}
       ${kpi(n0(activeNow), "Active today", `avg ${avgActive.toFixed(1)}/day in range`)}
-      ${kpi(n0(d.hits), "Lifetime visits", `footer counter · ${n0(sum(all, "visits"))} since daily counting`)}
+      ${kpi(d.hits == null ? "–" : n0(d.hits), "Lifetime visits", `footer counter · ${n0(sum(all, "visits"))} since daily counting`)}
       ${kpi(pct(rs("returning"), rs("active")), "Returning share", `of active devices, ${rangeName}`)}
       ${kpi(pct(rs("installed"), rs("active")), "Installed as an app", `opened from the home screen, ${rangeName}`)}
     </div>
