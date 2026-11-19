@@ -230,7 +230,8 @@ export async function readStats(store, { days = 120 } = {}) {
   const docs = [];
   // Read in small batches so a long history never opens hundreds of connections at once.
   for (let index = 0; index < names.length; index += 20) {
-    docs.push(...(await Promise.all(names.slice(index, index + 20).map((name) => store.read(name)))));
+    // One unreadable or damaged day file must never take the whole dashboard down: that day is skipped.
+    docs.push(...(await Promise.all(names.slice(index, index + 20).map((name) => store.read(name).catch(() => null)))));
   }
   const totals = { c: {}, m: {} };
   const all = docs.filter(Boolean);

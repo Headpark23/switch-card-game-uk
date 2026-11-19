@@ -67,6 +67,17 @@ test("counters add up through a day file and totals span the days", async () => 
   assert.equal(dayKey(NOW), "2026-11-14");
 });
 
+test("one unreadable day file is skipped instead of taking the dashboard down", async () => {
+  const store = memory();
+  await bump(store, tally([{ e: "visit" }], NOW), NOW);
+  await bump(store, tally([{ e: "visit" }, { e: "visit" }], NOW + 86_400_000), NOW + 86_400_000);
+  const read = store.read;
+  store.read = async (day) => { if (day === "2026-11-14") throw new SyntaxError("Unexpected end of JSON input"); return read(day); };
+  const stats = await readStats(store, { days: 30 });
+  assert.equal(stats.days.length, 1);
+  assert.equal(stats.totals.c.visits, 2);
+});
+
 test("what is stored is only numbers: no ids, names, addresses or user agents", async () => {
   const store = memory();
   const response = await handleCollect(post({ events: [{ e: "open", device: "new", today: true, platform: "ios", name: "Martin", id: "abc", club: "ZZZ" }] }, { "x-forwarded-for": "1.2.3.4", "user-agent": "SecretBrowser/1" }), store, NOW);

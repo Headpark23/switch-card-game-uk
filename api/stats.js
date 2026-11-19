@@ -43,7 +43,9 @@ export default {
         readJson("site/hits.json").catch(() => null),
       ]);
       return reply({ generatedAt: new Date().toISOString(), hits: hits?.hits ?? 0, ...stats, snapshot });
-    } catch {
+    } catch (error) {
+      // Say why in the server log (the message only, never the data) so "could not be read" can be diagnosed.
+      console.error("stats: could not read the numbers:", error instanceof Error ? `${error.name}: ${error.message}` : "unknown error");
       return reply({ error: "The numbers could not be read just now." }, 503);
     }
   },
