@@ -19,7 +19,7 @@ import type { PlayMode } from '../switch/series';
 import { sortHand } from '../switch/sortHand';
 import { HahaBanner, hahaText, type Haha } from './HahaBanner';
 import { attackKind, banterFor, playEvent, reactionOf, type TableEvent } from '../switch/reactions';
-import { logReaction, type ReplayMove } from '../switch/gameReplay';
+import { gained, logReaction, type ReplayMove } from '../switch/gameReplay';
 import { GameEnding } from './GameEnding';
 import { beginReplay, Bubble, ReactionSheet, useBubbles, useReplayRecorder } from './tableTalk';
 import { SuitBadge, TableToggles, useTablePrefs } from './tablePrefs';
@@ -208,7 +208,8 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     const seat = before.turn;
     if (action.type === 'play') lastPlay.current = { seat, cards: [...action.cards] };
     const type: ReplayMove['type'] = action.type === 'play' ? 'play' : action.type === 'draw' ? 'draw' : 'miss';
-    recorder.move({ seat, type, ...(action.type === 'play' ? { cards: [...action.cards], suit: after.currentSuit } : {}), counts: after.hands.map((cards) => cards.length) });
+    const drew = gained(before.hands[seat], after.hands[seat]);
+    recorder.move({ seat, type, ...(action.type === 'play' ? { cards: [...action.cards], suit: after.currentSuit } : {}), ...(drew.length ? { drew } : {}), counts: after.hands.map((cards) => cards.length) });
     const events: TableEvent[] = [];
     // What was played, what it did and who it landed on: the card talk is about the cards.
     if (action.type === 'play') events.push(playEvent(seat, action.cards, before.pendingPenalty, after.pendingPenalty, after.status === 'won' && after.winner === seat, after.status === 'playing' ? after.turn : undefined));
@@ -252,7 +253,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
         shout(names[forgot]);
         cue('penalty');
         push(`${names[forgot]} forgot to say "Last Card" and picks up two cards.`);
-        recorder.move({ seat: forgot, type: 'spot', counts: caught.hands.map((cards) => cards.length) });
+        recorder.move({ seat: forgot, type: 'spot', drew: gained(gameRef.current.hands[forgot], caught.hands[forgot]), counts: caught.hands.map((cards) => cards.length) });
         queuedBanter.current.push({ kind: 'mistake', seat: forgot, what: 'lastCard' });
         setGame(caught);
       }
@@ -332,10 +333,11 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
         spotted = true;
         shout('You');
         cue('penalty');
+        const held = before.hands[0];
         before = dealTo(before, 0, 2);
         setGame(before);
         push(`${names[before.turn]} spotted that you did not say "Last Card". You pick up two cards.`);
-        recorder.move({ seat: 0, type: 'spot', counts: before.hands.map((cards) => cards.length) });
+        recorder.move({ seat: 0, type: 'spot', drew: gained(held, before.hands[0]), counts: before.hands.map((cards) => cards.length) });
         queuedBanter.current.push({ kind: 'spotted', victim: 0, by: before.turn });
       }
       const action = chooseTableAction(before, Math.random, level, { personality: names[before.turn] });
@@ -353,9 +355,9 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     if (game.status === 'playing') { if (!series) saveActiveTable({ id: gameId, opponents, level, game, names: drawn, awaitingLastCard: false, lastCardCalled: lastCalled }); return; }
     if (logged.current === gameId) return;
     logged.current = gameId;
-    recorder.finish(game.winner);
+    const replay = recorder.finish(game.winner, undefined, game.move);
     // Every game counts: your place in this one is logged under its game type, whatever the tournament does with it.
-    logComputerGame({ id: gameId, opponents, level, won: game.winner === 0, place: tablePlaces(game)[0], moves: game.move, rivals: names.slice(1).map((name, index) => ({ name, place: tablePlaces(game)[index + 1] })), ...(series ? { mode: series.mode, seriesId: series.seriesId } : {}) });
+    logComputerGame({ id: gameId, opponents, level, won: game.winner === 0, place: tablePlaces(game)[0], moves: game.move, ...(replay.seconds !== undefined ? { seconds: replay.seconds } : {}), rivals: names.slice(1).map((name, index) => ({ name, place: tablePlaces(game)[index + 1] })), ...(series ? { mode: series.mode, seriesId: series.seriesId } : {}) });
     stats.onFinish({ won: game.winner === 0, place: tablePlaces(game)[0], moves: game.move });
     if (!series) clearActiveTable();
   }, [game, lastCalled, gameId, opponents, level]);

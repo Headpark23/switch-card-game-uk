@@ -18,6 +18,7 @@ import { countryName } from '../switch/places';
 import { readClub, updateClub } from '../switch/clubStore';
 import NightDetail from './NightDetail';
 import TableTalkStats from './TableTalkStats';
+import GameLengths from './GameLengths';
 import { setSpicyTalk, spicyTalk } from '../switch/reactions';
 import type { SwitchNightRecord } from '../switch/history';
 import { readSpeed, saveSpeed } from '../switch/activeTable';
@@ -103,6 +104,8 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, in
   const myNights = nights.filter((night) => night.players.some((player) => resolveHistoryPlayerId(player, allProfiles) === me.id));
   const stamps = derivePassport(me, nights, allProfiles);
   const nightRecord = { played: myNights.length, won: myNights.filter((night) => night.players.some((player) => resolveHistoryPlayerId(player, allProfiles) === me.id && night.winnerIds.includes(player.id))).length };
+  const totalWon = nightRecord.won + summary.wins;
+  const totalLost = nightRecord.played - nightRecord.won + summary.losses;
   const wonNight = (night: (typeof nights)[number]) => night.players.some((player) => resolveHistoryPlayerId(player, allProfiles) === me.id && night.winnerIds.includes(player.id));
 
   const statData: StatData = {
@@ -141,10 +144,14 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, in
 
     {section === 'overview' && <>
       <div className="me-tiles" aria-label="Your record. Tap a number for its chart.">
+        <button type="button" data-stat="played" aria-label={`Games played: ${nightRecord.played + summary.games}. Show chart`} onClick={() => { keyboard.hide(); setStat('played'); }}><b>{nightRecord.played + summary.games}</b><span>Games played</span><ChartLineUp size={13} weight="bold" aria-hidden="true" /></button>
+        <button type="button" className="record-tile" data-stat="record" aria-label={`Won ${totalWon}, lost ${totalLost}${totalWon + totalLost ? `, ${percent(totalWon / (totalWon + totalLost))} won` : ''}. Show chart`} onClick={() => { keyboard.hide(); setStat('record'); }}>
+          <span className="rt-score" aria-hidden="true"><b className="w">{totalWon}</b><i>won</i><em>·</em><b className="l">{totalLost}</b><i>lost</i></span>
+          <span className="rt-bar" aria-hidden="true">{totalWon + totalLost > 0 && <>{totalWon > 0 && <u className="w" style={{ flexGrow: totalWon }} />}{totalLost > 0 && <u className="l" style={{ flexGrow: totalLost }} />}</>}</span>
+          <span className="rt-note" aria-hidden="true">{totalWon + totalLost ? `${percent(totalWon / (totalWon + totalLost))} of your games won` : 'Your first game starts the bar'}</span>
+          <ChartLineUp size={13} weight="bold" aria-hidden="true" />
+        </button>
         {([
-          ['played', nightRecord.played + summary.games, 'Games played'],
-          ['won', nightRecord.won + summary.wins, 'Won'],
-          ['lost', nightRecord.played - nightRecord.won + summary.losses, 'Lost'],
           ['nightWins', stats.wins, 'Night wins'],
           ['nightRate', stats.appearances ? percent(stats.winRate) : '–', 'Night win rate'],
           ['streak', stats.bestWinStreak, 'Best streak'],
@@ -155,6 +162,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, in
       </div>
       <FormCard games={statData.games} />
       <StatSheet stat={stat} data={statData} onClose={() => setStat(null)} />
+      <GameLengths games={games} onReplay={onReplay} />
       <button className="primary" onClick={onPlay}><Robot size={19} weight="bold" />Play the computer</button>
       {nextUp.length > 0 && <><h3>Next badges</h3><ul className="next-badges">{nextUp.map((badge) => <li key={badge.id}><BadgeButton badge={badge} size={46} onOpen={setOpenBadge}><span><strong>{badge.label}</strong><small>{badge.hint}</small></span><em>{badge.have}/{badge.need}</em></BadgeButton></li>)}</ul></>}
       {earned.length > 0 && <><h3>Latest badges</h3><div className="chip-row" aria-label="Badges earned">{earned.slice(-6).reverse().map((badge) => <BadgeButton key={badge.id} badge={badge} size={46} onOpen={setOpenBadge} />)}</div></>}

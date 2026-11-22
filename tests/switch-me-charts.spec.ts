@@ -5,7 +5,8 @@ import { expect, test } from "@playwright/test";
  * Table talk no longer takes the main billing there: it lives under Me > Computer.
  */
 
-const NUMBERS = ["played", "won", "lost", "nightWins", "nightRate", "streak", "beat", "vsRate", "countries"] as const;
+// Won and lost share one tile (owner request, 21 Nov 2026), so there are eight.
+const NUMBERS = ["played", "record", "nightWins", "nightRate", "streak", "beat", "vsRate", "countries"] as const;
 
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 932 });
@@ -33,8 +34,22 @@ test.beforeEach(async ({ page }) => {
 
 test("every number on Me opens a chart that matches it", async ({ page }) => {
   const tiles = page.locator(".me-tiles button");
-  await expect(tiles).toHaveCount(9);
+  await expect(tiles).toHaveCount(8);
   for (const id of NUMBERS) {
+    if (id === "record") {
+      // One tile, both numbers: 9 computer games (6 won, 3 lost) plus 4 nights (3 won, 1 lost).
+      const won = Number(await page.locator('.me-tiles [data-stat="record"] b.w').innerText());
+      const lost = Number(await page.locator('.me-tiles [data-stat="record"] b.l').innerText());
+      expect(won + lost).toBe(13);
+      await page.locator('.me-tiles [data-stat="record"]').click();
+      const sheet = page.locator('.stat-sheet[data-stat="record"]');
+      await expect(sheet).toBeVisible();
+      await expect(sheet.locator(".st-chart")).toBeVisible();
+      await expect(sheet.locator(".st-headline")).toHaveText(`${won} won, ${lost} lost`);
+      await page.keyboard.press("Escape");
+      await expect(sheet).toBeHidden();
+      continue;
+    }
     const shownValue = await page.locator(`.me-tiles [data-stat="${id}"] b`).innerText();
     await page.locator(`.me-tiles [data-stat="${id}"]`).click();
     const sheet = page.locator(`.stat-sheet[data-stat="${id}"]`);

@@ -92,7 +92,7 @@ New per-device keys, outside the club document and never synced or shared:
 
 | Key | Purpose | Notes |
 |---|---|---|
-| `switchGameReplays` | Your last 30 finished games, move by move, as the table saw them (cards played, how many everyone held) plus every reaction sent, for Me > History > Watch the replay | Filed under the same id as the game's record in `switchComputerGames`. Never holds another player's hand or the draw pile. |
+| `switchGameReplays` | Your last 30 finished games, move by move, as the table saw them (cards played, how many everyone held) plus every reaction sent, for Me > History > Watch the replay | Filed under the same id as the game's record in `switchComputerGames`. Replays now also hold every hand (see the end of this file). |
 | `switchReplayDraft` | The game in progress, recorded as it goes | Replaced by the next game; moved into `switchGameReplays` when the game ends. |
 | `switchReactionLog` | Every reaction sent or received: game id, time, move number, who, which reaction, whether it was you, a computer, online | Newest 3,000. Me > Table talk is worked out from it. |
 | `switchSpicyTalk` | `"1"` when spicy talk (swearing) is on for this phone, otherwise `"0"` or absent | Off by default (15 Nov 2026). Never synced or shared; each phone decides what it shows. |
@@ -101,3 +101,11 @@ New per-device keys, outside the club document and never synced or shared:
 
 `switchAccountMe` sits inside the club document (`extensions`) and is synced with Google sign-in. It names the saved player who is "me" for the whole account. Each phone or browser makes its own "You" player, so before this a signed-in person's games were split across devices (15 on the website, 54 on the phone) even though sync had copied every game to both. On sync, a device folds its own "me" into the account's (`unifyIdentity` in `src/switch/sync.ts`); a real name beats the automatic "You". No existing key changed.
 - `switchSampleDismissed` ("1" once the sample club was removed; the offer never returns). Added 16 Nov 2026.
+
+## Hands in replays and game lengths (21 Nov 2026)
+
+| Key / field | What it holds | Notes |
+| --- | --- | --- |
+| `switchRecordReplays` | Up to four replays: the games that hold your longest or shortest game by moves or by time | Kept beyond the newest 30 of `switchGameReplays` so a record can always be watched. Only replays that carry hands are kept here. |
+| `seconds` on each record in `switchComputerGames` | How long the game took to play, in seconds | Optional. Pauses over two minutes (the app closed mid-game) are cut short. Games saved before this have none; Me works it out from a replay still on the phone. |
+| `start.hands`, `drew`, `moves`, `seconds` in a replay | Every seat's cards at the deal, the cards each move picked up, and the finished game's move count and playing time | Replays now show every hand face up (replaces "public information only" above). Against the computer the phone records them; at an online table the server sends them only after the game ends. Older replays have none and show card counts only. |

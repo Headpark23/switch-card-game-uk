@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowCounterClockwise, CaretLeft, ChatCircleText, FastForward, Pause, Play } from '@phosphor-icons/react';
 import { getReplay, replayFrames, type ReplayReaction } from '../switch/gameReplay';
+import { cardIdLabel } from '../switch/cards';
 import { reactionOf } from '../switch/reactions';
 import { CardImage, FeltHeader, suitNames, suitSymbols } from '../ui';
 import { ReactionFace } from './ReactionSticker';
@@ -14,8 +15,8 @@ const TALK_MS = 1300;
 const longDate = (iso: string) => new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 
 /**
- * A finished game played back at speed: the cards landing, everyone's hand growing and shrinking, the running stats,
- * and every remark at the moment it was made. Only what the table could see is shown.
+ * A finished game played back at speed: the cards landing, everyone's hand growing and shrinking with every card face up,
+ * the running stats, and every remark at the moment it was made.
  */
 export default function ReplayScreen({ gameId, onBack }: { gameId: string; onBack: () => void }) {
   const replay = useMemo(() => getReplay(gameId), [gameId]);
@@ -76,6 +77,22 @@ export default function ReplayScreen({ gameId, onBack }: { gameId: string; onBac
       </div>
       <p className="replay-line" aria-live="polite" data-testid="replay-line">{frame.line}</p>
     </div>
+
+    {/* Every hand face up, so you can see how each player played: what they held, what they kept and what they picked up. */}
+    {frame.hands
+      ? <div className="replay-hands" role="list" aria-label="Every player's hand, face up" data-testid="replay-hands">
+        {names.map((name, seat) => {
+          const hand = frame.hands![seat] ?? [];
+          const moving = frame.event?.k === 'm' && frame.event.seat === seat;
+          return <div key={seat} role="listitem" className={'replay-hand' + (moving ? ' moving' : '') + (hand.length === 0 ? ' out' : '')} data-seat={seat} aria-label={`${name}'s hand: ${hand.length === 0 ? 'no cards' : hand.map((card) => cardIdLabel(card)).join(', ')}`}>
+            <strong>{name}</strong>
+            <span className="rh-cards">{hand.length === 0
+              ? <em>Out</em>
+              : hand.map((card) => <span key={card} className={'rh-card' + (moving && frame.drew.includes(card) ? ' fresh' : '')} data-card={card}><CardImage code={card} /></span>)}</span>
+          </div>;
+        })}
+      </div>
+      : <p className="replay-note" data-testid="replay-no-hands">This game was recorded before hands were kept, so only the number of cards each player held is shown.</p>}
 
     <div className="replay-controls">
       <button className="replay-play" onClick={() => { if (done) setAt(0); setPlaying((current) => (done ? true : !current)); }} aria-label={playing ? 'Pause' : done ? 'Play again' : 'Play'} data-testid="replay-play">{playing ? <Pause size={22} weight="fill" /> : done ? <ArrowCounterClockwise size={22} weight="bold" /> : <Play size={22} weight="fill" />}</button>

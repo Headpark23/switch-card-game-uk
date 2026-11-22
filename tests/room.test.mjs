@@ -79,7 +79,11 @@ test("nobody can see another seat's cards, in the lobby, mid-game or at the end"
         view.game.discardPile.forEach((card) => known[viewer].add(card));
         view.game.hands.slice(1).forEach((hand) => assert.ok(hand.every((card) => card === "back")));
         assert.ok(view.game.drawPile.every((card) => card === "back"));
-        for (const text of JSON.stringify(view).match(CARD_TEXT) ?? []) assert.ok(known[viewer].has(JSON.parse(text)), `seat ${viewer} was shown ${text}`);
+        // Every hand is shown, face up, only once the game is over (owner decision, 21 Nov 2026: replays show all hands).
+        const { replay, ...visible } = view;
+        if (view.result) assert.ok(replay, "a finished game reveals its replay");
+        else assert.equal(replay, null, "no hand is revealed while the game is being played");
+        for (const text of JSON.stringify(visible).match(CARD_TEXT) ?? []) assert.ok(known[viewer].has(JSON.parse(text)), `seat ${viewer} was shown ${text}`);
       }
     }
     assert.equal(t.room().status, "finished", `seed ${seed} should reach the end`);
@@ -88,6 +92,15 @@ test("nobody can see another seat's cards, in the lobby, mid-game or at the end"
     assert.equal(final.result.seats.length, 5);
     assert.equal(final.result.seats.filter((seat) => seat.place === 1).length >= 1, true);
     assert.equal(final.game.winner !== null, true);
+    // The revealed replay adds up: dealt hands, then each move's plays and pick-ups, end with what each seat was left holding.
+    const hands = final.replay.hands.map((hand) => [...hand]);
+    assert.equal(hands.length, 5);
+    for (const move of final.replay.moves) {
+      hands[move.seat] = [...hands[move.seat].filter((card) => !move.cards.includes(card)), ...move.drew];
+      move.counts.forEach((count, seat) => assert.equal(hands[seat].length, count, `seed ${seed}: seat ${seat} after move by ${move.seat}`));
+    }
+    assert.deepEqual(hands.map((hand) => hand.length), final.result.seats.map((seat) => seat.cardsLeft));
+    assert.ok(final.replay.moves.every((move) => ["play", "draw", "miss", "spot"].includes(move.type)));
   }
 });
 

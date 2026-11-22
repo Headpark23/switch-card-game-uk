@@ -122,6 +122,8 @@ export interface RoomView {
   /** `seat` is where the sender sits in this game, or null if they are watching. */
   readonly reactions?: readonly { readonly n: number; readonly seat: number | null; readonly name: string; readonly id: string; readonly at: number }[];
   readonly result?: RoomResult | null;
+  /** Once the game is over every hand is public: the whole game, every seat's cards and what each move picked up. Null while it is being played. */
+  readonly replay?: { readonly hands: readonly (readonly CardId[])[]; readonly moves: readonly (Omit<RoomMove, "n" | "computer" | "missedLastCard" | "type" | "chosenSuit"> & { readonly type: "play" | "draw" | "miss" | "spot"; readonly suit?: Suit; readonly drew: readonly CardId[] })[] } | null;
 }
 
 /** What anyone holding the code can see before they sit down. */

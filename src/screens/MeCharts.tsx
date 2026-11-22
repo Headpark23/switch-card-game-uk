@@ -3,8 +3,8 @@ import { BottomSheet } from '../mobile';
 import { countryName } from '../switch/places';
 import type { PassportStamp } from '../switch/badges';
 
-/** The nine numbers on Me. Each opens a small chart that explains it. */
-export type StatId = 'played' | 'won' | 'lost' | 'nightWins' | 'nightRate' | 'streak' | 'beat' | 'vsRate' | 'countries';
+/** The numbers on Me (won and lost share one tile, `record`). Each opens a small chart that explains it. */
+export type StatId = 'played' | 'record' | 'nightWins' | 'nightRate' | 'streak' | 'beat' | 'vsRate' | 'countries';
 
 export interface StatGame { when: string; won: boolean; kind: 'computer' | 'online' | 'home' }
 export interface StatComputerGame { when: string; won: boolean; level: string }
@@ -117,15 +117,10 @@ function view(stat: StatId, data: StatData): View {
       body: <MonthColumns label="Games played each month" series={KINDS.map((kind, index) => ({ id: kind.id, label: kind.label, cls: `k${index}` }))} rows={games.map((game) => ({ when: game.when, series: game.kind }))} />,
       foot: 'Every game counts: against the computer, online with friends, and scored at home, wins and losses alike.',
     };
-    case 'won': return {
-      title: 'Games won', headline: `${plural(wins, 'win')} so far`, empty: wins ? undefined : 'Your first win starts this line climbing.',
-      body: <Line label="Wins so far" values={running(games, 'wins')} max={Math.max(1, wins)} unit="game" />,
-      foot: `${wins} won from ${plural(games.length, 'game')}: ${pct(wins, games.length)}% overall.`,
-    };
-    case 'lost': return {
-      title: 'Games lost', headline: plural(losses, 'loss', 'losses'), empty: games.length ? (losses ? undefined : 'No losses yet. Enjoy it.') : 'Nothing played yet.',
-      body: <MonthColumns label="Games lost each month" series={[{ id: 'lost', label: 'Lost', cls: 'l' }]} rows={games.filter((game) => !game.won).map((game) => ({ when: game.when, series: 'lost' }))} />,
-      foot: 'Everyone loses games. Each one is saved so your record is honest.',
+    case 'record': return {
+      title: 'Won and lost', headline: `${wins} won, ${losses} lost`, empty: games.length ? undefined : 'Play a game, or score a night, and your wins and losses show here.',
+      body: <MonthColumns label="Games won and lost each month" series={[{ id: 'won', label: 'Won', cls: 'w' }, { id: 'lost', label: 'Lost', cls: 'l' }]} rows={games.map((game) => ({ when: game.when, series: game.won ? 'won' : 'lost' }))} />,
+      foot: `${pct(wins, games.length)}% won from ${plural(games.length, 'game')}. Everyone loses games, and every one is saved so your record is honest.`,
     };
     case 'nightWins': return {
       title: 'Night wins', headline: `${nightWins} of ${plural(nights.length, 'night')}`, empty: nights.length ? undefined : 'Score a real card night in Score and your wins show here.',

@@ -14,7 +14,7 @@ import { drawTiming, LAST_CARD_GRACE_MS, paceIsHuman, planTurn, REDUCED, SPEEDS,
 import { readSpeed } from '../switch/activeTable';
 import { modeInfo, pendingGames, seriesPlayerName, standings } from '../switch/series';
 import { clearSeat, loadSeat, onlineModeBlurb, reactionOf, RoomApiError, tableInvite, tableName, useRoom, type RoomView } from '../switch/onlineRoom';
-import { logReaction } from '../switch/gameReplay';
+import { getReplay, logReaction } from '../switch/gameReplay';
 import { GameEnding } from './GameEnding';
 import { beginReplay, Bubble, ReactionSheet, useBubbles, useReplayRecorder } from './tableTalk';
 import { SuitBadge, TableToggles, useTablePrefs } from './tablePrefs';
@@ -83,8 +83,9 @@ function useOnlineRecord(view: RoomView | null) {
       if (logged.current.has(entry.gameId)) continue;
       logged.current.add(entry.gameId);
       const humans = entry.seats.filter((seat) => seat.kind === 'human').map((seat) => seat.name);
+      const seconds = getReplay(entry.gameId)?.seconds;
       logComputerGame({
-        id: entry.gameId, opponents: entry.seats.length - 1, level: view.level, won: entry.winner === 0, place: entry.seats[0].place, moves: entry.moves,
+        id: entry.gameId, opponents: entry.seats.length - 1, level: view.level, won: entry.winner === 0, place: entry.seats[0].place, moves: entry.moves, ...(seconds !== undefined ? { seconds } : {}),
         rivals: entry.seats.slice(1).map((seat) => ({ name: seat.name, place: seat.place, ...(seat.kind === 'human' ? { human: true } : {}) })),
         online: { code: view.code, humans, autoMoves: entry.seats[0].autoMoves },
         ...(entry.seriesId ? { mode: view.mode, seriesId: entry.seriesId } : {}),
@@ -236,7 +237,11 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
     if (!fresh.length) return;
     appliedN.current = fresh[fresh.length - 1].n;
     fresh.forEach((entry) => recorder.move({ seat: entry.seat, type: entry.type === 'accept-missed-turn' ? 'miss' : entry.type, ...(entry.cards.length ? { cards: [...entry.cards] } : {}), ...(entry.chosenSuit ? { suit: entry.chosenSuit } : {}), counts: [...entry.counts], ...(entry.auto ? { auto: true } : {}) }, entry.at));
-    if (view.game.status === 'won' && !watching) recorder.finish(view.game.winner, fresh[fresh.length - 1].at);
+    if (view.game.status === 'won' && !watching) {
+      // The game is over, so the server shows every hand: the replay keeps them, face up, with the complete list of moves.
+      if (view.replay) recorder.reveal(view.replay);
+      recorder.finish(view.game.winner, fresh[fresh.length - 1].at, view.game.move);
+    }
     const before = gameRef.current;
     const move = fresh[0];
     if (fresh.length === 1 && move.type !== 'spot' && before.turn === move.seat) {

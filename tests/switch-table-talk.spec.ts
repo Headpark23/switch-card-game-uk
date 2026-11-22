@@ -133,6 +133,9 @@ test("react at the computer table, finish the game, then watch it back with the 
 
   await page.getByTestId("watch-replay").click();
   await expect(page.getByTestId("replay-table")).toBeVisible();
+  // Every replay shows every player's hand face up (owner decision, 21 Nov 2026).
+  await expect(page.getByTestId("replay-hands")).toBeVisible();
+  await expect(page.locator(".replay-hand")).toHaveCount(2);
   await expect(page.getByTestId("replay-line")).toContainText(/John plays Nine of clubs|John: /, { timeout: 15_000 });
   await expect(page.locator(".replay-talk")).toContainText("Too easy");
   await page.getByRole("slider", { name: "Jump to a moment in the game" }).fill("2");

@@ -12,7 +12,7 @@ import type { Player } from "./types";
  * Pass the game's own `id`: saving the same id again replaces the entry, so a game can never be counted twice.
  * Guided practice in Learn the Rules never calls this: practice is unranked.
  */
-export function logComputerGame(game: { id?: string; opponents: number; level: ComputerLevel; won: boolean; place: number; moves: number; mode?: PlayMode; seriesId?: string; rivals?: readonly RivalPlace[]; online?: OnlineGame }): void {
+export function logComputerGame(game: { id?: string; opponents: number; level: ComputerLevel; won: boolean; place: number; moves: number; seconds?: number; mode?: PlayMode; seriesId?: string; rivals?: readonly RivalPlace[]; online?: OnlineGame }): void {
   const { id = newGameId(), ...rest } = game;
   updateClub((extensions) => {
     const ensured = ensureMe(extensions);

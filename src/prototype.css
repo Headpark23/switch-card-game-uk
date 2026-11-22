@@ -1425,3 +1425,39 @@
 .game-tutorial .seat-row{padding-bottom:2px}
 .game-tutorial .hand-row{margin-top:0;margin-bottom:2px}
 .game-tutorial .player-hand.two-rows{padding:8px 8px 6px;row-gap:8px}
+
+/* Me: won and lost share one tile, with a split bar (owner request, 21 Nov 2026) */
+.me-tiles .record-tile{grid-column:span 2;gap:6px;padding:10px 12px;align-content:center;background:linear-gradient(180deg,#fffdf7,#f3ead0)}
+.me-tiles .record-tile .rt-score{display:flex;align-items:baseline;justify-content:center;gap:4px;font-size:inherit}
+.me-tiles .record-tile .rt-score b{font-size:34px;line-height:1}
+.me-tiles .record-tile .rt-score b.w{color:#0d4a37}.me-tiles .record-tile .rt-score b.l{color:#b1342b}
+.me-tiles .record-tile .rt-score i{font-style:normal;font-size:11px;color:var(--muted);margin-right:8px}
+.me-tiles .record-tile .rt-score em{font-style:normal;color:var(--gold);margin-right:8px}
+.me-tiles .record-tile .rt-bar{display:flex;gap:2px;width:100%;height:9px;border-radius:5px;overflow:hidden;background:#e8e0cc}
+.me-tiles .record-tile .rt-bar u{display:block;text-decoration:none;min-width:5px}
+.me-tiles .record-tile .rt-bar u.w{background:linear-gradient(90deg,#0d4a37,#2f9068)}.me-tiles .record-tile .rt-bar u.l{background:#b1342b}
+.me-tiles .record-tile .rt-note{font-size:11px}
+
+/* Longest and shortest games on Me */
+.game-lengths{display:grid;gap:8px}.game-lengths h3{margin:0}
+.game-lengths ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.game-lengths li{display:grid;grid-template-columns:22px 1fr;gap:10px;padding:11px 12px;border:1px solid #d8c99f;border-radius:14px;background:linear-gradient(180deg,#fffdf7,#f8f1de)}
+.game-lengths li>svg{color:var(--gold);margin-top:2px}
+.game-lengths li>div{display:grid;gap:3px;min-width:0}
+.game-lengths li strong{font-size:12.5px;font-weight:600;color:var(--muted)}
+.game-lengths .gl-value{font-family:'DM Serif Display',Georgia,serif;font-size:24px;font-weight:400;line-height:1.1;color:var(--green)}
+.game-lengths .gl-value small{font:500 12px 'DM Sans',sans-serif;color:var(--muted)}
+.game-lengths small{font-size:12px;color:var(--muted)}
+.game-lengths .gl-watch{justify-self:start;width:auto;padding-inline:16px;margin-top:5px;display:inline-flex;align-items:center;gap:7px;min-height:40px}
+.game-lengths li.empty{opacity:.75}
+
+/* The replay shows every hand face up */
+.replay-hands{display:grid;gap:5px;padding:10px;border-radius:16px;background:radial-gradient(ellipse at 50% 0%,#145f43 0%,#0b5239 60%,#053527 100%);border:1px solid #ac7b2699;color:#fbf8f0}
+.replay-hand{display:grid;grid-template-columns:58px 1fr;gap:8px;align-items:center;padding:5px 6px;border-radius:10px;border:1px solid transparent;transition:background .2s,border-color .2s}
+.replay-hand strong{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.replay-hand.moving{background:#d4483b40;border-color:#e46a5d}
+.replay-hand .rh-cards{display:flex;flex-wrap:wrap;gap:3px;min-height:42px;align-items:center}
+.replay-hand .rh-card{display:block;line-height:0}
+.replay-hand .rh-card .playing-card{width:30px;display:block;border-radius:3px;box-shadow:0 2px 4px #00000066}
+.replay-hand .rh-card.fresh .playing-card{outline:2px solid #f0c75b;outline-offset:1px;translate:0 -3px}
+.replay-hand.out em{font-style:normal;color:#f0c75b;font-size:13px}
