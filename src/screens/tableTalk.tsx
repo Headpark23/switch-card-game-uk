@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { BottomSheet } from '../mobile';
 import { Fire } from '@phosphor-icons/react';
 import { SAYINGS, SPICY_SAYINGS, STICKERS, reactionOf, setSpicyTalk, spicyTalk } from '../switch/reactions';
-import { beginReplay, elapsed, finishReplay, readDraft, saveDraft, withEvent, type GameReplay, type ReplayMove, type ReplayReaction } from '../switch/gameReplay';
+import { beginReplay, elapsed, finishReplay, readDraft, saveDraft, withEvent, withServerLog, type GameReplay, type ReplayMove, type ReplayReaction } from '../switch/gameReplay';
+import type { CardId } from '../switch/types';
 import { Sticker } from './ReactionSticker';
 
 /**
@@ -20,7 +21,15 @@ export function useReplayRecorder(id: string, begin: () => GameReplay) {
   return {
     move(move: Omit<ReplayMove, 'k' | 't'>, at?: number) { const replay = ref.current!; keep(withEvent(replay, { k: 'm', t: elapsed(replay, at), ...move })); },
     react(reaction: Omit<ReplayReaction, 'k' | 't'>, at?: number) { const replay = ref.current!; keep(withEvent(replay, { k: 'r', t: elapsed(replay, at), ...reaction })); },
-    finish(winner: number | null, at?: number) { const replay = ref.current!; if (!replay.finishedAt) ref.current = finishReplay(replay, winner, at); },
+    /** Files the finished game and returns it (with its move count and playing time). `moves` is the game's own count. */
+    finish(winner: number | null, at?: number, moves?: number): GameReplay { const replay = ref.current!; if (!replay.finishedAt) ref.current = finishReplay(replay, winner, at, moves); return ref.current!; },
+    /** An online table reveals every hand once the game is over; this adds them and the complete move log. */
+    reveal(log: { hands: readonly (readonly CardId[])[]; moves: readonly (Omit<ReplayMove, 'k' | 't'> & { at: number })[] }) {
+      const replay = ref.current!;
+      const next = withServerLog(replay, { hands: log.hands, moves: log.moves.map(({ at, ...move }) => ({ k: 'm' as const, t: elapsed(replay, at), ...move })) });
+      ref.current = replay.finishedAt ? finishReplay(next, next.winner ?? null, Date.parse(replay.finishedAt)) : next;
+      if (!replay.finishedAt) saveDraft(next);
+    },
   };
 }
 

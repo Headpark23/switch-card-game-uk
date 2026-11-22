@@ -190,7 +190,11 @@ function dealTable(room, players, now, random, { key = null, title = null, playO
     id: `t${room.gameNo}`, no: room.gameNo, gameId: `${room.code ?? "room"}-${room.gameNo}`, key, title, playOn, players: [...players],
     game: createTable(players.length, random, Math.floor(random() * players.length), { ...(playOn ? { playOn: true } : {}), powerStartChance: POWER_START_CHANCE }),
     turnAt: now, seq: 0, moves: [], result: null, finishedAt: null,
+    // The whole game as it was dealt and played, kept for the replay. It is only ever sent once the game is over.
+    start: null, log: [],
   });
+  const table = room.tables[room.tables.length - 1];
+  table.start = { hands: table.game.hands.map((hand) => [...hand]) };
   // A finished game is kept while it is still someone's latest, so its result can be shown to them.
   room.tables = room.tables.filter((table) => active(table) || table.players.some((player) => latestTableOf(room, player) === table));
   refreshStatus(room);
@@ -295,10 +299,18 @@ export const rematchRoom = againRoom;
 
 /* ── Playing a move ── */
 
-function recordMove(table, entry) {
+/** The cards a hand gained between two states of one game (one deck, so every card is unique). */
+const gained = (before, after) => after.filter((card) => !before.includes(card));
+
+function recordMove(table, entry, drew = []) {
   table.seq += 1;
-  table.moves.push({ n: table.seq, ...entry });
+  const move = { n: table.seq, ...entry };
+  table.moves.push(move);
   if (table.moves.length > 30) table.moves.splice(0, table.moves.length - 30);
+  // The complete log, with the cards each move picked up, for the replay once the game is over.
+  table.log ??= [];
+  table.log.push({ ...move, drew });
+  if (table.log.length > 1500) table.log.splice(0, table.log.length - 1500);
 }
 
 function finishTable(room, table, at) {
@@ -443,7 +455,7 @@ function playAction(room, table, seat, action, { at, lastCard, auto }) {
   recordMove(table, {
     seat, type: action.type, cards: action.type === "play" ? [...action.cards] : [], ...(action.chosenSuit ? { chosenSuit: action.chosenSuit } : {}),
     auto: Boolean(auto), computer: mine.kind === "computer", missedLastCard: missed, counts: after.hands.map((hand) => hand.length), at,
-  });
+  }, gained(game.hands[seat], after.hands[seat]));
   if (mine.kind === "human") { if (auto) { mine.autoStreak += 1; mine.autoTotal += 1; } else mine.autoStreak = 0; }
   table.game = after;
   table.turnAt = at;
@@ -522,10 +534,11 @@ function spottable(room, table, seat) {
 /** Caught holding one card without saying "Last Card": two cards. */
 function spotSeat(room, table, seat, at) {
   const person = seatOf(room, table, seat);
+  const held = table.game.hands[seat];
   table.game = dealTo(table.game, seat, 2);
   person.exposedAt = null;
   computerBanter(room, table, { kind: "spotted", victim: seat, by: table.players.findIndex((_, index) => index !== seat && seatOf(room, table, index).kind === "computer") }, at);
-  recordMove(table, { seat, type: "spot", cards: [], auto: false, computer: false, missedLastCard: true, counts: table.game.hands.map((hand) => hand.length), at });
+  recordMove(table, { seat, type: "spot", cards: [], auto: false, computer: false, missedLastCard: true, counts: table.game.hands.map((hand) => hand.length), at }, gained(held, table.game.hands[seat]));
 }
 
 /**
@@ -685,6 +698,11 @@ export function viewFor(room, viewer, now, watch = null) {
     moves: table.moves.map((move) => ({ ...move, seat: turned(move.seat), counts: rotated(move.counts) })),
     reactions: reactionsFor(shift, count, table.players),
     result: table.result ? { ...table.result, winner: turned(table.result.winner), seats: rotated(table.result.seats) } : null,
+    // Once a game is over every hand is public: the whole game, move by move, for the replay (never sent while it is being played).
+    replay: table.result && table.start ? {
+      hands: rotated(table.start.hands),
+      moves: (table.log ?? []).map((move) => ({ seat: turned(move.seat), type: move.type === "accept-missed-turn" ? "miss" : move.type, cards: move.cards, ...(move.chosenSuit ? { suit: move.chosenSuit } : {}), drew: move.drew ?? [], counts: rotated(move.counts), at: move.at, ...(move.auto ? { auto: true } : {}) })),
+    } : null,
   };
 }
 

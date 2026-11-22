@@ -17,6 +17,8 @@ export interface ComputerGame {
   /** Finishing place, 1 for the win. Others are ranked by cards left in hand. */
   readonly place: number;
   readonly moves: number;
+  /** How long the game took to play, in seconds. Missing on games saved before playing time was kept. */
+  readonly seconds?: number;
   /** Which way of playing this game belonged to. Missing means a single game, as before game types existed. */
   readonly mode?: PlayMode;
   /** How each computer at the table finished in this game. Missing on games played before rivals were tracked. */
@@ -68,6 +70,7 @@ function isGame(value: unknown): value is ComputerGame {
     && typeof game.playerId === "string" && typeof game.opponents === "number" && game.opponents >= 1 && game.opponents <= 7
     && typeof game.level === "string" && LEVELS.includes(game.level) && typeof game.won === "boolean"
     && typeof game.place === "number" && typeof game.moves === "number"
+    && (game.seconds === undefined || typeof game.seconds === "number")
     && (game.mode === undefined || typeof game.mode === "string") && (game.seriesId === undefined || typeof game.seriesId === "string")
     && (game.series === undefined || (game.series !== null && typeof game.series === "object"))
     && (game.rivals === undefined || (Array.isArray(game.rivals) && game.rivals.every((rival) => rival !== null && typeof rival === "object" && typeof (rival as RivalPlace).name === "string" && typeof (rival as RivalPlace).place === "number")));

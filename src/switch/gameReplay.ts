@@ -4,10 +4,12 @@ import type { CardId, Suit } from "./types";
 import { reactionOf } from "./reactions";
 
 /**
- * Every game you play is recorded as it happens so it can be replayed at speed: each move as the table saw it
- * (cards played, how many everyone holds) and every reaction sent, in order. Only what was public at the table is
- * kept, so a replay never shows another player's hand. Replays live on this phone only (`switchGameReplays`, the
- * newest 30), and every reaction is also kept in a lighter log (`switchReactionLog`) that stats are worked out from.
+ * Every game you play is recorded as it happens so it can be replayed at speed: each move (cards played, cards picked
+ * up, how many everyone holds) and every reaction sent, in order. A replay shows every player's hand face up (owner
+ * decision, 21 Nov 2026), so you can see how each one played. Against the computer the phone knows every hand; at an
+ * online table the server reveals them only once the game is over. A replay recorded before this carries counts only.
+ * Replays live on this phone only (`switchGameReplays`, the newest 30, plus the record-holders in
+ * `switchRecordReplays`), and every reaction is also kept in a lighter log (`switchReactionLog`).
  */
 
 export interface ReplayMove {
@@ -18,6 +20,8 @@ export interface ReplayMove {
   readonly type: "play" | "draw" | "miss" | "spot";
   readonly cards?: readonly CardId[];
   readonly suit?: Suit;
+  /** The cards this seat picked up in the move (a pick-up, a penalty, a missed "Last Card"). Present with `start.hands`. */
+  readonly drew?: readonly CardId[];
   /** How many cards each seat holds after the move. */
   readonly counts: readonly number[];
   /** The computer played this for a person whose clock ran out. */
@@ -43,13 +47,18 @@ export interface GameReplay {
   /** Which seats a computer played. */
   readonly computers: readonly number[];
   readonly online: boolean;
-  readonly start: { readonly counts: readonly number[]; readonly pile: readonly CardId[]; readonly suit: Suit; readonly dealer: number };
+  /** `hands` is every seat's cards at the deal. Missing on replays recorded before hands were kept. */
+  readonly start: { readonly counts: readonly number[]; readonly pile: readonly CardId[]; readonly suit: Suit; readonly dealer: number; readonly hands?: readonly (readonly CardId[])[] };
   readonly events: readonly ReplayEvent[];
   readonly winner?: number | null;
   readonly finishedAt?: string;
+  /** Moves in the finished game and how long it took to play (see `playSeconds`), for the longest and shortest games on Me. */
+  readonly moves?: number;
+  readonly seconds?: number;
 }
 
 const REPLAYS_KEY = "switchGameReplays";
+const RECORDS_KEY = "switchRecordReplays";
 const DRAFT_KEY = "switchReplayDraft";
 const LOG_KEY = "switchReactionLog";
 const KEEP_REPLAYS = 30;
@@ -69,12 +78,34 @@ const isReplay = (value: unknown): value is GameReplay => !!value && typeof valu
 export function beginReplay(id: string, table: TableState, names: readonly string[], computers: readonly number[], online: boolean, at = Date.now()): GameReplay {
   return {
     id, startedAt: new Date(at).toISOString(), names: [...names], computers: [...computers], online,
-    start: { counts: table.hands.map((hand) => hand.length), pile: table.discardPile.slice(-3), suit: table.currentSuit, dealer: table.dealer },
+    start: {
+      counts: table.hands.map((hand) => hand.length), pile: table.discardPile.slice(-3), suit: table.currentSuit, dealer: table.dealer,
+      // At an online table the other hands arrive face down, so they are filled in from the server when the game ends.
+      ...(table.hands.every((hand) => hand.every((card) => (card as string) !== "back")) ? { hands: table.hands.map((hand) => [...hand]) } : {}),
+    },
     events: [],
   };
 }
 
 export const elapsed = (replay: GameReplay, at = Date.now()) => Math.max(0, at - Date.parse(replay.startedAt));
+
+/** The cards a hand gained between two states of the same game (one deck, so every card is unique). */
+export const gained = (before: readonly CardId[], after: readonly CardId[]): CardId[] => after.filter((card) => !before.includes(card));
+
+/** A pause longer than this (the app was closed mid-game) does not count as time spent playing. */
+const LONGEST_PAUSE_MS = 120_000;
+
+/** How long a game took to play, in seconds: the gaps between moves, with a long gap (the app closed and reopened) cut short. */
+export function playSeconds(replay: GameReplay, endAt: number = replay.finishedAt ? Date.parse(replay.finishedAt) : Date.now()): number {
+  let previous = 0;
+  let total = 0;
+  const marks = [...replay.events.filter((event) => event.k === "m").map((event) => event.t), Math.max(0, endAt - Date.parse(replay.startedAt))].sort((a, b) => a - b);
+  for (const mark of marks) { total += Math.min(LONGEST_PAUSE_MS, Math.max(0, mark - previous)); previous = mark; }
+  return Math.max(1, Math.round(total / 1000));
+}
+
+/** A finished game's playing time, from the record or, for replays saved before it was stored, worked out from the moves. */
+export const replaySeconds = (replay: GameReplay): number | null => replay.seconds ?? (replay.finishedAt ? playSeconds(replay) : null);
 
 export function withEvent(replay: GameReplay, event: ReplayEvent): GameReplay {
   return { ...replay, events: [...replay.events, event] };
@@ -91,14 +122,56 @@ export function getReplays(): GameReplay[] {
   const list = read<unknown>(REPLAYS_KEY, []);
   return Array.isArray(list) ? list.filter(isReplay) : [];
 }
-export const getReplay = (id: string): GameReplay | null => getReplays().find((replay) => replay.id === id) ?? null;
+/** The games that hold a record (longest or shortest, by moves or by time) are kept beyond the newest 30. */
+function getRecordReplays(): GameReplay[] {
+  const list = read<unknown>(RECORDS_KEY, []);
+  return Array.isArray(list) ? list.filter(isReplay) : [];
+}
 
-/** A finished game is filed under its id; saving twice only replaces it. */
-export function finishReplay(replay: GameReplay, winner: number | null, at = Date.now()): GameReplay {
-  const done: GameReplay = { ...replay, winner, finishedAt: new Date(at).toISOString() };
+/** Every replay on this phone: the newest 30 and the record-holders. */
+export function getAllReplays(): GameReplay[] {
+  const recent = getReplays();
+  return [...recent, ...getRecordReplays().filter((entry) => !recent.some((other) => other.id === entry.id))];
+}
+
+export const getReplay = (id: string): GameReplay | null => getReplays().find((replay) => replay.id === id) ?? getRecordReplays().find((replay) => replay.id === id) ?? null;
+
+/** Keeps the replay of every game that is, among those kept, the longest or shortest by moves or by time. A tie goes to the newer game. */
+function pinRecords(done: GameReplay): void {
+  if (!done.start.hands || done.moves === undefined || done.seconds === undefined) return;
+  const pool = [done, ...getRecordReplays().filter((entry) => entry.id !== done.id)];
+  const keep = new Set<string>();
+  const best = (value: (entry: GameReplay) => number | undefined, better: (a: number, b: number) => boolean) => {
+    let top: GameReplay | null = null;
+    for (const entry of pool) { const own = value(entry); if (own !== undefined && (!top || better(own, value(top) as number))) top = entry; }
+    if (top) keep.add(top.id);
+  };
+  best((entry) => entry.moves, (a, b) => a > b);
+  best((entry) => entry.moves, (a, b) => a < b);
+  best((entry) => entry.seconds, (a, b) => a > b);
+  best((entry) => entry.seconds, (a, b) => a < b);
+  write(RECORDS_KEY, pool.filter((entry) => keep.has(entry.id)));
+}
+
+/** A finished game is filed under its id; saving twice only replaces it. `moves` is the game's own move count, which the stats use too. */
+export function finishReplay(replay: GameReplay, winner: number | null, at = Date.now(), moves: number | undefined = replay.moves): GameReplay {
+  const finished: GameReplay = { ...replay, winner, finishedAt: new Date(at).toISOString(), ...(moves !== undefined ? { moves } : {}) };
+  const done: GameReplay = { ...finished, seconds: playSeconds(finished, at) };
   write(REPLAYS_KEY, [done, ...getReplays().filter((entry) => entry.id !== done.id)].slice(0, KEEP_REPLAYS));
+  pinRecords(done);
   try { if (readDraft(done.id)) window.localStorage.removeItem(DRAFT_KEY); } catch { /* nothing to tidy */ }
   return done;
+}
+
+/**
+ * At an online table the server keeps every hand and reveals them once the game is over. This swaps the moves this phone
+ * saw for the server's complete log (a phone that joined late, or was closed, may have missed some) and adds the hands,
+ * keeping every reaction where it was said.
+ */
+export function withServerLog(replay: GameReplay, log: { readonly hands: readonly (readonly CardId[])[]; readonly moves: readonly ReplayMove[] }): GameReplay {
+  const reactions = replay.events.filter((event): event is ReplayReaction => event.k === "r");
+  const events = [...log.moves, ...reactions].sort((a, b) => a.t - b.t || (a.k === "m" ? -1 : 1) - (b.k === "m" ? -1 : 1));
+  return { ...replay, start: { ...replay.start, counts: log.hands.map((hand) => hand.length), hands: log.hands.map((hand) => [...hand]) }, events };
 }
 
 /* ── The reaction log, for stats ── */
@@ -176,6 +249,10 @@ export interface ReplayFrame {
   readonly said: readonly ReplayReaction[];
   /** Who played the last penalty card still waiting to be picked up. */
   readonly penaltyBy: number | null;
+  /** Every seat's cards at this moment, or null when the replay was recorded without them. */
+  readonly hands: readonly (readonly CardId[])[] | null;
+  /** The cards the last move picked up, so they can be spotted in the hand. */
+  readonly drew: readonly CardId[];
 }
 
 /** Twos and kings make the next player pick up (a red king takes five off a chain, but still keeps it going). */
@@ -188,12 +265,13 @@ export function replayFrames(replay: GameReplay): ReplayFrame[] {
   const name = (seat: number | null) => (seat === null ? "Someone watching" : replay.names[seat] ?? "Someone");
   const plural = (who: string, verb: string) => (who === "You" ? verb : `${verb}s`);
   let tally: SeatTally[] = Array.from({ length: seats }, (_, seat) => ({ cards: replay.start.counts[seat] ?? 0, played: 0, pickedUp: 0, penaltiesDealt: 0, reactions: 0 }));
-  let frame: ReplayFrame = { event: null, counts: replay.start.counts, pile: replay.start.pile, suit: replay.start.suit, line: `${name(replay.start.dealer)} dealt.`, move: 0, tally, said: [], penaltyBy: null };
+  let hands: (readonly (readonly CardId[])[]) | null = replay.start.hands ?? null;
+  let frame: ReplayFrame = { event: null, counts: replay.start.counts, pile: replay.start.pile, suit: replay.start.suit, line: `${name(replay.start.dealer)} dealt.`, move: 0, tally, said: [], penaltyBy: null, hands, drew: [] };
   const frames: ReplayFrame[] = [frame];
   for (const event of replay.events) {
     if (event.k === "r") {
       tally = tally.map((seat, index) => (index === event.seat ? { ...seat, reactions: seat.reactions + 1 } : seat));
-      frame = { ...frame, event, tally, said: [...frame.said, event], line: `${event.from}: ${reactionOf(event.id)?.text ?? ""}` };
+      frame = { ...frame, event, tally, said: [...frame.said, event], line: `${event.from}: ${reactionOf(event.id)?.text ?? ""}`, drew: [] };
       frames.push(frame);
       continue;
     }
@@ -231,7 +309,14 @@ export function replayFrames(replay: GameReplay): ReplayFrame[] {
       ...(index === event.seat ? { played: seat.played + played, pickedUp: seat.pickedUp + pickedUp } : {}),
       ...(index === dealt ? { penaltiesDealt: seat.penaltiesDealt + 1 } : {}),
     }));
-    frame = { event, counts: event.counts, pile, suit, line, move: frame.move + 1, tally, said: frame.said, penaltyBy };
+    // Every hand after the move: what was played leaves the seat's hand and what was picked up joins it. If the books stop
+    // adding up (a replay cut short), the hands are simply not shown from here on.
+    const drew = event.drew ?? [];
+    if (hands) {
+      const next = hands.map((hand, index) => (index === event.seat ? [...hand.filter((card) => !(event.cards ?? []).includes(card)), ...drew] : hand));
+      hands = next.every((hand, index) => hand.length === (event.counts[index] ?? hand.length)) ? next : null;
+    }
+    frame = { event, counts: event.counts, pile, suit, line, move: frame.move + 1, tally, said: frame.said, penaltyBy, hands, drew };
     frames.push(frame);
   }
   return frames;
