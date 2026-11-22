@@ -187,6 +187,28 @@ test("online Darts: both play, the standings show between games, and the host de
   expect(logged).toContain(`${code}-1`);
 });
 
+test("an online game replays with every hand, on both phones, once it is over", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const srv = server(7);
+  const { host, friend, code, tokens } = await setUp(browser, srv, "Darts scoring", 3);
+  for (const page of [host, friend]) await expect(page.getByTestId("series-strip")).toContainText("Game 1", { timeout: 10_000 });
+  await srv.finishGame(code, tokens);
+  for (const page of [host, friend]) await expect(page.getByTestId("online-standings")).toBeVisible({ timeout: 15_000 });
+  for (const page of [host, friend]) {
+    const audit = await page.evaluate(async (id) => {
+      const mod = await import("/src/switch/gameReplay.ts");
+      const replay = mod.getReplay(id);
+      if (!replay) return null;
+      const frames = mod.replayFrames(replay);
+      return { startHands: !!replay.start.hands, players: replay.names.length, moves: frames.length - 1, bad: frames.map((frame, index) => ({ frame, index })).filter(({ frame }) => !frame.hands || frame.hands.some((hand, seat) => hand.length !== frame.counts[seat])).map(({ index }) => index), seconds: replay.seconds ?? null };
+    }, `${code}-1`);
+    expect(audit, "the finished game has a replay").not.toBeNull();
+    expect(audit!.startHands).toBe(true);
+    expect(audit!.players).toBe(3);
+    expect(audit!.bad).toEqual([]);
+  }
+});
+
 test("online Cup: matches are played at the same time; a finished player hears the news and can watch another match", async ({ browser }) => {
   test.setTimeout(120_000);
   // A draw where Mark and Rebecca are in different first-round matches (found by trying seeds against the real server code).
