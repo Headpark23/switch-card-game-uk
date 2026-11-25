@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowCounterClockwise, CaretLeft, ChatCircleText, FastForward, Pause, Play } from '@phosphor-icons/react';
-import { getReplay, replayFrames, type ReplayReaction } from '../switch/gameReplay';
-import { cardIdLabel } from '../switch/cards';
-import { reactionOf } from '../switch/reactions';
-import { CardImage, FeltHeader, suitNames, suitSymbols } from '../ui';
-import { ReactionFace } from './ReactionSticker';
-import { Bubble } from './tableTalk';
+import { getReplay, replayFrames, type ReplayReaction } from '../switch/store/gameReplay';
+import { cardIdLabel } from '../switch/engine/cards';
+import { reactionOf } from '../switch/stats/reactions';
+import { CardImage, FeltHeader, suitNames, suitSymbols } from '../components/ui';
+import { ReactionFace } from '../components/ReactionSticker';
+import { Bubble } from '../components/tableTalk';
 
 const SPEEDS = [{ x: 1, label: '1×' }, { x: 2, label: '2×' }, { x: 4, label: 'Fast' }, { x: 8, label: 'Blitz' }] as const;
 /** How long a move and a remark stay on screen at normal speed. */

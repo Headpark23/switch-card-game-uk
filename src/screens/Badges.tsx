@@ -5,9 +5,9 @@ import {
   GlobeHemisphereWest, GridFour, Handshake, House, Lightning, MapPin, MapTrifold, Medal, Moon, Ranking, Robot, Rocket, ShieldStar, Skull, Smiley, Spade, Stamp, Star,
   Sun, SuitcaseRolling, Sword, Target, Timer, Trophy, Users, UsersFour, UsersThree, type IconProps,
 } from '@phosphor-icons/react';
-import { BADGE_CATEGORIES, type BadgeProgress, type PassportStamp } from '../switch/badges';
-import { countryName } from '../switch/places';
-import type { SwitchNightRecord } from '../switch/history';
+import { BADGE_CATEGORIES, type BadgeProgress, type PassportStamp } from '../switch/stats/badges';
+import { countryName } from '../switch/store/places';
+import type { SwitchNightRecord } from '../switch/store/history';
 
 const ICONS: Readonly<Record<string, ComponentType<IconProps>>> = {
   Airplane, Armchair, Barbell, Brain, CalendarCheck, CalendarStar, Cards, Columns, Compass, Cpu, Crosshair, Crown, Diamond, DiamondsFour, Fire, Flag, Globe,

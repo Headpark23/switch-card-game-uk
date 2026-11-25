@@ -1,12 +1,12 @@
-import SampleDataBar from './SampleDataBar';
+import SampleDataBar from '../components/SampleDataBar';
 import { useState } from 'react';
-import { useConfirm } from '../Confirm';
-import { ShareButton } from '../ShareButton';
-import { getClubName, seasonShareCard } from '../switch/club';
+import { useConfirm } from '../components/Confirm';
+import { ShareButton } from '../components/ShareButton';
+import { getClubName, seasonShareCard } from '../switch/store/club';
 import { KeyboardInput, useKeyboard } from '../mobile';
-import { getHistory, type SwitchNightRecord } from '../switch/history';
-import { getProfiles } from '../switch/profiles';
-import { addNightToSeason, completeSeason, createSeason, getSeasons, putSeasons, seasonStandings, type SwitchSeason } from '../switch/seasons';
+import { getHistory, type SwitchNightRecord } from '../switch/store/history';
+import { getProfiles } from '../switch/store/profiles';
+import { addNightToSeason, completeSeason, createSeason, getSeasons, putSeasons, seasonStandings, type SwitchSeason } from '../switch/formats/seasons';
 
 type Extensions = Record<string, unknown>;
 type Props = { extensions: Extensions; onChange: (next: Extensions) => void };

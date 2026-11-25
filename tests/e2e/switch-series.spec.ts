@@ -1,0 +1,135 @@
+import { expect, test } from "@playwright/test";
+
+// Every computer game type is played end to end through the real series module, with the engine playing your seat too.
+test.setTimeout(120_000);
+
+test("every game type finishes for every table size it allows, with a clean finishing order", async ({ page }) => {
+  await page.goto("/");
+  const report = await page.evaluate(async () => {
+    const series = await import("/src/switch/formats/series.ts");
+    const problems: string[] = [];
+    const runs: Record<string, number> = {};
+    for (const info of series.MODES.filter((mode) => mode.id !== "single")) {
+      for (let players = info.minPlayers; players <= info.maxPlayers; players += 1) {
+        const setup = { mode: info.id, opponents: players - 1, level: "standard", setsToWin: 3, limit: 60, matchType: "best", games: 3 };
+        let state = series.startSeries(setup, Math.random);
+        let guard = 0;
+        while (!series.isSeriesOver(state) && guard < 400) {
+          guard += 1;
+          const waiting = series.pendingGames(state)[0];
+          if (!waiting) { problems.push(`${info.id}/${players}: stuck with nothing to play`); break; }
+          const result = series.simulateGame(waiting.playerIds, "standard", Math.random);
+          if (new Set(result.order).size !== waiting.playerIds.length) problems.push(`${info.id}/${players}: result order is not everyone once`);
+          state = series.submitGame(state, waiting.key, result);
+        }
+        const outcome = series.seriesOutcome(state);
+        if (!outcome) { problems.push(`${info.id}/${players}: did not finish`); continue; }
+        if (new Set(outcome.order).size !== players) problems.push(`${info.id}/${players}: finishing order is not everyone once (${outcome.order.join(",")})`);
+        if (outcome.order[0] !== outcome.winnerId) problems.push(`${info.id}/${players}: winner is not first`);
+        runs[`${info.id}/${players}`] = state.base.games;
+      }
+    }
+    return { problems, runs };
+  });
+  expect(report.problems).toEqual([]);
+  expect(Object.keys(report.runs).length).toBeGreaterThan(20);
+});
+
+test("dominoes: cards left add up (ace 1 to king 13) and the first to the number loses", async ({ page }) => {
+  await page.goto("/");
+  const out = await page.evaluate(async () => {
+    const series = await import("/src/switch/formats/series.ts");
+    const values = ["AS", "5H", "10D", "JC", "QS", "KH", "KH'"].map((card) => series.cardValue(card));
+    let state = series.startSeries({ mode: "dominoes", opponents: 2, level: "standard", limit: 20 }, () => 0.5);
+    const ids = state.base.players.map((player) => player.id);
+    const play = (winner: string, points: Record<string, number>) => {
+      const order = [winner, ...ids.filter((id) => id !== winner)];
+      state = series.submitGame(state, series.pendingGames(state)[0].key, { order, winnerId: winner, points: { ...points, [winner]: 0 }, moves: 30 });
+    };
+    play("me", { [ids[1]]: 12, [ids[2]]: 6 });
+    const afterOne = { ...state.totals, over: state.loserId };
+    play(ids[1], { me: 5, [ids[2]]: 14 });
+    const afterTwo = { ...state.totals, over: state.loserId };
+    return { values, afterOne, afterTwo, outcome: series.seriesOutcome(state), ids };
+  });
+  expect(out.values).toEqual([1, 5, 10, 11, 12, 13, 13]);
+  expect(out.afterOne.over).toBeNull();
+  // The third player reached 20 (6 + 14) and loses; the lowest total, 'me' on 5, wins.
+  expect(out.afterTwo.over).toBe(out.ids[2]);
+  expect(out.outcome?.winnerId).toBe("me");
+  expect(out.outcome?.order.at(-1)).toBe(out.ids[2]);
+});
+
+test("darts: three legs make a set and the sets decide the match", async ({ page }) => {
+  await page.goto("/");
+  const out = await page.evaluate(async () => {
+    const series = await import("/src/switch/formats/series.ts");
+    let state = series.startSeries({ mode: "darts", opponents: 1, level: "standard", setsToWin: 3 }, () => 0.5);
+    const [me, cpu] = state.base.players.map((player) => player.id);
+    const win = (id: string) => { state = series.submitGame(state, series.pendingGames(state)[0].key, { order: [id, id === me ? cpu : me], winnerId: id, points: { [me]: 0, [cpu]: 0 }, moves: 20 }); };
+    win(me); win(cpu); win(me); win(me);
+    const afterSet = { sets: { ...state.sets }, legs: { ...state.legs } };
+    for (let index = 0; index < 6; index += 1) win(me);
+    return { afterSet, over: series.isSeriesOver(state), winner: series.seriesOutcome(state)?.winnerId, me };
+  });
+  expect(out.afterSet.sets.me).toBe(1);
+  expect(out.afterSet.legs.me).toBe(0);
+  expect(out.over).toBe(true);
+  expect(out.winner).toBe(out.me);
+});
+
+test("one deck only (ruling 38): up to six players, seven each, a pile left to pick up from, and no seventh seat", async ({ page }) => {
+  await page.goto("/");
+  const out = await page.evaluate(async () => {
+    const table = await import("/src/switch/engine/table.ts");
+    const series = await import("/src/switch/formats/series.ts");
+    const sizes = [2, 3, 4, 5, 6].map((seats) => {
+      const game = table.createTable(seats, Math.random, 0);
+      const all = [...game.hands.flat(), ...game.drawPile, ...game.discardPile];
+      return { seats, total: all.length, unique: new Set(all).size, hand: game.hands[0].length, pile: game.drawPile.length };
+    });
+    let seventh = "";
+    try { table.createTable(7, Math.random, 0); } catch (error) { seventh = String((error as Error).message); }
+    return { sizes, seventh, maxComputers: series.MAX_COMPUTERS, sevenComputers: series.validateSetup({ mode: "single", opponents: 6, level: "standard" }) };
+  });
+  for (const size of out.sizes) expect(size).toMatchObject({ total: 52, unique: 52, hand: 7 });
+  expect(out.sizes.at(-1)!.pile).toBe(52 - 6 * 7 - 1);
+  expect(out.seventh).toContain("2 to 6");
+  expect(out.maxComputers).toBe(5);
+  expect(out.sevenComputers).toContain("1 to 5 computers");
+});
+
+test("Knock Out is head to head: every game has two players, winners go through, one champion at the end", async ({ page }) => {
+  await page.goto("/");
+  const report = await page.evaluate(async () => {
+    const series = await import("/src/switch/formats/series.ts");
+    const problems: string[] = [];
+    for (let players = 3; players <= 6; players += 1) {
+      for (let run = 0; run < 5; run += 1) {
+        let state = series.startSeries({ mode: "knockout", opponents: players - 1, level: "standard" }, Math.random);
+        let guard = 0;
+        let games = 0;
+        const beaten = new Set<string>();
+        while (!series.isSeriesOver(state) && guard++ < 100) {
+          const waiting = series.pendingGames(state);
+          if (!waiting.length) { problems.push(`${players}: stuck`); break; }
+          for (const game of waiting) {
+            if (game.playerIds.length !== 2) problems.push(`${players}: a knock out game had ${game.playerIds.length} players`);
+            if (game.playerIds.some((id: string) => beaten.has(id))) problems.push(`${players}: a beaten player was drawn again`);
+            const result = series.simulateGame(game.playerIds, "standard", Math.random, game.playOn === true);
+            beaten.add(result.order[1]);
+            state = series.submitGame(state, game.key, result);
+            games += 1;
+          }
+        }
+        const outcome = series.seriesOutcome(state);
+        if (!outcome) { problems.push(`${players}: no champion`); continue; }
+        if (games !== players - 1) problems.push(`${players}: ${games} games, expected ${players - 1}`);
+        if (beaten.has(outcome.winnerId)) problems.push(`${players}: the champion had lost a game`);
+        if (new Set(outcome.order).size !== players) problems.push(`${players}: places are not everyone once`);
+      }
+    }
+    return problems;
+  });
+  expect(report).toEqual([]);
+});

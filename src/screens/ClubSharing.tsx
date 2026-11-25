@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { ArrowsClockwise, CheckCircle, UsersThree } from '@phosphor-icons/react';
-import { useConfirm } from '../Confirm';
+import { useConfirm } from '../components/Confirm';
 import { KeyboardInput, useKeyboard } from '../mobile';
-import { getClubName } from '../switch/club';
-import { readClub } from '../switch/clubStore';
-import { myNames } from '../switch/joinedNights';
-import { cleanClubCode, clearJoined, createClub, justJoined, inIosBrowserTab, inviteMessage, joinClub, leaveClub, loadLink, previewClub, syncClub, takeJoinRequest, type ClubLink } from '../switch/clubSync';
+import { getClubName } from '../switch/store/club';
+import { readClub } from '../switch/store/clubStore';
+import { myNames } from '../switch/sync/joinedNights';
+import { cleanClubCode, clearJoined, createClub, justJoined, inIosBrowserTab, inviteMessage, joinClub, leaveClub, loadLink, previewClub, syncClub, takeJoinRequest, type ClubLink } from '../switch/sync/clubSync';
 
 const ago = (time?: number) => {
   if (!time) return 'not yet';

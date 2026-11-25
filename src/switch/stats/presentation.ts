@@ -1,0 +1,249 @@
+import { rankOf, suitOf } from "../engine/cards";
+import { tableLegalMoves, wentOut, type TableState } from "../engine/table";
+import type { CardId, GameAction, Suit } from "../engine/types";
+
+/**
+ * How a turn at the table is *shown*, worked out from the engine's result.
+ *
+ * The engine (`table.ts`) decides a move once and returns the new state straight away. This file never calls the
+ * engine: it reads the state before and after, plus the action, and lists what the player should see, in order:
+ * the computer pausing, each card travelling to the pile one after another, then what the power card did.
+ * The screen walks through these steps on a timer and only then shows the authoritative state, so the pile can
+ * never show the final card early and cards never reorder after they land.
+ */
+export type Step =
+  /** `forced`: the player had exactly one legal move (such as having to pick up), so there was nothing to think over. */
+  | { readonly kind: "think"; readonly seat: number; readonly forced?: boolean }
+  | { readonly kind: "card"; readonly seat: number; readonly card: CardId; readonly index: number; readonly count: number }
+  /** Cards leaving the deck for a seat. `penalty` is a two or king pick-up; `ouch` is a penalty landing on someone with one card left. */
+  | { readonly kind: "draw"; readonly seat: number; readonly count: number; readonly penalty?: boolean; readonly ouch?: boolean }
+  | { readonly kind: "announce"; readonly seat: number; readonly text: string; readonly tone: "power" | "last" | "info" };
+
+export type Speed = "quick" | "natural" | "relaxed";
+
+export interface Timings {
+  /** The highlight moving to the next seat. */
+  readonly highlight: number;
+  /** The pause before a computer player's move is shown. Purely a pause, not real thinking time. */
+  readonly think: number;
+  /** One card travelling from a seat to the pile. */
+  readonly flight: number;
+  /** The rest after a card lands, before the next card of a set leaves the hand. */
+  readonly gap: number;
+  /** A power card's effect, written on the table. */
+  readonly announce: number;
+  /** Picking up. */
+  readonly draw: number;
+  /** Quick pace: shorter thinking floor and shorter reading time for effects (owner request, 16 Nov 2026). */
+  readonly quick?: boolean;
+}
+
+export const SPEEDS: Readonly<Record<Speed, Timings>> = {
+  quick: { highlight: 120, think: 350, flight: 200, gap: 110, announce: 450, draw: 380, quick: true },
+  natural: { highlight: 200, think: 800, flight: 350, gap: 250, announce: 800, draw: 650 },
+  relaxed: { highlight: 250, think: 1300, flight: 500, gap: 400, announce: 1200, draw: 900 },
+};
+
+/** Reduced motion: nothing travels, but the cards still land one at a time so the order stays readable. */
+export const REDUCED: Timings = { highlight: 0, think: 400, flight: 0, gap: 320, announce: 800, draw: 450 };
+
+/**
+ * A computer player takes at least this long over a move that has choices in it, whatever the pace setting (owner
+ * request, 14 Nov 2026). A move it is forced into, when it has exactly one legal action (such as picking up with nothing
+ * to play), is quick, like a person who needs no time to think: `FORCED_THINK_MS`.
+ */
+export const MIN_THINK_MS = 5000;
+export const FORCED_THINK_MS = 900;
+/** Quick pace thinks for this long over a move with choices, and reads an effect in a fraction of the usual time. */
+export const QUICK_THINK_MS = 1200;
+export const QUICK_FORCED_THINK_MS = 400;
+/** You have this long to say "Last Card" before a computer may spot that you did not. */
+export const LAST_CARD_GRACE_MS = 5000;
+
+/** Automated test browsers skip the human-sized waits so suites stay fast. A test that checks them sets `switchRealPace` to "1". */
+export function paceIsHuman(): boolean {
+  try {
+    if (typeof navigator !== "undefined" && (navigator as Navigator & { webdriver?: boolean }).webdriver) return window.localStorage.getItem("switchRealPace") === "1";
+  } catch { /* storage blocked: treat as a person */ }
+  return true;
+}
+
+/** The pace setting with the thinking floor applied. Animation speed is untouched. */
+export function withThinkingFloor(timings: Timings): Timings {
+  return paceIsHuman() ? { ...timings, think: Math.max(timings.think, timings.quick ? QUICK_THINK_MS : MIN_THINK_MS) } : timings;
+}
+
+export const SPEED_NAMES: Readonly<Record<Speed, string>> = { quick: "Quick", natural: "Natural", relaxed: "Relaxed" };
+
+/**
+ * How a pick-up plays out. Cards slide from the deck to the hand one after another; a penalty (2, 4, 6, 8, 5 or 10 cards)
+ * is slower so the damage can be followed. With reduced motion nothing travels, the count simply shows for a moment.
+ */
+export function drawTiming(count: number, penalty: boolean, timings: Timings): { trip: number; stagger: number; shown: number; total: number } {
+  if (timings.flight <= 0) return { trip: 0, stagger: 0, shown: 0, total: penalty ? timings.announce : timings.draw };
+  const trip = penalty ? timings.draw * 1.7 : timings.draw * 1.1;
+  const shown = Math.min(count, 8);
+  const stagger = penalty ? timings.gap * 1.2 : timings.gap;
+  return { trip, stagger, shown, total: trip + (shown - 1) * stagger + (penalty ? timings.announce * 0.6 : timings.gap) };
+}
+
+/** A card's effect stays up long enough to read: 2.2 seconds, then about a third of a second a word (owner request, 16 Nov 2026). */
+export function announceReadingMs(text: string): number {
+  return Math.min(5500, 2200 + text.split(/\s+/).length * 330);
+}
+
+export function stepDuration(step: Step, timings: Timings): number {
+  switch (step.kind) {
+    case "think": return step.forced ? Math.min(timings.think, timings.quick ? QUICK_FORCED_THINK_MS : FORCED_THINK_MS) : timings.think;
+    case "card": return timings.flight + timings.gap;
+    case "draw": return drawTiming(step.count, step.penalty === true, timings).total;
+    case "announce": return paceIsHuman() ? Math.max(timings.announce, timings.quick ? Math.min(announceReadingMs(step.text) * 0.45, 1400) : announceReadingMs(step.text)) : timings.announce;
+  }
+}
+
+const ORDINALS = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
+
+const SUIT_NAMES: Readonly<Record<Suit, string>> = { S: "spades", H: "hearts", D: "diamonds", C: "clubs" };
+
+function plural(count: number, word: string): string {
+  return `${count} ${word}${count === 1 ? "" : "s"}`;
+}
+
+/** What a power card did, in a few words, read from the engine's result rather than assumed. */
+export function effectText(before: TableState, after: TableState, cards: readonly CardId[], names: readonly string[], chosenSuit?: Suit): string | null {
+  const rank = rankOf(cards[cards.length - 1]);
+  const actor = before.turn;
+  if (wentOut(after, actor)) return null;
+  // Ruling 19: a seven or jacks as the very last cards cannot win. The player picks up one card and the turn passes.
+  if ((rank === "7" || rank === "J") && cards.length === before.hands[actor].length) {
+    return `${rank === "7" ? "A seven" : "Jacks"} cannot win: ${names[actor]} pick${names[actor] === "You" ? "" : "s"} up a card`;
+  }
+  const pending = after.pendingPenalty;
+  if (rank === "2" && pending?.kind === "draw-two") return `Twos: ${names[after.turn]} faces ${plural(pending.cards, "card")}`;
+  if (rank === "K") {
+    if (pending?.kind === "black-king") return `Black king: ${names[after.turn]} faces ${plural(pending.cards, "card")}`;
+    if (before.pendingPenalty?.kind === "black-king") {
+      // A red king only reduces the pile-up. Whoever lays it picks up what is left (nothing, if it was all taken off).
+      const gained = after.hands[actor].length - (before.hands[actor].length - cards.length);
+      if (gained > 0) return `Red king takes 5 off: ${names[actor]} still pick${names[actor] === "You" ? "" : "s"} up ${gained}`;
+      return "Red king cancels the penalty";
+    }
+    return null;
+  }
+  if (rank === "8" && pending?.kind === "miss-turn") return `Eight: ${names[after.turn]} misses a turn unless they hold an eight`;
+  if (rank === "7") return `Seven: ${names[actor]} play${names[actor] === "You" ? "" : "s"} again`;
+  // Ruling 18: two or four jacks never reverse; the same player plays again.
+  if (rank === "J" && cards.length % 2 === 0) return `${cards.length === 4 ? "Four" : "Two"} jacks: ${names[actor]} play${names[actor] === "You" ? "" : "s"} again`;
+  if (rank === "J") {
+    if (before.hands.length === 2) return `Jack: back to ${names[actor]}`;
+    return `Jack: play reverses, now ${after.direction === 1 ? "clockwise" : "anticlockwise"}`;
+  }
+  if (rank === "A") return `Ace: the suit is now ${SUIT_NAMES[chosenSuit ?? after.currentSuit ?? suitOf(cards[cards.length - 1])]}`;
+  return null;
+}
+
+/**
+ * Lists the steps for one turn. `before` is the state the move was chosen in, `after` the engine's result.
+ * The seat that moved is always `before.turn`, so a card can never fly from the wrong seat.
+ */
+export function planTurn(before: TableState, action: GameAction, after: TableState, names: readonly string[], options: { think: boolean; missedCall?: boolean; /** Online: who has really said "Last Card". Computers always do; missing means everyone. */ called?: readonly boolean[] }): Step[] {
+  const seat = before.turn;
+  const steps: Step[] = [];
+  if (options.think) steps.push({ kind: "think", seat, forced: tableLegalMoves(before).length === 1 });
+  if (action.type === "accept-missed-turn") {
+    steps.push({ kind: "announce", seat, text: `${names[seat]} miss${names[seat] === "You" ? "" : "es"} a turn`, tone: "info" });
+    return steps;
+  }
+  if (action.type === "draw") {
+    const count = after.hands[seat].length - before.hands[seat].length;
+    const penalty = before.pendingPenalty !== null && before.pendingPenalty.kind !== "miss-turn";
+    steps.push({ kind: "draw", seat, count, penalty, ouch: penalty && before.hands[seat].length === 1 });
+    // The deck ran out mid-pickup: the played pile was turned over to make a new one.
+    if (after.discardPile.length < before.discardPile.length) {
+      steps.push({ kind: "announce", seat, text: "Deck empty: the played pile is turned over to make a new deck", tone: "info" });
+    }
+    return steps;
+  }
+  action.cards.forEach((card, index) => steps.push({ kind: "card", seat, card, index, count: action.cards.length }));
+  const effect = effectText(before, after, action.cards, names, action.chosenSuit);
+  if (effect) steps.push({ kind: "announce", seat, text: effect, tone: "power" });
+  // The last cards were a seven or jacks, which cannot win: one card is picked up from the deck.
+  if (!wentOut(after, seat) && before.hands[seat].length === action.cards.length) {
+    if (options.missedCall) steps.push({ kind: "announce", seat, text: `No "Last Card" called: ${names[seat]} pick${names[seat] === "You" ? "" : "s"} up two`, tone: "info" });
+    steps.push({ kind: "draw", seat, count: after.hands[seat].length, ...(options.missedCall ? { penalty: true } : {}) });
+    if (after.discardPile.length < before.discardPile.length + action.cards.length) {
+      steps.push({ kind: "announce", seat, text: "Deck empty: the played pile is turned over to make a new deck", tone: "info" });
+    }
+  }
+  // A red king on a black-king pile-up takes 5 off, and the player who laid it picks up what is left.
+  if (rankOf(action.cards[action.cards.length - 1]) === "K" && before.pendingPenalty?.kind === "black-king" && !wentOut(after, seat)) {
+    const gained = after.hands[seat].length - (before.hands[seat].length - action.cards.length);
+    if (gained > 0) {
+      steps.push({ kind: "draw", seat, count: gained, penalty: true, ouch: before.hands[seat].length - action.cards.length === 1 });
+      if (after.discardPile.length < before.discardPile.length + action.cards.length) {
+        steps.push({ kind: "announce", seat, text: "Deck empty: the played pile is turned over to make a new deck", tone: "info" });
+      }
+    }
+  }
+  // A play-on game: this player is out with a place, and everyone else carries on.
+  if (after.playOn && after.status === "playing" && wentOut(after, seat)) {
+    const place = (after.out ?? []).indexOf(seat) + 1;
+    steps.push({ kind: "announce", seat, text: `${names[seat]} ${names[seat] === "You" ? "are" : "is"} out: ${ORDINALS[place - 1] ?? `${place}th`} place`, tone: "power" });
+  }
+  if (after.status === "playing" && names[seat] !== "You" && after.hands[seat].length === 1 && (options.called?.[seat] ?? true)) {
+    steps.push({ kind: "announce", seat, text: `${names[seat]}: "Last Card!"`, tone: "last" });
+  }
+  return steps;
+}
+
+/** What the table looks like part-way through the steps: cards that have landed so far, and nothing more. */
+export interface Visible {
+  readonly discardPile: readonly CardId[];
+  readonly handCounts: readonly number[];
+  /** The seat highlighted as playing now. */
+  readonly active: number;
+  /** A card in the air, if any. */
+  readonly flying: Extract<Step, { kind: "card" }> | null;
+  readonly thinking: boolean;
+  readonly announce: Extract<Step, { kind: "announce" }> | null;
+  readonly drawing: Extract<Step, { kind: "draw" }> | null;
+  readonly currentSuit: Suit;
+  readonly direction: 1 | -1;
+}
+
+/** `at` is the index of the step now playing. At `steps.length` the turn is over and the engine's state shows. */
+export function visibleAt(before: TableState, after: TableState, steps: readonly Step[], at: number): Visible {
+  if (at >= steps.length) {
+    return {
+      discardPile: after.discardPile, handCounts: after.hands.map((hand) => hand.length), active: after.status === "playing" ? after.turn : (after.winner ?? after.turn),
+      flying: null, thinking: false, announce: null, drawing: null, currentSuit: after.currentSuit, direction: after.direction,
+    };
+  }
+  const seat = before.turn;
+  const landed = steps.slice(0, at).filter((step): step is Extract<Step, { kind: "card" }> => step.kind === "card").map((step) => step.card);
+  const current = steps[at];
+  const allLanded = !steps.slice(at).some((step) => step.kind === "card");
+  const drawsDone = steps.slice(0, at).some((step) => step.kind === "draw");
+  const handCounts = (drawsDone ? after : before).hands.map((hand, index) => {
+    if (index !== seat) return hand.length;
+    // Once the pickup is done the engine's hand is the true one (a last seven or jacks leave, then one card comes in).
+    if (drawsDone) return after.hands[seat].length;
+    // Cards leave the hand as they are thrown, the one in the air included.
+    return before.hands[seat].length - landed.length - (current.kind === "card" ? 1 : 0);
+  });
+  return {
+    discardPile: drawsDone ? after.discardPile : [...before.discardPile, ...landed],
+    handCounts,
+    active: seat,
+    flying: current.kind === "card" ? current : null,
+    thinking: current.kind === "think",
+    announce: current.kind === "announce" ? current : null,
+    drawing: current.kind === "draw" ? current : null,
+    // The suit and direction change once the last card is down, never before.
+    currentSuit: allLanded && landed.length ? after.currentSuit : before.currentSuit,
+    direction: allLanded ? after.direction : before.direction,
+  };
+}
+
+/** The computer players, in seat order. */
+export const COMPUTER_NAMES: readonly string[] = ["John", "Paul", "George", "Ringo", "Ziggy", "Marley", "Bowie"];

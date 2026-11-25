@@ -1,30 +1,31 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { ArrowClockwise, ArrowCounterClockwise, ArrowRight, ChatCircleText, CheckCircle, FilmStrip, HandPalm, Lightbulb, SortAscending, Timer } from '@phosphor-icons/react';
-import type { ComputerLevel } from '../switch/ai';
-import { cardIdLabel } from '../switch/cards';
-import { explainUnplayable } from '../switch/coach';
-import { applyTableAction, createTable, dealTo, isLegalTablePlay, openingNote, penaliseMissedLastCard, POWER_START_CHANCE, tableLegalMoves, tablePlaces, wentOut, type TableState } from '../switch/table';
-import { chooseTableAction } from '../switch/tableAi';
-import type { CardId, GameAction, GameState, Suit } from '../switch/types';
-import { cue } from '../feedback';
-import { logComputerGame } from '../switch/logGame';
-import { useTableTelemetry } from '../switch/useTableTelemetry';
-import { getComputerGames, getMeId, summariseComputerGames } from '../switch/computerLog';
-import { readClub } from '../switch/clubStore';
-import { drawTiming, LAST_CARD_GRACE_MS, paceIsHuman, planTurn, REDUCED, SPEED_NAMES, SPEEDS, stepDuration, visibleAt, withThinkingFloor, type Speed, type Step } from '../switch/presentation';
-import { clearActiveTable, newTableGameId, readSpeed, saveActiveTable, saveSpeed, type ActiveTable } from '../switch/activeTable';
-import { CardImage, CardShower, rank, suit, suitNames, suitSymbols } from '../ui';
-import RealCards from './RealCards';
-import type { PlayMode } from '../switch/series';
-import { sortHand } from '../switch/sortHand';
-import { HahaBanner, hahaText, type Haha } from './HahaBanner';
-import { attackKind, banterFor, playEvent, reactionOf, type TableEvent } from '../switch/reactions';
-import { gained, logReaction, type ReplayMove } from '../switch/gameReplay';
-import { GameEnding } from './GameEnding';
-import { beginReplay, Bubble, ReactionSheet, useBubbles, useReplayRecorder } from './tableTalk';
-import { SuitBadge, TableToggles, useTablePrefs } from './tablePrefs';
+import type { ComputerLevel } from '../switch/ai/ai';
+import { cardIdLabel } from '../switch/engine/cards';
+import { explainUnplayable } from '../switch/ai/coach';
+import { applyTableAction, createTable, dealTo, isLegalTablePlay, openingNote, penaliseMissedLastCard, POWER_START_CHANCE, tableLegalMoves, tablePlaces, wentOut, type TableState } from '../switch/engine/table';
+import { chooseTableAction } from '../switch/ai/tableAi';
+import type { CardId, GameAction, GameState, Suit } from '../switch/engine/types';
+import { cue } from '../services/feedback';
+import { logComputerGame } from '../switch/store/logGame';
+import { useTableTelemetry } from '../switch/stats/useTableTelemetry';
+import { getComputerGames, getMeId, summariseComputerGames } from '../switch/store/computerLog';
+import { readClub } from '../switch/store/clubStore';
+import { drawTiming, LAST_CARD_GRACE_MS, paceIsHuman, planTurn, REDUCED, SPEED_NAMES, SPEEDS, stepDuration, visibleAt, withThinkingFloor, type Speed, type Step } from '../switch/stats/presentation';
+import { clearActiveTable, newTableGameId, readSpeed, saveActiveTable, saveSpeed, type ActiveTable } from '../switch/store/activeTable';
+import { CardImage, CardShower, rank, suit, suitNames, suitSymbols } from '../components/ui';
+import RealCards from '../components/RealCards';
+import type { PlayMode } from '../switch/formats/series';
+import { sortHand } from '../switch/engine/sortHand';
+import { HahaBanner, hahaText, type Haha } from '../components/HahaBanner';
+import { attackKind, banterFor, playEvent, reactionOf, type TableEvent } from '../switch/stats/reactions';
+import { gained, logReaction, type ReplayMove } from '../switch/store/gameReplay';
+import { GameEnding } from '../components/GameEnding';
+import { beginReplay, Bubble, ReactionSheet, useBubbles, useReplayRecorder } from '../components/tableTalk';
+import { SuitBadge, TableToggles, useTablePrefs } from '../components/tablePrefs';
+import { BigHandHint, handPerRow } from '../components/BigHandHint';
 
-import { COMPUTER_NAMES } from '../switch/presentation';
+import { COMPUTER_NAMES } from '../switch/stats/presentation';
 export { COMPUTER_NAMES };
 export const ordinal = (place: number) => `${place}${['st', 'nd', 'rd'][place - 1] ?? 'th'}`;
 const SPEED_ORDER: Speed[] = ['quick', 'natural', 'relaxed'];
@@ -588,7 +589,8 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
           {staged.length === 0 ? <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!canAct}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={cycleSpeed} aria-label={`Computer pace: ${SPEED_NAMES[speed]}. Tap to change`}><Timer size={16} />{SPEED_NAMES[speed]}</button><button className="pace-button sort-button" onClick={() => setSortOn((on) => !on)} aria-pressed={sortOn}><SortAscending size={16} weight={sortOn ? 'fill' : 'regular'} />{sortOn ? 'Sorted' : 'Sort'}</button></div> : aceChoice ? SUIT_CHOOSER : MULTI_ACTION}
           {hint && yourMove && <p className="game-hint"><Lightbulb size={17} />{hintText}</p>}
           <div className="hand-row"><span>{hand.length} in hand</span><button className="pace-button react-button" onClick={() => setReactOpen(true)} aria-label="Send a reaction" data-testid="react-button"><ChatCircleText size={17} />React</button><button className={'last-card-button' + (lastCalled ? ' called' : hand.length > 3 ? ' idle' : ' due')} onClick={callLastCard} aria-pressed={lastCalled} data-testid="last-card-button" aria-label={lastCalled ? 'Last Card called' : 'Call Last Card'}><HandPalm size={20} weight={lastCalled ? 'fill' : 'regular'} /><span>{lastCalled ? 'Called' : 'Last Card'}</span></button></div>
-          <div className={'player-hand' + (hand.length > 10 ? ' dense' : '') + (hand.length > 5 ? ' two-rows' : '')} style={{ '--n': hand.length, '--per': Math.ceil(hand.length / 2) } as CSSProperties} aria-label="Your hand">
+          <BigHandHint count={hand.length} />
+          <div className={'player-hand' + (hand.length > 10 ? ' dense' : '') + (hand.length > 5 ? ' two-rows' : '') + (hand.length >= 14 ? ' big-hand' : '')} style={{ '--n': hand.length, '--per': handPerRow(hand.length) } as CSSProperties} aria-label="Your hand">
             {hand.map((card, index) => <button key={card} style={{ '--i': 0, zIndex: index + 1 } as CSSProperties} data-card={card} onClick={() => chooseCard(card)} className={(hint && yourMove && canPlay(card) ? 'playable ' : '') + (staged.includes(card) ? 'selected ' : '') + (flash.includes(card) ? 'illegal' : '')} disabled={!canAct} aria-label={staged.includes(card) ? `Deselect ${cardIdLabel(card)}` : `Select ${cardIdLabel(card)}${canPlay(card) ? ', legal move' : ', not currently playable'}`}><CardImage code={card} />{staged.includes(card) && <i className="order-badge" aria-hidden="true">{staged.indexOf(card) + 1}</i>}</button>)}
           </div>
         </>}

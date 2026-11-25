@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { deleteCloudCopy, loadAccount, saveAccount } from '../auth';
-import { CONTACT_EMAIL, eraseDeviceData, exportDeviceData, switchKeys } from '../switch/privacy';
-import { setStatsOptedOut, statsOptedOut, trackFeature } from '../switch/telemetry';
+import { deleteCloudCopy, loadAccount, saveAccount } from '../services/auth';
+import { CONTACT_EMAIL, eraseDeviceData, exportDeviceData, switchKeys } from '../switch/store/privacy';
+import { setStatsOptedOut, statsOptedOut, trackFeature } from '../switch/stats/telemetry';
 
 type Confirm = null | 'device' | 'cloud';
 

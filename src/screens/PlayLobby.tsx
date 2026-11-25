@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { ArrowRight, BookOpen, Check, Lightning, Robot, Shuffle, UsersThree } from '@phosphor-icons/react';
-import { readActiveTable, readSpeed, saveSpeed } from '../switch/activeTable';
-import { SPEED_NAMES, type Speed } from '../switch/presentation';
-import { LEVEL_NAMES, LEVEL_NOTES, type ComputerLevel } from '../switch/ai';
-import { PERSONALITIES, TACTICS, tacticWeights, type TacticId } from '../switch/computerTactics';
+import { readActiveTable, readSpeed, saveSpeed } from '../switch/store/activeTable';
+import { SPEED_NAMES, type Speed } from '../switch/stats/presentation';
+import { LEVEL_NAMES, LEVEL_NOTES, type ComputerLevel } from '../switch/ai/ai';
+import { PERSONALITIES, TACTICS, tacticWeights, type TacticId } from '../switch/ai/computerTactics';
 
 /** One line saying what a computer leans on at this level. Easy computers use no tactics at all. */
 function leansOn(level: ComputerLevel, personality: string): string {
@@ -12,11 +12,11 @@ function leansOn(level: ComputerLevel, personality: string): string {
   const favourites = (Object.keys(TACTICS) as TacticId[]).filter((tactic) => weights[tactic] >= 1.2).sort((a, b) => weights[b] - weights[a]).slice(0, 2);
   return favourites.length ? `Leans on ${favourites.map((tactic) => TACTICS[tactic].name.toLowerCase()).join(' and ')}.` : 'An even mix of tactics.';
 }
-import { getComputerGames, getMeId, summariseComputerGames } from '../switch/computerLog';
-import { readClub } from '../switch/clubStore';
-import { loadSeat } from '../switch/onlineRoom';
-import { ROUND_CHOICES, roundsLabel, roundsNote, chooseComputers, COMPUTER_MODES, COMPUTER_NAMES_IN_ORDER, MAX_COMPUTERS, MATCH_BEST_OF, MATCH_FIRST_TO, matchCountFor, matchLabel, modeInfo, validateSetup, type MatchType, type PlayMode, type SeriesSetup } from '../switch/series';
-import { CardImage, FeltHeader, MiniFan } from '../ui';
+import { getComputerGames, getMeId, summariseComputerGames } from '../switch/store/computerLog';
+import { readClub } from '../switch/store/clubStore';
+import { loadSeat } from '../switch/sync/onlineRoom';
+import { ROUND_CHOICES, roundsLabel, roundsNote, chooseComputers, COMPUTER_MODES, COMPUTER_NAMES_IN_ORDER, MAX_COMPUTERS, MATCH_BEST_OF, MATCH_FIRST_TO, matchCountFor, matchLabel, modeInfo, validateSetup, type MatchType, type PlayMode, type SeriesSetup } from '../switch/formats/series';
+import { CardImage, FeltHeader, MiniFan } from '../components/ui';
 
 const LEVELS: readonly { id: ComputerLevel; name: string; note: string }[] = [
   { id: 'relaxed', name: LEVEL_NAMES.relaxed, note: LEVEL_NOTES.relaxed },
@@ -95,12 +95,19 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
     <div className="lobby-group" role="group" aria-label="Game type">
       <h2>What are we playing?</h2>
       <div className="mode-grid">{COMPUTER_MODES.map((entry) => <button key={entry.id} aria-label={entry.name} aria-describedby={`mode-blurb-${entry.id}`} aria-pressed={choice.mode === entry.id} className={choice.mode === entry.id ? 'active' : ''} onClick={() => set({ mode: entry.id })}><MiniFan codes={MODE_CARDS[entry.id]} /><span className="mode-text"><b>{entry.name}</b><small id={`mode-blurb-${entry.id}`}>{entry.blurb}</small></span></button>)}</div>
-      <div className="mode-detail" data-testid="mode-detail" aria-live="polite">
-        <h3>How {modeInfo(choice.mode).name} plays</h3>
-        <p className="mode-short" data-testid="mode-note">{modeInfo(choice.mode).blurb}</p>
-        {modeInfo(choice.mode).how.map((line, index) => <p key={index}>{line}</p>)}
-        <p className="mode-scoring"><strong>Scoring.</strong> {modeInfo(choice.mode).scoring}</p>
-      </div>
+      <details className="mode-detail mode-detail-fold" data-testid="mode-detail" aria-live="polite">
+        <summary>
+          <span className="mode-fold-head">
+            <h3>How {modeInfo(choice.mode).name} plays</h3>
+            <p className="mode-short" data-testid="mode-note">{modeInfo(choice.mode).blurb}</p>
+          </span>
+          <span className="mode-fold-cue" aria-hidden="true">Details</span>
+        </summary>
+        <div className="mode-detail-body">
+          {modeInfo(choice.mode).how.map((line, index) => <p key={index}>{line}</p>)}
+          <p className="mode-scoring"><strong>Scoring.</strong> {modeInfo(choice.mode).scoring}</p>
+        </div>
+      </details>
     </div>
 
     <div className="lobby-table" aria-label="Your table">
@@ -156,15 +163,18 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
       <h2>Who do you want to play?</h2>
       <p className="lobby-note" data-testid="picker-note">{choice.picks.length === 0 ? `Surprise me: ${choice.opponents === 1 ? 'a computer is' : `${choice.opponents} computers are`} drawn at random.` : choice.picks.length >= choice.opponents ? `Your table is set: ${choice.picks.join(', ')}.` : `${choice.picks.join(', ')} picked. ${choice.opponents - choice.picks.length} more ${choice.opponents - choice.picks.length === 1 ? 'seat is' : 'seats are'} drawn at random.`}</p>
       <div className="pick-actions"><button aria-pressed={choice.picks.length === 0} className={choice.picks.length === 0 ? 'active' : ''} onClick={() => set({ picks: [] })}><Shuffle size={16} weight="bold" />Pick at random</button></div>
-      <ul className="personalities pickable">{PERSONALITIES.map((personality) => {
-        const picked = choice.picks.includes(personality.name);
-        const full = !picked && choice.picks.length >= choice.opponents;
-        return <li key={personality.id}><button aria-pressed={picked} disabled={full} className={picked ? 'active' : ''} aria-label={`${picked ? 'Remove' : 'Pick'} ${personality.name}`} onClick={() => set({ picks: picked ? choice.picks.filter((name) => name !== personality.name) : [...choice.picks, personality.name] })}>
-          <span className="personality-top"><strong>{personality.name}</strong><em>{personality.title}</em>{picked && <Check size={16} weight="bold" className="picked-tick" />}</span>
-          <span>{personality.blurb}</span>
-          <small>{leansOn(choice.level, personality.id)}</small>
-        </button></li>;
-      })}</ul>
+      <details className="pick-fold" open={choice.picks.length > 0}>
+        <summary>{choice.picks.length > 0 ? `Change your picked computers (${choice.picks.length}/${choice.opponents})` : 'Choose specific computers'}</summary>
+        <ul className="personalities pickable">{PERSONALITIES.map((personality) => {
+          const picked = choice.picks.includes(personality.name);
+          const full = !picked && choice.picks.length >= choice.opponents;
+          return <li key={personality.id}><button aria-pressed={picked} disabled={full} className={picked ? 'active' : ''} aria-label={`${picked ? 'Remove' : 'Pick'} ${personality.name}`} onClick={() => set({ picks: picked ? choice.picks.filter((name) => name !== personality.name) : [...choice.picks, personality.name] })}>
+            <span className="personality-top"><strong>{personality.name}</strong><em>{personality.title}</em>{picked && <Check size={16} weight="bold" className="picked-tick" />}</span>
+            <span>{personality.blurb}</span>
+            <small>{leansOn(choice.level, personality.id)}</small>
+          </button></li>;
+        })}</ul>
+      </details>
     </div>
 
     </div>

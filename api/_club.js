@@ -3,7 +3,7 @@
 // Anyone holding the code can read and add to the club, like a shared link. Unknown fields are never stored.
 import { randomBytes } from "node:crypto";
 import { cleanResult } from "./_night.js";
-import { MAX_NIGHTS, MAX_PROFILES, MAX_SEASONS, isShareable, mergeClub } from "./_clubMerge.js";
+import { MAX_NIGHTS, MAX_PROFILES, MAX_SEASONS, isShareable, mergeClub } from "../shared/clubMerge.js";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const CODE = /^[A-Z2-9]{8}$/;

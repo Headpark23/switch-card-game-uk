@@ -1,0 +1,353 @@
+/* Touch targets: keep the look, grow the hit area to 44px (Nov 2026 review) */
+.pace-button,.last-card-button,.hint-button,.turn-banner>button{position:relative}
+.pace-button::after,.last-card-button::after,.hint-button::after,.turn-banner>button::after{content:'';position:absolute;left:50%;top:50%;width:max(100%,44px);height:44px;transform:translate(-50%,-50%)}
+
+/* === score and club fixes === */
+/* Segmented chips: the chosen one is filled green like the game-type tiles */
+.scorekeeper .count-control:has(button[aria-pressed]){grid-template-columns:1fr auto auto;gap:6px}
+.scorekeeper .count-control button[aria-pressed]{width:auto;min-width:56px;padding:0 16px;border-radius:999px;font-weight:600;background:#fffdf7;color:var(--green);border:1px solid #c8bea9}
+.scorekeeper .count-control button[aria-pressed=true]{background:var(--green);color:#fbf8f0;border-color:var(--green);font-weight:700;box-shadow:inset 0 0 0 1px #e6c97f66}
+/* Switch Cup: the winner reads clearly, never as disabled */
+.cup-fixture button.winner,.cup-fixture button.winner:disabled{display:flex;align-items:center;justify-content:center;gap:6px;background:#cfe3cf;color:#053527;border:2px solid var(--green);font-weight:700;opacity:1}
+.cup-fixture button.winner svg{flex:none;color:#0b5239}
+/* Round scores, so a mistaken one is visible */
+.round-log{list-style:none;margin:8px 0 4px;padding:0;display:grid;gap:3px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.round-log li{padding:4px 10px;border-radius:8px;background:#f6efdb}
+.score-error[role=alert]{margin:4px 0 8px!important}
+/* Invitation folded away so the scores come first */
+.share-fold{margin:14px 0 6px;border:1px dashed #b89b52;border-radius:12px;background:#fbf4de}
+.share-fold>summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;cursor:pointer;font-weight:600;font-size:13.5px;color:var(--green);list-style:none}
+.share-fold>summary::-webkit-details-marker{display:none}
+.share-fold[open]>summary{border-bottom:1px dashed #d8c99f}
+.share-fold .share-night{margin:0;border:0;background:none}
+.share-night button:not(.text-link),.share-night .share-send,.share-people .share-send{min-height:44px}
+/* Tap targets */
+.dealer-bar button,.dealer-bar .dealer-pick button{min-height:44px}
+.scorekeeper .club-tabs button{min-height:44px}
+.league-actions .text-link,.playoff-needed .text-link{min-height:44px}
+/* Compact dealer card, below the players */
+.active-score .dealer-bar{margin:12px 0 4px;padding:6px 10px}
+.score-status strong{white-space:nowrap}
+.sample-bar .text-link{white-space:nowrap;flex:none}
+/* Fields that were plain browser inputs */
+.venue-fields input,.watch-who input,.club-sharing .field input{width:100%;min-width:0;height:46px;border:1px solid #c9bfaa;border-radius:10px;background:#fffdf9;padding:10px 12px;font:inherit;color:var(--ink)}
+.venue-fields label>span,.watch-who label>span{font-size:11px;font-weight:600;color:var(--muted)}
+.venue-fields select{border-color:#c9bfaa;background:#fffdf9}
+.watch-who label{display:grid;gap:5px}
+.switch-app input[aria-invalid=true]{border-color:#b1342b!important;background:#fff6f4!important;box-shadow:0 0 0 2px #b1342b33}
+/* The card shower falls behind sheets, never over their inputs */
+.card-shower{z-index:19}
+.club-panel .intro{font-size:14px;line-height:1.5}
+.score-shortcuts .text-link{max-width:100%}
+
+/* === shell and me fixes === */
+/* Install banner: a slim bar that reserves its own room, so it never covers the page. */
+.install-banner{padding:4px 2px 4px 12px;gap:8px;border-radius:14px}
+.install-banner>svg{width:22px;height:22px}
+.install-banner small{font-size:12px}
+.install-banner .install-go{min-height:44px;min-width:44px;font-size:14px}
+.install-banner .install-x{width:44px;height:44px}
+.switch-app[data-install-banner] .switch-content.home{padding-bottom:calc(var(--mobile-safe-area-height) + 90px + 72px)}
+/* 44px hit areas */
+.home-discover button{min-height:44px;padding:0 14px;font-size:13px!important}
+.install-phone{min-height:56px}
+.install-phone small{font-size:12px}
+/* Skip link: first thing a keyboard user reaches, visible only on focus */
+.skip-link{position:absolute;z-index:60;left:12px;top:-60px;padding:12px 18px;border-radius:10px;background:var(--green);color:#fff;font-weight:600;font-size:14px;text-decoration:none}
+.skip-link:focus{top:12px;outline:3px solid var(--gold);outline-offset:2px}
+#main-content:focus{outline:none}
+/* Puzzles: a plain count line, and a hint for the disabled button */
+.puzzle-count{margin:-6px 0 0;font-size:13px;font-weight:600;color:var(--muted)}
+.puzzle-hint{margin:-4px 0 0;text-align:center;font-size:13px;color:var(--muted)}
+/* Learn the rules: no tan block stopping short of the hero image */
+.rules-page .rule-narrative{background:transparent}
+/* Name gate: the fan of cards stays clear of the intro text */
+.felt-header.has-fan:not(.compact) .felt-header-text p{padding-right:96px}
+.me-page .back-link{margin-bottom:6px}
+/* Contrast: disabled buttons, field labels and badge captions */
+.switch-app button.primary:disabled{opacity:1!important;background:#dde6dd!important;color:#33403a!important;border:1px solid #8fa396}
+.switch-app button.primary:disabled svg{color:#33403a}
+.target-field>span,.player-fields label>span{font-size:13px;letter-spacing:.2px;color:#3f4742;font-weight:500}
+.badge-wall .badge small,.badge-category header span{font-size:12px;color:#454c47}
+.badge-wall .badge.locked strong{color:#454c47}
+.badge-preview{margin-top:10px}
+.badge-preview h3{margin:0 0 4px}
+
+/* === play fixes === */
+/* Selection bar and suit chooser sit directly above the hand, in the flow, so they never cover a card. */
+.table-game .multi-action,.game-tutorial .multi-action{position:static;box-shadow:none;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:4px 10px;padding:8px 10px;margin:0 0 6px;min-height:48px}
+.multi-action p{margin:0;display:grid;gap:1px;min-width:0}
+.multi-action p b{font-size:13px;font-weight:700;color:var(--green)}
+.multi-action p small{font-size:10.5px;line-height:1.25;color:var(--muted)}
+.multi-action .primary{min-height:40px;padding:6px 14px;font-size:13px;white-space:nowrap}
+.multi-action .text-link{grid-column:auto;margin:0;font-size:12px;min-height:40px;padding:2px 6px;white-space:nowrap}
+.game-tutorial .suit-choice,.table-game .suit-choice{position:static;left:auto;right:auto;top:auto;z-index:auto;display:grid;gap:6px;padding:10px 10px 6px;margin:0 0 6px;border-radius:12px;border:1px solid #e6c97f;box-shadow:0 0 0 2px #e6c97f44}
+.game-tutorial .suit-choice>p,.table-game .suit-choice>p{font-size:17px;margin:0!important}
+.game-tutorial .suit-choice>div button,.table-game .suit-choice>div button{min-height:52px;font-size:24px;justify-content:center}
+.game-tutorial .suit-choice>div span,.table-game .suit-choice>div span{font-size:13px;font-weight:600;color:var(--ink)}
+.game-tutorial .suit-choice>.text-link,.table-game .suit-choice>.text-link{font-size:13px;min-height:36px;margin:0 auto}
+/* Last Card: loud only when it can matter (three cards or fewer); otherwise a quiet, still-working button. */
+.table-game .last-card-button.idle{background:transparent;border-color:#d8c99f;color:var(--muted);box-shadow:none;font-weight:600}
+/* The hand: more than five cards go in two rows so every card shows its corner and has a full-size tap target. */
+.game-tutorial .player-hand:not(.two-rows){min-height:112px}
+.game-tutorial .player-hand.two-rows{justify-items:center;row-gap:10px;padding:12px 8px 10px}
+/* The "eight was played" panel is one compact row, so the hand stays on screen. */
+.game-tutorial .miss-turn-action{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:0 10px;padding:8px 10px;margin:0 0 6px}
+.game-tutorial .miss-turn-action>strong,.game-tutorial .miss-turn-action>p{grid-column:1;margin-top:0;margin-bottom:0!important}
+.game-tutorial .miss-turn-action>.primary{grid-column:2;grid-row:1/span 2;white-space:nowrap}
+/* A remark sits on the name and cards of a seat, never on its card count. */
+.seat .reaction-bubble{top:4px;translate:-50% -50%}
+.seat .reaction-bubble.sticker{top:14px}
+/* Lobby: the Deal button stays on screen however long the table list is. */
+@media(max-width:1099px){.play-lobby .lobby-side .deal-button{position:sticky;bottom:calc(72px + var(--mobile-safe-area-height,0px));z-index:30}}
+.lobby-seat i{font-size:11px;color:#fff3cf;font-weight:700}
+.lobby-seats.seats-7 i,.lobby-seats.seats-6 i{font-size:10.5px}
+/* The coach sheet never grows wider than the screen. */
+.lesson{grid-template-columns:minmax(0,1fr);max-width:100%;box-sizing:border-box}
+.lesson>*{min-width:0;max-width:100%;box-sizing:border-box}
+.lesson-pick,.lesson-cards{max-width:100%;box-sizing:border-box}
+.lesson-cards{flex-wrap:wrap}
+.lesson p,.lesson li{overflow-wrap:anywhere}
+.lesson .lesson-done{max-width:100%}
+.night-done{width:100%;margin-top:14px}
+.confirm-sheet .primary:not(.destructive){background:#053527}
+/* The suit chooser keeps its title and Cancel on one line, so it takes less room above the hand. */
+.game-tutorial .suit-choice,.table-game .suit-choice{grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:8px 10px;gap:4px 8px}
+.game-tutorial .suit-choice>div,.table-game .suit-choice>div{grid-column:1/-1}
+.game-tutorial .suit-choice>p,.table-game .suit-choice>p{font-size:16px;text-align:left}
+.game-tutorial .suit-choice>div button,.table-game .suit-choice>div button{min-height:46px;padding:5px 4px}
+.game-tutorial .suit-choice>.text-link,.table-game .suit-choice>.text-link{margin:0}
+.game-tutorial .suit-choice>.text-link,.table-game .suit-choice>.text-link{grid-column:2;grid-row:1}
+.game-tutorial .suit-choice>div,.table-game .suit-choice>div{grid-row:2}
+.game-tutorial .miss-turn-action>strong{font-size:16px}
+.game-tutorial .miss-turn-action>p{font-size:12px;line-height:1.3}
+.game-tutorial .miss-turn-action>.primary{min-height:40px;padding:6px 12px;font-size:13px;width:auto}
+.game-tutorial .miss-turn-action~.game-actions{display:none}
+.seat .reaction-bubble{max-width:128px;white-space:normal;text-align:center;line-height:1.15;font-size:13px}
+.seat .reaction-bubble.sticker{white-space:nowrap}
+@media(max-width:639px){.game-tutorial .game-table{min-height:150px}.table-game .move-log li:not(:last-child){display:none}}
+.device-screen:not(.device-screen-native) .table-game .move-log li:not(:last-child){display:none}
+/* Speech bubbles size to their words, never to the narrow seat they sit on: every saying wraps inside its bubble (15 Nov 2026). */
+.reaction-bubble,.seat .reaction-bubble,.your-seat .reaction-bubble,.replay-seat .reaction-bubble{box-sizing:border-box;width:max-content;max-width:min(176px,56vw);white-space:normal;overflow-wrap:anywhere;word-break:normal;text-wrap:balance;text-align:center;line-height:1.18;font-size:13.5px;padding:6px 11px}
+.reaction-bubble.sticker,.seat .reaction-bubble.sticker,.your-seat .reaction-bubble.sticker,.replay-seat .reaction-bubble.sticker{width:auto;max-width:none;white-space:nowrap;padding:3px}
+.replay-seat .reaction-bubble{font-size:12px}
+/* A remark grows down over the seat it belongs to, and the first and last seats keep it on screen. */
+.seat .reaction-bubble:not(.sticker){top:6px;translate:-50% 0}
+.seat .reaction-bubble.sticker{top:14px;translate:-50% -50%}
+.seat:first-child .reaction-bubble:not(.sticker){left:0;translate:0 0}
+.seat:last-child .reaction-bubble:not(.sticker){left:auto;right:0;translate:0 0}
+.seat:only-child .reaction-bubble:not(.sticker){left:50%;right:auto;translate:-50% 0}
+
+/* "HAHA - you never said Last Card": a red banner that pops over the table, never blocks taps, fades by itself. */
+.game-tutorial .haha-banner{position:absolute;left:50%;top:38%;z-index:30;max-width:88%;transform:translateX(-50%) rotate(-3deg);padding:10px 18px;border-radius:14px;background:#c8281c;color:#fff;font-size:19px;font-weight:800;line-height:1.15;text-align:center;letter-spacing:.2px;pointer-events:none;box-shadow:0 6px 18px #0007;border:2px solid #fff;opacity:0;animation:haha-pop 3s ease-out both}
+@keyframes haha-pop{0%{opacity:0;transform:translateX(-50%) rotate(-8deg) scale(.5)}10%{opacity:1;transform:translateX(-50%) rotate(-3deg) scale(1.15)}18%{transform:translateX(-50%) rotate(-3deg) scale(1)}80%{opacity:1}100%{opacity:0;transform:translateX(-50%) rotate(-3deg) scale(1)}}
+@media(prefers-reduced-motion:reduce){@keyframes haha-pop{0%,100%{opacity:0}10%,80%{opacity:1}}}
+/* See-through remarks (16 Nov 2026): computer comments sit lightly over the table instead of hiding it. */
+.reaction-bubble:not(.sticker){background:rgba(255,253,247,.5);border-color:rgba(201,162,39,.55);box-shadow:0 3px 8px #0000001f;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);text-shadow:0 0 3px rgba(255,253,247,.9)}
+.reaction-bubble.sticker{background:rgba(255,253,247,.45);box-shadow:none;opacity:.88}
+/* Remarks float in and out (16 Nov 2026): a gentle rise on the way in, a fade on the way out, one at a time. */
+@keyframes reaction-float{from{opacity:0;transform:translateY(12px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes reaction-away{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-8px)}}
+.reaction-bubble{animation:reaction-float .45s cubic-bezier(.2,.8,.3,1) both}
+.reaction-bubble.leaving{animation:reaction-away .32s ease-in both}
+@media(prefers-reduced-motion:reduce){.reaction-bubble,.reaction-bubble.leaving{animation:none}.reaction-bubble.leaving{opacity:0}}
+/* How a game ends (16 Nov 2026): the winning play, why you lost, and everyone's leftover cards face up. */
+.game-ending .end-played{display:flex;justify-content:center;gap:6px;margin:4px 0 14px}.game-ending .end-played .playing-card{width:64px}
+.end-why{text-align:left;background:#f6edcf;border:1px solid #e3d9c4;border-radius:12px;padding:12px 14px;margin:6px 0 14px}.end-why strong{display:block;font-family:'DM Serif Display',Georgia,serif;font-size:20px;font-weight:400;margin-bottom:6px}.end-why p{font-size:13px;line-height:1.45;color:#35453d;margin:0 0 6px!important}.end-why p:last-child{margin-bottom:0!important}
+.game-ending .end-heading{font-size:22px;margin:6px 0 8px;text-align:left}
+.end-hands{list-style:none;margin:0 0 16px;padding:0;display:grid;gap:8px;text-align:left}.end-hands li{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center;border:1px solid #e0d6c0;border-radius:11px;padding:8px 10px;background:#fffdf7}.end-hands li.me{border-color:var(--gold);background:#fbf3d9}.end-hands b{font-size:13px}.end-hands span{font-size:11px;color:var(--muted)}.end-hands div{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:3px;min-height:0}.end-hands .playing-card{width:30px}
+
+/* 16 Nov 2026: table switches, a big suit badge, and bubbles that stay on screen with five or more computers. */
+.table-toggles{display:inline-flex;gap:4px;align-items:center}
+.turn-banner .table-toggle{display:inline-grid;place-items:center;width:28px;height:28px;min-height:28px;padding:0;border-radius:50%;text-decoration:none;border:1px solid currentColor;opacity:.55;background:transparent}
+.turn-banner .table-toggle.on{opacity:1;background:#ffffff26}
+.turn-banner .table-toggle:focus-visible{outline:2px solid #f2c660;outline-offset:2px}
+.table-toggle::after{content:'';position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+.table-toggle{position:relative}
+.game-tutorial .discard-pile>span.suit-badge{display:inline-flex;align-items:center;gap:8px;margin-top:6px;padding:3px 14px 3px 8px;border-radius:999px;background:#fffdf7;color:#14301f;border:2px solid #e6c97f;box-shadow:0 4px 12px #02150f66;letter-spacing:0;animation:suit-pop .5s cubic-bezier(.2,1.5,.4,1) both}
+.game-tutorial .discard-pile>span.suit-badge i{font-style:normal;font-size:34px;line-height:1}
+.game-tutorial .discard-pile>span.suit-badge b{font-size:15px;font-weight:800;letter-spacing:.3px;color:inherit}
+.game-tutorial .discard-pile>span.suit-badge.red{color:#b3261e}
+@keyframes suit-pop{0%{transform:scale(.6);box-shadow:0 0 0 0 #ffe19a}60%{transform:scale(1.14)}100%{transform:scale(1);box-shadow:0 4px 12px #02150f66}}
+@media(prefers-reduced-motion:reduce){.game-tutorial .discard-pile>span.suit-badge{animation:none}}
+.table-game .seat-row.many .reaction-bubble:not(.sticker){max-width:min(150px,42vw)}
+.table-game .seat-row.many .seat:nth-child(4n+1) .reaction-bubble:not(.sticker),.table-game .seat-row.many .seat:nth-child(4n+2) .reaction-bubble:not(.sticker){left:0;right:auto;translate:0 0}
+.table-game .seat-row.many .seat:nth-child(4n+3) .reaction-bubble:not(.sticker),.table-game .seat-row.many .seat:nth-child(4n) .reaction-bubble:not(.sticker){left:auto;right:0;translate:0 0}
+/* The effect pill sits just below the table, over the notice line that says the same thing, so it never covers a card or the suit badge. */
+.table-game .table-announce{bottom:auto;top:100%;margin-top:3px;width:max-content;white-space:nowrap}
+/* The big suit badge is only a pop-up for an ace: it floats over the suit line instead of taking room. */
+.game-tutorial .discard-pile{position:relative}
+.game-tutorial .discard-pile>span.suit-badge{position:absolute;left:50%;bottom:-18px;margin:0;translate:-50% 0;z-index:6;white-space:nowrap;animation:suit-pop .5s cubic-bezier(.2,1.5,.4,1) both,suit-away .35s ease-in 3.15s both}
+@keyframes suit-away{to{opacity:0}}
+
+/* Game type descriptions, the fuller explanation, and the computer picker (16 Nov 2026) */
+.mode-grid{grid-template-columns:1fr}
+.mode-grid button{min-height:58px}
+.mode-grid button .mode-text{display:grid;gap:2px;min-width:0}
+.mode-grid button .mode-text small{font-size:12px;line-height:1.3;color:var(--muted);font-weight:500}
+.mode-grid button.active .mode-text small{color:#e9ddb9}
+.mode-detail{margin-top:10px;border:1.5px solid #d8c99f;border-radius:14px;background:#fffdf6;padding:12px 14px;display:grid;gap:6px}
+.mode-detail h3{margin:0;font-family:'DM Serif Display',serif;font-size:19px;font-weight:400;color:var(--green)}
+.mode-detail p{margin:0;font-size:13.5px;line-height:1.45;color:var(--ink)}
+.mode-detail .mode-short{font-weight:700}
+.mode-detail .mode-scoring{padding-top:6px;border-top:1px solid #e8dcb8}
+.pick-actions{display:flex;margin:8px 0}
+.pick-actions button{display:inline-flex;align-items:center;gap:6px;border:1.5px solid #d8c99f;border-radius:999px;background:#fffaf0;padding:8px 14px;min-height:40px;font-weight:700;font-size:13px;color:var(--ink)}
+.pick-actions button.active{background:#0d4a37;border-color:#e6c97f;color:#fff}
+.personalities.pickable li{padding:0;border:0;background:none}
+.personalities.pickable li button{display:grid;gap:2px;width:100%;text-align:left;border:1.5px solid #d8c99f;background:#fffaf0;border-radius:12px;padding:9px 12px;font-size:12.5px;color:var(--ink);cursor:pointer}
+.personalities.pickable li button.active{background:#e8f3ec;border-color:#0d4a37;box-shadow:inset 0 0 0 1px #0d4a37}
+.personalities.pickable li button:disabled{opacity:.45;cursor:not-allowed}
+.personalities.pickable .picked-tick{color:#0d4a37;margin-left:auto}
+.personalities.pickable .personality-top{justify-content:flex-start;align-items:center}
+
+.resume-night{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.resume-night .resume-card{margin:0}
+.resume-end{font-size:12px;padding:6px 4px;margin-left:6px}
+
+/* History: category tabs, charts and one-line expandable rows */
+.hx{--hx-win:#17a05d;--hx-loss:#e5484d;--hx-computer:#7a4bd6;--hx-online:#1d8fe0;--hx-home:#f08a1c;display:grid;gap:12px}
+.hx-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.hx-tabs button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:52px;padding:6px 2px;border:2px solid var(--line);background:#fffaf0;border-radius:14px;font-weight:700;font-size:12px;color:var(--ink);transition:transform .15s,background .15s}
+.hx-tabs button small{font-size:11px;font-weight:700;opacity:.7}
+.hx-tabs button:active{transform:scale(.96)}
+.hx-tabs button.active{color:#fff;border-color:transparent;background:var(--green)}
+.hx-tabs button[data-cat=computer].active{background:linear-gradient(135deg,#8f5cf0,var(--hx-computer))}
+.hx-tabs button[data-cat=online].active{background:linear-gradient(135deg,#43adf2,var(--hx-online))}
+.hx-tabs button[data-cat=home].active{background:linear-gradient(135deg,#ffae45,var(--hx-home))}
+.hx-hero{display:grid;grid-template-columns:128px 1fr;gap:6px 14px;align-items:center;padding:14px;border-radius:20px;color:#fff;background:linear-gradient(135deg,#0a4a36,#053527 60%,#1d5a45);box-shadow:0 14px 26px -16px #053527}
+.hx[data-category=computer] .hx-hero{background:linear-gradient(135deg,#5b2fb5,#3b1d80)}
+.hx[data-category=online] .hx-hero{background:linear-gradient(135deg,#1473c4,#0b4a8a)}
+.hx[data-category=home] .hx-hero{background:linear-gradient(135deg,#d4690a,#9a4a05)}
+.hx-donut{width:128px;height:128px}
+.hx-donut circle{fill:none;stroke-width:14}
+.hx-donut-loss{stroke:#ff8a8d99}.hx-donut-win{stroke:#7df0ae;stroke-linecap:round;transition:stroke-dasharray .9s cubic-bezier(.2,.8,.2,1)}
+.hx-donut-num{fill:#fff;font:400 26px 'DM Serif Display',Georgia,serif}.hx-donut-cap{fill:#ffffffcc;font:600 10px 'DM Sans',sans-serif}
+.hx-hero-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hx-hero-stats div{display:grid;background:#ffffff1f;border-radius:12px;padding:7px 10px;line-height:1.1}
+.hx-hero-stats b{display:flex;align-items:center;gap:4px;font:400 24px 'DM Serif Display',Georgia,serif;color:#fff}.hx-hero-stats .w b{color:#8bf5b9}.hx-hero-stats .l b{color:#ffadb0}
+.hx-hero-stats span{font-size:11px;color:#ffffffd0}
+.hx-hero-stats svg{color:#ffd166}
+.hx-fun{grid-column:1/-1;display:flex;align-items:center;gap:7px;margin:4px 0 0;font-size:13px;font-weight:600;color:#fff}.hx-fun svg{color:#ffd166;flex:none}
+.hx-card{border:1px solid #e3d8bd;background:#fffdf7;border-radius:16px;padding:12px 14px}
+.hx-card h3{margin:0 0 8px;font-size:15px}
+.hx-form{display:flex;flex-wrap:wrap;gap:5px}
+.hx-form i{font-style:normal;width:26px;height:26px;border-radius:9px;display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff}
+.hx-form .w,.hx-legend .w,.hx-types .w,.hx-col .w{background:var(--hx-win)}.hx-form .l,.hx-legend .l,.hx-types .l,.hx-col .l{background:var(--hx-loss)}
+.hx-types{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.hx-types li{display:grid;gap:3px}
+.hx-type-name{display:flex;justify-content:space-between;font-weight:700;font-size:13px}.hx-type-name em{font-style:normal;color:var(--muted);font-weight:600}
+.hx-types i{display:flex;height:16px;border-radius:8px;overflow:hidden;min-width:28px;transition:width .6s}
+.hx-types b{min-width:0}
+.hx-types small{font-size:11.5px;color:var(--muted)}
+.hx-months{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;align-items:end}
+.hx-months>div{display:grid;gap:4px;justify-items:center}
+.hx-col{display:flex;flex-direction:column;justify-content:flex-end;width:100%;max-width:34px;height:88px;border-radius:9px;overflow:hidden;background:#efe6cf}
+.hx-col b{display:block;min-height:0;transition:height .6s}
+.hx-months small{font-size:11px;color:var(--muted);font-weight:600}
+.hx-legend{display:flex;gap:6px;align-items:center;margin:8px 0 0;font-size:12px;color:var(--muted)}.hx-legend i{width:11px;height:11px;border-radius:4px;display:inline-block;margin-left:6px}.hx-legend i:first-child{margin-left:0}
+.hx-compare{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.hx-compare li{display:flex;align-items:center;gap:10px}
+.hx-compare-body{display:grid;gap:4px;flex:1;min-width:0;font-size:13px}
+.hx-compare i{display:block;height:12px;border-radius:6px;background:#efe6cf;overflow:hidden}.hx-compare i b{display:block;height:100%;border-radius:6px;transition:width .7s}
+.hx-compare li[data-kind=computer] i b{background:var(--hx-computer)}.hx-compare li[data-kind=online] i b{background:var(--hx-online)}.hx-compare li[data-kind=home] i b{background:var(--hx-home)}
+.hx-compare em{font-style:normal;font:400 22px 'DM Serif Display',Georgia,serif;display:grid;justify-items:end;line-height:1}.hx-compare em small{font:600 11px 'DM Sans',sans-serif;color:var(--muted)}
+.hx-badge{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;color:#fff;flex:none;background:var(--green)}
+[data-kind=computer]>.hx-badge,[data-kind=computer]>.hx-row .hx-badge{background:var(--hx-computer)}
+[data-kind=online]>.hx-badge,[data-kind=online]>.hx-row .hx-badge{background:var(--hx-online)}
+[data-kind=home]>.hx-badge,[data-kind=home]>.hx-row .hx-badge{background:var(--hx-home)}
+.hx-list-title{display:flex;align-items:center;gap:6px;margin:6px 0 0;font-size:16px}.hx-list-title small{font:500 12px 'DM Sans',sans-serif;color:var(--muted);margin-left:auto}
+.hx-list{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.hx-list li{border:1px solid #e3d8bd;background:#fffaf0;border-radius:12px;overflow:hidden;border-left:5px solid var(--hx-loss)}
+.hx-list li.won{border-left-color:var(--hx-win)}
+.hx-row{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;border:0;background:none;padding:6px 10px;text-align:left;color:var(--ink)}
+.hx-row .hx-badge{width:26px;height:26px}
+.hx-row strong{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+.hx-row b{font-size:12px;font-weight:800}.hx-row b.win{color:var(--hx-win)}.hx-row b.loss{color:var(--hx-loss)}
+.hx-row em{font-style:normal;font-size:11px;color:var(--muted);flex:none;min-width:38px;text-align:right}
+.hx-caret{flex:none;color:var(--muted);transition:transform .2s}.hx-list li.open .hx-caret{transform:rotate(180deg)}
+.hx-more{display:grid;gap:6px;padding:2px 12px 12px;animation:hx-open .2s ease-out}
+.hx-more p{margin:0;font-size:13px}.hx-more .hx-when{font-size:12px;color:var(--muted)}.hx-more button{justify-self:start}
+@keyframes hx-open{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@media (max-width:360px){.hx-hero{grid-template-columns:1fr;justify-items:center}.hx-tabs button{font-size:11px}}
+@media (prefers-reduced-motion:reduce){.hx *{transition:none!important;animation:none!important}}
+
+/* Me: tappable numbers open a small chart; the form card sits under them (18 Nov 2026) */
+.bottom-sheet:has(.stat-sheet){--cream:#fbf8f0;--green:#053527;--ink:#092e23;--gold:#ac7b26;--muted:#59605b;--line:#ded7c7;color:#092e23}
+.st-form{display:grid;grid-template-columns:90px 1fr;gap:14px;align-items:center;margin:12px 0;padding:14px;border:1px solid #d8c99f;border-radius:16px;background:linear-gradient(135deg,#fffdf7,#f6ecd2)}
+.st-form h3{margin:0 0 6px;font-size:20px}.st-form p{margin:6px 0 0!important;font-size:12.5px;color:var(--muted)}
+.st-form svg{width:90px;height:90px}.st-ring-track{fill:none;stroke:#e6dfcc;stroke-width:9}.st-ring{fill:none;stroke:var(--green);stroke-width:9;stroke-linecap:round;transition:stroke-dasharray .8s cubic-bezier(.2,.8,.2,1)}.st-ring-num{font:400 21px 'DM Serif Display',Georgia,serif;fill:var(--green)}
+.st-chips,.st-strip{display:flex;flex-wrap:wrap;gap:4px}
+.st-chips i,.st-strip i,.st-legend i{font-style:normal;width:24px;height:24px;border-radius:8px;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff}
+.st-chips .w,.st-strip .w,.st-legend .w,.st-col .w{background:#0d4a37}.st-chips .l,.st-strip .l,.st-legend .l,.st-col .l{background:#b1342b}
+.st-strip .best{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--gold)}.st-strip{gap:6px}
+.stat-sheet{display:grid;gap:12px;padding:2px 2px 18px}
+.st-headline{margin:0;font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.1;color:var(--green)}
+.st-chart{margin:0;display:grid;gap:8px;padding:12px;border:1px solid #e1d6b6;border-radius:14px;background:#fffdf7}
+.st-chart svg{width:100%;height:auto;display:block}
+.st-grid{stroke:#e6dfcc;stroke-width:1}.st-axis{font:500 9.5px 'DM Sans',sans-serif;fill:#59605b}
+.st-area{fill:#0d4a3722}.st-line{fill:none;stroke:#0d4a37;stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}.st-dot{fill:var(--gold);stroke:#fff;stroke-width:2}
+.st-cols{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;height:150px;align-items:end}
+.st-cols>div{display:grid;grid-template-rows:14px 1fr 16px;justify-items:center;height:100%}
+.st-cols em{font-style:normal;font-size:11px;font-weight:700;color:var(--ink);align-self:end}
+.st-col{width:72%;display:flex;flex-direction:column;align-self:end;border-radius:5px 5px 0 0;overflow:hidden;min-height:0}
+.st-col b{display:block;min-height:3px}.st-col .k0{background:#0d4a37}.st-col .k1{background:var(--gold)}.st-col .k2{background:#6aa38a}
+.st-cols small{font-size:10px;color:var(--muted);align-self:end}
+.st-legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:var(--muted)}
+.st-legend span{display:inline-flex;align-items:center;gap:5px}.st-legend i{width:11px;height:11px;border-radius:3px}
+.st-legend .k0{background:#0d4a37}.st-legend .k1{background:var(--gold)}.st-legend .k2{background:#6aa38a}.st-legend .best-key{background:#fff;box-shadow:0 0 0 2px var(--gold)}
+.st-bars{list-style:none;margin:0;padding:12px;display:grid;gap:10px;border:1px solid #e1d6b6;border-radius:14px;background:#fffdf7}
+.st-bars li{display:grid;grid-template-columns:78px 1fr auto;align-items:center;gap:8px;font-size:13px}
+.st-bars i{display:block;height:10px;border-radius:5px;background:#e8e0cc;overflow:hidden}.st-bars b{display:block;height:100%;background:linear-gradient(90deg,#0d4a37,#2f9068);border-radius:5px}
+.st-bars em{font-style:normal;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.st-foot,.st-note,.st-empty{margin:0;font-size:13px;color:var(--muted)}.st-empty{padding:20px 12px;text-align:center;border:1px dashed #d8c99f;border-radius:14px}
+@media (prefers-reduced-motion:reduce){.me-tiles button,.st-ring{transition:none}}
+
+/* Hand cards take the width the hand has: a small hand gets bigger cards, a big hand shares the row, and no card is
+   ever hidden by another. --cols is the cards across: all of them in one row, or half when the hand goes onto two rows. */
+.game-tutorial .player-hand{--cols:max(4,var(--n,5))}
+.game-tutorial .player-hand.two-rows{--cols:var(--per,4)}
+.game-tutorial .player-hand:not(.two-rows) button .playing-card{width:max(62px,min(76px,calc((100cqw - 18px) / var(--cols) - 4px)))}
+.game-tutorial .player-hand.two-rows button .playing-card{width:max(48px,min(64px,calc((100cqw - 18px) / var(--cols) - 4px)))}
+/* Bigger hand cards need a little height: tighter gaps above and around the hand give it back, and nothing is removed. */
+.game-tutorial .game-notice{min-height:26px}
+.game-tutorial .seat-row{padding-bottom:2px}
+.game-tutorial .hand-row{margin-top:0;margin-bottom:2px}
+.game-tutorial .player-hand.two-rows{padding:8px 8px 6px;row-gap:8px}
+
+/* Me: won and lost share one tile, with a split bar (owner request, 21 Nov 2026) */
+.me-tiles .record-tile{grid-column:span 2;gap:6px;padding:10px 12px;align-content:center;background:linear-gradient(180deg,#fffdf7,#f3ead0)}
+.me-tiles .record-tile .rt-score{display:flex;align-items:baseline;justify-content:center;gap:4px;font-size:inherit}
+.me-tiles .record-tile .rt-score b{font-size:34px;line-height:1}
+.me-tiles .record-tile .rt-score b.w{color:#0d4a37}.me-tiles .record-tile .rt-score b.l{color:#b1342b}
+.me-tiles .record-tile .rt-score i{font-style:normal;font-size:11px;color:var(--muted);margin-right:8px}
+.me-tiles .record-tile .rt-score em{font-style:normal;color:var(--gold);margin-right:8px}
+.me-tiles .record-tile .rt-bar{display:flex;gap:2px;width:100%;height:9px;border-radius:5px;overflow:hidden;background:#e8e0cc}
+.me-tiles .record-tile .rt-bar u{display:block;text-decoration:none;min-width:5px}
+.me-tiles .record-tile .rt-bar u.w{background:linear-gradient(90deg,#0d4a37,#2f9068)}.me-tiles .record-tile .rt-bar u.l{background:#b1342b}
+.me-tiles .record-tile .rt-note{font-size:11px}
+
+/* Longest and shortest games on Me */
+.game-lengths{display:grid;gap:8px}.game-lengths h3{margin:0}
+.game-lengths ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.game-lengths li{display:grid;grid-template-columns:22px 1fr;gap:10px;padding:11px 12px;border:1px solid #d8c99f;border-radius:14px;background:linear-gradient(180deg,#fffdf7,#f8f1de)}
+.game-lengths li>svg{color:var(--gold);margin-top:2px}
+.game-lengths li>div{display:grid;gap:3px;min-width:0}
+.game-lengths li strong{font-size:12.5px;font-weight:600;color:var(--muted)}
+.game-lengths .gl-value{font-family:'DM Serif Display',Georgia,serif;font-size:24px;font-weight:400;line-height:1.1;color:var(--green)}
+.game-lengths .gl-value small{font:500 12px 'DM Sans',sans-serif;color:var(--muted)}
+.game-lengths small{font-size:12px;color:var(--muted)}
+.game-lengths .gl-watch{justify-self:start;width:auto;padding-inline:16px;margin-top:5px;display:inline-flex;align-items:center;gap:7px;min-height:40px}
+.game-lengths li.empty{opacity:.75}
+
+/* The replay shows every hand face up */
+.replay-hands{display:grid;gap:5px;padding:10px;border-radius:16px;background:radial-gradient(ellipse at 50% 0%,#145f43 0%,#0b5239 60%,#053527 100%);border:1px solid #ac7b2699;color:#fbf8f0}
+.replay-hand{display:grid;grid-template-columns:58px 1fr;gap:8px;align-items:center;padding:5px 6px;border-radius:10px;border:1px solid transparent;transition:background .2s,border-color .2s}
+.replay-hand strong{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.replay-hand.moving{background:#d4483b40;border-color:#e46a5d}
+.replay-hand .rh-cards{display:flex;flex-wrap:wrap;gap:3px;min-height:42px;align-items:center}
+.replay-hand .rh-card{display:block;line-height:0}
+.replay-hand .rh-card .playing-card{width:30px;display:block;border-radius:3px;box-shadow:0 2px 4px #00000066}
+.replay-hand .rh-card.fresh .playing-card{outline:2px solid #f0c75b;outline-offset:1px;translate:0 -3px}
+.replay-hand.out em{font-style:normal;color:#f0c75b;font-size:13px}
+

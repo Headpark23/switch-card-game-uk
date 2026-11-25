@@ -1,0 +1,307 @@
+/* ==========================================================================
+   Switch 2.0 Visual Polish, Warm Palette Alignment & Big-Hand / Landscape UX
+   ========================================================================== */
+
+/* ---------- 1. Learn the Rules: signature FeltHeader alignment ---------- */
+.rules-felt-wrap {
+  padding: 6px 20px 0;
+}
+.rules-page .rule-narrative {
+  padding-top: 18px;
+  border-top: 0;
+  background: var(--cream);
+}
+
+/* ---------- 2. Play Lobby: clean progressive disclosures ---------- */
+.mode-detail-fold {
+  padding: 0 !important;
+  overflow: hidden;
+}
+.mode-detail-fold > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+.mode-detail-fold > summary::-webkit-details-marker {
+  display: none;
+}
+.mode-fold-head {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.mode-fold-head h3 {
+  margin: 0;
+}
+.mode-fold-head .mode-short {
+  margin: 0 !important;
+}
+.mode-fold-cue {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green);
+  border: 1px solid #d5c7a8;
+  background: #fffaf0;
+  border-radius: 999px;
+  padding: 5px 11px;
+}
+.mode-detail-fold[open] .mode-fold-cue {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+.mode-detail-body {
+  padding: 0 14px 14px;
+  border-top: 1px solid #ece3cc;
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.pick-fold {
+  margin-top: 8px;
+  border: 1px solid #ddd2bd;
+  border-radius: 14px;
+  background: #fffdf7;
+  overflow: hidden;
+}
+.pick-fold > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--green);
+  cursor: pointer;
+  list-style: none;
+}
+.pick-fold > summary::-webkit-details-marker {
+  display: none;
+}
+.pick-fold > summary::after {
+  content: '+';
+  color: var(--gold);
+  font-size: 20px;
+  line-height: 1;
+}
+.pick-fold[open] > summary::after {
+  content: '−';
+}
+.pick-fold[open] > summary {
+  border-bottom: 1px solid #ece3cc;
+  background: #f8f2e4;
+}
+.pick-fold .personalities {
+  padding: 10px;
+  margin: 0;
+}
+
+/* ---------- 3. Warm Card-Club Palette Alignment (History & Charts) ---------- */
+.hx {
+  --hx-win: #0d5239;
+  --hx-loss: #a63a2b;
+  --hx-computer: #053527;
+  --hx-online: #27405f;
+  --hx-home: #ac7b26;
+}
+.hx-hero-stats svg,
+.hx-fun svg {
+  color: #e6c97f;
+}
+/* Remove thick coloured side stripes (AGENTS.md: no thick coloured side stripes on cards or callouts) */
+.hx-list li,
+.hx-list li.won {
+  border-left: 1px solid #e3d8bd;
+}
+.hx-row b.win,
+.hx-row b.loss {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+.hx-row b.win {
+  background: #e3f0ea;
+  color: var(--hx-win);
+}
+.hx-row b.loss {
+  background: #f8e5e2;
+  color: var(--hx-loss);
+}
+
+/* Align MeCharts stacked columns & legend to warm card-club tokens */
+.st-col .k0,
+.st-legend .k0 {
+  background: #053527;
+}
+.st-col .k1,
+.st-legend .k1 {
+  background: #ac7b26;
+}
+.st-col .k2,
+.st-legend .k2 {
+  background: #27405f;
+}
+.st-chips .l,
+.st-strip .l,
+.st-legend .l,
+.st-col .l {
+  background: #a63a2b;
+}
+
+/* Tone down small-caps labels above headings */
+.results {
+  font-size: 12px;
+  letter-spacing: 0.2px;
+  text-transform: none;
+  font-weight: 600;
+}
+
+/* ---------- 4. Big Hands (14–25+ Cards): Readable Cards + Rotate Prompt ---------- */
+.rotate-hand-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 6px;
+  padding: 7px 10px;
+  border: 1px solid #d8c28c;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fffaf0, #f5ead0);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.rotate-hand-hint > svg {
+  flex: none;
+  color: var(--gold);
+}
+.rotate-hand-hint > span {
+  flex: 1;
+  min-width: 0;
+}
+.rotate-hand-hint > button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: #05352712;
+  color: var(--ink);
+}
+
+/* Big hand in portrait: cap at 6 columns (via --per) so every card stays large, clear, and easy to tap */
+.game-tutorial .player-hand.big-hand,
+.table-game .player-hand.big-hand {
+  grid-template-columns: repeat(var(--per, 6), minmax(0, 1fr));
+  row-gap: 6px;
+  column-gap: 3px;
+  padding: 8px 6px 8px;
+}
+.game-tutorial .player-hand.big-hand button .playing-card,
+.table-game .player-hand.big-hand button .playing-card {
+  width: max(50px, min(60px, calc((100cqw - 22px) / var(--per, 6) - 3px)));
+}
+
+/* ---------- 5. Dedicated Landscape Phone Layout (wide hand, compact felt) ---------- */
+.device-screen-native {
+  @media (orientation: landscape) and (max-height: 520px) and (min-width: 560px) {
+    .switch-app {
+      --side: 74px;
+    }
+    .switch-app .bottom-tabs.v2 {
+      padding: 8px 6px;
+      gap: 2px;
+    }
+    .switch-app .bottom-tabs.v2 button:not(.side-brand) {
+      min-height: 46px;
+      padding: 4px 2px;
+    }
+    .switch-app .bottom-tabs.v2 .tab-label {
+      font-size: 10px;
+    }
+    .switch-content.tutorial-page {
+      padding: 6px 14px 16px;
+      max-width: none;
+    }
+    .switch-app .table-game,
+    .switch-app .game-tutorial {
+      gap: 4px;
+    }
+    .switch-app .table-game .turn-banner,
+    .switch-app .game-tutorial .turn-banner {
+      min-height: 32px;
+      padding: 2px 10px;
+      font-size: 11px;
+    }
+    .switch-app .table-game .seat-row {
+      padding-bottom: 2px;
+      gap: 8px;
+    }
+    .switch-app .table-game .seat {
+      padding: 3px 8px;
+      min-width: 90px;
+    }
+    .switch-app .table-game .seat-fan {
+      display: none;
+    }
+    .switch-app .table-game .game-table,
+    .switch-app .game-tutorial .game-table {
+      min-height: 88px;
+      padding: 6px 16px;
+      gap: 28px;
+      border-radius: 18px;
+    }
+    .switch-app .table-game .game-table .playing-card,
+    .switch-app .game-tutorial .game-table .playing-card {
+      width: 48px;
+    }
+    .switch-app .table-game .pile-wrap {
+      width: 48px;
+      height: 70px;
+    }
+    .switch-app .table-game .game-notice {
+      min-height: 20px;
+      font-size: 12px;
+      padding: 3px 8px;
+      margin: 0 !important;
+    }
+    .switch-app .table-game .your-seat {
+      padding: 6px 10px 8px;
+      border-radius: 16px;
+    }
+    .switch-app .table-game .hand-row {
+      margin: 2px 0 4px;
+    }
+    /* Wide landscape hand tray: 9–11 big, crystal-clear cards across */
+    .switch-app .table-game .player-hand,
+    .switch-app .game-tutorial .player-hand,
+    .switch-app .table-game .player-hand.two-rows,
+    .switch-app .game-tutorial .player-hand.two-rows,
+    .switch-app .table-game .player-hand.big-hand,
+    .switch-app .game-tutorial .player-hand.big-hand {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px 5px;
+      padding: 6px;
+      min-height: 78px;
+    }
+    .switch-app .table-game .player-hand button,
+    .switch-app .game-tutorial .player-hand button {
+      width: auto;
+      padding: 2px;
+    }
+    .switch-app .table-game .player-hand button .playing-card,
+    .switch-app .game-tutorial .player-hand button .playing-card {
+      width: clamp(54px, 8.2vw, 68px);
+    }
+  }
+}

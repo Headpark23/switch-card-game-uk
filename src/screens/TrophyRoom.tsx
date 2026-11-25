@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { BottomSheet } from '../mobile';
-import SampleDataBar from './SampleDataBar';
+import SampleDataBar from '../components/SampleDataBar';
 import { BadgeWall, PassportBook } from './Badges';
-import { derivePassport } from '../switch/badges';
-import { getComputerGames } from '../switch/computerLog';
-import { getHistory } from '../switch/history';
-import { getProfiles } from '../switch/profiles';
-import { TROPHY_TIERS, deriveTrophyRoom, type Trophy, type TrophyTier } from '../switch/trophies';
+import { derivePassport } from '../switch/stats/badges';
+import { getComputerGames } from '../switch/store/computerLog';
+import { getHistory } from '../switch/store/history';
+import { getProfiles } from '../switch/store/profiles';
+import { TROPHY_TIERS, deriveTrophyRoom, type Trophy, type TrophyTier } from '../switch/stats/trophies';
 
 type Extensions = Record<string, unknown>;
 
