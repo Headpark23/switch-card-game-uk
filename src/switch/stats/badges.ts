@@ -212,29 +212,114 @@ export function deriveBadges(
   return BADGES.map((badge) => ({ ...badge, have: Math.min(metrics[badge.metric], badge.need), earned: metrics[badge.metric] >= badge.need }));
 }
 
-/** Passport stamps: one per country played in, with the nights and venues behind it. */
+/** Passport stamps: one per country played in, with the nights, towns and venues behind it. */
 export interface PassportStamp {
   readonly country: string;
   readonly nights: number;
   readonly wins: number;
   readonly venues: readonly string[];
+  readonly towns: readonly string[];
+  readonly viaGps?: boolean;
   readonly first: string;
   readonly last: string;
 }
 
-export function derivePassport(profile: LocalProfile, nights: readonly SwitchNightRecord[], profiles: readonly LocalProfile[]): PassportStamp[] {
-  const stamps = new Map<string, { nights: number; wins: number; venues: Set<string>; first: string; last: string }>();
+/** Town stamps: one per town or city played in (from saved nights or GPS auto-stamps). */
+export interface TownStamp {
+  readonly town: string;
+  readonly country: string;
+  readonly nights: number;
+  readonly wins: number;
+  readonly venues: readonly string[];
+  readonly viaGps: boolean;
+  readonly first: string;
+  readonly last: string;
+}
+
+export interface GpsPlaceStamp {
+  readonly at: string;
+  readonly town: string;
+  readonly country: string;
+}
+
+export function derivePassport(
+  profile: LocalProfile,
+  nights: readonly SwitchNightRecord[],
+  profiles: readonly LocalProfile[],
+  gpsStamps: readonly GpsPlaceStamp[] = [],
+): PassportStamp[] {
+  const stamps = new Map<string, { nights: number; wins: number; venues: Set<string>; towns: Set<string>; viaGps: boolean; first: string; last: string }>();
   for (const night of [...nights].sort((a, c) => Date.parse(a.completedAt) - Date.parse(c.completedAt))) {
     if (!night.place) continue;
     const ids = night.players.map((player) => ({ source: player.id, profile: resolveHistoryPlayerId(player, profiles) }));
     if (!ids.some((entry) => entry.profile === profile.id)) continue;
-    const entry = stamps.get(night.place.country) ?? { nights: 0, wins: 0, venues: new Set<string>(), first: night.completedAt, last: night.completedAt };
+    const entry = stamps.get(night.place.country) ?? { nights: 0, wins: 0, venues: new Set<string>(), towns: new Set<string>(), viaGps: false, first: night.completedAt, last: night.completedAt };
     entry.nights += 1;
     entry.venues.add(night.place.name);
+    if (night.place.town) entry.towns.add(night.place.town);
+    if (night.place.viaGps) entry.viaGps = true;
     entry.last = night.completedAt;
     if (ids.some((item) => item.profile === profile.id && night.winnerIds.includes(item.source))) entry.wins += 1;
     stamps.set(night.place.country, entry);
   }
-  return [...stamps.entries()].map(([country, entry]) => ({ country, nights: entry.nights, wins: entry.wins, venues: [...entry.venues], first: entry.first, last: entry.last }))
-    .sort((a, c) => Date.parse(a.first) - Date.parse(c.first));
+  for (const gps of [...gpsStamps].sort((a, c) => Date.parse(a.at) - Date.parse(c.at))) {
+    const entry = stamps.get(gps.country) ?? { nights: 0, wins: 0, venues: new Set<string>(), towns: new Set<string>(), viaGps: true, first: gps.at, last: gps.at };
+    entry.nights += 1;
+    entry.towns.add(gps.town);
+    entry.viaGps = true;
+    if (Date.parse(gps.at) < Date.parse(entry.first)) entry.first = gps.at;
+    if (Date.parse(gps.at) > Date.parse(entry.last)) entry.last = gps.at;
+    stamps.set(gps.country, entry);
+  }
+  return [...stamps.entries()].map(([country, entry]) => ({
+    country,
+    nights: entry.nights,
+    wins: entry.wins,
+    venues: [...entry.venues],
+    towns: [...entry.towns],
+    viaGps: entry.viaGps,
+    first: entry.first,
+    last: entry.last,
+  })).sort((a, c) => Date.parse(a.first) - Date.parse(c.first));
+}
+
+export function deriveTownStamps(
+  profile: LocalProfile,
+  nights: readonly SwitchNightRecord[],
+  profiles: readonly LocalProfile[],
+  gpsStamps: readonly GpsPlaceStamp[] = [],
+): TownStamp[] {
+  const towns = new Map<string, { town: string; country: string; nights: number; wins: number; venues: Set<string>; viaGps: boolean; first: string; last: string }>();
+  for (const night of [...nights].sort((a, c) => Date.parse(a.completedAt) - Date.parse(c.completedAt))) {
+    if (!night.place?.town) continue;
+    const ids = night.players.map((player) => ({ source: player.id, profile: resolveHistoryPlayerId(player, profiles) }));
+    if (!ids.some((entry) => entry.profile === profile.id)) continue;
+    const key = `${night.place.country}:${night.place.town.toLowerCase()}`;
+    const entry = towns.get(key) ?? { town: night.place.town, country: night.place.country, nights: 0, wins: 0, venues: new Set<string>(), viaGps: false, first: night.completedAt, last: night.completedAt };
+    entry.nights += 1;
+    if (night.place.name.toLowerCase() !== night.place.town.toLowerCase()) entry.venues.add(night.place.name);
+    if (night.place.viaGps) entry.viaGps = true;
+    entry.last = night.completedAt;
+    if (ids.some((item) => item.profile === profile.id && night.winnerIds.includes(item.source))) entry.wins += 1;
+    towns.set(key, entry);
+  }
+  for (const gps of [...gpsStamps].sort((a, c) => Date.parse(a.at) - Date.parse(c.at))) {
+    const key = `${gps.country}:${gps.town.toLowerCase()}`;
+    const entry = towns.get(key) ?? { town: gps.town, country: gps.country, nights: 0, wins: 0, venues: new Set<string>(), viaGps: true, first: gps.at, last: gps.at };
+    entry.nights += 1;
+    entry.viaGps = true;
+    if (Date.parse(gps.at) < Date.parse(entry.first)) entry.first = gps.at;
+    if (Date.parse(gps.at) > Date.parse(entry.last)) entry.last = gps.at;
+    towns.set(key, entry);
+  }
+  return [...towns.values()].map((entry) => ({
+    town: entry.town,
+    country: entry.country,
+    nights: entry.nights,
+    wins: entry.wins,
+    venues: [...entry.venues],
+    viaGps: entry.viaGps,
+    first: entry.first,
+    last: entry.last,
+  })).sort((a, c) => Date.parse(c.last) - Date.parse(a.last));
 }

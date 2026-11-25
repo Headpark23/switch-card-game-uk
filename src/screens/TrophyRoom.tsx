@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { BottomSheet } from '../mobile';
 import SampleDataBar from '../components/SampleDataBar';
 import { BadgeWall, PassportBook } from './Badges';
-import { derivePassport } from '../switch/stats/badges';
+import { derivePassport, deriveTownStamps } from '../switch/stats/badges';
 import { getComputerGames } from '../switch/store/computerLog';
 import { getHistory } from '../switch/store/history';
 import { getProfiles } from '../switch/store/profiles';
@@ -76,6 +76,7 @@ export function PlayerCabinet({ extensions, profileId }: { extensions: Extension
   const nights = getHistory(extensions);
   const room = deriveTrophyRoom(profile, nights, allProfiles, getComputerGames(extensions));
   const stamps = derivePassport(profile, nights, allProfiles);
+  const townStamps = deriveTownStamps(profile, nights, allProfiles);
   const mine = nights.filter((night) => night.place && night.players.some((player) => player.id === profile.id || player.name.toLowerCase() === profile.name.toLowerCase()));
   return <div className="cabinet">
     <TrophySheet pick={pick} onClose={() => setPick(null)} />
@@ -93,7 +94,7 @@ export function PlayerCabinet({ extensions, profileId }: { extensions: Extension
     <h3>Badges · {room.earnedCount} of {room.badges.length}</h3>
     <BadgeWall badges={room.badges} />
     <h3>Passport</h3>
-    <PassportBook stamps={stamps} nights={mine} name={profile.name} />
+    <PassportBook stamps={stamps} towns={townStamps} nights={mine} name={profile.name} />
   </div>;
 }
 

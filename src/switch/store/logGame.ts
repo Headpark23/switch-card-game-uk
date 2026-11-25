@@ -6,6 +6,7 @@ import { addNight, createNightRecord, type NightCompletion } from "./history";
 import { ensureProfiles } from "./profiles";
 import type { ScoreFormat } from "../formats/scoring";
 import type { Player } from "../engine/types";
+import { autoStampGameIfEnabled } from "../../services/gpsStamp";
 
 /**
  * Saves one finished competitive game against the computer to this phone's club, under the player who is "me".
@@ -14,12 +15,15 @@ import type { Player } from "../engine/types";
  */
 export function logComputerGame(game: { id?: string; opponents: number; level: ComputerLevel; won: boolean; place: number; moves: number; seconds?: number; mode?: PlayMode; seriesId?: string; rivals?: readonly RivalPlace[]; online?: OnlineGame }): void {
   const { id = newGameId(), ...rest } = game;
+  let added = false;
   updateClub((extensions) => {
     const ensured = ensureMe(extensions);
     const already = getComputerGames(ensured.extensions).find((entry) => entry.id === id);
     if (already) return extensions;
+    added = true;
     return addComputerGame(ensured.extensions, { id, playedAt: new Date().toISOString(), playerId: ensured.me.id, ...rest });
   });
+  if (added) autoStampGameIfEnabled(rest.online ? "online" : "computer");
 }
 
 const ONLINE_FORMATS: Record<PlayMode, { format: ScoreFormat; label: string }> = {

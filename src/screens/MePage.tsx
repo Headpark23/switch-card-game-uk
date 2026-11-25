@@ -6,7 +6,8 @@ import { FeltHeader } from '../components/ui';
 import { KeyboardInput, useKeyboard } from '../mobile';
 import { BadgeButton, BadgeSheet, BadgeWall, PassportBook } from './Badges';
 import { PlayerCabinet } from './TrophyRoom';
-import { derivePassport, deriveBadges, type BadgeProgress } from '../switch/stats/badges';
+import { derivePassport, deriveTownStamps, deriveBadges, type BadgeProgress } from '../switch/stats/badges';
+import { gpsAutoStampEnabled, readGpsStamps, setGpsAutoStamp } from '../services/gpsStamp';
 import { ensureMe, gameMode, getComputerGames, getMeId, summariseByMode, summariseComputerGames, summariseRivals, toughestRival, RIVAL_MIN_GAMES, type ComputerGame } from '../switch/store/computerLog';
 import { MODES, modeInfo } from '../switch/formats/series';
 import { claimMe, mergeProfiles } from '../switch/store/identity';
@@ -55,6 +56,8 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, in
   const [section, setSection] = useState<Section>(initialSection);
   const [soundOn, setSoundOn] = useState(feedbackEnabled);
   const [autoSortOn, setAutoSortOn] = useState(readAutoSort);
+  const [gpsAutoOn, setGpsAutoOn] = useState(gpsAutoStampEnabled);
+  const [gpsTick, setGpsTick] = useState(0);
   const [spicyOn, setSpicyOn] = useState(spicyTalk);
   const [speed, setSpeed] = useState<Speed>(readSpeed);
   const [filter, setFilter] = useState<HistoryCategory>('all');
@@ -105,7 +108,9 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, in
   const earned = badges.filter((badge) => badge.earned);
   const nextUp = badges.filter((badge) => !badge.earned).sort((a, b) => b.have / b.need - a.have / a.need).slice(0, 3);
   const myNights = nights.filter((night) => night.players.some((player) => resolveHistoryPlayerId(player, allProfiles) === me.id));
-  const stamps = derivePassport(me, nights, allProfiles);
+  const gpsStamps = gpsTick >= 0 ? readGpsStamps() : [];
+  const stamps = derivePassport(me, nights, allProfiles, gpsStamps);
+  const townStamps = deriveTownStamps(me, nights, allProfiles, gpsStamps);
   const nightRecord = { played: myNights.length, won: myNights.filter((night) => night.players.some((player) => resolveHistoryPlayerId(player, allProfiles) === me.id && night.winnerIds.includes(player.id))).length };
   const totalWon = nightRecord.won + summary.wins;
   const totalLost = nightRecord.played - nightRecord.won + summary.losses;
@@ -225,7 +230,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, in
     <NightDetail night={openNight} game={openGame} meId={me.id} profiles={allProfiles} onClose={() => { setOpenNight(null); setOpenGame(null); }} onReplay={onReplay ? (id) => { setOpenGame(null); onReplay(id); } : undefined} />
     {confirmSheet}
     {section === 'badges' && <BadgeWall badges={badges} />}
-    {section === 'passport' && <PassportBook stamps={stamps} nights={myNights} name={me.name} />}
+    {section === 'passport' && <PassportBook stamps={stamps} towns={townStamps} nights={myNights} name={me.name} showGpsControls onGpsStamped={() => setGpsTick((tick) => tick + 1)} />}
     {section === 'trophies' && <PlayerCabinet extensions={extensions} profileId={me.id} />}
     {section === 'settings' && <div className="me-settings">
       <h3>Profile</h3>
@@ -235,6 +240,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, in
       <div className="seg three compact" role="group" aria-label="Computer pace">{(['quick', 'natural', 'relaxed'] as const).map((id) => <button key={id} aria-pressed={speed === id} className={speed === id ? 'active' : ''} onClick={() => { setSpeed(id); saveSpeed(id); }}><b>{SPEED_NAMES[id]}</b></button>)}</div>
       <button className="secondary setting-toggle" role="switch" aria-checked={soundOn} onClick={() => { const next = !soundOn; setFeedbackEnabled(next); setSoundOn(next); }}>Sounds and vibration: {soundOn ? 'on' : 'off'}</button>
       <button className="secondary setting-toggle" role="switch" aria-checked={autoSortOn} data-testid="autosort-setting" onClick={() => { const next = !autoSortOn; saveAutoSort(next); setAutoSortOn(next); }}>Always keep hand sorted: {autoSortOn ? 'on' : 'off'}</button>
+      <button className="secondary setting-toggle" role="switch" aria-checked={gpsAutoOn} data-testid="gps-passport-setting" onClick={() => { const next = !gpsAutoOn; setGpsAutoStamp(next); setGpsAutoOn(next); }}>Auto-stamp passport with GPS: {gpsAutoOn ? 'on' : 'off'}</button>
       <button className="secondary" role="switch" aria-checked={spicyOn} data-testid="spicy-setting" onClick={() => { const next = !spicyOn; setSpicyTalk(next); setSpicyOn(next); }}>{spicyOn ? 'Spicy talk is on: turn it off' : 'Turn on spicy talk (swearing, adults only)'}</button>
       <p className="lobby-note">Spicy talk adds pub swearing to the reactions and lets the computers swear back. It is only ever on for this device: friends with it off see a clean version of whatever you say.</p>
       <h3>This app</h3>

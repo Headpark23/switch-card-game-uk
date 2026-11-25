@@ -1,8 +1,12 @@
-/** Where a night was played. Venue names are typed; the country comes from this list and is stamped in the passport. */
+/** Where a night was played. Venue and town can be typed or filled by phone GPS; both country and town are stamped in the passport. */
 export interface Place {
   readonly name: string;
   /** ISO 3166-1 alpha-2 country code. */
   readonly country: string;
+  /** Town or city where the game was played (typed or from GPS). */
+  readonly town?: string;
+  /** True when stamped via the phone's GPS signal. */
+  readonly viaGps?: boolean;
 }
 
 export const COUNTRIES: readonly { readonly code: string; readonly name: string }[] = [
@@ -40,15 +44,33 @@ export function getLastPlace(extensions: Extensions): Place | null {
   const value = extensions[LAST_KEY];
   if (value === null || typeof value !== "object") return null;
   const item = value as Record<string, unknown>;
-  return typeof item.name === "string" && typeof item.country === "string" ? { name: item.name, country: item.country } : null;
+  if (typeof item.name !== "string" || typeof item.country !== "string") return null;
+  const town = typeof item.town === "string" && item.town.trim() ? item.town.trim() : undefined;
+  return { name: item.name, country: item.country, ...(town ? { town } : {}) };
 }
 
 export function putLastPlace(extensions: Extensions, place: Place): Record<string, unknown> {
-  return { ...extensions, [LAST_KEY]: { name: place.name, country: place.country } };
+  return {
+    ...extensions,
+    [LAST_KEY]: {
+      name: place.name,
+      country: place.country,
+      ...(place.town ? { town: place.town } : {}),
+      ...(place.viaGps ? { viaGps: true } : {}),
+    },
+  };
 }
 
-/** Cleans a typed place. A blank name means "not recorded". */
-export function cleanPlace(name: string, country: string): Place | undefined {
-  const clean = name.trim().replace(/\s+/g, " ").slice(0, 40);
-  return clean && NAMES.has(country) ? { name: clean, country } : undefined;
+/** Cleans a typed or GPS-filled place. Blank venue AND blank town means "not recorded". */
+export function cleanPlace(name: string, country: string, town = "", viaGps = false): Place | undefined {
+  const cleanName = name.trim().replace(/\s+/g, " ").slice(0, 40);
+  const cleanTown = town.trim().replace(/\s+/g, " ").slice(0, 40);
+  const finalName = cleanName || cleanTown;
+  if (!finalName || !NAMES.has(country)) return undefined;
+  return {
+    name: finalName,
+    country,
+    ...(cleanTown ? { town: cleanTown } : {}),
+    ...(viaGps ? { viaGps: true } : {}),
+  };
 }

@@ -29,6 +29,8 @@ export default function QuickNight({ onBack, onHistory }: { onBack: () => void; 
   const [savedNight, setSavedNight] = useState<SwitchNightRecord | null>(null);
   const [dealer, setDealerState] = useState<DealerState | null>(null);
   const [placeName, setPlaceName] = useState(() => getLastPlace(loaded.state.extensions)?.name ?? '');
+  const [placeTown, setPlaceTown] = useState(() => getLastPlace(loaded.state.extensions)?.town ?? '');
+  const [placeViaGps, setPlaceViaGps] = useState(false);
   const [placeCountry, setPlaceCountry] = useState(() => getLastPlace(loaded.state.extensions)?.country ?? guessCountry());
 
   const wins = (id: string) => rounds.filter((winner) => winner === id).length;
@@ -71,7 +73,7 @@ export default function QuickNight({ onBack, onHistory }: { onBack: () => void; 
     };
     const raw = window.localStorage.getItem(SCOREKEEPER_STORAGE_KEY);
     const current = loadScorekeeper(raw).state.extensions;
-    const place = cleanPlace(placeName, placeCountry);
+    const place = cleanPlace(placeName, placeCountry, placeTown, placeViaGps);
     const night = createNightRecord(`Quick night · ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`, completion, undefined, undefined, place);
     const added = addNight(withNightProfiles(current, players), night);
     trackNightSaved(night.format, night.players.length, false);
@@ -98,7 +100,7 @@ export default function QuickNight({ onBack, onHistory }: { onBack: () => void; 
       <div className="player-fields">{names.map((name, index) => <label key={index}><span>Player {index + 1}</span><KeyboardInput aria-invalid={Boolean(error) && !name.trim()} value={name} placeholder="Enter name" onChange={(event) => setNames((current) => current.map((entry, i) => (i === index ? event.target.value : entry)))} /></label>)}</div>
       <div className="quick-count"><button aria-label="Remove a player" disabled={names.length <= 2} onClick={() => setNames((current) => current.slice(0, -1))}><Minus size={18} /></button><span>{names.length} players</span><button aria-label="Add a player" disabled={names.length >= 6} onClick={() => setNames((current) => [...current, ''])}><Plus size={18} /></button></div>
       {error && <p className="score-error" role="alert">{error}</p>}
-      <VenueFields name={placeName} country={placeCountry} onName={setPlaceName} onCountry={setPlaceCountry} />
+      <VenueFields name={placeName} town={placeTown} country={placeCountry} onName={setPlaceName} onTown={(val, gps) => { setPlaceTown(val); setPlaceViaGps(!!gps); }} onCountry={setPlaceCountry} />
       <button className="primary quick-start" onClick={begin}>Start the night <ArrowRight size={18} /></button>
     </> : <>
       {dealer && <DealerBar dealer={dealer} nameOf={(id) => players.find((player) => player.id === id)?.name ?? 'Player'} onPass={() => setDealerState(passDeal(dealer))} onPick={(id) => setDealerState(setDealer(dealer, id))} />}

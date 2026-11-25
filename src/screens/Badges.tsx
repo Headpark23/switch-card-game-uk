@@ -1,13 +1,14 @@
 import { useState, type ComponentType, type ReactNode } from 'react';
 import { BottomSheet } from '../mobile';
 import {
-  Airplane, Armchair, Barbell, Brain, CalendarCheck, CalendarStar, Cards, Columns, Compass, Cpu, Crosshair, Crown, Diamond, DiamondsFour, Fire, Flag, Globe,
-  GlobeHemisphereWest, GridFour, Handshake, House, Lightning, MapPin, MapTrifold, Medal, Moon, Ranking, Robot, Rocket, ShieldStar, Skull, Smiley, Spade, Stamp, Star,
+  Airplane, Armchair, Barbell, Brain, Buildings, CalendarCheck, CalendarStar, Cards, Columns, Compass, Cpu, Crosshair, Crown, Diamond, DiamondsFour, Fire, Flag, Globe,
+  GlobeHemisphereWest, GridFour, Handshake, House, Lightning, MapPin, MapTrifold, Medal, Moon, NavigationArrow, Ranking, Robot, Rocket, ShieldStar, Skull, Smiley, Spade, Stamp, Star,
   Sun, SuitcaseRolling, Sword, Target, Timer, Trophy, Users, UsersFour, UsersThree, type IconProps,
 } from '@phosphor-icons/react';
-import { BADGE_CATEGORIES, type BadgeProgress, type PassportStamp } from '../switch/stats/badges';
+import { BADGE_CATEGORIES, type BadgeProgress, type PassportStamp, type TownStamp } from '../switch/stats/badges';
 import { countryName } from '../switch/store/places';
 import type { SwitchNightRecord } from '../switch/store/history';
+import { detectGpsPlace, gpsAutoStampEnabled, recordGpsStamp, setGpsAutoStamp } from '../services/gpsStamp';
 
 const ICONS: Readonly<Record<string, ComponentType<IconProps>>> = {
   Airplane, Armchair, Barbell, Brain, CalendarCheck, CalendarStar, Cards, Columns, Compass, Cpu, Crosshair, Crown, Diamond, DiamondsFour, Fire, Flag, Globe,
@@ -85,37 +86,156 @@ export function BadgeWall({ badges }: { badges: readonly BadgeProgress[] }) {
   </div>;
 }
 
-const tilt = (code: string) => ((code.charCodeAt(0) * 7 + code.charCodeAt(1) * 3) % 15) - 7;
+const tilt = (code: string) => (((code.charCodeAt(0) || 65) * 7 + (code.charCodeAt(1) || 66) * 3) % 15) - 7;
 
-/** The passport: one inked stamp for every country the cards have been played in. */
-export function PassportBook({ stamps, nights, name }: { stamps: readonly PassportStamp[]; nights: readonly SwitchNightRecord[]; name: string }) {
-  const venues = new Map<string, { name: string; country: string; count: number }>();
+/** The passport: split into inked Country stamps and Town stamps, with optional phone GPS auto-stamping. */
+export function PassportBook({
+  stamps,
+  towns = [],
+  nights,
+  name,
+  showGpsControls = false,
+  onGpsStamped,
+}: {
+  stamps: readonly PassportStamp[];
+  towns?: readonly TownStamp[];
+  nights: readonly SwitchNightRecord[];
+  name: string;
+  showGpsControls?: boolean;
+  onGpsStamped?: () => void;
+}) {
+  const [tab, setTab] = useState<'countries' | 'towns'>('countries');
+  const [autoGps, setAutoGps] = useState(gpsAutoStampEnabled);
+  const [stamping, setStamping] = useState(false);
+  const [gpsMessage, setGpsMessage] = useState('');
+
+  const venues = new Map<string, { name: string; country: string; town?: string; count: number }>();
   for (const night of nights) {
     if (!night.place) continue;
     const key = night.place.country + ':' + night.place.name.toLowerCase();
-    const entry = venues.get(key) ?? { name: night.place.name, country: night.place.country, count: 0 };
+    const entry = venues.get(key) ?? { name: night.place.name, country: night.place.country, town: night.place.town, count: 0 };
     entry.count += 1;
     venues.set(key, entry);
   }
   const list = [...venues.values()].sort((a, b) => b.count - a.count);
-  return <section className="passport" aria-label="Passport">
-    <div className="passport-cover">
-      <Compass size={30} weight="light" />
-      <span><b>SWITCH PASSPORT</b><i>{name}</i></span>
-      <em>{stamps.length} {stamps.length === 1 ? 'country' : 'countries'}</em>
-    </div>
-    <div className="passport-page">
-      {stamps.length === 0
-        ? <p className="passport-empty">No stamps yet. When you save a night, say where you played and the country lands here.</p>
-        : <ul className="stamp-grid" aria-label="Passport stamps">{stamps.map((stamp) => <li key={stamp.country} style={{ ['--tilt' as string]: `${tilt(stamp.country)}deg` }}>
-          <span className="stamp"><b>{stamp.country}</b><i>{stamp.nights} {stamp.nights === 1 ? 'night' : 'nights'}</i></span>
-          <strong>{countryName(stamp.country)}</strong>
-          <small>{stamp.venues.slice(0, 2).join(', ')}{stamp.venues.length > 2 ? ` +${stamp.venues.length - 2}` : ''}</small>
-        </li>)}</ul>}
-    </div>
-    {list.length > 0 && <>
-      <h4 className="passport-venues-title">Venues played</h4>
-      <ul className="venue-list" aria-label="Venues played">{list.slice(0, 8).map((venue) => <li key={venue.country + venue.name}><MapPin size={16} weight="fill" /><span><strong>{venue.name}</strong><small>{countryName(venue.country)}</small></span><b>{venue.count}</b></li>)}</ul>
-    </>}
-  </section>;
+
+  async function stampNow() {
+    setStamping(true);
+    setGpsMessage('Reading phone GPS…');
+    try {
+      const found = await detectGpsPlace();
+      recordGpsStamp({ town: found.town, country: found.country, kind: 'check-in' });
+      setGpsMessage(`Stamped: ${found.town}, ${countryName(found.country)}`);
+      onGpsStamped?.();
+    } catch (reason) {
+      setGpsMessage(reason instanceof Error ? reason.message : 'Could not get a GPS fix right now.');
+    } finally {
+      setStamping(false);
+    }
+  }
+
+  function toggleAutoGps() {
+    const next = !autoGps;
+    setGpsAutoStamp(next);
+    setAutoGps(next);
+    if (next) {
+      setGpsMessage('Auto-stamp on: your phone will stamp your town and country when you play.');
+    } else {
+      setGpsMessage('Auto-stamp turned off.');
+    }
+  }
+
+  return (
+    <section className="passport" aria-label="Passport">
+      <div className="passport-cover">
+        <Compass size={30} weight="light" />
+        <span><b>SWITCH PASSPORT</b><i>{name}</i></span>
+        <em>
+          {stamps.length} {stamps.length === 1 ? 'country' : 'countries'} · {towns.length} {towns.length === 1 ? 'town' : 'towns'}
+        </em>
+      </div>
+
+      {showGpsControls && (
+        <div className="passport-gps" data-testid="passport-gps">
+          <div className="passport-gps-actions">
+            <button type="button" className={'gps-toggle' + (autoGps ? ' on' : '')} role="switch" aria-checked={autoGps} onClick={toggleAutoGps}>
+              <NavigationArrow size={16} weight={autoGps ? 'fill' : 'bold'} aria-hidden="true" />
+              <span>Auto-stamp with GPS: {autoGps ? 'on' : 'off'}</span>
+            </button>
+            <button type="button" className="gps-stamp-now" disabled={stamping} onClick={() => void stampNow()}>
+              <MapPin size={16} weight="fill" aria-hidden="true" />
+              <span>{stamping ? 'Locating…' : 'Stamp here now'}</span>
+            </button>
+          </div>
+          <p className="gps-privacy-note">Uses your phone&apos;s GPS to record only the town and country you played in. Exact coordinates are never saved.</p>
+          {gpsMessage && <p className="gps-note" role="status">{gpsMessage}</p>}
+        </div>
+      )}
+
+      <div className="passport-tabs" role="tablist" aria-label="Passport view">
+        <button role="tab" aria-selected={tab === 'countries'} className={tab === 'countries' ? 'active' : ''} onClick={() => setTab('countries')}>
+          <Globe size={16} weight={tab === 'countries' ? 'fill' : 'bold'} aria-hidden="true" />
+          <span>Countries ({stamps.length})</span>
+        </button>
+        <button role="tab" aria-selected={tab === 'towns'} className={tab === 'towns' ? 'active' : ''} onClick={() => setTab('towns')}>
+          <Buildings size={16} weight={tab === 'towns' ? 'fill' : 'bold'} aria-hidden="true" />
+          <span>Towns ({towns.length})</span>
+        </button>
+      </div>
+
+      <div className="passport-page">
+        {tab === 'countries' ? (
+          stamps.length === 0
+            ? <p className="passport-empty">No country stamps yet. Turn on GPS auto-stamp or add a town and country when you save a night.</p>
+            : <ul className="stamp-grid" aria-label="Passport country stamps">
+                {stamps.map((stamp) => (
+                  <li key={stamp.country} style={{ ['--tilt' as string]: `${tilt(stamp.country)}deg` }}>
+                    <span className="stamp">
+                      <b>{stamp.country}</b>
+                      <i>{stamp.nights} {stamp.nights === 1 ? 'visit' : 'visits'}</i>
+                    </span>
+                    <strong>{countryName(stamp.country)}</strong>
+                    <small>
+                      {stamp.towns.length > 0
+                        ? `${stamp.towns.slice(0, 2).join(', ')}${stamp.towns.length > 2 ? ` +${stamp.towns.length - 2}` : ''}`
+                        : `${stamp.venues.slice(0, 2).join(', ')}${stamp.venues.length > 2 ? ` +${stamp.venues.length - 2}` : ''}`}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+        ) : (
+          towns.length === 0
+            ? <p className="passport-empty">No town stamps yet. Tap &ldquo;Stamp here now&rdquo;, turn on GPS auto-stamp, or enter a town when saving a game night.</p>
+            : <ul className="stamp-grid town-grid" aria-label="Passport town stamps">
+                {towns.map((entry) => (
+                  <li key={`${entry.country}:${entry.town.toLowerCase()}`} style={{ ['--tilt' as string]: `${tilt(entry.town)}deg` }}>
+                    <span className={'stamp town-stamp' + (entry.viaGps ? ' gps' : '')}>
+                      <b>{entry.town.slice(0, 3).toUpperCase()}</b>
+                      <i>{entry.nights} {entry.nights === 1 ? 'game' : 'games'}</i>
+                    </span>
+                    <strong>{entry.town}</strong>
+                    <small>
+                      {countryName(entry.country)}
+                      {entry.viaGps ? ' · GPS' : ''}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+        )}
+      </div>
+
+      {list.length > 0 && <>
+        <h4 className="passport-venues-title">Venues played</h4>
+        <ul className="venue-list" aria-label="Venues played">
+          {list.slice(0, 8).map((venue) => (
+            <li key={venue.country + venue.name}>
+              <MapPin size={16} weight="fill" />
+              <span><strong>{venue.name}</strong><small>{venue.town && venue.town.toLowerCase() !== venue.name.toLowerCase() ? `${venue.town}, ` : ''}{countryName(venue.country)}</small></span>
+              <b>{venue.count}</b>
+            </li>
+          ))}
+        </ul>
+      </>}
+    </section>
+  );
 }

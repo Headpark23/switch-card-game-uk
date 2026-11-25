@@ -490,3 +490,132 @@
   gap: 8px;
   margin-top: 8px;
 }
+
+/* ---------- 8. Switch Passport: Countries & Towns + GPS Auto-Stamp ---------- */
+.passport-gps {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  margin-top: 10px;
+  border: 1px solid #d8c99f;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fffdf7, #f7efdc);
+}
+.passport-gps-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.gps-toggle,
+.gps-stamp-now,
+.gps-fill-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.gps-toggle {
+  border: 1px solid #c9bfaa;
+  background: #fff;
+  color: var(--ink);
+  justify-content: flex-start;
+}
+.gps-toggle.on {
+  border-color: var(--green);
+  background: #e6f1ec;
+  color: var(--green);
+}
+.gps-toggle svg {
+  color: var(--gold);
+  flex: none;
+}
+.gps-toggle.on svg {
+  color: var(--green);
+}
+.gps-stamp-now,
+.gps-fill-btn {
+  border: 0;
+  background: var(--green);
+  color: #fbf8f0;
+  white-space: nowrap;
+}
+.gps-stamp-now svg,
+.gps-fill-btn svg {
+  color: #e6c97f;
+}
+.gps-privacy-note {
+  margin: 0 !important;
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.gps-note {
+  margin: 0 !important;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green);
+}
+
+.passport-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 12px 0 8px;
+}
+.passport-tabs button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid #d4cbb9;
+  border-radius: 12px;
+  background: #fffdf7;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.passport-tabs button.active {
+  border-color: var(--green);
+  background: var(--green);
+  color: #fbf8f0;
+}
+
+.stamp.town-stamp {
+  border-color: #27405f;
+  color: #27405f;
+  border-radius: 14px;
+}
+.stamp.town-stamp.gps {
+  border-color: #0d5239;
+  color: #0d5239;
+}
+
+.venue-town-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+.venue-town-row label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.venue-town-row .gps-fill-btn {
+  height: 44px;
+  border-radius: 10px;
+}
+@media (max-width: 360px) {
+  .passport-gps-actions,
+  .venue-town-row {
+    grid-template-columns: 1fr;
+  }
+}
