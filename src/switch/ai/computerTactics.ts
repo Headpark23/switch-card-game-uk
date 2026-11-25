@@ -69,6 +69,11 @@ export const PERSONALITIES: readonly Personality[] = Object.freeze([
   { id: "ziggy", name: "Ziggy", title: "The Ace Collector", blurb: "Hoards aces and finishes with one, as if he planned it all along.", weights: weights({ aces: 1.8, patience: 1.3, hunter: 0.8, shield: 0.8, counting: 0.7 }) },
   { id: "marley", name: "Marley", title: "The Patient One", blurb: "In no hurry. Will happily pick up a card to keep his power cards for later.", weights: weights({ patience: 1.8, shield: 1.2, aces: 1.1, hunter: 0.6, planner: 0.6, tempo: 0.9 }) },
   { id: "bowie", name: "Bowie", title: "The Chameleon", blurb: "Does a bit of everything and changes his game to suit the table.", weights: weights({ tempo: 1.2, shield: 1.2, aces: 1.2, patience: 1.2, hunter: 1.2, counting: 1.3, planner: 1.2 }) },
+  { id: "madonna", name: "Madonna", title: "The Showstopper", blurb: "Bold and relentless. Steals the spotlight, keeps the pressure on, and finishes in style.", weights: weights({ hunter: 1.6, tempo: 1.5, aces: 1.3, planner: 1.1, patience: 0.5, shield: 0.8 }) },
+  { id: "prince", name: "Prince", title: "The Virtuoso", blurb: "Plans silky multi-card runs and remembers every card that has hit the felt.", weights: weights({ planner: 1.8, counting: 1.6, tempo: 1.4, aces: 1.1, shield: 0.8, patience: 0.7 }) },
+  { id: "elton", name: "Elton", title: "The Showman", blurb: "Loves a grand entrance with aces, shields his pairs, and plays for the drama.", weights: weights({ aces: 1.6, tempo: 1.5, shield: 1.3, hunter: 1.1, patience: 0.7, counting: 0.9 }) },
+  { id: "elvis", name: "Elvis", title: "The King", blurb: "Guards his kings, defends hard, and drops big penalties with Graceland swagger.", weights: weights({ shield: 1.6, hunter: 1.5, planner: 1.3, tempo: 1.1, patience: 0.8, counting: 0.9 }) },
+  { id: "cher", name: "Cher", title: "The Survivor", blurb: "Unshakeable under fire. Outlasts big pick-ups and turns the table when you least expect it.", weights: weights({ shield: 1.7, patience: 1.6, counting: 1.4, aces: 1.1, hunter: 0.8, tempo: 0.9 }) },
 ] satisfies Personality[]);
 
 /** The personality for a computer's name (case does not matter). Anyone else gets the balanced one. */

@@ -662,6 +662,76 @@ const PERSONALITIES = Object.freeze([
 			counting: 1.3,
 			planner: 1.2
 		})
+	},
+	{
+		id: "madonna",
+		name: "Madonna",
+		title: "The Showstopper",
+		blurb: "Bold and relentless. Steals the spotlight, keeps the pressure on, and finishes in style.",
+		weights: weights({
+			hunter: 1.6,
+			tempo: 1.5,
+			aces: 1.3,
+			planner: 1.1,
+			patience: .5,
+			shield: .8
+		})
+	},
+	{
+		id: "prince",
+		name: "Prince",
+		title: "The Virtuoso",
+		blurb: "Plans silky multi-card runs and remembers every card that has hit the felt.",
+		weights: weights({
+			planner: 1.8,
+			counting: 1.6,
+			tempo: 1.4,
+			aces: 1.1,
+			shield: .8,
+			patience: .7
+		})
+	},
+	{
+		id: "elton",
+		name: "Elton",
+		title: "The Showman",
+		blurb: "Loves a grand entrance with aces, shields his pairs, and plays for the drama.",
+		weights: weights({
+			aces: 1.6,
+			tempo: 1.5,
+			shield: 1.3,
+			hunter: 1.1,
+			patience: .7,
+			counting: .9
+		})
+	},
+	{
+		id: "elvis",
+		name: "Elvis",
+		title: "The King",
+		blurb: "Guards his kings, defends hard, and drops big penalties with Graceland swagger.",
+		weights: weights({
+			shield: 1.6,
+			hunter: 1.5,
+			planner: 1.3,
+			tempo: 1.1,
+			patience: .8,
+			counting: .9
+		})
+	},
+	{
+		id: "cher",
+		name: "Cher",
+		title: "The Survivor",
+		blurb: "Unshakeable under fire. Outlasts big pick-ups and turns the table when you least expect it.",
+		weights: weights({
+			shield: 1.7,
+			patience: 1.6,
+			counting: 1.4,
+			aces: 1.1,
+			hunter: .8,
+			tempo: .9
+		})
 	}
 ]);
 /** The personality for a computer's name (case does not matter). Anyone else gets the balanced one. */
@@ -1056,7 +1126,12 @@ const COMPUTER_NAMES_IN_ORDER = [
 	"Ringo",
 	"Ziggy",
 	"Marley",
-	"Bowie"
+	"Bowie",
+	"Madonna",
+	"Prince",
+	"Elton",
+	"Elvis",
+	"Cher"
 ];
 const MODES = [
 	{

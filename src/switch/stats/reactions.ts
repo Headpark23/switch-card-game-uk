@@ -247,6 +247,11 @@ export const BANTER: Readonly<Record<string, Banter>> = {
   Ziggy: themed({ chat: 0.6, moods: { ...BASE, win: ["seven-on-fire", "mic-drop"], gloat: ["card-shark", "all-youve-got"] } }, "bowie", "ziggy-bolt"),
   Marley: themed({ chat: 0.45, moods: { ...BASE, sulk: ["facepalm-jack", "revenge-is-coming"], tease: ["sweating-ace", "sweating-yet"] } }, "marley", "buffalo-soldier"),
   Bowie: themed({ chat: 0.65, moods: { ...BASE, win: ["smug-king", "mic-drop", "seven-on-fire"], reply: ["who-taught-you", "behave", "all-youve-got"] } }, "bowie", "major-tom"),
+  Madonna: { chat: 0.7, moods: { ...BASE, gloat: ["read-em-and-weep", "smug-king", "all-youve-got"], win: ["mic-drop", "smug-king"] } },
+  Prince: { chat: 0.55, moods: { ...BASE, gloat: ["card-shark", "smug-king"], win: ["mic-drop", "seven-on-fire"] } },
+  Elton: { chat: 0.72, moods: { ...BASE, gloat: ["pick-up-sunshine", "seven-on-fire"], win: ["mic-drop", "seven-on-fire"], reply: ["behave", "absolute-sausage"] } },
+  Elvis: { chat: 0.68, moods: { ...BASE, gloat: ["smug-king", "read-em-and-weep"], win: ["smug-king", "mic-drop"], tease: ["sweating-yet", "not-today-sweetheart"] } },
+  Cher: { chat: 0.62, moods: { ...BASE, gloat: ["not-today-sweetheart", "card-shark"], sulk: ["revenge-is-coming", "salty"], reply: ["behave", "who-taught-you"] } },
 };
 const DEFAULT_BANTER: Banter = { chat: 0.5, moods: BASE };
 export const banterOf = (name: string): Banter => BANTER[name] ?? DEFAULT_BANTER;

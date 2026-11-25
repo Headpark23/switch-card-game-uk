@@ -246,4 +246,4 @@ export function visibleAt(before: TableState, after: TableState, steps: readonly
 }
 
 /** The computer players, in seat order. */
-export const COMPUTER_NAMES: readonly string[] = ["John", "Paul", "George", "Ringo", "Ziggy", "Marley", "Bowie"];
+export const COMPUTER_NAMES: readonly string[] = ["John", "Paul", "George", "Ringo", "Ziggy", "Marley", "Bowie", "Madonna", "Prince", "Elton", "Elvis", "Cher"];

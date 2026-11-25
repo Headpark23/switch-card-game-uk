@@ -22,7 +22,7 @@ import { attackKind, banterFor, playEvent, reactionOf, type TableEvent } from '.
 import { gained, logReaction, type ReplayMove } from '../switch/store/gameReplay';
 import { GameEnding } from '../components/GameEnding';
 import { beginReplay, Bubble, ReactionSheet, useBubbles, useReplayRecorder } from '../components/tableTalk';
-import { SuitBadge, TableToggles, useTablePrefs } from '../components/tablePrefs';
+import { readAutoSort, saveAutoSort, SuitBadge, TableToggles, useTablePrefs } from '../components/tablePrefs';
 import { BigHandHint, handPerRow } from '../components/BigHandHint';
 
 import { COMPUTER_NAMES } from '../switch/stats/presentation';
@@ -153,7 +153,8 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
   const canAct = yourMove;
   const rawHand = showing && showing.before.turn === 0 && showing.action.type === 'draw' ? showing.before.hands[0] : game.hands[0];
   // Sort is a setting, not a one-off: while it is on, the hand is shown sorted and new cards slot straight in.
-  const [sortOn, setSortOn] = useState(false);
+  const [sortOn, setSortOn] = useState(readAutoSort);
+  const toggleSort = () => setSortOn((on) => { const next = !on; saveAutoSort(next); return next; });
   const [haha, setHaha] = useState<Haha>(null);
   const shout = (name: string) => setHaha((current) => ({ id: (current?.id ?? 0) + 1, text: hahaText(name) }));
   const hand = useMemo(() => (sortOn ? sortHand(rawHand) : rawHand), [sortOn, rawHand]);
@@ -586,7 +587,7 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
       {yourMove && missTurn && <div className="miss-turn-action"><strong>An eight was played</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you miss this turn.'}</p><button className="primary" onClick={pickUp}>Accept missed turn <ArrowRight size={18} /></button></div>}
       {youOutAt > 0 && <div className="out-panel" role="status" data-testid="you-are-out"><strong>You are out: {ordinal(youOutAt)} place.</strong><p>The others play on for the places still to be decided.</p><button className="secondary" onClick={skipToResult}>Skip to the result <ArrowRight size={18} /></button></div>}
       {youOutAt === 0 && <>
-          {staged.length === 0 ? <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!canAct}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={cycleSpeed} aria-label={`Computer pace: ${SPEED_NAMES[speed]}. Tap to change`}><Timer size={16} />{SPEED_NAMES[speed]}</button><button className="pace-button sort-button" onClick={() => setSortOn((on) => !on)} aria-pressed={sortOn}><SortAscending size={16} weight={sortOn ? 'fill' : 'regular'} />{sortOn ? 'Sorted' : 'Sort'}</button></div> : aceChoice ? SUIT_CHOOSER : MULTI_ACTION}
+          {staged.length === 0 ? <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!canAct}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={cycleSpeed} aria-label={`Computer pace: ${SPEED_NAMES[speed]}. Tap to change`}><Timer size={16} />{SPEED_NAMES[speed]}</button><button className="pace-button sort-button" onClick={toggleSort} aria-pressed={sortOn}><SortAscending size={16} weight={sortOn ? 'fill' : 'regular'} />{sortOn ? 'Sorted' : 'Sort'}</button></div> : aceChoice ? SUIT_CHOOSER : MULTI_ACTION}
           {hint && yourMove && <p className="game-hint"><Lightbulb size={17} />{hintText}</p>}
           <div className="hand-row"><span>{hand.length} in hand</span><button className="pace-button react-button" onClick={() => setReactOpen(true)} aria-label="Send a reaction" data-testid="react-button"><ChatCircleText size={17} />React</button><button className={'last-card-button' + (lastCalled ? ' called' : hand.length > 3 ? ' idle' : ' due')} onClick={callLastCard} aria-pressed={lastCalled} data-testid="last-card-button" aria-label={lastCalled ? 'Last Card called' : 'Call Last Card'}><HandPalm size={20} weight={lastCalled ? 'fill' : 'regular'} /><span>{lastCalled ? 'Called' : 'Last Card'}</span></button></div>
           <BigHandHint count={hand.length} />

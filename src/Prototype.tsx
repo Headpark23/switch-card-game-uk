@@ -92,6 +92,7 @@ export default function Prototype() {
   const [table, setTable] = useState<{ opponents: number; level: ComputerLevel; resume: boolean; deal: number; names?: string[] }>({ opponents: 2, level: 'standard', resume: false, deal: 0 });
   /** Where a learning page goes back to: the rules guide, or Home when it was opened from Home. */
   const [learnBack, setLearnBack] = useState<'Learn' | 'Rules'>('Learn');
+  const [puzzleMode, setPuzzleMode] = useState<'pack' | 'daily'>('pack');
   /** The game being replayed, and the screen to go back to afterwards. */
   const [replayOf, setReplayOf] = useState<{ id: string; back: Page } | null>(null);
   const keyboard = useKeyboard();
@@ -206,7 +207,7 @@ export default function Prototype() {
     <MobileScroll key={page} className="switch-scroll">
       <main id="main-content" tabIndex={-1} className={'switch-content ' + (page === 'Learn' ? 'home' : 'interior') + (page === 'Tutorial' || page === 'Table' || page === 'Online' || (page === 'Series' && seriesAtTable) ? ' tutorial-page' : '') + (page === 'Cards' ? ' cards-page' : '') + (page === 'Rules' ? ' rules-page' : '')}>
         {page === 'Learn' && <>
-          <HomeHub key={shownClubTick} onPlay={() => go('Play')} onResumeTable={resumeTable} onScore={() => openScore('score')} onClub={() => openClub('stats')} onShareClub={() => openClub('stats', 'share')} onAchievements={() => openMe('badges')} onRules={openRules} onPuzzles={() => go('Puzzles')} onQuestions={() => go('Questions')} onPlan={() => setPlanOpen(true)} onJoin={() => go('Watch')} onJoinClub={() => openClub('stats', 'join')} onHistory={() => openClub('history')} onPower={setSelected} />
+          <HomeHub key={shownClubTick} onPlay={() => go('Play')} onResumeTable={resumeTable} onScore={() => openScore('score')} onClub={() => openClub('stats')} onShareClub={() => openClub('stats', 'share')} onAchievements={() => openMe('badges')} onRules={openRules} onPuzzles={() => { setPuzzleMode('pack'); go('Puzzles'); }} onDailyPuzzle={() => { setPuzzleMode('daily'); go('Puzzles'); }} onQuestions={() => go('Questions')} onPlan={() => setPlanOpen(true)} onJoin={() => go('Watch')} onJoinClub={() => openClub('stats', 'join')} onHistory={() => openClub('history')} onPower={setSelected} />
           <AccountPanel home />
         </>}
         {page === 'Rules' && <RulesScreen onBack={() => go('Learn')} onStartGuidedGame={startGuidedGame} onOpenCards={() => go('Cards')} onOpenPuzzles={() => go('Puzzles')} onOpenQuestions={() => go('Questions')} onSelectPower={setSelected} />}
@@ -230,7 +231,7 @@ export default function Prototype() {
             {page === 'Tutorial' && <GuidedGame onExit={() => go('Rules')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onOpenPuzzles={() => go('Puzzles')} onPlayForReal={() => go('Play')} onStatusChange={onGameStatus} />}
             {page === 'Quick' && <QuickNight onBack={() => openScore('score')} onHistory={() => openClub('history')} />}
             {page === 'Watch' && <WatchNight key={nightCode} initialCode={nightCode} initialAs={nightCode === urlNight ? urlAs : ''} onOpenCode={openCode} onBack={() => go('Learn')} />}
-            {page === 'Puzzles' && <Puzzles backLabel={learnBackLabel} onBack={() => go(learnBack)} onTutorial={startGuidedGame} />}
+            {page === 'Puzzles' && <Puzzles key={puzzleMode} initialMode={puzzleMode} backLabel={learnBackLabel} onBack={() => go(learnBack)} onTutorial={startGuidedGame} />}
             {page === 'Privacy' && <Privacy onBack={() => openMe('overview')} />}
           </Suspense>
         </>}

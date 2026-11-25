@@ -305,3 +305,188 @@
     }
   }
 }
+
+/* ---------- 6. Beat the Legends (12-Character Stamp Card) ---------- */
+.legends-card {
+  border: 1px solid #d8c99f;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fffdf7, #f8f1de);
+  padding: 14px;
+  margin-bottom: 14px;
+  display: grid;
+  gap: 10px;
+}
+.legends-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.legends-head h3 {
+  margin: 0;
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--green);
+}
+.legends-sub {
+  margin: 2px 0 0 !important;
+  font-size: 12px;
+  color: var(--muted);
+}
+.legends-pill {
+  flex: none;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fbf8f0;
+  font-weight: 700;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.legends-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+.legends-grid li {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 2px;
+  padding: 9px 6px;
+  border: 1px dashed #d5c7a8;
+  border-radius: 12px;
+  background: #fffdf9;
+  color: var(--muted);
+}
+.legends-grid li.beaten {
+  border-style: solid;
+  border-color: #9dc0b1;
+  background: #eff7f3;
+  color: var(--ink);
+}
+.legends-grid li.hard {
+  border-style: solid;
+  border-color: var(--gold);
+  background: linear-gradient(180deg, #fffaf0, #f4e6c1);
+  color: var(--ink);
+}
+.legends-grid .legend-mark {
+  display: grid;
+  place-items: center;
+  color: #b5a98d;
+}
+.legends-grid li.beaten .legend-mark {
+  color: #0d5239;
+}
+.legends-grid li.hard .legend-mark {
+  color: var(--gold);
+}
+.legends-grid strong {
+  font-size: 13px;
+  color: var(--ink);
+}
+.legends-grid small {
+  font-size: 10.5px;
+  line-height: 1.25;
+}
+
+/* ---------- 7. Daily Hand Puzzle (Home Card & Mode Tabs) ---------- */
+.home-daily-hand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 15px;
+  border: 1.5px solid var(--gold);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #0b4a35, #053527);
+  color: #fbf8f0;
+  text-align: left;
+}
+.home-daily-hand.solved {
+  background: linear-gradient(135deg, #fffaf0, #f4ead0);
+  color: var(--ink);
+}
+.home-daily-hand .daily-hand-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #ffffff1a;
+  color: #e6c97f;
+}
+.home-daily-hand.solved .daily-hand-icon {
+  background: #05352714;
+  color: var(--green);
+}
+.home-daily-hand > span:nth-child(2) {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.home-daily-hand strong {
+  font-size: 15px;
+  line-height: 1.2;
+}
+.home-daily-hand em {
+  font-style: normal;
+  font-size: 12px;
+  opacity: 0.85;
+}
+.daily-streak-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #e6c97f;
+  color: #053527;
+  font-size: 12px;
+}
+
+.puzzle-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 12px 0 10px;
+}
+.puzzle-mode-tabs button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid #d4cbb9;
+  border-radius: 12px;
+  background: #fffdf7;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.puzzle-mode-tabs button.active {
+  border-color: var(--green);
+  background: var(--green);
+  color: #fbf8f0;
+}
+.daily-done-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e6c97f;
+}
+.daily-share {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}

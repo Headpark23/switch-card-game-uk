@@ -27,6 +27,8 @@ import { feedbackEnabled, setFeedbackEnabled } from '../services/feedback';
 import { AccountPanel } from '../components/AccountPanel';
 import InstallButton from '../components/InstallButton';
 import HistoryPanel, { type HistoryCategory, type HistoryEntry } from '../components/HistoryPanel';
+import { LegendsCard } from '../components/LegendsCard';
+import { readAutoSort, saveAutoSort } from '../components/tablePrefs';
 
 type Section = 'overview' | 'history' | 'computer' | 'badges' | 'passport' | 'trophies' | 'settings';
 const SECTIONS: readonly { id: Section; label: string }[] = [
@@ -52,6 +54,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, in
   useEffect(() => { const refresh = () => setExtensions(readClub()); window.addEventListener(CLUB_REFRESH, refresh); return () => window.removeEventListener(CLUB_REFRESH, refresh); }, []);
   const [section, setSection] = useState<Section>(initialSection);
   const [soundOn, setSoundOn] = useState(feedbackEnabled);
+  const [autoSortOn, setAutoSortOn] = useState(readAutoSort);
   const [spicyOn, setSpicyOn] = useState(spicyTalk);
   const [speed, setSpeed] = useState<Speed>(readSpeed);
   const [filter, setFilter] = useState<HistoryCategory>('all');
@@ -179,6 +182,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, in
     {section === 'history' && <HistoryPanel entries={rows} category={filter} onCategory={setFilter} />}
 
     {section === 'computer' && <>
+      <LegendsCard games={games} />
       {summary.games === 0
         ? <><p className="history-empty">No games against the computer yet. Every finished game in Play is logged here. Guided practice games are not counted.</p><button className="primary" onClick={onPlay}>Play the computer <ArrowRight size={18} /></button></>
         : <>
@@ -230,6 +234,7 @@ export default function MePage({ onPlay, onClub, onPrivacy, onReplay, onBack, in
       <h3>Playing the computer</h3>
       <div className="seg three compact" role="group" aria-label="Computer pace">{(['quick', 'natural', 'relaxed'] as const).map((id) => <button key={id} aria-pressed={speed === id} className={speed === id ? 'active' : ''} onClick={() => { setSpeed(id); saveSpeed(id); }}><b>{SPEED_NAMES[id]}</b></button>)}</div>
       <button className="secondary setting-toggle" role="switch" aria-checked={soundOn} onClick={() => { const next = !soundOn; setFeedbackEnabled(next); setSoundOn(next); }}>Sounds and vibration: {soundOn ? 'on' : 'off'}</button>
+      <button className="secondary setting-toggle" role="switch" aria-checked={autoSortOn} data-testid="autosort-setting" onClick={() => { const next = !autoSortOn; saveAutoSort(next); setAutoSortOn(next); }}>Always keep hand sorted: {autoSortOn ? 'on' : 'off'}</button>
       <button className="secondary" role="switch" aria-checked={spicyOn} data-testid="spicy-setting" onClick={() => { const next = !spicyOn; setSpicyTalk(next); setSpicyOn(next); }}>{spicyOn ? 'Spicy talk is on: turn it off' : 'Turn on spicy talk (swearing, adults only)'}</button>
       <p className="lobby-note">Spicy talk adds pub swearing to the reactions and lets the computers swear back. It is only ever on for this device: friends with it off see a clean version of whatever you say.</p>
       <h3>This app</h3>

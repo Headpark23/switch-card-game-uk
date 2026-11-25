@@ -17,6 +17,7 @@ import { readClub } from '../switch/store/clubStore';
 import { loadSeat } from '../switch/sync/onlineRoom';
 import { ROUND_CHOICES, roundsLabel, roundsNote, chooseComputers, COMPUTER_MODES, COMPUTER_NAMES_IN_ORDER, MAX_COMPUTERS, MATCH_BEST_OF, MATCH_FIRST_TO, matchCountFor, matchLabel, modeInfo, validateSetup, type MatchType, type PlayMode, type SeriesSetup } from '../switch/formats/series';
 import { CardImage, FeltHeader, MiniFan } from '../components/ui';
+import { deriveLegends } from '../components/LegendsCard';
 
 const LEVELS: readonly { id: ComputerLevel; name: string; note: string }[] = [
   { id: 'relaxed', name: LEVEL_NAMES.relaxed, note: LEVEL_NOTES.relaxed },
@@ -65,7 +66,9 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
   const [active] = useState(readActiveTable);
   const club = readClub();
   const kept = loadSeat();
-  const record = summariseComputerGames(getComputerGames(club).filter((game) => game.playerId === getMeId(club)));
+  const myGames = getComputerGames(club).filter((game) => game.playerId === getMeId(club));
+  const record = summariseComputerGames(myGames);
+  const legendsBeaten = deriveLegends(myGames).filter((item) => item.beaten).length;
   const set = (next: Partial<Choice>) => {
     const merged = { ...choice, ...next };
     merged.opponents = Math.max(merged.opponents, fewestComputers(merged.mode));
@@ -189,7 +192,7 @@ export default function PlayLobby({ onDeal, onStartSeries, onResume, onMe, onLea
       <p className="lobby-note">How long each computer pauses and how slowly cards travel. A pause only, so you can follow the play.</p>
     </div>
 
-    <button className="record-strip" onClick={onMe} aria-label={record.games ? `Your record against the computer: ${record.wins} wins from ${record.games} games` : 'Your record against the computer'}><Robot size={20} weight="fill" /><span><strong>{record.games ? `${record.wins} won of ${record.games}` : 'No games yet'}</strong><small>{record.games ? `${Math.round(record.winRate * 100)}% against the computer${record.currentStreak > 1 ? ` · ${record.currentStreak} in a row` : ''} · best run ${record.bestStreak}` : 'Your wins, streaks and form will appear here.'}</small></span><ArrowRight size={16} /></button>
+    <button className="record-strip" onClick={onMe} aria-label={record.games ? `Your record against the computer: ${record.wins} wins from ${record.games} games` : 'Your record against the computer'}><Robot size={20} weight="fill" /><span><strong>{record.games ? `${record.wins} won of ${record.games}` : 'No games yet'}</strong><small>{record.games ? `${Math.round(record.winRate * 100)}% win rate · ${legendsBeaten}/${PERSONALITIES.length} legends beaten${record.currentStreak > 1 ? ` · ${record.currentStreak} in a row` : ''}` : `12 legends to beat. Your wins and streaks appear here.`}</small></span><ArrowRight size={16} /></button>
 
     <button className="learn-aside" onClick={onLearn}><BookOpen size={18} weight="bold" /><span><strong>Still learning?</strong><small>Practise with hints in Learn the Rules. Practice games are never counted.</small></span><ArrowRight size={14} /></button>
     </div>

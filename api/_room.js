@@ -23,8 +23,8 @@ const CODE = /^[A-Z2-9]{6}$/;
 const CARD = /^(?:A|10|[2-9]|J|Q|K)[SHDC]'?$/;
 const LEVELS = ["relaxed", "standard", "sharp"];
 const SUITS = ["S", "H", "D", "C"];
-/** The seven computers of the Play lobby first, then more for big tables. */
-const COMPUTER_NAMES = ["John", "Paul", "George", "Ringo", "Ziggy", "Marley", "Bowie", "Elton", "Freddie", "Dolly", "Stevie", "Cher", "Prince", "Adele", "Elvis"];
+/** The twelve computers of the Play lobby first, then extras for big tables. */
+const COMPUTER_NAMES = ["John", "Paul", "George", "Ringo", "Ziggy", "Marley", "Bowie", "Madonna", "Prince", "Elton", "Elvis", "Cher", "Freddie", "Dolly", "Stevie", "Adele"];
 /** The ways to play at an online table. Knock Out with friends is "last one out leaves" (ruling 11; owner decision, 14 Nov 2026). */
 export const MODES = Object.freeze(["single", "match", "lastout", "knockout", "cup", "group", "darts", "dominoes"]);
 const MODE_NAMES = { single: "game", match: "match", lastout: "Last One Out", knockout: "Knock Out", cup: "Switch Cup", group: "Group Play", darts: "Darts match", dominoes: "Dominoes match" };
@@ -101,7 +101,7 @@ const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 function cleanComputers(value, capacity) {
   if (value === undefined || value === null) return {};
   if (!Array.isArray(value)) throw new RoomError("Pick computers from the list.");
-  const names = value.filter((entry, index) => typeof entry === "string" && COMPUTER_NAMES.slice(0, 7).includes(entry) && value.indexOf(entry) === index).slice(0, Math.max(0, capacity - 1));
+  const names = value.filter((entry, index) => typeof entry === "string" && COMPUTER_NAMES.slice(0, 12).includes(entry) && value.indexOf(entry) === index).slice(0, Math.max(0, capacity - 1));
   return names.length ? { computers: names } : {};
 }
 
@@ -215,8 +215,8 @@ export function startRoom(room, seatIndex, now, random = secureRandom) {
   // The host may have picked which computers to face. Picks come first (unless a guest already has that name); other seats are drawn at random.
   const wanted = (room.setup?.computers ?? []).filter((candidate) => !humans.some((seat) => sameName(seat.name, candidate)));
   const open = (candidate) => !wanted.includes(candidate) && !humans.some((seat) => sameName(seat.name, candidate));
-  // The seven computers with their own voices are drawn at random first; the extra names only fill very big tables.
-  const rest = [...shuffled(COMPUTER_NAMES.slice(0, 7).filter(open), random), ...COMPUTER_NAMES.slice(7).filter(open)];
+  // The twelve computers with their own voices are drawn at random first; the extra names only fill very big tables.
+  const rest = [...shuffled(COMPUTER_NAMES.slice(0, 12).filter(open), random), ...COMPUTER_NAMES.slice(12).filter(open)];
   const free = [...wanted, ...rest];
   const computers = Array.from({ length: room.capacity - humans.length }, (_, index) => ({
     name: free[index] ?? `Computer ${index + 1}`, kind: "computer", host: false, called: true, exposedAt: null, autoStreak: 0, autoTotal: 0, seenAt: 0, lastReactAt: 0,
@@ -357,7 +357,7 @@ const BANTER_THEMES = Object.freeze({
   marley: { gloat: ["buffalo-soldier", "lion", "get-up-stand-up"], sulk: ["redemption", "every-little-thing", "one-love"], tease: ["jammin", "buffalo-soldier", "lion"], win: ["jammin", "lion", "get-up-stand-up", "one-love-saying"], lose: ["redemption", "every-little-thing", "one-love-saying", "one-love"] },
 });
 const BANTER_BAND = Object.freeze({ John: "beatles", Paul: "beatles", George: "beatles", Ringo: "beatles", Ziggy: "bowie", Bowie: "bowie", Marley: "marley" });
-const BANTER_CHAT = Object.freeze({ John: 0.75, Paul: 0.55, George: 0.35, Ringo: 0.5, Ziggy: 0.6, Marley: 0.45, Bowie: 0.65 });
+const BANTER_CHAT = Object.freeze({ John: 0.75, Paul: 0.55, George: 0.35, Ringo: 0.5, Ziggy: 0.6, Marley: 0.45, Bowie: 0.65, Madonna: 0.7, Prince: 0.55, Elton: 0.72, Elvis: 0.68, Cher: 0.62 });
 /** A table hears at most one computer remark in this long (a win always gets one). */
 const BANTER_GAP_MS = 7_000;
 

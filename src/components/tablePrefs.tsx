@@ -3,11 +3,20 @@ import { ChatCircleDots, ListBullets } from '@phosphor-icons/react';
 import type { Suit } from '../switch/engine/types';
 import { suitNames, suitSymbols } from './ui';
 
-/** Two per-phone switches for the table: card move descriptions and speech bubbles (owner request, 16 Nov 2026). New keys, on by default. */
-const KEYS = { moves: 'switchTableMoves', talk: 'switchTableBubbles' } as const;
+/** Per-phone switches for the table: card move descriptions, speech bubbles, and always-sorted hand. */
+const KEYS = { moves: 'switchTableMoves', talk: 'switchTableBubbles', autoSort: 'switchAutoSort' } as const;
 
 function read(key: string): boolean {
   try { return window.localStorage.getItem(key) !== '0'; } catch { return true; }
+}
+
+/** Remember whether the player prefers their hand kept sorted from the deal (off until turned on). */
+export function readAutoSort(): boolean {
+  try { return window.localStorage.getItem(KEYS.autoSort) === '1'; } catch { return false; }
+}
+
+export function saveAutoSort(on: boolean): void {
+  try { window.localStorage.setItem(KEYS.autoSort, on ? '1' : '0'); } catch { /* storage blocked */ }
 }
 
 export function useTablePrefs() {

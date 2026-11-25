@@ -14,7 +14,7 @@ import type { CardId, Player, RandomSource } from "../engine/types";
  */
 export type PlayMode = "single" | "match" | "lastout" | "knockout" | "group" | "cup" | "darts" | "dominoes";
 
-export const COMPUTER_NAMES_IN_ORDER = ["John", "Paul", "George", "Ringo", "Ziggy", "Marley", "Bowie"] as const;
+export const COMPUTER_NAMES_IN_ORDER = ["John", "Paul", "George", "Ringo", "Ziggy", "Marley", "Bowie", "Madonna", "Prince", "Elton", "Elvis", "Cher"] as const;
 export const ME_ID = "me";
 /** You plus five computers is a full table of six, all one deck can deal while leaving a pile to pick up from (ruling 38). */
 export const MAX_COMPUTERS = 5;
