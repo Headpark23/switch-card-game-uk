@@ -14,8 +14,8 @@ import {
   applyTableAction, chooseTableAction, createTable, dealTo, isLegalTablePlay, isSeriesOver, MAX_SEATS, ONLINE_MAX_PLAYERS, pendingGames, POWER_START_CHANCE,
   penaliseMissedLastCard, resultOf, seriesOutcome, startSeries, submitGame, tablePlaces, validateSetup,
 } from "./_engine.js";
-import { aimedIds, voiceIds, voicePool } from "./_voices.js";
-import { attackOf, cardCandidates, caughtPool, hitPool, momentsOf } from "./_cardTalk.js";
+import { aimedIds, voiceIds, voicePool } from "../shared/voices.js";
+import { attackOf, cardCandidates, caughtPool, hitPool, momentsOf } from "../shared/cardTalk.js";
 import { hasCounts, summarise, tableChanged, tableCreated, tableJoined } from "./_onlineStats.js";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

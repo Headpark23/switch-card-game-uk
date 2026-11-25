@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { ArrowRight, CaretLeft, CheckCircle, Fire, Trophy, XCircle } from '@phosphor-icons/react';
-import { cue } from '../feedback';
-import { trackFeature } from '../switch/telemetry';
-import { badgeFor, checkAnswer, legalCardsFor, loadProgress, puzzles, recordResult, saveProgress, type PuzzleProgress } from '../switch/puzzles';
-import type { CardId } from '../switch/types';
-import { CardImage, suitNames } from '../ui';
+import { cue } from '../services/feedback';
+import { trackFeature } from '../switch/stats/telemetry';
+import { badgeFor, checkAnswer, legalCardsFor, loadProgress, puzzles, recordResult, saveProgress, type PuzzleProgress } from '../switch/ai/puzzles';
+import type { CardId } from '../switch/engine/types';
+import { CardImage, suitNames } from '../components/ui';
 
 const penaltyText = (kind: string | undefined, cards?: number) =>
   kind === 'draw-two' ? `A two is active: ${cards} cards to pick up.` : kind === 'black-king' ? `A black king is active: ${cards} cards to pick up.` : kind === 'miss-turn' ? 'An eight is active: you miss a turn.' : '';

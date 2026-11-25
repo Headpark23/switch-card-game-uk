@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowCounterClockwise, ArrowRight, ChartBar, Trophy } from '@phosphor-icons/react';
-import { logSeriesResult } from '../switch/logGame';
-import { track } from '../switch/telemetry';
+import { logSeriesResult } from '../switch/store/logGame';
+import { track } from '../switch/stats/telemetry';
 import {
   advanceComputers, isSeriesOver, matchLabel, modeInfo, placeOf, resultOf, seriesOutcome, seriesPlayerName, standings, startSeries, submitGame, yourNextGame,
   ME_ID, type PendingGame, type SeriesSetup, type SeriesState,
-} from '../switch/series';
-import { CardShower, FeltHeader } from '../ui';
+} from '../switch/formats/series';
+import { CardShower, FeltHeader } from '../components/ui';
 import TableGame from './TableGame';
 
 const ordinal = (place: number) => `${place}${['st', 'nd', 'rd'][place - 1] ?? 'th'}`;

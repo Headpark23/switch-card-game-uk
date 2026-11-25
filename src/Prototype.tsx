@@ -1,27 +1,28 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useState } from 'react';
-import { ArrowRight, House, Cards, Club, MagnifyingGlass, X, DownloadSimple, CheckCircle, Lightbulb, UserCircle, UsersThree, ListNumbers, PuzzlePiece, Question, CaretLeft, GraduationCap, CalendarPlus, Broadcast, ShieldCheck } from '@phosphor-icons/react';
-import { readActiveTable } from './switch/activeTable';
-import { loadSeat } from './switch/onlineRoom';
-import { readClub, updateClub } from './switch/clubStore';
-import { loadAccount, syncNow } from './auth';
-import { recoverMyGames } from './switch/identity';
-import { syncJoinedNights } from './switch/joinedNights';
-import { flushSharedResults } from './switch/shareNight';
-import { startClubSync } from './switch/clubSync';
-import type { SwitchNightRecord } from './switch/history';
-import type { ComputerLevel } from './switch/ai';
-import type { SeriesSetup } from './switch/series';
+import { Broadcast, CalendarPlus, Cards, CheckCircle, Club, GraduationCap, House, ListNumbers, PuzzlePiece, Question, ShieldCheck, UserCircle, UsersThree } from '@phosphor-icons/react';
+import { readActiveTable } from './switch/store/activeTable';
+import { loadSeat } from './switch/sync/onlineRoom';
+import { readClub, updateClub } from './switch/store/clubStore';
+import { loadAccount, syncNow } from './services/auth';
+import { recoverMyGames } from './switch/store/identity';
+import { syncJoinedNights } from './switch/sync/joinedNights';
+import { flushSharedResults } from './switch/sync/shareNight';
+import { startClubSync } from './switch/sync/clubSync';
+import type { SwitchNightRecord } from './switch/store/history';
+import type { ComputerLevel } from './switch/ai/ai';
+import type { SeriesSetup } from './switch/formats/series';
+import type { ClubTabView } from './screens/ClubScreen';
 import WatchNight from './screens/WatchNight';
-import Referee from './screens/Referee';
-import NightReminder from './screens/NightReminder';
-import { BottomSheet, KeyboardInput, MobileScroll, useKeyboard, useKeyboardInsets } from './mobile';
-import { modes, powers, ruleChapters, rules } from './content';
-import { Fan, FeltHeader, MiniFan } from './ui';
-import { enableOffline } from './offline';
-import { trackOpen, trackView } from './switch/telemetry';
-import InstallButton, { InstallBanner } from './InstallButton';
-import { AccountPanel } from './AccountPanel';
+import NightReminder from './components/NightReminder';
+import { BottomSheet, MobileScroll, useKeyboard, useKeyboardInsets } from './mobile';
+import type { powers } from './services/content';
+import { Fan } from './components/ui';
+import { enableOffline } from './services/offline';
+import { trackOpen, trackView } from './switch/stats/telemetry';
+import { InstallBanner } from './components/InstallButton';
+import { AccountPanel } from './components/AccountPanel';
 import HomeHub from './screens/HomeHub';
+import { CardsScreen, ModesScreen, QuestionsScreen, RulesScreen } from './screens/LearnScreens';
 import '@fontsource/dm-serif-display/400.css';
 import '@fontsource/dm-sans/400.css';
 import '@fontsource/dm-sans/500.css';
@@ -31,13 +32,14 @@ import '@fontsource/dm-sans/600.css';
 trackOpen();
 enableOffline();
 
-// The game screens are loaded on demand so the rules pages open quickly.
+// Game, scorekeeper, club, and personal screens are loaded on demand so Home opens quickly.
 const GuidedGame = lazy(() => import('./screens/GuidedGame'));
 const SwitchScorekeeper = lazy(() => import('./screens/Scorekeeper'));
+const ClubScreen = lazy(() => import('./screens/ClubScreen'));
 const QuickNight = lazy(() => import('./screens/QuickNight'));
 const Puzzles = lazy(() => import('./screens/Puzzles'));
 const Privacy = lazy(() => import('./screens/Privacy'));
-const AppFooter = lazy(() => import('./screens/AppFooter'));
+const AppFooter = lazy(() => import('./components/AppFooter'));
 const PlayLobby = lazy(() => import('./screens/PlayLobby'));
 const TableGame = lazy(() => import('./screens/TableGame'));
 const SeriesPlay = lazy(() => import('./screens/SeriesPlay'));
@@ -46,18 +48,8 @@ const OnlineTable = lazy(() => import('./screens/OnlineTable'));
 const MePage = lazy(() => import('./screens/MePage'));
 const ReplayScreen = lazy(() => import('./screens/ReplayScreen'));
 
-/** Each way to play gets its own little hand of cards in place of a number or an icon. */
-const MODE_CARDS: Record<string, string[]> = {
-  'One v One': ['AS', 'AH'],
-  'Last One Out': ['2C', '8S', 'KS'],
-  'Group Play': ['QH', 'QS', 'QC'],
-  'Darts Scoring': ['3H', '3S', '3D'],
-  'Domino Scoring': ['5D', '6D'],
-  'Switch Cup': ['KH', 'KD'],
-};
-
 type Page = 'Learn' | 'Rules' | 'Cards' | 'Modes' | 'Watch' | 'Questions' | 'Tutorial' | 'Score' | 'Club' | 'Quick' | 'Puzzles' | 'Privacy' | 'Play' | 'Table' | 'Series' | 'Friends' | 'Online' | 'Me' | 'Replay';
-type ScoreView = 'score' | 'stats' | 'leagues' | 'trophies' | 'history';
+type ScoreView = 'score' | 'history';
 type Tab = 'Home' | 'Play' | 'Score' | 'Club' | 'Me';
 
 /** Which of the five destinations each screen belongs to, so the bottom bar always shows where you are. Learning lives under Home, apart from competitive play. */
@@ -69,25 +61,12 @@ const SECTION: Record<Page, Tab> = {
   Me: 'Me', Privacy: 'Me', Replay: 'Me',
 };
 
-function downloadRules() {
-  const text = 'SWITCH — Rules for a better game night\n\n'
-    + rules.map((r) => r.q + '\n' + r.a).join('\n\n')
-    + '\n\nPOWER CARDS\n\n' + powers.map((p) => p.name + '\n' + p.text + ' ' + p.extra).join('\n\n')
-    + '\n\nGAME MODES\n\n' + modes.map((m) => m.name + '\n' + m.text).join('\n\n');
-  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'switch-rules.txt';
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-const TABS: readonly { tab: Tab; label: string; Icon: typeof House; pip: string }[] = [
-  { tab: 'Home', label: 'Home', Icon: House, pip: '♠' },
-  { tab: 'Play', label: 'Play', Icon: Cards, pip: '♥' },
-  { tab: 'Score', label: 'Score', Icon: ListNumbers, pip: '♣' },
-  { tab: 'Club', label: 'Club', Icon: UsersThree, pip: '♦' },
-  { tab: 'Me', label: 'Me', Icon: UserCircle, pip: '♠' },
+const TABS: readonly { tab: Tab; label: string; Icon: typeof House }[] = [
+  { tab: 'Home', label: 'Home', Icon: House },
+  { tab: 'Play', label: 'Play', Icon: Cards },
+  { tab: 'Score', label: 'Score', Icon: ListNumbers },
+  { tab: 'Club', label: 'Club', Icon: UsersThree },
+  { tab: 'Me', label: 'Me', Icon: UserCircle },
 ];
 
 function Loading() {
@@ -102,13 +81,11 @@ export default function Prototype() {
   const [inviteCode, setInviteCode] = useState(urlTable);
   const [nightCode, setNightCode] = useState(urlNight);
   const [page, setPage] = useState<Page>(urlNight ? 'Watch' : urlTable ? 'Friends' : urlClub ? 'Club' : 'Learn');
-  const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<(typeof powers)[number] | null>(null);
-  const [ruleStep, setRuleStep] = useState(0);
   const [scrollKey, setScrollKey] = useState('');
   const [planOpen, setPlanOpen] = useState(false);
   const [scoreView, setScoreView] = useState<ScoreView>('score');
-  const [clubView, setClubView] = useState<ScoreView>('stats');
+  const [clubView, setClubView] = useState<ClubTabView>('stats');
   /** Which door of the Club screen Home opened: share my club, or join one. Passed down as `startMode` once the Club screen takes it. */
   const [clubMode, setClubMode] = useState<'share' | 'join' | undefined>(undefined);
   const [meSection, setMeSection] = useState<'overview' | 'badges'>('overview');
@@ -142,7 +119,6 @@ export default function Prototype() {
     const check = () => { void flushSharedResults(); syncJoinedNights().then((added) => { if (added.length) setArrived((current) => [...added, ...current]); }).catch(() => {}); };
     const onVisible = () => { if (document.visibilityState === 'visible') check(); };
     check();
-    // Also look every so often while the app is open and showing, so a result is never waiting for a restart.
     const timer = window.setInterval(() => { if (document.visibilityState === 'visible') check(); }, 15000);
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('online', check);
@@ -165,7 +141,6 @@ export default function Prototype() {
     const frame = requestAnimationFrame(resetDeviceScroll);
     return () => cancelAnimationFrame(frame);
   }, [page, selected]);
-  // A new game screen starts at the top. The scroll area is not remounted, so game state survives.
   useLayoutEffect(() => {
     const scroller = document.querySelector<HTMLElement>('[data-testid="mobile-scroll"]');
     if (scroller) scroller.scrollTop = 0;
@@ -177,16 +152,14 @@ export default function Prototype() {
     keyboard.hide();
     if (next === 'Rules' || next === 'Learn') setLearnBack(next);
     setPage(next);
-    setQuery('');
     setScrollKey('');
   }
-  /** Any code, typed or from a link, goes to the right place: a table of friends, a scored night or a shared club. */
   const openCode = (kind: 'table' | 'night' | 'club', code: string) => {
     if (kind === 'table') { setInviteCode(code); go('Friends'); }
     else if (kind === 'night') { setNightCode(code); go('Watch'); }
     else window.location.assign(`/?club=${code}`);
   };
-  const openRules = () => { try { window.localStorage.setItem('switchWelcome', 'done'); } catch { /* storage unavailable */ } setRuleStep(0); go('Rules'); };
+  const openRules = () => { try { window.localStorage.setItem('switchWelcome', 'done'); } catch { /* storage unavailable */ } go('Rules'); };
   const startGuidedGame = () => go('Tutorial');
   const [seriesAtTable, setSeriesAtTable] = useState(false);
   const [seriesRun, setSeriesRun] = useState<{ setup: SeriesSetup; run: number } | null>(null);
@@ -199,7 +172,7 @@ export default function Prototype() {
     go('Table');
   };
   const openScore = (view: ScoreView = 'score') => { setScoreView(view); go('Score'); };
-  const openClub = (view: ScoreView = clubView, mode?: 'share' | 'join') => { setClubView(view); setClubMode(mode); go('Club'); };
+  const openClub = (view: ClubTabView = clubView, mode?: 'share' | 'join') => { setClubView(view); setClubMode(mode); go('Club'); };
   const openMe = (section: 'overview' | 'badges' = 'overview') => { setMeSection(section); go('Me'); };
   const openTab = (tab: Tab) => {
     if (tab === 'Home') go('Learn');
@@ -210,15 +183,13 @@ export default function Prototype() {
   };
   const openReplay = (id: string) => { setReplayOf({ id, back: page }); go('Replay'); };
   const section = SECTION[page];
-  const learnBackLink = <button className="text-link back-link" onClick={() => go(learnBack)}><CaretLeft size={15} weight="bold" />{learnBack === 'Rules' ? 'Learn the rules' : 'Home'}</button>;
+  const learnBackLabel = learnBack === 'Rules' ? 'Learn the rules' : 'Home';
 
-  const result = rules.filter((r) => (r.q + ' ' + r.a).toLowerCase().includes(query.toLowerCase()));
   return <div className="switch-app" onFocusCapture={resetDeviceScroll} data-section={section}>
     <a className="skip-link" href="#main-content" onClick={(event) => { event.preventDefault(); document.getElementById('main-content')?.focus(); }}>Skip to content</a>
-    {/* Navigation comes first in the DOM so keyboard users reach it before the page; CSS keeps it at the bottom (phone) or left (website). While typing, the keyboard needs the room: the tab bar steps aside and returns when it closes. */}
     {!isKeyboardVisible && <nav className="bottom-tabs v2" aria-label="Main navigation" style={{ bottom: bottomInset, ['--nav-extend' as string]: `${bottomInset}px` }}>
       <button className="side-brand" onClick={() => openTab('Home')} aria-label="Switch home"><Club weight="fill" size={26} /><span><b>SWITCH</b><i>Your game-night club</i></span></button>
-      {TABS.map(({ tab, label, Icon, pip }) => {
+      {TABS.map(({ tab, label, Icon }) => {
         const active = section === tab;
         return <button key={tab} className={active ? 'active' : ''} data-tab={tab} aria-current={active ? 'page' : undefined} onClick={() => openTab(tab)}><span className="tab-card"><Icon weight={active ? 'fill' : 'bold'} size={19} /></span><span className="tab-label">{label}</span></button>;
       })}
@@ -238,74 +209,17 @@ export default function Prototype() {
           <HomeHub key={shownClubTick} onPlay={() => go('Play')} onResumeTable={resumeTable} onScore={() => openScore('score')} onClub={() => openClub('stats')} onShareClub={() => openClub('stats', 'share')} onAchievements={() => openMe('badges')} onRules={openRules} onPuzzles={() => go('Puzzles')} onQuestions={() => go('Questions')} onPlan={() => setPlanOpen(true)} onJoin={() => go('Watch')} onJoinClub={() => openClub('stats', 'join')} onHistory={() => openClub('history')} onPower={setSelected} />
           <AccountPanel home />
         </>}
-        {page === 'Rules' && <>
-          <button className="text-link rules-back" onClick={() => go('Learn')}><CaretLeft size={15} weight="bold" /> Home</button>
-          <section className="rule-narrative" aria-labelledby="rule-story-title">
-            <h2 id="rule-story-title">Learn Switch<br />in five moves.</h2>
-            <p className="rule-intro">A clear, visual guide from the first deal to the winning card. Practice here never counts towards your stats.</p>
-            <div className="rule-steps" aria-label="Rule guide steps">
-              {ruleChapters.map((chapter, index) => <button key={chapter.number} className={ruleStep === index ? 'active' : ''} aria-current={ruleStep === index ? 'step' : undefined} onClick={() => setRuleStep(index)}><span>{chapter.number}</span><small>{index === 0 ? 'Deal' : index === 1 ? 'Play' : index === 2 ? 'Power' : index === 3 ? 'Call' : 'Win'}</small></button>)}
-            </div>
-            <article className="rule-chapter">
-              <div className="rule-chapter-head"><div><h3>{ruleChapters[ruleStep].title}</h3></div><Fan codes={ruleChapters[ruleStep].cards} /></div>
-              <p className="rule-chapter-body">{ruleChapters[ruleStep].body}</p>
-              <ul>{ruleChapters[ruleStep].points.map((point) => <li key={point}><CheckCircle size={17} weight="fill" /><span>{point}</span></li>)}</ul>
-              <aside><Lightbulb size={18} weight="fill" /><span>{ruleChapters[ruleStep].tip}</span></aside>
-              <div className="rule-controls">
-                <button className="secondary" disabled={ruleStep === 0} onClick={() => setRuleStep((step) => step - 1)}>Previous</button>
-                {ruleStep < ruleChapters.length - 1
-                  ? <button className="primary" onClick={() => setRuleStep((step) => step + 1)}>Next rule <ArrowRight size={17} /></button>
-                  : <button className="primary" onClick={startGuidedGame}>Play the guided game <ArrowRight size={17} /></button>}
-              </div>
-            </article>
-            <div className="learn-links">
-              <button onClick={startGuidedGame}><Cards size={19} weight="bold" /><span><strong>Guided practice game</strong><small>Hints and explanations on every move. Unranked.</small></span><ArrowRight size={16} /></button>
-              <button onClick={() => go('Cards')}><Club size={19} weight="fill" /><span><strong>Every power card</strong><small>What each card does, and how to answer it</small></span><ArrowRight size={16} /></button>
-              <button onClick={() => go('Puzzles')}><PuzzlePiece size={19} weight="bold" /><span><strong>Rules puzzles</strong><small>Test yourself on tricky positions</small></span><ArrowRight size={16} /></button>
-              <button onClick={() => go('Questions')}><Question size={19} weight="bold" /><span><strong>Need one answer?</strong><small>Search every rule in seconds</small></span><ArrowRight size={16} /></button>
-            </div>
-          </section>
-          <section className="power-preview">
-            <div className="ornament"><Club weight="fill" /></div>
-            <h2>Know your power cards</h2>
-            <p className="section-caption">The cards that change the game.</p>
-            <div className="power-columns">{[powers[0], powers[2], powers[6]].map((p) => <button key={p.name} onClick={() => setSelected(p)}><Fan codes={p.cards} /><h3>{p.name}</h3><p>{p.short}.</p><span>View rule <ArrowRight size={12} /></span></button>)}</div>
-          </section>
-          <InstallButton />
-          <button className="download" onClick={downloadRules}><DownloadSimple size={20} />Download all rules</button>
-        </>}
+        {page === 'Rules' && <RulesScreen onBack={() => go('Learn')} onStartGuidedGame={startGuidedGame} onOpenCards={() => go('Cards')} onOpenPuzzles={() => go('Puzzles')} onOpenQuestions={() => go('Questions')} onSelectPower={setSelected} />}
         {page !== 'Learn' && page !== 'Rules' && <>
           <header className={'small-brand' + (page === 'Cards' ? ' hidden-brand' : '')}>
             <button onClick={() => go('Learn')} aria-label="Switch home"><Club weight="fill" size={20} /> SWITCH</button>
           </header>
-          {page === 'Cards' && <>
-            {learnBackLink}
-            <FeltHeader compact title="Every card. Every possibility." intro="Tap a card to see its effect, defence and exceptions." cards={['KS', '2H', '8D']} />
-            <div className="power-grid">{powers.map((p) => <button key={p.name} onClick={() => setSelected(p)}><Fan codes={p.cards.slice(0, 2)} /><span><strong>{p.name}</strong><small>{p.short}</small></span></button>)}</div>
-          </>}
-          {page === 'Questions' && <>
-            {learnBackLink}
-            <FeltHeader title="There’s a rule for that." intro="Quick answers, before the next card lands." cards={['AS', '7H']} />
-            <Referee />
-            <div className="dispute-chips" role="group" aria-label="Common disputes">{['ace', 'last card', 'jack', 'seven', 'king', 'two', 'eight', 'deck runs out'].map((chip) => <button key={chip} className={query === chip ? 'active' : ''} onClick={() => { keyboard.hide(); setQuery(query === chip ? '' : chip); }}>{chip}</button>)}</div>
-            <div className="search"><MagnifyingGlass size={21} /><KeyboardInput aria-label="Search rules" placeholder="Try “ace” or “last card”" value={query} onChange={(e) => setQuery(e.target.value)} />{query && <button aria-label="Clear search" onClick={() => setQuery('')}><X size={16} /></button>}</div>
-            <p className="results" aria-live="polite">{query ? `${result.length} matching ${result.length === 1 ? 'answer' : 'answers'}` : 'THE ESSENTIALS'}</p>
-            <div className="answers">{result.map((r) => <details key={r.q}><summary>{r.q}</summary><p>{r.a}</p></details>)}</div>
-            {!result.length && <div className="empty"><Cards size={40} /><h2>No matching rule yet.</h2><p>Try a card name such as “king”, or browse all the rules.</p><button className="secondary" onClick={() => { keyboard.hide(); setQuery(''); }}>Show all rules</button></div>}
-            <p className="house-note">Every table has its traditions. These answers follow the rules in your original Switch guide.</p>
-            <button className="download" onClick={downloadRules}><DownloadSimple size={20} />Keep a copy of the rules</button>
-            <a className="community" href="https://783j5slzrfvf.trickle.host/#comments" target="_blank" rel="noreferrer">Visit the original community discussion <ArrowRight size={16} /></a>
-          </>}
-          {page === 'Modes' && <>
-            <button className="text-link back-link" onClick={() => openScore('score')}><CaretLeft size={15} weight="bold" />Score</button>
-            <FeltHeader title="Make a night of it." intro="Six ways to play. Tap any one to see what it means and how a night runs." cards={['QH', 'KC', 'JD']} />
-            <button className="primary mode-score-cta" onClick={() => openScore('score')}>Open the Switch scorekeeper <ArrowRight size={18} /></button>
-            <div className="mode-list">{modes.map((m) => <details key={m.name}><summary><MiniFan codes={MODE_CARDS[m.name] ?? ['AS', 'AH']} /><span><strong>{m.name}</strong><small>{m.label}</small></span></summary><p>{m.text}</p>{m.how && <p className="mode-how"><strong>In plain English: </strong>{m.how}</p>}</details>)}</div>
-            <button className="download" onClick={downloadRules}><DownloadSimple size={20} />Download game-night rules</button>
-          </>}
+          {page === 'Cards' && <CardsScreen backLabel={learnBackLabel} onBack={() => go(learnBack)} onSelectPower={setSelected} />}
+          {page === 'Questions' && <QuestionsScreen backLabel={learnBackLabel} onBack={() => go(learnBack)} />}
+          {page === 'Modes' && <ModesScreen onOpenScore={() => openScore('score')} />}
           <Suspense fallback={<Loading />}>
-            {page === 'Score' && <SwitchScorekeeper section="score" onBack={() => go('Learn')} backLabel="Home" initialView={scoreView} onView={setScoreView} onQuick={() => go('Quick')} onModes={() => go('Modes')} />}
-            {page === 'Club' && <SwitchScorekeeper key={shownClubTick} section="club" startMode={clubMode} onBack={() => go('Learn')} backLabel="Home" initialView={clubView} onView={setClubView} />}
+            {page === 'Score' && <SwitchScorekeeper section="score" onBack={() => go('Learn')} backLabel="Home" initialView={scoreView} onView={(v) => { if (v === 'score' || v === 'history') setScoreView(v); }} onQuick={() => go('Quick')} onModes={() => go('Modes')} />}
+            {page === 'Club' && <ClubScreen key={shownClubTick} startMode={clubMode} onBack={() => go('Learn')} backLabel="Home" initialView={clubView} onView={setClubView} />}
             {page === 'Play' && <PlayLobby onDeal={dealMeIn} onStartSeries={startSeriesPlay} onResume={resumeTable} onMe={() => openMe('overview')} onLearn={openRules} onFriends={() => go(loadSeat() ? 'Online' : 'Friends')} />}
             {page === 'Friends' && <FriendsTable key={inviteCode} initialCode={inviteCode} onOpenCode={openCode} onBack={() => { setInviteCode(''); go('Play'); }} onSeated={() => { setInviteCode(''); go('Online'); }} />}
             {page === 'Online' && <OnlineTable onLeave={() => go('Play')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onReplay={openReplay} />}
@@ -316,7 +230,7 @@ export default function Prototype() {
             {page === 'Tutorial' && <GuidedGame onExit={() => go('Rules')} onOpenCards={() => go('Cards')} onStartNight={() => go('Quick')} onOpenPuzzles={() => go('Puzzles')} onPlayForReal={() => go('Play')} onStatusChange={onGameStatus} />}
             {page === 'Quick' && <QuickNight onBack={() => openScore('score')} onHistory={() => openClub('history')} />}
             {page === 'Watch' && <WatchNight key={nightCode} initialCode={nightCode} initialAs={nightCode === urlNight ? urlAs : ''} onOpenCode={openCode} onBack={() => go('Learn')} />}
-            {page === 'Puzzles' && <Puzzles backLabel={learnBack === 'Rules' ? 'Learn the rules' : 'Home'} onBack={() => go(learnBack)} onTutorial={startGuidedGame} />}
+            {page === 'Puzzles' && <Puzzles backLabel={learnBackLabel} onBack={() => go(learnBack)} onTutorial={startGuidedGame} />}
             {page === 'Privacy' && <Privacy onBack={() => openMe('overview')} />}
           </Suspense>
         </>}

@@ -2,7 +2,7 @@
 // Switch games (scripts/table-sim.mjs) for who wins and what is left in hands.
 // Usage: node --experimental-transform-types scripts/scoring-sim.mjs [nights per format]
 import { legalPlays, newGame, rng, step, STYLES, rankOf } from "./table-sim.mjs";
-const src = (f) => new URL(`../src/switch/${f}.ts`, import.meta.url).href;
+const src = (f) => new URL(`../src/switch/formats/${f}.ts`, import.meta.url).href;
 const { createSession, applyScoreCommand } = await import(src("scoring"));
 const { createCup, selectCupWinner, drawNextCupRound } = await import(src("cup"));
 const { createKnockout, markLost } = await import(src("knockout"));

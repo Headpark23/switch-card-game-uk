@@ -1,20 +1,20 @@
 import { useState } from 'react';
 import { ArrowRight, CaretLeft, Crown, Minus, Plus } from '@phosphor-icons/react';
-import { cue } from '../feedback';
+import { cue } from '../services/feedback';
 import { KeyboardInput, useKeyboard } from '../mobile';
-import { trackNightSaved, trackNightStarted } from '../switch/telemetry';
-import { addNight, createNightRecord, type NightCompletion, type SwitchNightRecord } from '../switch/history';
-import { ShareButton } from '../ShareButton';
-import { getClubName, nightShareCard } from '../switch/club';
-import { ensureProfiles, getProfiles } from '../switch/profiles';
-import { converge } from '../switch/clubSync';
-import { withNightProfiles, withoutNewProfiles } from '../switch/clubStore';
-import { loadScorekeeper, saveScorekeeper, SCOREKEEPER_STORAGE_KEY } from '../switch/storage';
-import type { Player } from '../switch/types';
-import DealerBar from './DealerBar';
-import VenueFields from './VenueFields';
-import { passDeal, pickDealer, setDealer, undoDeal, type DealerState } from '../switch/dealer';
-import { cleanPlace, getLastPlace, guessCountry, putLastPlace } from '../switch/places';
+import { trackNightSaved, trackNightStarted } from '../switch/stats/telemetry';
+import { addNight, createNightRecord, type NightCompletion, type SwitchNightRecord } from '../switch/store/history';
+import { ShareButton } from '../components/ShareButton';
+import { getClubName, nightShareCard } from '../switch/store/club';
+import { ensureProfiles, getProfiles } from '../switch/store/profiles';
+import { converge } from '../switch/sync/clubSync';
+import { withNightProfiles, withoutNewProfiles } from '../switch/store/clubStore';
+import { loadScorekeeper, saveScorekeeper, SCOREKEEPER_STORAGE_KEY } from '../switch/store/storage';
+import type { Player } from '../switch/engine/types';
+import DealerBar from '../components/DealerBar';
+import VenueFields from '../components/VenueFields';
+import { passDeal, pickDealer, setDealer, undoDeal, type DealerState } from '../switch/formats/dealer';
+import { cleanPlace, getLastPlace, guessCountry, putLastPlace } from '../switch/store/places';
 
 /** The one-minute path: names, tap who won each round, finish. Saves to the same history as every other format. */
 export default function QuickNight({ onBack, onHistory }: { onBack: () => void; onHistory: () => void }) {

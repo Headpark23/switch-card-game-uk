@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, CaretLeft, Check, Shuffle, UsersThree } from '@phosphor-icons/react';
 import { KeyboardInput, useKeyboard } from '../mobile';
-import { LEVEL_NAMES, type ComputerLevel } from '../switch/ai';
-import { PERSONALITIES } from '../switch/computerTactics';
-import { cleanTableCode, clearSeat, createTable, joinTable, loadSeat, lookupTable, saveSeat, type RoomSummary } from '../switch/onlineRoom';
-import { readClub } from '../switch/clubStore';
-import { getMeId } from '../switch/computerLog';
-import { getProfiles } from '../switch/profiles';
-import { FeltHeader, MiniFan } from '../ui';
-import { ROUND_CHOICES, roundsNote, MATCH_BEST_OF, MATCH_FIRST_TO, matchLabel, modeInfo, ONLINE_MAX_PLAYERS, ONLINE_MODES, type MatchType, type PlayMode } from '../switch/series';
-import { onlineModeBlurb, ONLINE_MODE_CARDS } from '../switch/onlineRoom';
-import { fetchShare } from '../switch/shareNight';
-import { readCode, type CodeKind } from '../switch/joinCode';
+import { LEVEL_NAMES, type ComputerLevel } from '../switch/ai/ai';
+import { PERSONALITIES } from '../switch/ai/computerTactics';
+import { cleanTableCode, clearSeat, createTable, joinTable, loadSeat, lookupTable, saveSeat, type RoomSummary } from '../switch/sync/onlineRoom';
+import { readClub } from '../switch/store/clubStore';
+import { getMeId } from '../switch/store/computerLog';
+import { getProfiles } from '../switch/store/profiles';
+import { FeltHeader, MiniFan } from '../components/ui';
+import { ROUND_CHOICES, roundsNote, MATCH_BEST_OF, MATCH_FIRST_TO, matchLabel, modeInfo, ONLINE_MAX_PLAYERS, ONLINE_MODES, type MatchType, type PlayMode } from '../switch/formats/series';
+import { onlineModeBlurb, ONLINE_MODE_CARDS } from '../switch/sync/onlineRoom';
+import { fetchShare } from '../switch/sync/shareNight';
+import { readCode, type CodeKind } from '../switch/sync/joinCode';
 
 const LEVELS: readonly ComputerLevel[] = ['relaxed', 'standard', 'sharp'];
 const NAME_KEY = 'switchOnlineName';

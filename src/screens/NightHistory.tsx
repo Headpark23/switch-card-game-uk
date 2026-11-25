@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { DownloadSimple } from '@phosphor-icons/react';
-import SampleDataBar from './SampleDataBar';
+import SampleDataBar from '../components/SampleDataBar';
 import ClubSharing from './ClubSharing';
-import { SIGN_IN_AVAILABLE } from '../auth';
-import { ShareButton } from '../ShareButton';
-import { getClubName, nightShareCard } from '../switch/club';
-import { deleteNight, exportHistory, getHistory } from '../switch/history';
-import { loadScorekeeper, saveScorekeeper, SCOREKEEPER_STORAGE_KEY } from '../switch/storage';
-import { useConfirm } from '../Confirm';
+import { SIGN_IN_AVAILABLE } from '../services/auth';
+import { ShareButton } from '../components/ShareButton';
+import { getClubName, nightShareCard } from '../switch/store/club';
+import { deleteNight, exportHistory, getHistory } from '../switch/store/history';
+import { loadScorekeeper, saveScorekeeper, SCOREKEEPER_STORAGE_KEY } from '../switch/store/storage';
+import { useConfirm } from '../components/Confirm';
 
 type Extensions = Record<string, unknown>;
 type Props = { extensions: Extensions; onChange: (next: Extensions) => void; startMode?: 'share' | 'join' };

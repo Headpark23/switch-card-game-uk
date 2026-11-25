@@ -1,8 +1,8 @@
 import { CheckCircle, PaperPlaneTilt } from '@phosphor-icons/react';
 import { useEffect, useRef, useState } from 'react';
-import { readClub } from '../switch/clubStore';
-import { myNames } from '../switch/joinedNights';
-import { createShare, fetchShare, loadInvites, loadKeys, pushShare, rememberInvite, saveKeys, shareLink, type JoinedPlayer, type NightSnapshot, type SentInvite, type SharedNightKeys } from '../switch/shareNight';
+import { readClub } from '../switch/store/clubStore';
+import { myNames } from '../switch/sync/joinedNights';
+import { createShare, fetchShare, loadInvites, loadKeys, pushShare, rememberInvite, saveKeys, shareLink, type JoinedPlayer, type NightSnapshot, type SentInvite, type SharedNightKeys } from '../switch/sync/shareNight';
 
 const same = (left: string, right: string) => left.trim().toLowerCase() === right.trim().toLowerCase();
 const clock = (time: number) => new Date(time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });

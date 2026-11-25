@@ -1,14 +1,14 @@
 import { CaretLeft, CheckCircle } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { KeyboardInput, useKeyboard } from '../mobile';
-import { useConfirm } from '../Confirm';
-import { clearActiveNight, getActiveNight } from '../switch/activeNight';
-import { fetchShare, loadKeys, reportJoined, type JoinedPlayer, type NightSnapshot } from '../switch/shareNight';
-import { collectResults, forgetJoin, loadJoined, myNames, rememberJoin, rememberWho } from '../switch/joinedNights';
-import { readClub, updateClub } from '../switch/clubStore';
-import type { SwitchNightRecord } from '../switch/history';
-import { CardShower } from '../ui';
-import { NOT_FOUND, readCode, resolveCode, type CodeKind } from '../switch/joinCode';
+import { useConfirm } from '../components/Confirm';
+import { clearActiveNight, getActiveNight } from '../switch/store/activeNight';
+import { fetchShare, loadKeys, reportJoined, type JoinedPlayer, type NightSnapshot } from '../switch/sync/shareNight';
+import { collectResults, forgetJoin, loadJoined, myNames, rememberJoin, rememberWho } from '../switch/sync/joinedNights';
+import { readClub, updateClub } from '../switch/store/clubStore';
+import type { SwitchNightRecord } from '../switch/store/history';
+import { CardShower } from '../components/ui';
+import { NOT_FOUND, readCode, resolveCode, type CodeKind } from '../switch/sync/joinCode';
 
 const same = (left: string, right: string) => left.trim().toLowerCase() === right.trim().toLowerCase();
 

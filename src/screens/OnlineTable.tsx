@@ -2,27 +2,28 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { ArrowClockwise, ArrowCounterClockwise, ArrowRight, CheckCircle, Eye, FilmStrip, HandPalm, Lightbulb, ShareNetwork, Smiley, SortAscending, Trophy } from '@phosphor-icons/react';
 import { createPortal } from 'react-dom';
 import { useScreenPortal } from '../mobile';
-import { cardIdLabel } from '../switch/cards';
-import { explainUnplayable } from '../switch/coach';
-import { isLegalTablePlay, openingNote, tableLegalMoves, tablePlaces, type TableState } from '../switch/table';
-import type { CardId, GameAction, GameState, Suit } from '../switch/types';
-import { cue } from '../feedback';
-import { logComputerGame, logOnlineNight, logSeriesResult } from '../switch/logGame';
-import { getComputerGames } from '../switch/computerLog';
-import { readClub } from '../switch/clubStore';
-import { drawTiming, LAST_CARD_GRACE_MS, paceIsHuman, planTurn, REDUCED, SPEEDS, stepDuration, visibleAt, type Step } from '../switch/presentation';
-import { readSpeed } from '../switch/activeTable';
-import { modeInfo, pendingGames, seriesPlayerName, standings } from '../switch/series';
-import { clearSeat, loadSeat, onlineModeBlurb, reactionOf, RoomApiError, tableInvite, tableName, useRoom, type RoomView } from '../switch/onlineRoom';
-import { getReplay, logReaction } from '../switch/gameReplay';
-import { GameEnding } from './GameEnding';
-import { beginReplay, Bubble, ReactionSheet, useBubbles, useReplayRecorder } from './tableTalk';
-import { SuitBadge, TableToggles, useTablePrefs } from './tablePrefs';
-import { sortHand } from '../switch/sortHand';
-import { HahaBanner, hahaText, type Haha } from './HahaBanner';
-import { CardImage, CardShower, FeltHeader, rank, suitNames, suitSymbols } from '../ui';
+import { cardIdLabel } from '../switch/engine/cards';
+import { explainUnplayable } from '../switch/ai/coach';
+import { isLegalTablePlay, openingNote, tableLegalMoves, tablePlaces, type TableState } from '../switch/engine/table';
+import type { CardId, GameAction, GameState, Suit } from '../switch/engine/types';
+import { cue } from '../services/feedback';
+import { logComputerGame, logOnlineNight, logSeriesResult } from '../switch/store/logGame';
+import { getComputerGames } from '../switch/store/computerLog';
+import { readClub } from '../switch/store/clubStore';
+import { drawTiming, LAST_CARD_GRACE_MS, paceIsHuman, planTurn, REDUCED, SPEEDS, stepDuration, visibleAt, type Step } from '../switch/stats/presentation';
+import { readSpeed } from '../switch/store/activeTable';
+import { modeInfo, pendingGames, seriesPlayerName, standings } from '../switch/formats/series';
+import { clearSeat, loadSeat, onlineModeBlurb, reactionOf, RoomApiError, tableInvite, tableName, useRoom, type RoomView } from '../switch/sync/onlineRoom';
+import { getReplay, logReaction } from '../switch/store/gameReplay';
+import { GameEnding } from '../components/GameEnding';
+import { beginReplay, Bubble, ReactionSheet, useBubbles, useReplayRecorder } from '../components/tableTalk';
+import { SuitBadge, TableToggles, useTablePrefs } from '../components/tablePrefs';
+import { BigHandHint, handPerRow } from '../components/BigHandHint';
+import { sortHand } from '../switch/engine/sortHand';
+import { HahaBanner, hahaText, type Haha } from '../components/HahaBanner';
+import { CardImage, CardShower, FeltHeader, rank, suitNames, suitSymbols } from '../components/ui';
 import { describe, ordinal } from './TableGame';
-import RealCards from './RealCards';
+import RealCards from '../components/RealCards';
 
 type Showing = { id: number; before: TableState; after: TableState; action: GameAction; steps: Step[]; at: number; line: string };
 
@@ -584,7 +585,8 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
           {staged.length === 0 ? <div className="game-actions"><button className={'hint-button ' + (hint ? 'active' : '')} onClick={() => setHint((current) => !current)} disabled={!yourMove}><Lightbulb size={19} weight={hint ? 'fill' : 'regular'} />{hint ? 'Hide hint' : 'Show hint'}</button><button className="pace-button" onClick={() => setReactOpen(true)} aria-label="Send a reaction"><Smiley size={16} />React</button><button className="pace-button sort-button" onClick={() => setSortOn((on) => !on)} aria-pressed={sortOn}><SortAscending size={16} weight={sortOn ? 'fill' : 'regular'} />{sortOn ? 'Sorted' : 'Sort'}</button></div> : aceChoice ? SUIT_CHOOSER : MULTI_ACTION}
           {hint && yourMove && <p className="game-hint"><Lightbulb size={17} />{hintText}</p>}
           <div className="hand-row"><span>{hand.length} in hand</span><button className={'last-card-button' + (lastCalled ? ' called' : hand.length > 3 ? ' idle' : ' due')} onClick={callLastCard} aria-pressed={lastCalled} data-testid="last-card-button" aria-label={lastCalled ? 'Last Card called' : 'Call Last Card'}><HandPalm size={20} weight={lastCalled ? 'fill' : 'regular'} /><span>{lastCalled ? 'Called' : 'Last Card'}</span></button></div>
-          <div className={'player-hand' + (hand.length > 10 ? ' dense' : '') + (hand.length > 5 ? ' two-rows' : '')} style={{ '--n': hand.length, '--per': Math.ceil(hand.length / 2) } as CSSProperties} aria-label="Your hand">
+          <BigHandHint count={hand.length} />
+          <div className={'player-hand' + (hand.length > 10 ? ' dense' : '') + (hand.length > 5 ? ' two-rows' : '') + (hand.length >= 14 ? ' big-hand' : '')} style={{ '--n': hand.length, '--per': handPerRow(hand.length) } as CSSProperties} aria-label="Your hand">
             {hand.map((card, index) => <button key={card} style={{ '--i': 0, zIndex: index + 1 } as CSSProperties} data-card={card} onClick={() => chooseCard(card)} className={(hint && yourMove && canPlay(card) ? 'playable ' : '') + (staged.includes(card) ? 'selected ' : '') + (flash.includes(card) ? 'illegal' : '')} disabled={!yourMove} aria-label={staged.includes(card) ? `Deselect ${cardIdLabel(card)}` : `Select ${cardIdLabel(card)}${canPlay(card) ? ', legal move' : ', not currently playable'}`}><CardImage code={card} />{staged.includes(card) && <i className="order-badge" aria-hidden="true">{staged.indexOf(card) + 1}</i>}</button>)}
           </div>
         </>}

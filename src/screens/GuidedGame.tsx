@@ -1,8 +1,9 @@
-import { sortHand } from '../switch/sortHand';
-import { HahaBanner, hahaText, type Haha } from './HahaBanner';
+import { sortHand } from '../switch/engine/sortHand';
+import { HahaBanner, hahaText, type Haha } from '../components/HahaBanner';
+import { BigHandHint, handPerRow } from '../components/BigHandHint';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowCounterClockwise, ArrowRight, CheckCircle, HandPalm, Lightbulb, SortAscending } from '@phosphor-icons/react';
-import { chooseComputerAction, LEVEL_NAMES, type ComputerLevel } from '../switch/ai';
+import { chooseComputerAction, LEVEL_NAMES, type ComputerLevel } from '../switch/ai/ai';
 
 /** How long one card takes to travel, and the gap between cards of a set. Slow enough to follow by eye. */
 const FLIGHT_MS = 1300;
@@ -16,21 +17,21 @@ const LEVELS: ComputerLevel[] = ['relaxed', 'standard', 'sharp'];
 const LEVEL_NOTE: Record<ComputerLevel, string> = { relaxed: 'makes friendly mistakes', standard: 'plays sensibly with a few tactics', sharp: 'plays to beat you with every tactic' };
 function readLevel(): ComputerLevel { try { const v = localStorage.getItem('switchComputerLevel'); return LEVELS.includes(v as ComputerLevel) ? v as ComputerLevel : 'standard'; } catch { return 'standard'; } }
 let computerLevel: ComputerLevel = readLevel();
-import { cardIdLabel, isBlackKing, rankOf, SUIT_META } from '../switch/cards';
-import { applyAction, createInitialGame, drawCards, legalMoves, isLegalPlay } from '../switch/rules';
-import type { CardId, GameState, Suit } from '../switch/types';
-import { drawTiming, REDUCED, SPEEDS } from '../switch/presentation';
-import { explainEffect, explainOptions, explainPickup, explainUnplayable, wasForcedPickup } from '../switch/coach';
-import { adviseMove } from '../switch/tactics';
-import { explainLesson, explainPickupLesson, explainStart, type Lesson } from '../switch/lessons';
-import { cue, feedbackEnabled, setFeedbackEnabled } from '../feedback';
-import { track } from '../switch/telemetry';
-import RealCards from './RealCards';
-import { ShareButton } from '../ShareButton';
-import { challengeShareCard } from '../switch/club';
-import { CardImage, CardShower, CoachPanel, isRedKing, rank, suit, suitNames, suitSymbols } from '../ui';
-import { testDeckRequested, testGameFromUrl } from './devDecks';
-import { useConfirm } from '../Confirm';
+import { cardIdLabel, isBlackKing, rankOf, SUIT_META } from '../switch/engine/cards';
+import { applyAction, createInitialGame, drawCards, legalMoves, isLegalPlay } from '../switch/engine/rules';
+import type { CardId, GameState, Suit } from '../switch/engine/types';
+import { drawTiming, REDUCED, SPEEDS } from '../switch/stats/presentation';
+import { explainEffect, explainOptions, explainPickup, explainUnplayable, wasForcedPickup } from '../switch/ai/coach';
+import { adviseMove } from '../switch/ai/tactics';
+import { explainLesson, explainPickupLesson, explainStart, type Lesson } from '../switch/ai/lessons';
+import { cue, feedbackEnabled, setFeedbackEnabled } from '../services/feedback';
+import { track } from '../switch/stats/telemetry';
+import RealCards from '../components/RealCards';
+import { ShareButton } from '../components/ShareButton';
+import { challengeShareCard } from '../switch/store/club';
+import { CardImage, CardShower, CoachPanel, isRedKing, rank, suit, suitNames, suitSymbols } from '../components/ui';
+import { testDeckRequested, testGameFromUrl } from '../switch/engine/devDecks';
+import { useConfirm } from '../components/Confirm';
 import { BottomSheet } from '../mobile';
 
 /** A card in plain words, the way the coach says it: "the jack of clubs". */
@@ -496,7 +497,7 @@ export default function GuidedGame({ onExit, onOpenCards, onStartNight, onOpenPu
       {yourTurn && missTurn && !awaitingLastCard && <div className="miss-turn-action"><strong>The computer played an eight</strong><p>{legalCards.some((card) => rank(card) === '8') ? 'Play an eight to pass the missed turn, or accept it.' : 'You have no eight to counter with, so you must miss this turn.'}</p><button className="primary" onClick={drawOrResolve}>Accept missed turn <ArrowRight size={18} /></button></div>}
       {awaitingLastCard
         ? <div className="last-card-call"><HandPalm size={27} /><strong>One card remaining</strong><p>Say “Last Card” now. Forgetting costs two cards.</p><button className="primary" onClick={() => answerLastCard(true)}>Say “Last Card”</button><button className="text-link" onClick={() => answerLastCard(false)}>Continue without saying it</button></div>
-        : <>{staged.length === 0 ? <div className="game-actions"><button className={'hint-button ' + (view.hint ? 'active' : '')} onClick={() => setView((current) => ({ ...current, hint: !current.hint }))} disabled={!yourTurn}><Lightbulb size={19} weight={view.hint ? 'fill' : 'regular'} />{view.hint ? 'Hide hint' : 'Show hint'}</button><button className="hint-button sort-button" onClick={() => setSortOn((on) => !on)} aria-pressed={sortOn}><SortAscending size={17} weight={sortOn ? 'fill' : 'regular'} />{sortOn ? 'Sorted' : 'Sort'}</button>{view.lesson && (!yourTurn || !advice || advice.kind === 'accept') && <button className="why-button" onClick={() => setSheetOpen(true)}>Why &amp; tactics</button>}<span>{engine.playerHand.length} card{engine.playerHand.length === 1 ? '' : 's'} in your hand</span></div> : aceChoice ? SUIT_CHOOSER : MULTI_ACTION}{view.hint && <p className="game-hint"><Lightbulb size={17} />{gameHint}</p>}<div className={'player-hand' + (engine.playerHand.length > 10 ? ' dense' : '') + (engine.playerHand.length > 5 ? ' two-rows' : '')} style={{ '--n': engine.playerHand.length, '--per': Math.ceil(engine.playerHand.length / 2) } as React.CSSProperties} aria-label="Your hand">{(sortOn ? sortHand(engine.playerHand) : engine.playerHand).map((card, index) => <button key={card} style={{ '--i': mover === 'deal' ? index : 0, zIndex: index + 1 } as React.CSSProperties} data-card={card} onClick={() => chooseCard(card)} className={((view.hint || guide) && yourTurn && canPlay(card) ? 'playable ' : '') + (pickShown && advice?.cards.includes(card) ? 'coach-pick ' : '') + (staged.includes(card) ? 'selected ' : '') + (flash.includes(card) ? 'illegal' : '')} disabled={!yourTurn} aria-label={matchingCardLabel(card)}><CardImage code={card} />{staged.includes(card) && <i className="order-badge" aria-hidden="true">{staged.indexOf(card) + 1}</i>}</button>)}</div></>}
+        : <>{staged.length === 0 ? <div className="game-actions"><button className={'hint-button ' + (view.hint ? 'active' : '')} onClick={() => setView((current) => ({ ...current, hint: !current.hint }))} disabled={!yourTurn}><Lightbulb size={19} weight={view.hint ? 'fill' : 'regular'} />{view.hint ? 'Hide hint' : 'Show hint'}</button><button className="hint-button sort-button" onClick={() => setSortOn((on) => !on)} aria-pressed={sortOn}><SortAscending size={17} weight={sortOn ? 'fill' : 'regular'} />{sortOn ? 'Sorted' : 'Sort'}</button>{view.lesson && (!yourTurn || !advice || advice.kind === 'accept') && <button className="why-button" onClick={() => setSheetOpen(true)}>Why &amp; tactics</button>}<span>{engine.playerHand.length} card{engine.playerHand.length === 1 ? '' : 's'} in your hand</span></div> : aceChoice ? SUIT_CHOOSER : MULTI_ACTION}{view.hint && <p className="game-hint"><Lightbulb size={17} />{gameHint}</p>}<BigHandHint count={engine.playerHand.length} /><div className={'player-hand' + (engine.playerHand.length > 10 ? ' dense' : '') + (engine.playerHand.length > 5 ? ' two-rows' : '') + (engine.playerHand.length >= 14 ? ' big-hand' : '')} style={{ '--n': engine.playerHand.length, '--per': handPerRow(engine.playerHand.length) } as React.CSSProperties} aria-label="Your hand">{(sortOn ? sortHand(engine.playerHand) : engine.playerHand).map((card, index) => <button key={card} style={{ '--i': mover === 'deal' ? index : 0, zIndex: index + 1 } as React.CSSProperties} data-card={card} onClick={() => chooseCard(card)} className={((view.hint || guide) && yourTurn && canPlay(card) ? 'playable ' : '') + (pickShown && advice?.cards.includes(card) ? 'coach-pick ' : '') + (staged.includes(card) ? 'selected ' : '') + (flash.includes(card) ? 'illegal' : '')} disabled={!yourTurn} aria-label={matchingCardLabel(card)}><CardImage code={card} />{staged.includes(card) && <i className="order-badge" aria-hidden="true">{staged.indexOf(card) + 1}</i>}</button>)}</div></>}
     </>}
     {confirmSheet}
     <BottomSheet open={realOpen} onOpenChange={setRealOpen} title="Before you deal" snap={0.8}><RealCards onStartNight={() => { setRealOpen(false); onStartNight(); }} /></BottomSheet>

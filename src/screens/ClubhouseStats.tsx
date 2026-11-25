@@ -1,15 +1,15 @@
-import SampleDataBar from './SampleDataBar';
+import SampleDataBar from '../components/SampleDataBar';
 import ClubSharing from './ClubSharing';
 import { useState } from 'react';
-import { useConfirm } from '../Confirm';
+import { useConfirm } from '../components/Confirm';
 import { Crown, Fire } from '@phosphor-icons/react';
-import { ShareButton } from '../ShareButton';
-import { buildLeaderboard, getClubName, leaderboardShareCard, putClubName } from '../switch/club';
+import { ShareButton } from '../components/ShareButton';
+import { buildLeaderboard, getClubName, leaderboardShareCard, putClubName } from '../switch/store/club';
 import { KeyboardInput, useKeyboard } from '../mobile';
-import { deriveClubhouseSummary, derivePlayerStats, deriveRivalries, type MilestoneId } from '../switch/analytics';
-import { getHistory } from '../switch/history';
-import { deriveDashboard } from '../switch/dashboard';
-import { archiveProfile, getProfiles, renameProfile } from '../switch/profiles';
+import { deriveClubhouseSummary, derivePlayerStats, deriveRivalries, type MilestoneId } from '../switch/stats/analytics';
+import { getHistory } from '../switch/store/history';
+import { deriveDashboard } from '../switch/stats/dashboard';
+import { archiveProfile, getProfiles, renameProfile } from '../switch/store/profiles';
 
 type Extensions = Record<string, unknown>;
 type Props = { extensions: Extensions; onChange: (next: Extensions) => void; startMode?: 'share' | 'join' };
