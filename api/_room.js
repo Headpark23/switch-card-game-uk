@@ -435,14 +435,16 @@ function playAction(room, table, seat, action, { at, lastCard, auto }) {
   // Ruling 20: putting down your last cards without having called "Last Card" does not win. You pick up two.
   const called = lastCard || mine.called;
   const emptied = action.type === "play" && action.cards.length === game.hands[seat].length;
+  const forcedPickup = emptied && after.status === "playing" && !(after.out?.includes(seat));
   const missed = emptied && !called;
   if (missed) after = penaliseMissedLastCard(after, seat);
+  const keepCall = forcedPickup && game.hands[seat].length > 1 && called;
 
   table.players.forEach((player, index) => {
     const other = room.seats[player];
     if (other.kind === "computer") return;
     const size = after.hands[index].length;
-    if (index === seat && action.type === "play") other.called = !emptied && size <= 1 && called;
+    if (index === seat && action.type === "play") other.called = (!emptied || keepCall) && size <= 1 && called;
     else if (size > game.hands[index].length && size > 1) other.called = false;
     // A move the computer made for a person never costs them the two-card penalty.
     if (index === seat && auto && size === 1) other.called = true;

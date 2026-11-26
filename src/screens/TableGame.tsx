@@ -405,12 +405,17 @@ export default function TableGame({ opponents, level, resume = null, seatNames, 
     busy.current = true;
     cue('play');
     let after = applyTableAction(before, action);
-    // Playing out your last cards (two tens to win, or a seven that cannot) needs "Last Card" first.
+    // Playing out your last cards (two tens to win, or a seven or jacks that cannot) needs "Last Card" first.
+    // A multi-card play that forces a pickup (such as two 7s) cannot win and leaves you holding one card, so a Last Card
+    // call made before pressing Play counts and stays active for that one card rather than making you call twice.
     const emptied = cards.length === before.hands[0].length;
-    const missed = emptied && !calledBeforeFinalRef.current;
+    const forcedPickup = emptied && !wentOut(after, 0);
+    const called = forcedPickup ? calledRef.current : calledBeforeFinalRef.current;
+    const missed = emptied && !called;
     if (missed) { cue('penalty'); shout('You'); after = penaliseMissedLastCard(after, 0); }
-    // The call is used up by an emptied hand (a pickup means saying it again) and by any play that leaves two or more.
-    if (emptied || after.hands[0].length > 1) setLastCalled(false);
+    const keepCall = forcedPickup && before.hands[0].length > 1 && called;
+    // The call is used up by winning, by a single-card forced pickup (say it again), and by any play that leaves two or more.
+    if ((emptied && !keepCall) || after.hands[0].length > 1) setLastCalled(false);
     show(before, action, after, false, missed);
     setStaged([]);
     setHint(false);

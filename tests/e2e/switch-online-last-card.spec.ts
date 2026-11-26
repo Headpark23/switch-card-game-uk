@@ -100,3 +100,19 @@ test("not saying Last Card: your own phone tells the table when your five second
   await expect.poll(() => t.mine().length, { timeout: 6_000 }).toBe(3);
   await expect(page.locator(".player-hand button")).toHaveCount(3, { timeout: 6_000 });
 });
+
+test("two 7s left online: select both, say Last Card, play -> forced pickup stays called and is never spotted", async ({ page }) => {
+  const t = await setUp(page, ["7S", "7H"]);
+  await page.locator('.player-hand button[data-card="7S"]').click();
+  await page.locator('.player-hand button[data-card="7H"]').click();
+  await page.getByTestId("last-card-button").click();
+  await page.getByRole("button", { name: "Play selected" }).click();
+  await expect.poll(() => t.mine().length, { timeout: 10_000 }).toBe(1);
+  await expect.poll(() => t.seat().called, { timeout: 5_000 }).toBe(true);
+  t.clock.offset += TIMING.spotBackstopMs + 5_000;
+  await t.poll();
+  await page.waitForTimeout(6_500);
+  await t.poll();
+  expect(t.mine()).toHaveLength(1);
+  expect(t.live().moves.some((move) => move.type === "spot")).toBe(false);
+});

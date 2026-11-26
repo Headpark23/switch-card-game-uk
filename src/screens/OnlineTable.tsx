@@ -4,7 +4,8 @@ import { createPortal } from 'react-dom';
 import { useScreenPortal } from '../mobile';
 import { cardIdLabel } from '../switch/engine/cards';
 import { explainUnplayable } from '../switch/ai/coach';
-import { isLegalTablePlay, openingNote, tableLegalMoves, tablePlaces, type TableState } from '../switch/engine/table';
+import { forcesPickup } from '../switch/engine/rules';
+import { isLegalTablePlay, openingNote, tableLegalMoves, tableOptions, tablePlaces, type TableState } from '../switch/engine/table';
 import type { CardId, GameAction, GameState, Suit } from '../switch/engine/types';
 import { cue } from '../services/feedback';
 import { logComputerGame, logOnlineNight, logSeriesResult } from '../switch/store/logGame';
@@ -367,11 +368,17 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
     turn: 'player', pendingPenalty: game.pendingPenalty, status: 'playing', winner: null, move: game.move,
   });
 
+  const isForcedPickup = (cards: readonly CardId[]) =>
+    cards.length === hand.length && forcesPickup(cards, hand, tableOptions(game.hands.length - (game.out?.length ?? 0)));
+
   /** Sends your move. The table answers with the new state, and the turn is then shown like any other. */
   async function submit(action: GameAction) {
     busy.current = true;
     try {
-      await room.send('move', { action, lastCard: action.type === 'play' && action.cards.length === hand.length ? calledBeforeFinal.current : calledRef.current, expect: view.seq });
+      const lastCard = action.type === 'play' && action.cards.length === hand.length && !isForcedPickup(action.cards)
+        ? calledBeforeFinal.current
+        : calledRef.current;
+      await room.send('move', { action, lastCard, expect: view.seq });
       calledBeforeFinal.current = false;
       window.setTimeout(() => { if (!showingRef.current) busy.current = false; }, 1500);
     } catch (reason) {
@@ -428,9 +435,9 @@ function Game({ view, room, onExit, onLeave, onOpenCards, onStartNight, onReplay
     cue('good');
     setCalled(true);
     // Ruling 26 (amended): with a single card left, that card is both the first and the final card, so a call made
-    // while it is selected, before Play is pressed, still counts.
-    if (hand.length === 1) calledBeforeFinal.current = true;
-    // Said after choosing the final card of a set it is too late (ruling 26): the table is only told when it still counts.
+    // while it is selected, before Play is pressed, still counts. Same for a forced-pickup set (e.g. two 7s) that leaves one card.
+    if (hand.length === 1 || (staged.length > 0 && isForcedPickup(staged))) calledBeforeFinal.current = true;
+    // Said after choosing the final card of a winning set it is too late (ruling 26): the table is only told when it still counts.
     else if (staged.length > 0 && staged.length === hand.length) return;
     void tellTableLastCard();
   }

@@ -469,6 +469,23 @@ test("owner report, 18 Nov 2026: a Last Card pressed in time is never beaten by 
   await call(eight.store, { code: eight.code, op: "missed", token: eight.tokens[eight.who] }, T0 + 7_000);
   await call(eight.store, { method: "GET", code: eight.code, token: eight.tokens[1 - eight.who] }, T0 + 30_000);
   assert.equal(eight.room().game.hands[eight.seat].length, 1, "the call survives a missed turn");
+
+  // Playing two 7s as your last two cards forces a pickup of one card; a Last Card call made with the play stays active for that card.
+  const sevens = await staged(["7S", "7C"], { others: 4 });
+  await call(sevens.store, { code: sevens.code, op: "call", token: sevens.tokens[sevens.who] }, T0 + 5);
+  await call(sevens.store, { code: sevens.code, op: "move", token: sevens.tokens[sevens.who], body: { action: { type: "play", cards: ["7S", "7C"] }, lastCard: true } }, T0 + 10);
+  assert.equal(sevens.room().game.hands[sevens.seat].length, 1, "two 7s cannot win: one forced pickup");
+  assert.equal(sevens.room().seats[sevens.room().table[sevens.seat]].called, true, "Last Card call stays active for the forced pickup");
+  await call(sevens.store, { code: sevens.code, op: "missed", token: sevens.tokens[sevens.who] }, T0 + 7_000);
+  await call(sevens.store, { method: "GET", code: sevens.code, token: sevens.tokens[1 - sevens.who] }, T0 + 30_000);
+  assert.equal(sevens.room().game.hands[sevens.seat].length, 1, "never spotted after calling Last Card on two 7s");
+
+  // Playing a single 7 when already down to one card still clears the prior call (ruling 19: say Last Card again).
+  const oneSeven = await staged(["7S"], { others: 4 });
+  await call(oneSeven.store, { code: oneSeven.code, op: "call", token: oneSeven.tokens[oneSeven.who] }, T0 + 5);
+  await call(oneSeven.store, { code: oneSeven.code, op: "move", token: oneSeven.tokens[oneSeven.who], body: { action: { type: "play", cards: ["7S"] }, lastCard: true } }, T0 + 10);
+  assert.equal(oneSeven.room().game.hands[oneSeven.seat].length, 1);
+  assert.equal(oneSeven.room().seats[oneSeven.room().table[oneSeven.seat]].called, false, "single-card 7 forced pickup requires calling Last Card again");
 });
 
 /** Plays a whole online tournament: people move when it is their turn, time passes for computers and between games. */

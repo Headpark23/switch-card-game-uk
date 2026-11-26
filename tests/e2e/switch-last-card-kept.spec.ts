@@ -42,3 +42,42 @@ test("a Last Card call survives accepting a missed turn (an eight played at you)
   await page.waitForTimeout(6000);
   await expect(page.locator(".player-hand button")).toHaveCount(1);
 });
+
+test("playing two 7s as your last two cards keeps your Last Card call for the forced pickup (called before)", async ({ page }) => {
+  await seedTable(page, { hands: [["7H", "7C"], ["3C", "4C", "8C"]], discard: ["4D", "6H"], suit: "H", turn: 0 });
+  await resume(page);
+  await page.getByRole("button", { name: /Select Seven of hearts/ }).click();
+  await page.getByTestId("last-card-button").click();
+  await page.getByRole("button", { name: /Select Seven of clubs/ }).click();
+  await page.getByRole("button", { name: "Play selected" }).click();
+  await expect(page.locator(".player-hand button")).toHaveCount(1, { timeout: 10_000 });
+  await expect(page.getByTestId("last-card-button")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("haha-banner")).toHaveCount(0);
+  await page.waitForTimeout(6000);
+  await expect(page.locator(".player-hand button")).toHaveCount(1);
+  await expect(page.getByTestId("haha-banner")).toHaveCount(0);
+});
+
+test("playing two 7s as your last two cards recognises Last Card pressed after selecting both", async ({ page }) => {
+  await seedTable(page, { hands: [["7H", "7C"], ["3C", "4C", "8C"]], discard: ["4D", "6H"], suit: "H", turn: 0 });
+  await resume(page);
+  await page.getByRole("button", { name: /Select Seven of hearts/ }).click();
+  await page.getByRole("button", { name: /Select Seven of clubs/ }).click();
+  await page.getByTestId("last-card-button").click();
+  await page.getByRole("button", { name: "Play selected" }).click();
+  await expect(page.locator(".player-hand button")).toHaveCount(1, { timeout: 10_000 });
+  await expect(page.getByTestId("last-card-button")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("haha-banner")).toHaveCount(0);
+  await page.waitForTimeout(6000);
+  await expect(page.locator(".player-hand button")).toHaveCount(1);
+});
+
+test("playing two 7s without calling Last Card still gives the two-card penalty on top of the forced pickup", async ({ page }) => {
+  await seedTable(page, { hands: [["7H", "7C"], ["3C", "4C", "8C"]], discard: ["4D", "6H"], suit: "H", turn: 0 });
+  await resume(page);
+  await page.getByRole("button", { name: /Select Seven of hearts/ }).click();
+  await page.getByRole("button", { name: /Select Seven of clubs/ }).click();
+  await page.getByRole("button", { name: "Play selected" }).click();
+  await expect(page.getByTestId("haha-banner")).toContainText("HAHA - you never said Last Card");
+  await expect(page.locator(".player-hand button")).toHaveCount(3, { timeout: 10_000 });
+});
