@@ -97,3 +97,20 @@ test("sheets open as a centred dialog on a laptop", async ({ page }) => {
   expect(Math.abs(centre - 720)).toBeLessThan(40);
   expect(sheet!.width).toBeLessThan(700);
 });
+
+test("Today's Daily Hand sits at the top of the lower Home section with readable light text", async ({ page }) => {
+  for (const [width, height] of [[390, 844], [1440, 900]] as const) {
+    await open(page, width, height);
+    const daily = page.getByTestId("home-daily-hand");
+    await expect(daily).toBeVisible();
+    const dailyBox = await daily.boundingBox();
+    const clubBox = await page.locator(".home-club-card").boundingBox();
+    expect(dailyBox!.y).toBeLessThan(clubBox!.y);
+    const colors = await daily.evaluate((el) => ({
+      title: getComputedStyle(el.querySelector("strong")!).color,
+      sub: getComputedStyle(el.querySelector("em")!).color,
+    }));
+    expect(colors.title).toBe("rgb(255, 253, 247)");
+    expect(colors.sub).toBe("rgb(232, 225, 206)");
+  }
+});

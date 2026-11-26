@@ -396,7 +396,7 @@
 }
 
 /* ---------- 7. Daily Hand Puzzle (Home Card & Mode Tabs) ---------- */
-.home-daily-hand {
+.switch-app button.home-daily-hand {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -407,39 +407,57 @@
   background: linear-gradient(135deg, #0b4a35, #053527);
   color: #fbf8f0;
   text-align: left;
+  box-shadow: 0 8px 18px #05352724;
 }
-.home-daily-hand.solved {
+.switch-app button.home-daily-hand.solved {
   background: linear-gradient(135deg, #fffaf0, #f4ead0);
-  color: var(--ink);
+  color: var(--green);
+  box-shadow: none;
 }
-.home-daily-hand .daily-hand-icon {
+.switch-app button.home-daily-hand .daily-hand-icon {
   flex: none;
   display: grid;
   place-items: center;
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: #ffffff1a;
+  background: #ffffff1f;
   color: #e6c97f;
 }
-.home-daily-hand.solved .daily-hand-icon {
+.switch-app button.home-daily-hand.solved .daily-hand-icon {
   background: #05352714;
   color: var(--green);
 }
-.home-daily-hand > span:nth-child(2) {
+.switch-app button.home-daily-hand > span:nth-child(2) {
   flex: 1;
   display: grid;
   gap: 2px;
   min-width: 0;
 }
-.home-daily-hand strong {
-  font-size: 15px;
-  line-height: 1.2;
+.switch-app button.home-daily-hand strong {
+  font-size: 15.5px;
+  line-height: 1.25;
+  color: #fffdf7;
 }
-.home-daily-hand em {
+.switch-app button.home-daily-hand em {
   font-style: normal;
-  font-size: 12px;
-  opacity: 0.85;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: #e8e1ce;
+  opacity: 1;
+}
+.switch-app button.home-daily-hand > svg {
+  color: #e6c97f;
+  flex: none;
+}
+.switch-app button.home-daily-hand.solved strong {
+  color: var(--green);
+}
+.switch-app button.home-daily-hand.solved em {
+  color: var(--muted);
+}
+.switch-app button.home-daily-hand.solved > svg {
+  color: var(--gold);
 }
 .daily-streak-chip {
   flex: none;

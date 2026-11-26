@@ -122,6 +122,15 @@ export default function HomeHub(props: Props) {
     </section>
 
     <section className="home-lower" aria-label="More from Switch">
+      <button className={'home-daily-hand' + (dailySolved ? ' solved' : '')} onClick={props.onDailyPuzzle} data-testid="home-daily-hand">
+        <span className="daily-hand-icon" aria-hidden="true"><CalendarCheck size={22} weight="fill" /></span>
+        <span>
+          <strong>{dailySolved ? `Daily Hand #${daily.dayNumber} · Solved` : `Today’s Daily Hand #${daily.dayNumber}`}</strong>
+          <em>{dailySolved ? (dailyProg.streak > 1 ? `${dailyProg.streak}-day streak · tap to share` : 'Nice work · tap to share your result') : 'One 60-second Switch puzzle. Same hand for everyone.'}</em>
+        </span>
+        {dailyProg.streak > 0 ? <b className="daily-streak-chip"><Fire size={14} weight="fill" aria-hidden="true" />{dailyProg.streak}</b> : <ArrowRight size={15} />}
+      </button>
+
       {fresh
         ? <button className="home-welcome" onClick={props.onRules}><Fan codes={['AS', '8D', '2H']} /><span><strong>New to Switch?</strong><em>Open Learn the rules: five moves, then a guided practice game.</em></span><ArrowRight size={17} /></button>
         : <div className="home-recent">
@@ -139,15 +148,6 @@ export default function HomeHub(props: Props) {
         <button onClick={props.onPlan}><CalendarPlus size={18} weight="bold" />Plan a night</button>
         <button onClick={props.onJoin}><Broadcast size={18} weight="bold" />Join a night</button>
       </nav>
-
-      <button className={'home-daily-hand' + (dailySolved ? ' solved' : '')} onClick={props.onDailyPuzzle} data-testid="home-daily-hand">
-        <span className="daily-hand-icon" aria-hidden="true"><CalendarCheck size={22} weight="fill" /></span>
-        <span>
-          <strong>{dailySolved ? `Daily Hand #${daily.dayNumber} · Solved` : `Today’s Daily Hand #${daily.dayNumber}`}</strong>
-          <em>{dailySolved ? (dailyProg.streak > 1 ? `${dailyProg.streak}-day streak · tap to share` : 'Nice work · tap to share your result') : 'One 60-second Switch puzzle. Same hand for everyone.'}</em>
-        </span>
-        {dailyProg.streak > 0 ? <b className="daily-streak-chip"><Fire size={14} weight="fill" aria-hidden="true" />{dailyProg.streak}</b> : <ArrowRight size={15} />}
-      </button>
 
       <button className="home-daily v2" onClick={() => props.onPower(power)}><Fan codes={power.cards.slice(0, 3)} /><span><strong>{power.name}</strong><em>{power.short} · today’s power card</em></span><ArrowRight size={15} /></button>
     </section>
